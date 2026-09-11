@@ -1,0 +1,968 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sctrial.stats.gsea &#8212; sctrial 0.3.3 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=44e57e90" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/stats/gsea';</script>
+    <link rel="icon" href="../../../_static/logo_icon.svg"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../concepts.html">Concepts and Methods</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      <main id="main-content" class="bd-main" role="main">
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">sctrial.stats.gsea</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for sctrial.stats.gsea</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.comparisons</span><span class="w"> </span><span class="kn">import</span> <span class="n">between_arm_comparison</span><span class="p">,</span> <span class="n">within_arm_comparison</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">did_table</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.pseudobulk</span><span class="w"> </span><span class="kn">import</span> <span class="n">pseudobulk_did</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">gseapy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">gp</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">gseapy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">gp</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">gp</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;run_gsea_cross_sectional&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;run_gsea_did&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;run_gsea_did_by_celltype&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;run_gsea_did_multi&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;run_gsea_pseudobulk&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;run_gsea_within_arm&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ensure_gseapy</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ensure gseapy is installed.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">gp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;gseapy is required for GSEA functions. Install with &#39;pip install gseapy&#39;.&quot;</span>
+        <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_rank_did_results</span><span class="p">(</span>
+    <span class="n">res</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">rank_by</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">min_units</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Rank the DiD results.&quot;&quot;&quot;</span>
+    <span class="n">valid</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;n_units&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">min_units</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;No genes have sufficient data (min_units=</span><span class="si">{</span><span class="n">min_units</span><span class="si">}</span><span class="s2">). &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Try reducing min_units or checking your data.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">rank_by</span> <span class="o">==</span> <span class="s2">&quot;signed_confidence&quot;</span><span class="p">:</span>
+        <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">valid</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="o">*</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span>
+            <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-12</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">rank_by</span> <span class="o">==</span> <span class="s2">&quot;beta&quot;</span><span class="p">:</span>
+        <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">rank_by</span> <span class="o">==</span> <span class="s2">&quot;tstat&quot;</span><span class="p">:</span>
+        <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">valid</span><span class="p">[</span><span class="s2">&quot;se_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown rank_by: </span><span class="si">{</span><span class="n">rank_by</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">valid</span><span class="p">[[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;rank&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;rank&quot;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_rank_between_arm_results</span><span class="p">(</span>
+    <span class="n">res</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">rank_by</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">min_units</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Rank the between-arm comparison results.&quot;&quot;&quot;</span>
+    <span class="n">valid</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;n_units&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">min_units</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;No genes have sufficient data (min_units=</span><span class="si">{</span><span class="n">min_units</span><span class="si">}</span><span class="s2">). &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Try reducing min_units or checking your data.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">rank_by</span> <span class="o">==</span> <span class="s2">&quot;signed_confidence&quot;</span><span class="p">:</span>
+        <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">valid</span><span class="p">[</span><span class="s2">&quot;beta_arm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="o">*</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span>
+            <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;p_arm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-12</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">rank_by</span> <span class="o">==</span> <span class="s2">&quot;beta&quot;</span><span class="p">:</span>
+        <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;beta_arm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">rank_by</span> <span class="o">==</span> <span class="s2">&quot;tstat&quot;</span><span class="p">:</span>
+        <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;beta_arm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">valid</span><span class="p">[</span><span class="s2">&quot;se_arm&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown rank_by: </span><span class="si">{</span><span class="n">rank_by</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">valid</span><span class="p">[[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;rank&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;rank&quot;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_rank_within_arm_results</span><span class="p">(</span>
+    <span class="n">res</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">rank_by</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">min_units</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Rank the within-arm comparison results.&quot;&quot;&quot;</span>
+    <span class="n">valid</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;n_units&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">min_units</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;No genes have sufficient data (min_units=</span><span class="si">{</span><span class="n">min_units</span><span class="si">}</span><span class="s2">). &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Try reducing min_units or checking your data.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">rank_by</span> <span class="o">==</span> <span class="s2">&quot;signed_confidence&quot;</span><span class="p">:</span>
+        <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">valid</span><span class="p">[</span><span class="s2">&quot;beta_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="o">*</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span>
+            <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;p_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-12</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">rank_by</span> <span class="o">==</span> <span class="s2">&quot;beta&quot;</span><span class="p">:</span>
+        <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;beta_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">rank_by</span> <span class="o">==</span> <span class="s2">&quot;tstat&quot;</span><span class="p">:</span>
+        <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;beta_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">valid</span><span class="p">[</span><span class="s2">&quot;se_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown rank_by: </span><span class="si">{</span><span class="n">rank_by</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">valid</span><span class="p">[[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;rank&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;rank&quot;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="run_gsea_cross_sectional">
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.gsea.run_gsea_cross_sectional">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_gsea_cross_sectional</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">gene_sets</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">visit</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">rank_by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tstat&quot;</span><span class="p">,</span>
+    <span class="n">min_units</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="n">return_obj</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Perform GSEA on cross-sectional data using between-arm comparison.</span>
+
+<span class="sd">    Similar to run_gsea_did but for cross-sectional designs (single visit).</span>
+<span class="sd">    Uses between_arm_comparison to rank genes by treatment vs control</span>
+<span class="sd">    difference at a fixed visit, then runs gseapy.prerank.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object containing expression data.</span>
+<span class="sd">    gene_sets</span>
+<span class="sd">        A library name (e.g. &#39;KEGG_2021_Human&#39;) or a dictionary mapping</span>
+<span class="sd">        pathway names to gene lists.</span>
+<span class="sd">    design</span>
+<span class="sd">        A `TrialDesign` object.</span>
+<span class="sd">    visit</span>
+<span class="sd">        The visit label to analyze (single timepoint).</span>
+<span class="sd">    layer</span>
+<span class="sd">        Layer to extract gene expression from.</span>
+<span class="sd">    rank_by</span>
+<span class="sd">        Metric for ranking genes: &#39;signed_confidence&#39;, &#39;beta&#39;, or &#39;tstat&#39;.</span>
+<span class="sd">    min_units</span>
+<span class="sd">        Minimum number of participants required per gene.</span>
+<span class="sd">    return_obj</span>
+<span class="sd">        Whether to return the full gseapy object.</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        Additional parameters passed to gseapy.prerank.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame or gseapy.Prerank</span>
+<span class="sd">        Enrichment results or the gseapy result object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_ensure_gseapy</span><span class="p">()</span>
+
+    <span class="n">genes</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">between_arm_comparison</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">visit</span><span class="o">=</span><span class="n">visit</span><span class="p">,</span>
+        <span class="n">features</span><span class="o">=</span><span class="n">genes</span><span class="p">,</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+        <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+        <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="s2">&quot;ols&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">ranking</span> <span class="o">=</span> <span class="n">_rank_between_arm_results</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">rank_by</span><span class="o">=</span><span class="n">rank_by</span><span class="p">,</span> <span class="n">min_units</span><span class="o">=</span><span class="n">min_units</span><span class="p">)</span>
+    <span class="n">pre_res</span> <span class="o">=</span> <span class="n">gp</span><span class="o">.</span><span class="n">prerank</span><span class="p">(</span><span class="n">rnk</span><span class="o">=</span><span class="n">ranking</span><span class="p">,</span> <span class="n">gene_sets</span><span class="o">=</span><span class="n">gene_sets</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">return_obj</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pre_res</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pre_res</span><span class="p">,</span> <span class="s2">&quot;res2d&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">pre_res</span><span class="o">.</span><span class="n">res2d</span>
+    <span class="k">return</span> <span class="n">pre_res</span></div>
+
+
+
+<div class="viewcode-block" id="run_gsea_within_arm">
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.gsea.run_gsea_within_arm">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_gsea_within_arm</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">gene_sets</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">arm</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">rank_by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tstat&quot;</span><span class="p">,</span>
+    <span class="n">min_units</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="n">return_obj</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Perform GSEA on longitudinal data using within-arm comparison.</span>
+
+<span class="sd">    Similar to run_gsea_did but uses within_arm_comparison instead of DiD.</span>
+<span class="sd">    Ranks genes by pre→post change within a single arm, then runs gseapy.prerank.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object containing expression data.</span>
+<span class="sd">    gene_sets</span>
+<span class="sd">        A library name (e.g. &#39;KEGG_2021_Human&#39;) or a dictionary mapping</span>
+<span class="sd">        pathway names to gene lists.</span>
+<span class="sd">    design</span>
+<span class="sd">        A `TrialDesign` object.</span>
+<span class="sd">    arm</span>
+<span class="sd">        The arm to analyze (e.g., design.arm_treated).</span>
+<span class="sd">    visits</span>
+<span class="sd">        Tuple of (baseline, followup) visit labels.</span>
+<span class="sd">    layer</span>
+<span class="sd">        Layer to extract gene expression from.</span>
+<span class="sd">    rank_by</span>
+<span class="sd">        Metric for ranking genes: &#39;signed_confidence&#39;, &#39;beta&#39;, or &#39;tstat&#39;.</span>
+<span class="sd">    min_units</span>
+<span class="sd">        Minimum number of participants required per gene.</span>
+<span class="sd">    return_obj</span>
+<span class="sd">        Whether to return the full gseapy object.</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        Additional parameters passed to gseapy.prerank.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame or gseapy.Prerank</span>
+<span class="sd">        Enrichment results or the gseapy result object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_ensure_gseapy</span><span class="p">()</span>
+
+    <span class="n">genes</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">within_arm_comparison</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">arm</span><span class="o">=</span><span class="n">arm</span><span class="p">,</span>
+        <span class="n">features</span><span class="o">=</span><span class="n">genes</span><span class="p">,</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">,</span>
+        <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+        <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+        <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">ranking</span> <span class="o">=</span> <span class="n">_rank_within_arm_results</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">rank_by</span><span class="o">=</span><span class="n">rank_by</span><span class="p">,</span> <span class="n">min_units</span><span class="o">=</span><span class="n">min_units</span><span class="p">)</span>
+    <span class="n">pre_res</span> <span class="o">=</span> <span class="n">gp</span><span class="o">.</span><span class="n">prerank</span><span class="p">(</span><span class="n">rnk</span><span class="o">=</span><span class="n">ranking</span><span class="p">,</span> <span class="n">gene_sets</span><span class="o">=</span><span class="n">gene_sets</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">return_obj</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pre_res</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pre_res</span><span class="p">,</span> <span class="s2">&quot;res2d&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">pre_res</span><span class="o">.</span><span class="n">res2d</span>
+    <span class="k">return</span> <span class="n">pre_res</span></div>
+
+
+
+<div class="viewcode-block" id="run_gsea_did">
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.gsea.run_gsea_did">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_gsea_did</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">gene_sets</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">exclude_crossovers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">celltype</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">rank_by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;signed_confidence&quot;</span><span class="p">,</span>
+    <span class="n">use_bootstrap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">n_boot</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">999</span><span class="p">,</span>
+    <span class="n">min_units</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="n">return_obj</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Perform Gene Set Enrichment Analysis (GSEA) on trial-aware rankings.</span>
+
+<span class="sd">    This function calculates Difference-in-Differences (DiD) effect sizes for</span>
+<span class="sd">    all genes, ranks them, and performs GSEA using `gseapy.prerank`. This approach</span>
+<span class="sd">    ensures that enriched pathways represent treatment effects rather than</span>
+<span class="sd">    baseline differences.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object containing expression data.</span>
+<span class="sd">    gene_sets</span>
+<span class="sd">        A library name (e.g. &#39;KEGG_2021_Human&#39;) or a dictionary mapping</span>
+<span class="sd">        pathway names to gene lists.</span>
+<span class="sd">    design</span>
+<span class="sd">        A `TrialDesign` object.</span>
+<span class="sd">    visits</span>
+<span class="sd">        A tuple of (baseline, followup) visit labels.</span>
+<span class="sd">    layer</span>
+<span class="sd">        Layer to extract gene expression from. Recommended to use a</span>
+<span class="sd">        normalized layer (e.g., &#39;log1p_cpm&#39;).</span>
+<span class="sd">    exclude_crossovers</span>
+<span class="sd">        Whether to exclude crossover cells from the DiD ranking.</span>
+<span class="sd">    rank_by</span>
+<span class="sd">        Metric for ranking genes:</span>
+
+<span class="sd">        - &#39;signed_confidence&#39;: sign(beta_DiD) * -log10(p_DiD). Highlights</span>
+<span class="sd">          genes with high effect and high significance.</span>
+<span class="sd">        - &#39;beta&#39;: ranks genes solely by the DiD effect size.</span>
+<span class="sd">        - &#39;tstat&#39;: ranks genes by the t-statistic (beta_DiD / se_DiD).</span>
+<span class="sd">    use_bootstrap</span>
+<span class="sd">        Whether to use Wild Cluster Bootstrap for DiD p-values (used if</span>
+<span class="sd">        rank_by is &#39;signed_confidence&#39;).</span>
+<span class="sd">    n_boot</span>
+<span class="sd">        Number of bootstrap permutations.</span>
+<span class="sd">    min_units</span>
+<span class="sd">        Minimum number of paired participants required for a gene to be</span>
+<span class="sd">        included in the ranking. Genes with fewer participants return NaN</span>
+<span class="sd">        and are filtered out before GSEA. Default is 4.</span>
+<span class="sd">    return_obj</span>
+<span class="sd">        Whether to return the full gseapy object. If False (default),</span>
+<span class="sd">        returns the results DataFrame (`res2d`).</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        Additional parameters passed to `gseapy.prerank` (e.g., `permutation_num`,</span>
+<span class="sd">        `outdir`, `min_size`, `max_size`).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame or gseapy.Prerank</span>
+<span class="sd">        A DataFrame of enrichment results (if return_obj=False) or the</span>
+<span class="sd">        gseapy result object.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; res = run_gsea_did(adata, gene_sets=&quot;KEGG_2021_Human&quot;, design=design, visits=(&quot;V1&quot;, &quot;V2&quot;))</span>
+<span class="sd">    &gt;&gt;&gt; print(res.head())</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_ensure_gseapy</span><span class="p">()</span>
+
+    <span class="c1"># 1. Run DiD for all genes</span>
+    <span class="n">genes</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">did_table</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">features</span><span class="o">=</span><span class="n">genes</span><span class="p">,</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">,</span>
+        <span class="n">celltype</span><span class="o">=</span><span class="n">celltype</span><span class="p">,</span>
+        <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">,</span>
+        <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+        <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+        <span class="n">use_bootstrap</span><span class="o">=</span><span class="n">use_bootstrap</span><span class="p">,</span>
+        <span class="n">n_boot</span><span class="o">=</span><span class="n">n_boot</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># 2. Filter genes with insufficient data</span>
+    <span class="c1"># Genes with n_units &lt; min_units will have NaN beta_DiD</span>
+    <span class="n">ranking</span> <span class="o">=</span> <span class="n">_rank_did_results</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">rank_by</span><span class="o">=</span><span class="n">rank_by</span><span class="p">,</span> <span class="n">min_units</span><span class="o">=</span><span class="n">min_units</span><span class="p">)</span>
+
+    <span class="c1"># 3. Run GSEA Prerank</span>
+    <span class="n">pre_res</span> <span class="o">=</span> <span class="n">gp</span><span class="o">.</span><span class="n">prerank</span><span class="p">(</span><span class="n">rnk</span><span class="o">=</span><span class="n">ranking</span><span class="p">,</span> <span class="n">gene_sets</span><span class="o">=</span><span class="n">gene_sets</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">return_obj</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pre_res</span>
+
+    <span class="c1"># Handle both gseapy &gt;= 1.0 (has .res2d) and potentially older versions</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pre_res</span><span class="p">,</span> <span class="s2">&quot;res2d&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">pre_res</span><span class="o">.</span><span class="n">res2d</span>
+    <span class="k">return</span> <span class="n">pre_res</span></div>
+
+
+
+<div class="viewcode-block" id="run_gsea_did_multi">
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.gsea.run_gsea_did_multi">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_gsea_did_multi</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">gene_sets</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]],</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run GSEA across multiple gene-set collections.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    gene_sets</span>
+<span class="sd">        Dictionary of gene-set collections.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign object.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Tuple of (baseline, followup) visit labels.</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        Additional parameters passed to `gseapy.prerank` (e.g., `permutation_num`,</span>
+<span class="sd">        `outdir`, `min_size`, `max_size`).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict[str, pd.DataFrame | gp.Prerank]</span>
+<span class="sd">        Dictionary of GSEA results.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_ensure_gseapy</span><span class="p">()</span>
+    <span class="n">results</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">gs</span> <span class="ow">in</span> <span class="n">gene_sets</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">results</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">run_gsea_did</span><span class="p">(</span>
+            <span class="n">adata</span><span class="p">,</span>
+            <span class="n">gene_sets</span><span class="o">=</span><span class="n">gs</span><span class="p">,</span>
+            <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+            <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">results</span></div>
+
+
+
+<div class="viewcode-block" id="run_gsea_did_by_celltype">
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.gsea.run_gsea_did_by_celltype">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_gsea_did_by_celltype</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">gene_sets</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="n">celltypes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run GSEA on DiD rankings separately for each cell type.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    gene_sets</span>
+<span class="sd">        Dictionary of gene-set collections.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign object.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Tuple of (baseline, followup) visit labels.</span>
+<span class="sd">    celltypes</span>
+<span class="sd">        List of cell types to analyze. If None, uses all unique cell types in `design.celltype_col`.</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        Additional parameters passed to `gseapy.prerank`</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict[str, pd.DataFrame | gp.Prerank]</span>
+<span class="sd">        Dictionary of GSEA results.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_ensure_gseapy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;design.celltype_col must be set for celltype GSEA.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">celltypes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">celltypes</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+
+    <span class="n">results</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">ct</span> <span class="ow">in</span> <span class="n">celltypes</span><span class="p">:</span>
+        <span class="n">results</span><span class="p">[</span><span class="n">ct</span><span class="p">]</span> <span class="o">=</span> <span class="n">run_gsea_did</span><span class="p">(</span>
+            <span class="n">adata</span><span class="p">,</span>
+            <span class="n">gene_sets</span><span class="o">=</span><span class="n">gene_sets</span><span class="p">,</span>
+            <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+            <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">,</span>
+            <span class="n">celltype</span><span class="o">=</span><span class="n">ct</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">results</span></div>
+
+
+
+<div class="viewcode-block" id="run_gsea_pseudobulk">
+<a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.gsea.run_gsea_pseudobulk">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_gsea_pseudobulk</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="n">gene_sets</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
+    <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">celltype_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">rank_by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;signed_confidence&quot;</span><span class="p">,</span>
+    <span class="n">min_units</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="n">return_obj</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run GSEA using pseudobulk DiD results.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        AnnData object.</span>
+<span class="sd">    gene_sets</span>
+<span class="sd">        Dictionary of gene-set collections.</span>
+<span class="sd">    design</span>
+<span class="sd">        TrialDesign object.</span>
+<span class="sd">    visits</span>
+<span class="sd">        Tuple of (baseline, followup) visit labels.</span>
+<span class="sd">    celltype_col</span>
+<span class="sd">        If provided and results contain per-celltype rows, run GSEA separately for each cell type and concatenate results.</span>
+<span class="sd">    rank_by</span>
+<span class="sd">        Metric for ranking genes. One of ``&#39;signed_confidence&#39;``</span>
+<span class="sd">        (sign(beta_DiD) * -log10(p_DiD), default), ``&#39;beta&#39;`` (DiD effect</span>
+<span class="sd">        size), or ``&#39;tstat&#39;`` (t-statistic beta_DiD / se_DiD).</span>
+<span class="sd">    min_units</span>
+<span class="sd">        Minimum number of paired participants required for a gene to be included in the ranking.</span>
+<span class="sd">    return_obj</span>
+<span class="sd">        Whether to return the full gseapy object. If False (default),</span>
+<span class="sd">        returns the results DataFrame (`res2d`).</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        Additional parameters passed to `gseapy.prerank` (e.g., `permutation_num`,</span>
+<span class="sd">        `outdir`, `min_size`, `max_size`).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame | gp.Prerank | dict[str, gp.Prerank]</span>
+<span class="sd">        A DataFrame of enrichment results (if return_obj=False) or the</span>
+<span class="sd">        gseapy result object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_ensure_gseapy</span><span class="p">()</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="n">pseudobulk_did</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">genes</span><span class="o">=</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">,</span>
+        <span class="n">celltype_col</span><span class="o">=</span><span class="n">celltype_col</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># If celltype_col is provided and results contain per-celltype rows,</span>
+    <span class="c1"># run GSEA separately for each cell type and concatenate results.</span>
+    <span class="k">if</span> <span class="n">celltype_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;celltype&quot;</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">all_results</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">obj_results</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">gp</span><span class="o">.</span><span class="n">Prerank</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">ct</span><span class="p">,</span> <span class="n">ct_res</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;celltype&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">ct_ranking</span> <span class="o">=</span> <span class="n">_rank_did_results</span><span class="p">(</span><span class="n">ct_res</span><span class="p">,</span> <span class="n">rank_by</span><span class="o">=</span><span class="n">rank_by</span><span class="p">,</span> <span class="n">min_units</span><span class="o">=</span><span class="n">min_units</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">ct_pre</span> <span class="o">=</span> <span class="n">gp</span><span class="o">.</span><span class="n">prerank</span><span class="p">(</span><span class="n">rnk</span><span class="o">=</span><span class="n">ct_ranking</span><span class="p">,</span> <span class="n">gene_sets</span><span class="o">=</span><span class="n">gene_sets</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">return_obj</span><span class="p">:</span>
+                <span class="n">obj_results</span><span class="p">[</span><span class="n">ct</span><span class="p">]</span> <span class="o">=</span> <span class="n">ct_pre</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ct_df</span> <span class="o">=</span> <span class="n">ct_pre</span><span class="o">.</span><span class="n">res2d</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ct_pre</span><span class="p">,</span> <span class="s2">&quot;res2d&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">ct_pre</span><span class="p">)</span>
+                <span class="n">ct_df</span><span class="p">[</span><span class="s2">&quot;celltype&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ct</span>
+                <span class="n">all_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ct_df</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">return_obj</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">obj_results</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">all_results</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">all_results</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">ranking</span> <span class="o">=</span> <span class="n">_rank_did_results</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">rank_by</span><span class="o">=</span><span class="n">rank_by</span><span class="p">,</span> <span class="n">min_units</span><span class="o">=</span><span class="n">min_units</span><span class="p">)</span>
+
+    <span class="n">pre_res</span> <span class="o">=</span> <span class="n">gp</span><span class="o">.</span><span class="n">prerank</span><span class="p">(</span>
+        <span class="n">rnk</span><span class="o">=</span><span class="n">ranking</span><span class="p">,</span>
+        <span class="n">gene_sets</span><span class="o">=</span><span class="n">gene_sets</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">return_obj</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pre_res</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pre_res</span><span class="p">,</span> <span class="s2">&quot;res2d&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">pre_res</span><span class="o">.</span><span class="n">res2d</span>
+    <span class="k">return</span> <span class="n">pre_res</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>
