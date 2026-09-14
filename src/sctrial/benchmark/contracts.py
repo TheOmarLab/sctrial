@@ -71,6 +71,7 @@ METHOD_ESTIMAND: dict[str, str] = {
     "edger_qlf": "count_link",
     "nebula": "count_link",
 }
+"""The estimand scale each method targets: ``log1p_cpm`` or ``count_link``."""
 
 METHOD_INPUT: dict[str, str] = {
     "sctrial_did": "participant_log1p_cpm",
@@ -81,6 +82,7 @@ METHOD_INPUT: dict[str, str] = {
     "edger_qlf": "pseudobulk_counts",
     "nebula": "cell_counts",
 }
+"""The input representation each method expects: ``participant_log1p_cpm``, ``pseudobulk_counts``, or ``cell_counts``."""
 
 _META_COLS = ("participant", "visit", "arm")
 

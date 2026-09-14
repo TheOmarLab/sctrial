@@ -170,7 +170,7 @@ def compute_sign_recovery(
     true: np.ndarray,
     threshold: float = 0.05,
 ) -> dict:
-    """Fraction of correct effect-size signs for |β| > threshold."""
+    """Fraction of correct effect-size signs for \|β\| > threshold."""
     mask = (np.abs(true) > threshold) & ~np.isnan(estimated)
     if mask.sum() == 0:
         return {"sign_recovery": np.nan, "n": 0}

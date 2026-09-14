@@ -8,13 +8,13 @@ Mathematical Background
 -----------------------
 **Two-arm DiD** (treatment × time interaction):
 
-    Power = Φ(|δ|/SE - z_{1-α/2}),   SE = σ × √(4/n)
+    Power = Φ(\|δ\|/SE - z_{1-α/2}),   SE = σ × √(4/n)
 
     n = 4σ²(z_{1-α/2} + z_{1-β})² / δ²
 
 **Single-arm paired** (within-arm pre→post change):
 
-    Power = Φ(|δ|/SE - z_{1-α/2}),   SE = σ × √(2/n)
+    Power = Φ(\|δ\|/SE - z_{1-α/2}),   SE = σ × √(2/n)
 
     n = 2σ²(z_{1-α/2} + z_{1-β})² / δ²
 
