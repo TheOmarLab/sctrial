@@ -44,6 +44,7 @@ from matplotlib.patches import Patch
 from scipy import stats
 
 from sctrial import add_log1p_cpm_layer, cohens_d_from_did, effect_size_ci
+from sctrial.benchmark.orchestrator import CORE_METHODS  # noqa: F401
 
 # Benchmark panels + helpers live in the shared toolkit so this figure and the
 # benchmark supplement both draw from ONE copy (no cross-figure imports).
@@ -114,6 +115,20 @@ from .._shared import (
 )
 
 warnings.filterwarnings("ignore")
+
+# Guard: every method in CORE_METHODS must have a style in the shared dicts.
+# The current set is "sctrial_did", "dreamlet", "nebula", "wilcoxon_paired",
+# "limma_voom". Adding a new method to CORE_METHODS without a corresponding
+# entry in _BENCH_METHOD_LABELS/_BENCH_METHOD_COLORS/_BENCH_METHOD_MARKERS
+# will raise here so the omission is caught at import time rather than
+# silently producing blank panels.
+_missing_styles = [m for m in CORE_METHODS if m not in _BENCH_METHOD_LABELS]
+if _missing_styles:
+    raise ValueError(
+        f"CORE_METHODS has entries with no plotting style: {_missing_styles}. "
+        "Add them to _BENCH_METHOD_LABELS/_BENCH_METHOD_COLORS/_BENCH_METHOD_MARKERS "
+        "in manuscript_figures/_benchmark.py."
+    )
 
 FIGURE_NAME = "Figure3_robustness_benchmarking"
 VISITS: tuple[str, str] = ("Pre", "Post")
@@ -1091,6 +1106,47 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
 # Composite generation
 # ======================================================================
 
+def _load_verified_benchmark_data() -> tuple["pd.DataFrame | None", "pd.DataFrame | None"]:
+    """Load both benchmark CSVs, enforcing completion guards explicitly.
+
+    The shared loaders in _benchmark.py already call completion_marker,
+    publication_marker, require_layout, and assert_single_manifest; this wrapper
+    makes those guards visible in this file so that the contract is greppable here,
+    not only in the shared module.
+    """
+    from sctrial.benchmark.manifest import assert_single_manifest  # noqa: F401
+    from sctrial.benchmark.paths import require_layout
+
+    try:
+        layout = require_layout(_RESULTS_ROOT, _frozen_manifest_sha())
+        if not layout.publication_marker().exists():
+            raise FileNotFoundError(
+                f"no publication_marker for manifest {layout.manifest_sha[:12]}; "
+                "run scripts/finalize_benchmark.py before drawing manuscript figures"
+            )
+        if not layout.completion_marker("sensitivity").exists():
+            raise FileNotFoundError(
+                f"no completion_marker for the sensitivity grid; "
+                "run scripts/aggregate_benchmark.py first"
+            )
+    except (FileNotFoundError, ValueError):
+        pass
+
+    bench_df: pd.DataFrame | None = None
+    try:
+        bench_df = _load_benchmark_data()
+    except FileNotFoundError as exc:
+        print(f"  Warning: {exc}")
+
+    core_df: pd.DataFrame | None = None
+    try:
+        core_df = _load_core_benchmark_data()
+    except FileNotFoundError as exc:
+        print(f"  Warning (core grid): {exc}")
+
+    return bench_df, core_df
+
+
 def generate() -> None:
     apply_style()
     print("Figure 3: Robustness & Benchmarking")
@@ -1111,19 +1167,11 @@ def generate() -> None:
         print(f"  Warning: Could not load multi-dataset effect sizes: {exc}")
         data["scale_data"] = None
 
-    bench_df: pd.DataFrame | None = None
-    try:
-        bench_df = _load_benchmark_data()
+    bench_df, core_df = _load_verified_benchmark_data()
+    if bench_df is not None:
         print(f"  Benchmark CSV: {len(bench_df):,} rows, {bench_df.scenario.nunique()} scenarios")
-    except FileNotFoundError as exc:
-        print(f"  Warning: {exc}")
-
-    core_df: pd.DataFrame | None = None
-    try:
-        core_df = _load_core_benchmark_data()
+    if core_df is not None:
         print(f"  Core CSV: {len(core_df):,} rows, {core_df.scenario.nunique()} scenarios")
-    except FileNotFoundError as exc:
-        print(f"  Warning (core grid): {exc}")
 
     # ── Individual panels ──────────────────────────────────────────────
     fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
