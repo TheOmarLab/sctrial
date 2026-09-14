@@ -441,12 +441,18 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    dict with keys:</span>
-<span class="sd">        "adata" : AnnData  — cell-level expression matrix with obs columns</span>
-<span class="sd">            ``participant``, ``visit``, ``arm``</span>
-<span class="sd">        "pseudobulk" : DataFrame  — participant-visit means with ``n_cells``</span>
-<span class="sd">        "truth" : dict mapping gene_name -&gt; true_beta_DiD</span>
-<span class="sd">        "params" : dict of simulation parameters</span>
+<span class="sd">    dict</span>
+<span class="sd">        A dictionary with the following keys:</span>
+
+<span class="sd">        ``adata``</span>
+<span class="sd">            AnnData with cell-level expression matrix; obs has</span>
+<span class="sd">            ``participant``, ``visit``, ``arm`` columns.</span>
+<span class="sd">        ``pseudobulk``</span>
+<span class="sd">            DataFrame of participant-visit means with ``n_cells``.</span>
+<span class="sd">        ``truth``</span>
+<span class="sd">            Mapping of gene_name -&gt; true_beta_DiD.</span>
+<span class="sd">        ``params``</span>
+<span class="sd">            Dict of simulation parameters.</span>
 <span class="sd">    """</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ad</span>
 

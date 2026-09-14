@@ -440,6 +440,7 @@
     <span class="s2">"edger_qlf"</span><span class="p">:</span> <span class="s2">"count_link"</span><span class="p">,</span>
     <span class="s2">"nebula"</span><span class="p">:</span> <span class="s2">"count_link"</span><span class="p">,</span>
 <span class="p">}</span>
+<span class="sd">"""The estimand scale each method targets: ``log1p_cpm`` or ``count_link``."""</span>
 
 <span class="n">METHOD_INPUT</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">"sctrial_did"</span><span class="p">:</span> <span class="s2">"participant_log1p_cpm"</span><span class="p">,</span>
@@ -450,10 +451,13 @@
     <span class="s2">"edger_qlf"</span><span class="p">:</span> <span class="s2">"pseudobulk_counts"</span><span class="p">,</span>
     <span class="s2">"nebula"</span><span class="p">:</span> <span class="s2">"cell_counts"</span><span class="p">,</span>
 <span class="p">}</span>
+<span class="sd">"""The input representation each method expects: ``participant_log1p_cpm``, ``pseudobulk_counts``, or ``cell_counts``."""</span>
 
 <span class="n">_META_COLS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"participant"</span><span class="p">,</span> <span class="s2">"visit"</span><span class="p">,</span> <span class="s2">"arm"</span><span class="p">)</span>
 
 
+<div class="viewcode-block" id="participant_log1p_cpm">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.participant_log1p_cpm">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">participant_log1p_cpm</span><span class="p">(</span>
     <span class="n">pseudobulk_counts</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">panel_genes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -486,7 +490,8 @@
     <span class="n">panel_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
         <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">cpm</span><span class="p">[:,</span> <span class="p">[</span><span class="n">pos</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">keep</span><span class="p">]]),</span> <span class="n">columns</span><span class="o">=</span><span class="n">keep</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">pseudobulk_counts</span><span class="o">.</span><span class="n">index</span>
     <span class="p">)</span>
-    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">meta</span><span class="p">,</span> <span class="n">panel_df</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">meta</span><span class="p">,</span> <span class="n">panel_df</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="prepare_inputs">
@@ -550,6 +555,8 @@
     <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">gene</span><span class="p">,</span> <span class="n">injected</span><span class="p">))</span>
 
 
+<div class="viewcode-block" id="prepare_inputs_from_adata">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.prepare_inputs_from_adata">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">prepare_inputs_from_adata</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">panel_genes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -609,7 +616,8 @@
         <span class="c1"># the permutation analysis is about the null distribution of p-values.</span>
         <span class="s2">"oracle"</span><span class="p">:</span> <span class="p">{},</span>
     <span class="p">}</span>
-    <span class="k">return</span> <span class="n">prepare_inputs</span><span class="p">(</span><span class="n">sim_like</span><span class="p">,</span> <span class="n">panel</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">prepare_inputs</span><span class="p">(</span><span class="n">sim_like</span><span class="p">,</span> <span class="n">panel</span><span class="p">)</span></div>
+
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_canonical_adata</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">participant_col</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">,</span> <span class="n">arm_col</span><span class="p">,</span> <span class="n">counts_layer</span><span class="p">):</span>

@@ -1,0 +1,985 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sctrial.benchmark.gates &#8212; sctrial 0.3.3 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=44e57e90" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
+
+    <script src="../../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/benchmark/gates';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../../../_static/logo_icon.svg"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../concepts.html">Concepts and Methods</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      <main id="main-content" class="bd-main" role="main">
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">sctrial.benchmark.gates</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for sctrial.benchmark.gates</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Monte Carlo calibration gates for the benchmark simulator.</span>
+
+<span class="sd">A calibration judged on a single simulated realisation cannot distinguish "the</span>
+<span class="sd">simulator is miscalibrated" from "this draw was unlucky". Every gate here is</span>
+<span class="sd">therefore an **envelope test**: the statistic is recomputed on ``n_mc``</span>
+<span class="sd">independent simulated datasets, and the real-data value is required to fall</span>
+<span class="sd">inside the central 95% of the simulated distribution. A statistic whose real</span>
+<span class="sd">value sits at the 3rd percentile of 200 replicates is a genuine mismatch; the</span>
+<span class="sd">same value against one replicate is noise.</span>
+
+<span class="sd">The gates</span>
+<span class="sd">---------</span>
+<span class="sd">=====  ==================================================================</span>
+<span class="sd">Gate   Question</span>
+<span class="sd">=====  ==================================================================</span>
+<span class="sd">A      Does the transcriptome have the right occupancy? (genes detected</span>
+<span class="sd">       per cell, zero fraction, gene-mean distribution)</span>
+<span class="sd">B      Do depth and cell yield match? (UMI per cell across the whole</span>
+<span class="sd">       distribution, cells per participant-visit)</span>
+<span class="sd">C      Does the conditional mean-dispersion relationship match?</span>
+<span class="sd">D      Is effect recovery driven by normalisation scope rather than by</span>
+<span class="sd">       signal direction? (ablation, not an envelope test -- see</span>
+<span class="sd">       :func:`composition_ablation`)</span>
+<span class="sd">E      Does the longitudinal structure match **as a distribution**?</span>
+<span class="sd">       (gene-wise pre/post correlation across participants)</span>
+<span class="sd">F      Does each method receive the input its estimand assumes?</span>
+<span class="sd">       (contract tests, in ``tests/test_benchmark_contracts.py``)</span>
+<span class="sd">G      Is a conventional pseudobulk comparator included?</span>
+<span class="sd">=====  ==================================================================</span>
+
+<span class="sd">Gates A, B, C and E are envelope tests and live here. D is an ablation whose</span>
+<span class="sd">answer is a comparison, not a calibration. F and G are contracts, enforced by</span>
+<span class="sd">unit tests rather than by simulation.</span>
+<span class="sd">"""</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"GATE_STATISTICS"</span><span class="p">,</span>
+    <span class="s2">"PINNED_STATISTICS"</span><span class="p">,</span>
+    <span class="s2">"GateResult"</span><span class="p">,</span>
+    <span class="s2">"run_gates"</span><span class="p">,</span>
+    <span class="s2">"composition_ablation"</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="c1"># PINNED statistics are near-deterministic readbacks of an empirical pool the</span>
+<span class="c1"># simulator resamples. Their agreement is true by construction, so a failure</span>
+<span class="c1"># indicates an IMPLEMENTATION defect, not a fidelity defect -- and their</span>
+<span class="c1"># agreement must never be presented as independent evidence that the simulator</span>
+<span class="c1"># "recovered" a property of the data.</span>
+<span class="c1">#</span>
+<span class="c1"># Everything else is DERIVED: it emerges from the generative model after counts</span>
+<span class="c1"># are drawn, and only those carry a fidelity verdict.</span>
+<span class="n">PINNED_STATISTICS</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span>
+    <span class="c1"># library-size pool, resampled directly</span>
+    <span class="s2">"umi_per_cell_q05"</span><span class="p">,</span> <span class="s2">"umi_per_cell_q25"</span><span class="p">,</span> <span class="s2">"umi_per_cell_median"</span><span class="p">,</span>
+    <span class="s2">"umi_per_cell_q75"</span><span class="p">,</span> <span class="s2">"umi_per_cell_q95"</span><span class="p">,</span>
+    <span class="c1"># cells-per-participant-visit pool, resampled directly</span>
+    <span class="s2">"cells_per_pv_median"</span><span class="p">,</span> <span class="s2">"cells_per_pv_cv"</span><span class="p">,</span>
+    <span class="c1"># gene-rate pool, permuted directly</span>
+    <span class="s2">"gene_mean_log_mean"</span><span class="p">,</span> <span class="s2">"gene_mean_log_sd"</span><span class="p">,</span>
+    <span class="c1"># per-gene dispersion, resampled paired with the gene rate</span>
+    <span class="s2">"cond_alpha_median"</span><span class="p">,</span> <span class="s2">"cond_alpha_q25"</span><span class="p">,</span> <span class="s2">"cond_alpha_q75"</span><span class="p">,</span>
+    <span class="s2">"cond_alpha_log_sd"</span><span class="p">,</span> <span class="s2">"cond_alpha_slope"</span><span class="p">,</span> <span class="s2">"cond_alpha_n_genes"</span><span class="p">,</span>
+<span class="p">})</span>
+
+<span class="n">GATE_STATISTICS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"A_transcriptome"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="c1"># zero_fraction is algebraically the MEAN of the same per-cell curve whose</span>
+        <span class="c1"># quantiles follow, so the mean and the quantiles are not independent</span>
+        <span class="c1"># evidence. mean/median is the shape discriminator between them.</span>
+        <span class="s2">"genes_detected_per_cell_mean"</span><span class="p">,</span>
+        <span class="s2">"genes_detected_per_cell_meanmedian"</span><span class="p">,</span>
+        <span class="s2">"genes_detected_per_cell_median"</span><span class="p">,</span>
+        <span class="s2">"genes_detected_per_cell_q25"</span><span class="p">,</span>
+        <span class="s2">"genes_detected_per_cell_q75"</span><span class="p">,</span>
+        <span class="s2">"zero_fraction"</span><span class="p">,</span>
+        <span class="s2">"gene_mean_log_mean"</span><span class="p">,</span>
+        <span class="s2">"gene_mean_log_sd"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"B_depth_yield"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"umi_per_cell_q05"</span><span class="p">,</span>
+        <span class="s2">"umi_per_cell_q25"</span><span class="p">,</span>
+        <span class="s2">"umi_per_cell_median"</span><span class="p">,</span>
+        <span class="s2">"umi_per_cell_q75"</span><span class="p">,</span>
+        <span class="s2">"umi_per_cell_q95"</span><span class="p">,</span>
+        <span class="s2">"cells_per_pv_median"</span><span class="p">,</span>
+        <span class="s2">"cells_per_pv_cv"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"C_dispersion"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="c1"># Support size on BOTH arms. If these differ materially the quantile</span>
+        <span class="c1"># comparisons are between differently supported distributions.</span>
+        <span class="s2">"cond_alpha_n_genes"</span><span class="p">,</span>
+        <span class="s2">"cond_alpha_median"</span><span class="p">,</span>
+        <span class="s2">"cond_alpha_q25"</span><span class="p">,</span>
+        <span class="s2">"cond_alpha_q75"</span><span class="p">,</span>
+        <span class="s2">"cond_alpha_log_sd"</span><span class="p">,</span>
+        <span class="s2">"cond_alpha_slope"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"E_longitudinal"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"prepost_corr_pooled"</span><span class="p">,</span>
+        <span class="s2">"prepost_corr_genewise_median"</span><span class="p">,</span>
+        <span class="s2">"prepost_corr_genewise_mean"</span><span class="p">,</span>
+        <span class="s2">"prepost_corr_genewise_sd"</span><span class="p">,</span>
+        <span class="s2">"prepost_corr_genewise_q10"</span><span class="p">,</span>
+        <span class="s2">"prepost_corr_genewise_q25"</span><span class="p">,</span>
+        <span class="s2">"prepost_corr_genewise_q75"</span><span class="p">,</span>
+        <span class="s2">"prepost_corr_genewise_q90"</span><span class="p">,</span>
+        <span class="s2">"between_participant_sd"</span><span class="p">,</span>
+        <span class="s2">"delta_sd_median"</span><span class="p">,</span>
+    <span class="p">],</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="GateResult">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.gates.GateResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GateResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Envelope verdict for one statistic."""</span>
+
+    <span class="n">gate</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">statistic</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">observed</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">sim_median</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">sim_lo95</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">sim_hi95</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">percentile</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">verdict</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">as_row</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="c1"># `ratio` is meaningless for a statistic already on a log scale and</span>
+        <span class="c1"># undefined for a signed one. gene_mean_log_mean reported ratio 0.995 for a</span>
+        <span class="c1"># true 2.20% discrepancy (understated 4.5x), and prepost_corr_genewise_q25</span>
+        <span class="c1"># printed "n/a" because observed and simulated have opposite signs -- the</span>
+        <span class="c1"># formula announcing its own breakdown. `z` is scale-free and always</span>
+        <span class="c1"># defined, and is the discrepancy the verdict is actually based on.</span>
+        <span class="n">sigma_mc</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sim_hi95</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">sim_lo95</span><span class="p">)</span> <span class="o">/</span> <span class="mf">3.92</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sim_hi95</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">log_scale</span> <span class="o">=</span> <span class="s2">"_log_"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">statistic</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">statistic</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"_log_sd"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">log_scale</span><span class="p">:</span>
+            <span class="n">discrepancy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">observed</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">sim_median</span>  <span class="c1"># already logs: difference IS the effect</span>
+            <span class="n">kind</span> <span class="o">=</span> <span class="s2">"log_difference"</span>
+        <span class="k">elif</span> <span class="s2">"corr"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">statistic</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">statistic</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"_slope"</span><span class="p">):</span>
+            <span class="n">discrepancy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">observed</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">sim_median</span>  <span class="c1"># signed, bounded: ratio is invalid</span>
+            <span class="n">kind</span> <span class="o">=</span> <span class="s2">"signed_difference"</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">discrepancy</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">observed</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">sim_median</span> <span class="o">-</span> <span class="mf">1.0</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sim_median</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">sim_median</span> <span class="o">!=</span> <span class="mf">0.0</span>
+                <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="p">)</span>
+            <span class="n">kind</span> <span class="o">=</span> <span class="s2">"relative"</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">"gate"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">gate</span><span class="p">,</span>
+            <span class="s2">"statistic"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">statistic</span><span class="p">,</span>
+            <span class="s2">"kind"</span><span class="p">:</span> <span class="n">kind</span><span class="p">,</span>
+            <span class="s2">"observed"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">observed</span><span class="p">,</span>
+            <span class="s2">"sim_median"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sim_median</span><span class="p">,</span>
+            <span class="s2">"sim_lo95"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sim_lo95</span><span class="p">,</span>
+            <span class="s2">"sim_hi95"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sim_hi95</span><span class="p">,</span>
+            <span class="s2">"discrepancy"</span><span class="p">:</span> <span class="n">discrepancy</span><span class="p">,</span>
+            <span class="s2">"sigma_mc"</span><span class="p">:</span> <span class="n">sigma_mc</span><span class="p">,</span>
+            <span class="s2">"z"</span><span class="p">:</span> <span class="p">(</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observed</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">sim_median</span><span class="p">)</span> <span class="o">/</span> <span class="n">sigma_mc</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sigma_mc</span><span class="p">)</span> <span class="ow">and</span> <span class="n">sigma_mc</span> <span class="o">&gt;</span> <span class="mi">0</span>
+                <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="p">),</span>
+            <span class="s2">"percentile"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">percentile</span><span class="p">,</span>
+            <span class="s2">"verdict"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">verdict</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_verdict</span><span class="p">(</span>
+    <span class="n">observed</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">sims</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">boot</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Verdict for one statistic.</span>
+
+<span class="sd">    Two regimes, and the difference matters:</span>
+
+<span class="sd">    * With a participant BOOTSTRAP of the reference cohort (``boot``), the</span>
+<span class="sd">      tolerance is the cohort's own sampling uncertainty. PASS when the</span>
+<span class="sd">      simulator's discrepancy from the observed value is no larger than the 95th</span>
+<span class="sd">      percentile of bootstrap discrepancies; INCONCLUSIVE to the 99th; FAIL</span>
+<span class="sd">      beyond. A simulator closer to TNBC than two draws of TNBC are to each other</span>
+<span class="sd">      cannot be distinguished from a second run of the same study.</span>
+<span class="sd">    * Without it, fall back to the Monte Carlo envelope. That envelope is ~0.4%</span>
+<span class="sd">      wide at 141,553 cells and tests exact equality, so it is retained only as a</span>
+<span class="sd">      diagnostic and its failures must not be read as fidelity failures.</span>
+
+<span class="sd">    INCONCLUSIVE is a real state, not a courtesy. Previously that condition could</span>
+<span class="sd">    not be expressed and was silently coded as FAIL, which is how a resolution</span>
+<span class="sd">    limit gets reported as a simulator defect.</span>
+<span class="sd">    """</span>
+    <span class="n">sims</span> <span class="o">=</span> <span class="n">sims</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sims</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="n">sims</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">10</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">observed</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"INSUFFICIENT"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">lo95</span><span class="p">,</span> <span class="n">hi95</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">sims</span><span class="p">,</span> <span class="p">[</span><span class="mf">2.5</span><span class="p">,</span> <span class="mf">97.5</span><span class="p">])</span>
+    <span class="n">pct</span> <span class="o">=</span> <span class="nb">float</span><span class="p">((</span><span class="n">sims</span> <span class="o">&lt;</span> <span class="n">observed</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="mf">100.0</span><span class="p">)</span>
+    <span class="n">sim_med</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">sims</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">boot</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">boot</span> <span class="o">=</span> <span class="n">boot</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">boot</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">boot</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">:</span>
+            <span class="c1"># Discrepancies of bootstrap realisations from the observed value.</span>
+            <span class="n">ref</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">boot</span> <span class="o">-</span> <span class="n">observed</span><span class="p">)</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">observed</span> <span class="o">-</span> <span class="n">sim_med</span><span class="p">)</span>
+            <span class="n">t95</span><span class="p">,</span> <span class="n">t99</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="p">[</span><span class="mi">95</span><span class="p">,</span> <span class="mi">99</span><span class="p">])</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="s2">"PASS"</span> <span class="k">if</span> <span class="n">d</span> <span class="o">&lt;=</span> <span class="n">t95</span> <span class="k">else</span> <span class="p">(</span><span class="s2">"INCONCLUSIVE"</span> <span class="k">if</span> <span class="n">d</span> <span class="o">&lt;=</span> <span class="n">t99</span> <span class="k">else</span> <span class="s2">"FAIL"</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">pct</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">sim_med</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">lo95</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">hi95</span><span class="p">)</span>
+
+    <span class="n">lo99</span><span class="p">,</span> <span class="n">hi99</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">sims</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">99.5</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">lo95</span> <span class="o">&lt;=</span> <span class="n">observed</span> <span class="o">&lt;=</span> <span class="n">hi95</span><span class="p">:</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="s2">"PASS"</span>
+    <span class="k">elif</span> <span class="n">lo99</span> <span class="o">&lt;=</span> <span class="n">observed</span> <span class="o">&lt;=</span> <span class="n">hi99</span><span class="p">:</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="s2">"INCONCLUSIVE"</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="s2">"FAIL"</span>
+    <span class="k">return</span> <span class="n">pct</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">sim_med</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">lo95</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">hi95</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_one_replicate</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Summarise one simulated replicate. Module-level for spawn picklability."""</span>
+    <span class="n">cfg_kwargs</span><span class="p">,</span> <span class="n">seed</span> <span class="o">=</span> <span class="n">args</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.calibration</span><span class="w"> </span><span class="kn">import</span> <span class="n">summarize_simulation</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.simulator_v2</span><span class="w"> </span><span class="kn">import</span> <span class="n">TranscriptomeSimConfig</span>
+
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">TranscriptomeSimConfig</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="o">**</span><span class="n">cfg_kwargs</span><span class="p">,</span> <span class="s2">"seed"</span><span class="p">:</span> <span class="n">seed</span><span class="p">})</span>
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">summarize_simulation</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">statistics</span><span class="p">()</span>
+    <span class="c1"># The gene-wise correlation vector is kept for the distributional gate but is</span>
+    <span class="c1"># far too large to return per replicate at full scale; summarise to a fixed</span>
+    <span class="c1"># quantile grid, which is what the distribution test consumes.</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"_prepost_corr_genewise"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">r</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="p">):</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s2">"_corr_quantiles"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">99</span><span class="p">,</span> <span class="mi">99</span><span class="p">))</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">stats</span>
+
+
+<div class="viewcode-block" id="run_gates">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.gates.run_gates">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_gates</span><span class="p">(</span>
+    <span class="n">cfg</span><span class="p">,</span>
+    <span class="n">observed</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="n">n_mc</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span>
+    <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
+    <span class="n">seed0</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100_000</span><span class="p">,</span>
+    <span class="n">out_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">bootstrap</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Run every envelope gate.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cfg</span>
+<span class="sd">        A :class:`~sctrial.benchmark.simulator_v2.TranscriptomeSimConfig`. It is</span>
+<span class="sd">        used verbatim except for ``seed``, which is varied across replicates.</span>
+<span class="sd">    observed</span>
+<span class="sd">        Real-data statistics from</span>
+<span class="sd">        :meth:`sctrial.benchmark.calibration.SummaryAccumulator.statistics`.</span>
+<span class="sd">    n_mc</span>
+<span class="sd">        Number of simulated replicates. 200 gives a 2.5th-percentile bound with</span>
+<span class="sd">        about 5 order statistics below it, which is the practical minimum for a</span>
+<span class="sd">        95% envelope; 500 is preferable when the compute allows.</span>
+<span class="sd">    """</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">asdict</span>
+
+    <span class="n">cfg_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">asdict</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="n">cfg_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"seed"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="p">[(</span><span class="n">cfg_kwargs</span><span class="p">,</span> <span class="n">seed0</span> <span class="o">+</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_mc</span><span class="p">)]</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"running </span><span class="si">{</span><span class="n">n_mc</span><span class="si">}</span><span class="s2"> Monte Carlo replicates on </span><span class="si">{</span><span class="n">n_jobs</span><span class="si">}</span><span class="s2"> workers"</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n_jobs</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">ctx</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">get_context</span><span class="p">(</span><span class="s2">"spawn"</span><span class="p">)</span>  <span class="c1"># fork corrupts inherited BLAS/R state</span>
+        <span class="k">with</span> <span class="n">ctx</span><span class="o">.</span><span class="n">Pool</span><span class="p">(</span><span class="n">n_jobs</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+            <span class="n">sims</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">pool</span><span class="o">.</span><span class="n">imap_unordered</span><span class="p">(</span><span class="n">_one_replicate</span><span class="p">,</span> <span class="n">args</span><span class="p">),</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">sims</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_mc</span><span class="si">}</span><span class="s2"> replicates"</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">sims</span> <span class="o">=</span> <span class="p">[</span><span class="n">_one_replicate</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">args</span><span class="p">]</span>
+
+    <span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">gate</span><span class="p">,</span> <span class="n">keys</span> <span class="ow">in</span> <span class="n">GATE_STATISTICS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sims</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">ref</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">b</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bootstrap</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">bootstrap</span>
+                <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">)</span>
+            <span class="n">pct</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">med</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">_verdict</span><span class="p">(</span><span class="n">observed</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span> <span class="n">arr</span><span class="p">,</span> <span class="n">ref</span><span class="p">)</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="n">GateResult</span><span class="p">(</span>
+                <span class="n">gate</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">observed</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span> <span class="n">med</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">pct</span><span class="p">,</span> <span class="n">v</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">as_row</span><span class="p">()</span>
+            <span class="c1"># A PINNED statistic is a readback of a pool the simulator resamples;</span>
+            <span class="c1"># its verdict reports wiring, not fidelity.</span>
+            <span class="n">row</span><span class="p">[</span><span class="s2">"class"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"PINNED"</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">PINNED_STATISTICS</span> <span class="k">else</span> <span class="s2">"DERIVED"</span>
+            <span class="k">if</span> <span class="n">ref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">:</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="n">ref</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ref</span><span class="p">)]</span>
+                <span class="n">row</span><span class="p">[</span><span class="s2">"boot_tol95"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">r</span> <span class="o">-</span> <span class="n">row</span><span class="p">[</span><span class="s2">"observed"</span><span class="p">]),</span> <span class="mi">95</span><span class="p">))</span>
+                <span class="n">row</span><span class="p">[</span><span class="s2">"boot_tol99"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">r</span> <span class="o">-</span> <span class="n">row</span><span class="p">[</span><span class="s2">"observed"</span><span class="p">]),</span> <span class="mi">99</span><span class="p">))</span>
+                <span class="n">row</span><span class="p">[</span><span class="s2">"discrepancy_abs"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">"observed"</span><span class="p">]</span> <span class="o">-</span> <span class="n">med</span><span class="p">)</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+
+    <span class="n">rows</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_distribution_gate</span><span class="p">(</span><span class="n">observed</span><span class="p">,</span> <span class="n">sims</span><span class="p">,</span> <span class="n">bootstrap</span><span class="p">))</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">out_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">out_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">out_dir</span><span class="p">)</span>
+        <span class="n">out_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">out_dir</span> <span class="o">/</span> <span class="s2">"gate_envelopes.csv"</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">out_dir</span> <span class="o">/</span> <span class="s2">"gate_summary.json"</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">"n_mc"</span><span class="p">:</span> <span class="n">n_mc</span><span class="p">,</span>
+                    <span class="s2">"n_statistics"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span>
+                    <span class="s2">"n_pass"</span><span class="p">:</span> <span class="nb">int</span><span class="p">((</span><span class="n">df</span><span class="p">[</span><span class="s2">"verdict"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"PASS"</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+                    <span class="s2">"n_inconclusive"</span><span class="p">:</span> <span class="nb">int</span><span class="p">((</span><span class="n">df</span><span class="p">[</span><span class="s2">"verdict"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"INCONCLUSIVE"</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+                    <span class="s2">"n_fail"</span><span class="p">:</span> <span class="nb">int</span><span class="p">((</span><span class="n">df</span><span class="p">[</span><span class="s2">"verdict"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"FAIL"</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+                    <span class="c1"># Only DERIVED failures are fidelity failures; a PINNED failure</span>
+                    <span class="c1"># is an implementation defect and is reported separately.</span>
+                    <span class="s2">"n_fail_derived"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span>
+                        <span class="p">((</span><span class="n">df</span><span class="p">[</span><span class="s2">"verdict"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"FAIL"</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"class"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"DERIVED"</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                    <span class="p">),</span>
+                    <span class="s2">"n_fail_pinned"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span>
+                        <span class="p">((</span><span class="n">df</span><span class="p">[</span><span class="s2">"verdict"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"FAIL"</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"class"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"PINNED"</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                    <span class="p">),</span>
+                    <span class="s2">"failures"</span><span class="p">:</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">"verdict"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"FAIL"</span><span class="p">,</span> <span class="s2">"statistic"</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                    <span class="s2">"bootstrap_used"</span><span class="p">:</span> <span class="nb">bool</span><span class="p">(</span><span class="n">bootstrap</span><span class="p">),</span>
+                <span class="p">},</span>
+                <span class="n">fh</span><span class="p">,</span>
+                <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"wrote </span><span class="si">{</span><span class="n">out_dir</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="s1">'gate_envelopes.csv'</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_distribution_gate</span><span class="p">(</span><span class="n">observed</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">sims</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">bootstrap</span><span class="p">:</span> <span class="nb">list</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Gate E as a DISTRIBUTION test with an empirically calibrated noise floor.</span>
+
+<span class="sd">    Scalar summaries can agree while the distribution does not: the pooled</span>
+<span class="sd">    correlation passed at ratio 0.89 in a run where five distribution statistics</span>
+<span class="sd">    failed. So the comparison is between whole quantile profiles.</span>
+
+<span class="sd">    The reference is the distance between two PARTICIPANT-BOOTSTRAP realisations</span>
+<span class="sd">    of the reference cohort. If the real-versus-simulated distance is no larger</span>
+<span class="sd">    than the distance routinely seen between two draws of the study itself, the</span>
+<span class="sd">    simulator is as close as a second run of that study would be, which is the</span>
+<span class="sd">    strongest fidelity claim the data can support. Comparing the distance to zero</span>
+<span class="sd">    would fail for any finite sample and demanding every quantile match to 0.5% is</span>
+<span class="sd">    not a meaningful requirement.</span>
+
+<span class="sd">    Falls back to a simulation-versus-simulation reference when no bootstrap is</span>
+<span class="sd">    supplied; that answers a weaker question (is the discrepancy larger than the</span>
+<span class="sd">    simulator's own run-to-run variation) and is labelled accordingly.</span>
+<span class="sd">    """</span>
+    <span class="c1"># `corr_quantiles` is what measure_targets writes for real data;</span>
+    <span class="c1"># `_corr_quantiles` is what a simulated replicate carries in memory. Accept</span>
+    <span class="c1"># either so the gate works from a targets file and from a live accumulator.</span>
+    <span class="n">obs_grid</span> <span class="o">=</span> <span class="n">observed</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"corr_quantiles"</span><span class="p">,</span> <span class="n">observed</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"_corr_quantiles"</span><span class="p">))</span>
+    <span class="n">grids</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="s2">"_corr_quantiles"</span><span class="p">])</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sims</span> <span class="k">if</span> <span class="s2">"_corr_quantiles"</span> <span class="ow">in</span> <span class="n">s</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">obs_grid</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">grids</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[{</span>
+            <span class="s2">"gate"</span><span class="p">:</span> <span class="s2">"E_longitudinal"</span><span class="p">,</span> <span class="s2">"statistic"</span><span class="p">:</span> <span class="s2">"prepost_corr_distribution"</span><span class="p">,</span>
+            <span class="s2">"class"</span><span class="p">:</span> <span class="s2">"DERIVED"</span><span class="p">,</span> <span class="s2">"kind"</span><span class="p">:</span> <span class="s2">"wasserstein"</span><span class="p">,</span> <span class="s2">"observed"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">"sim_median"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"sim_lo95"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"sim_hi95"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">"discrepancy"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"sigma_mc"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"z"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">"percentile"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"verdict"</span><span class="p">:</span> <span class="s2">"INSUFFICIENT"</span><span class="p">,</span>
+        <span class="p">}]</span>
+    <span class="n">obs_grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">obs_grid</span><span class="p">)</span>
+    <span class="n">stack</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">grids</span><span class="p">)</span>
+
+    <span class="c1"># 1-Wasserstein between two distributions on a shared quantile grid is the</span>
+    <span class="c1"># mean absolute difference of their quantile functions.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_w1</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">b</span><span class="p">))))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_pairwise</span><span class="p">(</span><span class="n">grids_list</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="n">n_max</span><span class="o">=</span><span class="mi">2000</span><span class="p">):</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">grids_list</span><span class="p">)</span>
+        <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+        <span class="n">pairs</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">n_max</span><span class="p">,</span> <span class="n">n</span> <span class="o">*</span> <span class="n">n</span><span class="p">),</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">_w1</span><span class="p">(</span><span class="n">grids_list</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">grids_list</span><span class="p">[</span><span class="n">j</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">pairs</span> <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">j</span><span class="p">])</span>
+
+    <span class="c1"># BOTH SIDES PAIRWISE. Every realisation contributes to a centroid, so a</span>
+    <span class="c1"># distance-to-centroid is systematically smaller than a distance between two</span>
+    <span class="c1"># independent draws -- by roughly sqrt(2) for symmetric noise. Comparing an</span>
+    <span class="c1"># observed distance-to-centroid against a pairwise reference therefore biased</span>
+    <span class="c1"># the verdict toward PASS, which is the dangerous direction; and using</span>
+    <span class="c1"># centroid distances on both sides made it too strict, so two independent</span>
+    <span class="c1"># samples from the IDENTICAL distribution scored INCONCLUSIVE (W1 0.0099</span>
+    <span class="c1"># against a 95th percentile of 0.0084).</span>
+    <span class="c1">#</span>
+    <span class="c1"># The observed statistic is now the median distance from the real data to each</span>
+    <span class="c1"># INDEPENDENT simulated realisation, and the reference is the distance between</span>
+    <span class="c1"># two independent realisations of the reference process. Like against like.</span>
+    <span class="n">d_obs</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">([</span><span class="n">_w1</span><span class="p">(</span><span class="n">obs_grid</span><span class="p">,</span> <span class="n">g</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">stack</span><span class="p">]))</span>
+
+    <span class="c1"># Accept either key. The guard previously tested for BOTH spellings but the</span>
+    <span class="c1"># body read only one, so a bootstrap carrying `_corr_quantiles` alone would</span>
+    <span class="c1"># have raised KeyError instead of being used.</span>
+    <span class="n">boot_grids</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bootstrap</span> <span class="ow">or</span> <span class="p">[]:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"corr_quantiles"</span><span class="p">,</span> <span class="n">b</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"_corr_quantiles"</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">g</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">g</span><span class="p">):</span>
+            <span class="n">boot_grids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">g</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">boot_grids</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">:</span>
+        <span class="c1"># Preferred: carries the real cohort's participant-level sampling</span>
+        <span class="c1"># variability, which is the variation a second run of this study would see.</span>
+        <span class="n">ref</span> <span class="o">=</span> <span class="n">_pairwise</span><span class="p">(</span><span class="n">boot_grids</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+        <span class="n">basis</span> <span class="o">=</span> <span class="s2">"participant_bootstrap"</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Fallback: reflects only the simulator's Monte Carlo noise, a tighter and</span>
+        <span class="c1"># therefore more conservative reference. Labelled so it is never mistaken</span>
+        <span class="c1"># for the bootstrap-calibrated version.</span>
+        <span class="n">ref</span> <span class="o">=</span> <span class="n">_pairwise</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">stack</span><span class="p">],</span> <span class="n">seed</span><span class="o">=</span><span class="mi">11</span><span class="p">)</span>
+        <span class="n">basis</span> <span class="o">=</span> <span class="s2">"simulation_only"</span>
+
+    <span class="n">hi95</span><span class="p">,</span> <span class="n">hi99</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="mi">95</span><span class="p">)),</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="mi">99</span><span class="p">))</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="s2">"PASS"</span> <span class="k">if</span> <span class="n">d_obs</span> <span class="o">&lt;=</span> <span class="n">hi95</span> <span class="k">else</span> <span class="p">(</span><span class="s2">"INCONCLUSIVE"</span> <span class="k">if</span> <span class="n">d_obs</span> <span class="o">&lt;=</span> <span class="n">hi99</span> <span class="k">else</span> <span class="s2">"FAIL"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[{</span>
+        <span class="s2">"gate"</span><span class="p">:</span> <span class="s2">"E_longitudinal"</span><span class="p">,</span>
+        <span class="s2">"statistic"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"prepost_corr_distribution[</span><span class="si">{</span><span class="n">basis</span><span class="si">}</span><span class="s2">]"</span><span class="p">,</span>
+        <span class="s2">"class"</span><span class="p">:</span> <span class="s2">"DERIVED"</span><span class="p">,</span>
+        <span class="s2">"kind"</span><span class="p">:</span> <span class="s2">"wasserstein"</span><span class="p">,</span>
+        <span class="s2">"observed"</span><span class="p">:</span> <span class="n">d_obs</span><span class="p">,</span>
+        <span class="s2">"sim_median"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">ref</span><span class="p">)),</span>
+        <span class="s2">"sim_lo95"</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s2">"sim_hi95"</span><span class="p">:</span> <span class="n">hi95</span><span class="p">,</span>
+        <span class="s2">"discrepancy"</span><span class="p">:</span> <span class="n">d_obs</span><span class="p">,</span>
+        <span class="s2">"sigma_mc"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ref</span><span class="p">)),</span>
+        <span class="s2">"z"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+        <span class="s2">"boot_tol95"</span><span class="p">:</span> <span class="n">hi95</span><span class="p">,</span>
+        <span class="s2">"boot_tol99"</span><span class="p">:</span> <span class="n">hi99</span><span class="p">,</span>
+        <span class="s2">"percentile"</span><span class="p">:</span> <span class="nb">float</span><span class="p">((</span><span class="n">ref</span> <span class="o">&lt;</span> <span class="n">d_obs</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="mf">100.0</span><span class="p">),</span>
+        <span class="s2">"verdict"</span><span class="p">:</span> <span class="n">v</span><span class="p">,</span>
+    <span class="p">}]</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Gate D -- composition ablation (a comparison, not an envelope test)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="composition_ablation">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.gates.composition_ablation">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">composition_ablation</span><span class="p">(</span>
+    <span class="n">cfg</span><span class="p">,</span>
+    <span class="n">architectures</span><span class="o">=</span><span class="p">(</span><span class="s2">"balanced"</span><span class="p">,</span> <span class="s2">"heterogeneous"</span><span class="p">,</span> <span class="s2">"one_directional"</span><span class="p">),</span>
+    <span class="n">signal_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
+    <span class="n">magnitude</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+    <span class="n">panel_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span>
+    <span class="n">n_rep</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">seed0</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">900_000</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Isolate normalisation scope from signal direction.</span>
+
+<span class="sd">    For each signal architecture the same generated cells are analysed three</span>
+<span class="sd">    ways: normalised on the full transcriptome, normalised on the tested panel</span>
+<span class="sd">    only, and against the noiseless oracle estimand. If the recovery gap tracks</span>
+<span class="sd">    normalisation scope rather than signal direction, the compositional</span>
+<span class="sd">    explanation is demonstrated rather than merely consistent with the data.</span>
+<span class="sd">    """</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.simulator_v2</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">build_params</span><span class="p">,</span>
+        <span class="n">iter_pv_blocks</span><span class="p">,</span>
+        <span class="n">make_signal</span><span class="p">,</span>
+        <span class="n">nested_panels</span><span class="p">,</span>
+        <span class="n">oracle_estimands</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">arch</span> <span class="ow">in</span> <span class="n">architectures</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">rep</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_rep</span><span class="p">):</span>
+            <span class="n">seed</span> <span class="o">=</span> <span class="n">seed0</span> <span class="o">+</span> <span class="n">rep</span>
+            <span class="n">panels</span> <span class="o">=</span> <span class="n">nested_panels</span><span class="p">(</span><span class="n">replace</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">),</span> <span class="n">rng</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+            <span class="n">panel</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"gene_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">panels</span><span class="p">[</span><span class="n">panel_size</span><span class="p">]]</span>
+            <span class="c1"># make_signal takes an integer gene COUNT, not a fraction: passing the</span>
+            <span class="c1"># 0.2 signal_fraction gives int(0.2) == 0, i.e. no signal genes, so the</span>
+            <span class="c1"># ablation silently degenerates to a null run. Convert to a count.</span>
+            <span class="n">n_sig</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">signal_fraction</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">panel</span><span class="p">))</span>
+            <span class="n">effects</span> <span class="o">=</span> <span class="n">make_signal</span><span class="p">(</span>
+                <span class="n">panel</span><span class="p">,</span> <span class="n">n_sig</span><span class="p">,</span> <span class="n">arch</span><span class="p">,</span> <span class="n">magnitude</span><span class="p">,</span> <span class="n">rng</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span> <span class="n">effects</span><span class="o">=</span><span class="n">effects</span><span class="p">)</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="n">build_params</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+            <span class="n">oracle</span> <span class="o">=</span> <span class="n">oracle_estimands</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+
+            <span class="n">gidx</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">"gene_index"</span><span class="p">]</span>
+            <span class="n">pv</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">blk</span> <span class="ow">in</span> <span class="n">iter_pv_blocks</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">):</span>
+                <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">blk</span><span class="p">[</span><span class="s2">"participant"</span><span class="p">],</span> <span class="n">blk</span><span class="p">[</span><span class="s2">"visit"</span><span class="p">])</span>
+                <span class="n">s</span> <span class="o">=</span> <span class="n">blk</span><span class="p">[</span><span class="s2">"counts"</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+                <span class="n">pv</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">pv</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">s</span>
+                <span class="n">meta</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">blk</span><span class="p">[</span><span class="s2">"arm"</span><span class="p">]</span>
+
+            <span class="n">sig</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">effects</span><span class="p">]</span>
+            <span class="n">sig_idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">gidx</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">sig</span><span class="p">]</span>
+            <span class="n">panel_idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">gidx</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">panel</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">scope</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"full_transcriptome"</span><span class="p">,</span> <span class="s2">"panel_only"</span><span class="p">):</span>
+                <span class="n">est</span> <span class="o">=</span> <span class="n">_did_log1p_cpm</span><span class="p">(</span><span class="n">pv</span><span class="p">,</span> <span class="n">meta</span><span class="p">,</span> <span class="n">sig_idx</span><span class="p">,</span> <span class="n">panel_idx</span><span class="p">,</span> <span class="n">scope</span><span class="p">)</span>
+                <span class="n">truth</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">oracle</span><span class="p">[</span><span class="s2">"log1p_cpm"</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sig_idx</span><span class="p">])</span>
+                <span class="n">inj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">oracle</span><span class="p">[</span><span class="s2">"count_link"</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sig_idx</span><span class="p">])</span>
+                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">"architecture"</span><span class="p">:</span> <span class="n">arch</span><span class="p">,</span>
+                        <span class="s2">"rep"</span><span class="p">:</span> <span class="n">rep</span><span class="p">,</span>
+                        <span class="s2">"scope"</span><span class="p">:</span> <span class="n">scope</span><span class="p">,</span>
+                        <span class="s2">"mean_estimate"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">est</span><span class="p">)),</span>
+                        <span class="s2">"mean_oracle_log1p_cpm"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">truth</span><span class="p">)),</span>
+                        <span class="s2">"mean_injected_beta"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">inj</span><span class="p">)),</span>
+                        <span class="s2">"bias_vs_oracle"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">est</span> <span class="o">-</span> <span class="n">truth</span><span class="p">)),</span>
+                        <span class="s2">"bias_vs_injected"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">est</span> <span class="o">-</span> <span class="n">inj</span><span class="p">)),</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  ablation </span><span class="si">{</span><span class="n">arch</span><span class="si">}</span><span class="s2"> rep </span><span class="si">{</span><span class="n">rep</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_rep</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_did_log1p_cpm</span><span class="p">(</span><span class="n">pv</span><span class="p">,</span> <span class="n">meta</span><span class="p">,</span> <span class="n">sig_idx</span><span class="p">,</span> <span class="n">panel_idx</span><span class="p">,</span> <span class="n">scope</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Participant-level DiD of log(1+CPM) under a given normalisation scope."""</span>
+    <span class="n">keys</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">pv</span><span class="p">)</span>
+    <span class="n">participants</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">({</span><span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">})</span>
+    <span class="n">delta_list</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">treated_list</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">participants</span><span class="p">:</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">visit</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"Pre"</span><span class="p">,</span> <span class="s2">"Post"</span><span class="p">):</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">pv</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">p</span><span class="p">,</span> <span class="n">visit</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">denom</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="k">if</span> <span class="n">scope</span> <span class="o">==</span> <span class="s2">"full_transcriptome"</span> <span class="k">else</span> <span class="n">v</span><span class="p">[</span><span class="n">panel_idx</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="n">denom</span> <span class="o">=</span> <span class="n">denom</span> <span class="k">if</span> <span class="n">denom</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">1.0</span>
+            <span class="n">vals</span><span class="p">[</span><span class="n">visit</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="n">sig_idx</span><span class="p">]</span> <span class="o">/</span> <span class="n">denom</span> <span class="o">*</span> <span class="mf">1e6</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">delta_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vals</span><span class="p">[</span><span class="s2">"Post"</span><span class="p">]</span> <span class="o">-</span> <span class="n">vals</span><span class="p">[</span><span class="s2">"Pre"</span><span class="p">])</span>
+        <span class="n">treated_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">meta</span><span class="p">[(</span><span class="n">p</span><span class="p">,</span> <span class="s2">"Pre"</span><span class="p">)]</span> <span class="o">==</span> <span class="s2">"Treated"</span><span class="p">)</span>
+    <span class="n">deltas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">delta_list</span><span class="p">)</span>
+    <span class="n">treated</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">treated_list</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">~</span><span class="n">treated</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">deltas</span><span class="p">[</span><span class="n">treated</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">deltas</span><span class="p">[</span><span class="o">~</span><span class="n">treated</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">deltas</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

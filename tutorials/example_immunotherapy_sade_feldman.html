@@ -449,6 +449,8 @@
                    <span class="c1"># are hypothesis-generating, NOT confirmatory. Use 0.05 for</span>
                    <span class="c1"># confirmatory analyses. See GSEA FAQ for precedent.</span>
 <span class="n">SEED</span> <span class="o">=</span> <span class="mi">42</span>
+<span class="n">RUN_PYMC</span> <span class="o">=</span> <span class="kc">False</span>        <span class="c1"># Set True to run Bayesian DiD (slow; may crash on arm64)</span>
+<span class="n">MAX_PLOT_FEATURES</span> <span class="o">=</span> <span class="mi">9</span>  <span class="c1"># Cap visualization loops to avoid very large grids</span>
 <span class="n">RESPONSE_COL</span> <span class="o">=</span> <span class="s2">"response_harmonized"</span>
 
 <span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">chained_assignment</span> <span class="o">=</span> <span class="kc">None</span>
@@ -543,25 +545,25 @@ sctrial version: 0.3.3
 <div class="highlight"><pre>
 
 === Dataset Summary ===
-Cells: 13,183
-Genes: 55,737
-Participants: 25
-Original response labels: [&#39;Responder&#39;, &#39;Non-responder&#39;]
-Harmonized response labels: [&#39;Responder&#39;, &#39;Non-responder&#39;]
+Cells: 16,291
+Genes: 55,330
+Participants: 32
+Original response labels: [&#39;Non-responder&#39;, &#39;Responder&#39;]
+Harmonized response labels: [&#39;Non-responder&#39;, &#39;Responder&#39;]
 Visits: [&#39;Pre&#39;, &#39;Post&#39;]
 
 === Longitudinal Pairing Analysis ===
 
-Total participants: 25
+Total participants: 32
   Pre only: 8
-  Post only: 7
-  Both (paired): 10
+  Post only: 13
+  Both (paired): 11
 
 Paired participants by response (harmonized):
-  Non-responder: 7
+  Non-responder: 8
   Responder: 3
 
-Obs columns: [&#39;Sample name&#39;, &#39;Unnamed: 11&#39;, &#39;Unnamed: 12&#39;, &#39;Unnamed: 13&#39;, &#39;Unnamed: 14&#39;, &#39;Unnamed: 15&#39;, &#39;Unnamed: 16&#39;, &#39;Unnamed: 17&#39;, &#39;Unnamed: 18&#39;, &#39;Unnamed: 19&#39;, &#39;Unnamed: 20&#39;, &#39;Unnamed: 21&#39;, &#39;Unnamed: 22&#39;, &#39;Unnamed: 23&#39;, &#39;Unnamed: 24&#39;, &#39;Unnamed: 25&#39;, &#39;Unnamed: 26&#39;, &#39;Unnamed: 27&#39;, &#39;Unnamed: 28&#39;, &#39;Unnamed: 29&#39;, &#39;Unnamed: 30&#39;, &#39;Unnamed: 31&#39;, &#39;Unnamed: 32&#39;, &#39;Unnamed: 33&#39;, &#39;Unnamed: 34&#39;, &#39;cell_type&#39;, &#39;characteristics: therapy&#39;, &#39;description&#39;, &#39;leiden&#39;, &#39;molecule&#39;, &#39;organism&#39;, &#39;participant_id&#39;, &#39;patient_raw&#39;, &#39;processed data file &#39;, &#39;raw file&#39;, &#39;response&#39;, &#39;response_harmonized&#39;, &#39;source name&#39;, &#39;time_label&#39;, &#39;visit&#39;]
+Obs columns: [&#39;Sample name&#39;, &#39;Unnamed: 11&#39;, &#39;Unnamed: 12&#39;, &#39;Unnamed: 13&#39;, &#39;Unnamed: 14&#39;, &#39;Unnamed: 15&#39;, &#39;Unnamed: 16&#39;, &#39;Unnamed: 17&#39;, &#39;Unnamed: 18&#39;, &#39;Unnamed: 19&#39;, &#39;Unnamed: 20&#39;, &#39;Unnamed: 21&#39;, &#39;Unnamed: 22&#39;, &#39;Unnamed: 23&#39;, &#39;Unnamed: 24&#39;, &#39;Unnamed: 25&#39;, &#39;Unnamed: 26&#39;, &#39;Unnamed: 27&#39;, &#39;Unnamed: 28&#39;, &#39;Unnamed: 29&#39;, &#39;Unnamed: 30&#39;, &#39;Unnamed: 31&#39;, &#39;Unnamed: 32&#39;, &#39;Unnamed: 33&#39;, &#39;Unnamed: 34&#39;, &#39;annotation_source&#39;, &#39;cd8_state&#39;, &#39;cd8_subcluster&#39;, &#39;cell_type&#39;, &#39;cell_type_denovo&#39;, &#39;cell_type_published&#39;, &#39;characteristics: therapy&#39;, &#39;clinical_response_recist&#39;, &#39;cluster_published&#39;, &#39;description&#39;, &#39;leiden&#39;, &#39;lesion_response&#39;, &#39;molecule&#39;, &#39;organism&#39;, &#39;participant_id&#39;, &#39;patient_raw&#39;, &#39;processed data file &#39;, &#39;raw file&#39;, &#39;response&#39;, &#39;response_harmonized&#39;, &#39;sort_enriched&#39;, &#39;source name&#39;, &#39;time_label&#39;, &#39;visit&#39;]
 </pre></div></div>
 </div>
 </section>
@@ -662,13 +664,13 @@ Cells per Response x Visit:
   <tbody>
     <tr>
       <th>Non-responder</th>
-      <td>5760</td>
-      <td>3229</td>
+      <td>8151</td>
+      <td>3458</td>
     </tr>
     <tr>
       <th>Responder</th>
-      <td>1762</td>
-      <td>2432</td>
+      <td>2212</td>
+      <td>2470</td>
     </tr>
   </tbody>
 </table>
@@ -717,12 +719,12 @@ Participants per Response x Visit:
   <tbody>
     <tr>
       <th>Non-responder</th>
-      <td>13</td>
-      <td>10</td>
+      <td>18</td>
+      <td>11</td>
     </tr>
     <tr>
       <th>Responder</th>
-      <td>4</td>
+      <td>6</td>
       <td>8</td>
     </tr>
   </tbody>
@@ -838,9 +840,9 @@ Participants per Response x Visit:
 Available visits: [&#39;Pre&#39;, &#39;Post&#39;]
 
 Longitudinal pairing:
-  Total paired participants (Pre + Post): 10
+  Total paired participants (Pre + Post): 11
   Paired Responders: 3
-  Paired Non-responders: 7
+  Paired Non-responders: 8
 
   DiD analysis is feasible (&gt;=3 paired per arm)
 
@@ -886,18 +888,18 @@ INFO:sctrial.validation:========================================================
 INFO:sctrial.validation:TRIAL DATA DIAGNOSTIC REPORT
 INFO:sctrial.validation:============================================================
 INFO:sctrial.validation:DATA SUMMARY
-INFO:sctrial.validation:  Cells:        13,183
-INFO:sctrial.validation:  Genes:        55,737
-INFO:sctrial.validation:  Participants: 25
+INFO:sctrial.validation:  Cells:        16,291
+INFO:sctrial.validation:  Genes:        55,330
+INFO:sctrial.validation:  Participants: 32
 INFO:sctrial.validation:  Visits:       2
 INFO:sctrial.validation:  Arms:         2
 INFO:sctrial.validation:    Visit labels: Post, Pre
 INFO:sctrial.validation:    Arm labels: Non-responder, Responder
 INFO:sctrial.validation:PAIRED PARTICIPANTS
-INFO:sctrial.validation:  [OK] Post &lt;-&gt; Pre: 10 paired
+INFO:sctrial.validation:  [OK] Post &lt;-&gt; Pre: 11 paired
 INFO:sctrial.validation:CELLS PER PARTICIPANT-VISIT
-INFO:sctrial.validation:  Mean:   376.7
-INFO:sctrial.validation:  Median: 337.0
+INFO:sctrial.validation:  Mean:   378.9
+INFO:sctrial.validation:  Median: 338.0
 INFO:sctrial.validation:  Min:    163
 INFO:sctrial.validation:============================================================
 </pre></div></div>
@@ -905,13 +907,14 @@ INFO:sctrial.validation:========================================================
 </section>
 <section id="4.-Immune-Signatures">
 <h2>4. Immune Signatures<a class="headerlink" href="#4.-Immune-Signatures" title="Link to this heading">#</a></h2>
-<p>We define gene signatures relevant to immunotherapy response, based on the original Sade-Feldman paper and broader immuno-oncology literature:</p>
+<p>We define the 19 canonical gene signatures (matching the shared signature library used in the manuscript figures) using <code class="docutils literal notranslate"><span class="pre">st.score_gene_sets</span></code> with the z-mean method, then filter to signatures with sufficient expression. Key signatures for this dataset include:</p>
 <ul class="simple">
-<li><p><strong>Cytotoxicity</strong>: Effector function of CD8 T cells and NK cells - associated with anti-tumor immunity</p></li>
-<li><p><strong>Exhaustion</strong>: Dysfunctional T cell state - elevated exhaustion may predict poor response</p></li>
-<li><p><strong>IFN Response</strong>: Interferon-gamma signaling - can indicate immune activation</p></li>
-<li><p><strong>Memory</strong>: Memory T cell markers - may predict durable responses</p></li>
-<li><p><strong>Activation</strong>: T cell activation markers - early response indicator</p></li>
+<li><p><strong>Cytotoxic T Cell Activity</strong>: Effector function of CD8 T cells and NK cells — associated with anti-tumor immunity</p></li>
+<li><p><strong>T Cell Exhaustion</strong>: Dysfunctional T cell state — elevated exhaustion may predict poor response</p></li>
+<li><p><strong>Type I / Type II Interferon</strong>: Innate and adaptive interferon signaling pathways</p></li>
+<li><p><strong>Memory T Cell</strong>: Memory markers — may predict durable responses</p></li>
+<li><p><strong>T Cell Activation</strong>: Early activation indicators</p></li>
+<li><p><em>(plus 14 additional canonical signatures: Checkpoint Receptors, Inflammatory Response, Antigen Presentation, Cell Proliferation, Regulatory T Cell, NK Cell Activity, Apoptosis, Oxidative Stress Response, Humoral Plasma Cell, Monocyte Macrophage, Tissue-Resident Memory, T Follicular Helper, Hypoxia)</em></p></li>
 </ul>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
@@ -919,34 +922,110 @@ INFO:sctrial.validation:========================================================
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">available_genes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
 
-<span class="c1"># Define immunotherapy-relevant gene signatures</span>
-<span class="c1"># Based on Sade-Feldman et al. and broader immuno-oncology literature</span>
+<span class="c1"># Canonical 19-signature dictionary (matches manuscript figures _shared.py)</span>
 <span class="n">gene_signatures</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">"Cytotoxicity"</span><span class="p">:</span> <span class="p">[</span>
-        <span class="s2">"GZMB"</span><span class="p">,</span> <span class="s2">"GZMA"</span><span class="p">,</span> <span class="s2">"GZMH"</span><span class="p">,</span> <span class="s2">"GZMK"</span><span class="p">,</span> <span class="s2">"PRF1"</span><span class="p">,</span> <span class="s2">"GNLY"</span><span class="p">,</span>
-
-        <span class="s2">"IFNG"</span><span class="p">,</span> <span class="s2">"NKG7"</span><span class="p">,</span> <span class="s2">"KLRD1"</span><span class="p">,</span> <span class="s2">"KLRB1"</span><span class="p">,</span> <span class="s2">"FASLG"</span>
+    <span class="s2">"Cytotoxic T Cell Activity"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"GZMB"</span><span class="p">,</span> <span class="s2">"GZMA"</span><span class="p">,</span> <span class="s2">"GZMH"</span><span class="p">,</span> <span class="s2">"GZMK"</span><span class="p">,</span> <span class="s2">"GZMM"</span><span class="p">,</span> <span class="s2">"PRF1"</span><span class="p">,</span> <span class="s2">"GNLY"</span><span class="p">,</span> <span class="s2">"NKG7"</span><span class="p">,</span>
+        <span class="s2">"KLRK1"</span><span class="p">,</span> <span class="s2">"KLRD1"</span><span class="p">,</span> <span class="s2">"KLRG1"</span><span class="p">,</span> <span class="s2">"FASLG"</span><span class="p">,</span> <span class="s2">"IFNG"</span><span class="p">,</span> <span class="s2">"CST7"</span><span class="p">,</span> <span class="s2">"CCL5"</span><span class="p">,</span>
+        <span class="s2">"CX3CR1"</span><span class="p">,</span> <span class="s2">"FGFBP2"</span><span class="p">,</span>
     <span class="p">],</span>
-    <span class="s2">"Exhaustion"</span><span class="p">:</span> <span class="p">[</span>
-        <span class="s2">"PDCD1"</span><span class="p">,</span> <span class="s2">"LAG3"</span><span class="p">,</span> <span class="s2">"HAVCR2"</span><span class="p">,</span> <span class="s2">"TIGIT"</span><span class="p">,</span> <span class="s2">"CTLA4"</span><span class="p">,</span>
-
-        <span class="s2">"TOX"</span><span class="p">,</span> <span class="s2">"ENTPD1"</span><span class="p">,</span> <span class="s2">"CXCL13"</span><span class="p">,</span> <span class="s2">"EOMES"</span>
+    <span class="s2">"T Cell Exhaustion"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"TOX"</span><span class="p">,</span> <span class="s2">"TOX2"</span><span class="p">,</span> <span class="s2">"PDCD1"</span><span class="p">,</span> <span class="s2">"HAVCR2"</span><span class="p">,</span> <span class="s2">"LAG3"</span><span class="p">,</span> <span class="s2">"TIGIT"</span><span class="p">,</span> <span class="s2">"ENTPD1"</span><span class="p">,</span>
+        <span class="s2">"CXCL13"</span><span class="p">,</span> <span class="s2">"LAYN"</span><span class="p">,</span> <span class="s2">"CD38"</span><span class="p">,</span> <span class="s2">"PRDM1"</span><span class="p">,</span> <span class="s2">"BATF"</span><span class="p">,</span> <span class="s2">"NR4A2"</span><span class="p">,</span> <span class="s2">"NR4A3"</span><span class="p">,</span>
+        <span class="s2">"CD160"</span><span class="p">,</span> <span class="s2">"CD244"</span><span class="p">,</span>
     <span class="p">],</span>
-    <span class="s2">"IFN_Response"</span><span class="p">:</span> <span class="p">[</span>
-        <span class="s2">"ISG15"</span><span class="p">,</span> <span class="s2">"IFI6"</span><span class="p">,</span> <span class="s2">"IFIT1"</span><span class="p">,</span> <span class="s2">"IFIT2"</span><span class="p">,</span> <span class="s2">"IFIT3"</span><span class="p">,</span>
-
-        <span class="s2">"MX1"</span><span class="p">,</span> <span class="s2">"MX2"</span><span class="p">,</span> <span class="s2">"STAT1"</span><span class="p">,</span> <span class="s2">"OAS1"</span><span class="p">,</span> <span class="s2">"IRF7"</span>
+    <span class="s2">"Checkpoint Receptors"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"PDCD1"</span><span class="p">,</span> <span class="s2">"CTLA4"</span><span class="p">,</span> <span class="s2">"LAG3"</span><span class="p">,</span> <span class="s2">"HAVCR2"</span><span class="p">,</span> <span class="s2">"TIGIT"</span><span class="p">,</span> <span class="s2">"BTLA"</span><span class="p">,</span> <span class="s2">"CD160"</span><span class="p">,</span>
+        <span class="s2">"CD244"</span><span class="p">,</span> <span class="s2">"CD96"</span><span class="p">,</span>
     <span class="p">],</span>
-    <span class="s2">"Memory"</span><span class="p">:</span> <span class="p">[</span>
-        <span class="s2">"IL7R"</span><span class="p">,</span> <span class="s2">"TCF7"</span><span class="p">,</span> <span class="s2">"LEF1"</span><span class="p">,</span> <span class="s2">"CCR7"</span><span class="p">,</span> <span class="s2">"SELL"</span><span class="p">,</span> <span class="s2">"CD27"</span><span class="p">,</span> <span class="s2">"CD28"</span>
+    <span class="s2">"Type I Interferon"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"ISG15"</span><span class="p">,</span> <span class="s2">"IFI27"</span><span class="p">,</span> <span class="s2">"IFI44"</span><span class="p">,</span> <span class="s2">"IFI44L"</span><span class="p">,</span> <span class="s2">"IFI35"</span><span class="p">,</span> <span class="s2">"MX1"</span><span class="p">,</span> <span class="s2">"OAS1"</span><span class="p">,</span>
+        <span class="s2">"OASL"</span><span class="p">,</span> <span class="s2">"IFIT2"</span><span class="p">,</span> <span class="s2">"IFIT3"</span><span class="p">,</span> <span class="s2">"IFITM3"</span><span class="p">,</span> <span class="s2">"RSAD2"</span><span class="p">,</span> <span class="s2">"LY6E"</span><span class="p">,</span> <span class="s2">"USP18"</span><span class="p">,</span>
+        <span class="s2">"IRF7"</span><span class="p">,</span> <span class="s2">"STAT2"</span><span class="p">,</span> <span class="s2">"ISG20"</span><span class="p">,</span> <span class="s2">"BST2"</span><span class="p">,</span> <span class="s2">"HERC6"</span><span class="p">,</span> <span class="s2">"EPSTI1"</span><span class="p">,</span> <span class="s2">"SAMD9L"</span><span class="p">,</span>
+        <span class="s2">"PARP9"</span><span class="p">,</span> <span class="s2">"RTP4"</span><span class="p">,</span> <span class="s2">"LGALS3BP"</span><span class="p">,</span> <span class="s2">"CMPK2"</span><span class="p">,</span>
     <span class="p">],</span>
-    <span class="s2">"Activation"</span><span class="p">:</span> <span class="p">[</span>
-        <span class="s2">"CD69"</span><span class="p">,</span> <span class="s2">"CD38"</span><span class="p">,</span> <span class="s2">"HLA-DRA"</span><span class="p">,</span> <span class="s2">"ICOS"</span><span class="p">,</span> <span class="s2">"CD44"</span><span class="p">,</span> <span class="s2">"IL2RA"</span>
+    <span class="s2">"Type II Interferon"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"STAT1"</span><span class="p">,</span> <span class="s2">"IRF1"</span><span class="p">,</span> <span class="s2">"GBP1"</span><span class="p">,</span> <span class="s2">"GBP2"</span><span class="p">,</span> <span class="s2">"GBP4"</span><span class="p">,</span> <span class="s2">"GBP5"</span><span class="p">,</span> <span class="s2">"CXCL9"</span><span class="p">,</span>
+        <span class="s2">"CXCL10"</span><span class="p">,</span> <span class="s2">"CXCL11"</span><span class="p">,</span> <span class="s2">"IDO1"</span><span class="p">,</span> <span class="s2">"SOCS1"</span><span class="p">,</span> <span class="s2">"SOCS3"</span><span class="p">,</span> <span class="s2">"JAK2"</span><span class="p">,</span> <span class="s2">"UBE2L6"</span><span class="p">,</span>
+        <span class="s2">"WARS"</span><span class="p">,</span> <span class="s2">"IL18BP"</span><span class="p">,</span> <span class="s2">"VCAM1"</span><span class="p">,</span> <span class="s2">"SERPING1"</span><span class="p">,</span> <span class="s2">"FGL2"</span><span class="p">,</span> <span class="s2">"IFI30"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Memory T Cell"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"IL7R"</span><span class="p">,</span> <span class="s2">"TCF7"</span><span class="p">,</span> <span class="s2">"LEF1"</span><span class="p">,</span> <span class="s2">"CCR7"</span><span class="p">,</span> <span class="s2">"SELL"</span><span class="p">,</span> <span class="s2">"CD27"</span><span class="p">,</span> <span class="s2">"CD28"</span><span class="p">,</span> <span class="s2">"ID3"</span><span class="p">,</span>
+        <span class="s2">"REL"</span><span class="p">,</span> <span class="s2">"FOXP1"</span><span class="p">,</span> <span class="s2">"BACH2"</span><span class="p">,</span> <span class="s2">"MYB"</span><span class="p">,</span> <span class="s2">"FOXO1"</span><span class="p">,</span> <span class="s2">"KLF2"</span><span class="p">,</span> <span class="s2">"S1PR1"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"T Cell Activation"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"CD69"</span><span class="p">,</span> <span class="s2">"CD44"</span><span class="p">,</span> <span class="s2">"IL2RA"</span><span class="p">,</span> <span class="s2">"ICOS"</span><span class="p">,</span> <span class="s2">"TNFRSF4"</span><span class="p">,</span> <span class="s2">"TNFRSF9"</span><span class="p">,</span> <span class="s2">"CD40LG"</span><span class="p">,</span>
+        <span class="s2">"EGR1"</span><span class="p">,</span> <span class="s2">"EGR2"</span><span class="p">,</span> <span class="s2">"EGR3"</span><span class="p">,</span> <span class="s2">"NR4A1"</span><span class="p">,</span> <span class="s2">"MYC"</span><span class="p">,</span> <span class="s2">"IL2RB"</span><span class="p">,</span> <span class="s2">"IRF4"</span><span class="p">,</span>
+        <span class="s2">"TNFRSF18"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Inflammatory Response"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"IL1B"</span><span class="p">,</span> <span class="s2">"IL6"</span><span class="p">,</span> <span class="s2">"TNF"</span><span class="p">,</span> <span class="s2">"CXCL8"</span><span class="p">,</span> <span class="s2">"CCL2"</span><span class="p">,</span> <span class="s2">"CCL3"</span><span class="p">,</span> <span class="s2">"CCL4"</span><span class="p">,</span> <span class="s2">"NFKB1"</span><span class="p">,</span>
+        <span class="s2">"NLRP3"</span><span class="p">,</span> <span class="s2">"CASP1"</span><span class="p">,</span> <span class="s2">"CXCL1"</span><span class="p">,</span> <span class="s2">"CXCL2"</span><span class="p">,</span> <span class="s2">"CXCL3"</span><span class="p">,</span> <span class="s2">"CCL20"</span><span class="p">,</span> <span class="s2">"PTGS2"</span><span class="p">,</span>
+        <span class="s2">"IL1A"</span><span class="p">,</span> <span class="s2">"TNFAIP3"</span><span class="p">,</span> <span class="s2">"NFKBIA"</span><span class="p">,</span> <span class="s2">"IL18"</span><span class="p">,</span> <span class="s2">"S100A8"</span><span class="p">,</span> <span class="s2">"S100A9"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Antigen Presentation"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"HLA-A"</span><span class="p">,</span> <span class="s2">"HLA-B"</span><span class="p">,</span> <span class="s2">"HLA-C"</span><span class="p">,</span> <span class="s2">"B2M"</span><span class="p">,</span> <span class="s2">"TAP1"</span><span class="p">,</span> <span class="s2">"TAP2"</span><span class="p">,</span> <span class="s2">"TAPBP"</span><span class="p">,</span>
+        <span class="s2">"NLRC5"</span><span class="p">,</span> <span class="s2">"PSMB8"</span><span class="p">,</span> <span class="s2">"PSMB9"</span><span class="p">,</span> <span class="s2">"PSMB10"</span><span class="p">,</span> <span class="s2">"CIITA"</span><span class="p">,</span> <span class="s2">"CD74"</span><span class="p">,</span> <span class="s2">"HLA-DRA"</span><span class="p">,</span>
+        <span class="s2">"HLA-DRB1"</span><span class="p">,</span> <span class="s2">"HLA-DPA1"</span><span class="p">,</span> <span class="s2">"HLA-DPB1"</span><span class="p">,</span> <span class="s2">"HLA-DQA1"</span><span class="p">,</span> <span class="s2">"HLA-DMA"</span><span class="p">,</span>
+        <span class="s2">"HLA-DMB"</span><span class="p">,</span> <span class="s2">"CTSS"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Cell Proliferation"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"MKI67"</span><span class="p">,</span> <span class="s2">"TOP2A"</span><span class="p">,</span> <span class="s2">"PCNA"</span><span class="p">,</span> <span class="s2">"CDK1"</span><span class="p">,</span> <span class="s2">"CCNB1"</span><span class="p">,</span> <span class="s2">"CCNA2"</span><span class="p">,</span> <span class="s2">"MCM2"</span><span class="p">,</span>
+        <span class="s2">"MCM7"</span><span class="p">,</span> <span class="s2">"TYMS"</span><span class="p">,</span> <span class="s2">"BIRC5"</span><span class="p">,</span> <span class="s2">"UBE2C"</span><span class="p">,</span> <span class="s2">"CENPF"</span><span class="p">,</span> <span class="s2">"CENPE"</span><span class="p">,</span> <span class="s2">"CCNB2"</span><span class="p">,</span>
+        <span class="s2">"RRM2"</span><span class="p">,</span> <span class="s2">"HMGB2"</span><span class="p">,</span> <span class="s2">"TPX2"</span><span class="p">,</span> <span class="s2">"NUSAP1"</span><span class="p">,</span> <span class="s2">"CKS2"</span><span class="p">,</span> <span class="s2">"AURKA"</span><span class="p">,</span> <span class="s2">"CKS1B"</span><span class="p">,</span>
+        <span class="s2">"STMN1"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Regulatory T Cell"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"FOXP3"</span><span class="p">,</span> <span class="s2">"IKZF2"</span><span class="p">,</span> <span class="s2">"IKZF4"</span><span class="p">,</span> <span class="s2">"IL2RA"</span><span class="p">,</span> <span class="s2">"CTLA4"</span><span class="p">,</span> <span class="s2">"TNFRSF18"</span><span class="p">,</span>
+        <span class="s2">"TNFRSF4"</span><span class="p">,</span> <span class="s2">"TNFRSF9"</span><span class="p">,</span> <span class="s2">"TIGIT"</span><span class="p">,</span> <span class="s2">"ENTPD1"</span><span class="p">,</span> <span class="s2">"LRRC32"</span><span class="p">,</span> <span class="s2">"RTKN2"</span><span class="p">,</span>
+        <span class="s2">"CCR8"</span><span class="p">,</span> <span class="s2">"LAYN"</span><span class="p">,</span> <span class="s2">"IL1R2"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"NK Cell Activity"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"FCGR3A"</span><span class="p">,</span> <span class="s2">"NCR1"</span><span class="p">,</span> <span class="s2">"NCR3"</span><span class="p">,</span> <span class="s2">"NCR2"</span><span class="p">,</span> <span class="s2">"KLRF1"</span><span class="p">,</span> <span class="s2">"KLRC1"</span><span class="p">,</span> <span class="s2">"KLRC2"</span><span class="p">,</span>
+        <span class="s2">"KLRD1"</span><span class="p">,</span> <span class="s2">"KLRB1"</span><span class="p">,</span> <span class="s2">"IL2RB"</span><span class="p">,</span> <span class="s2">"TBX21"</span><span class="p">,</span> <span class="s2">"GZMM"</span><span class="p">,</span> <span class="s2">"SH2D1B"</span><span class="p">,</span> <span class="s2">"GNLY"</span><span class="p">,</span>
+        <span class="s2">"NKG7"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Apoptosis"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"BAX"</span><span class="p">,</span> <span class="s2">"BAK1"</span><span class="p">,</span> <span class="s2">"BID"</span><span class="p">,</span> <span class="s2">"BCL2L11"</span><span class="p">,</span> <span class="s2">"BBC3"</span><span class="p">,</span> <span class="s2">"PMAIP1"</span><span class="p">,</span> <span class="s2">"CASP3"</span><span class="p">,</span>
+        <span class="s2">"CASP7"</span><span class="p">,</span> <span class="s2">"CASP8"</span><span class="p">,</span> <span class="s2">"CASP9"</span><span class="p">,</span> <span class="s2">"FAS"</span><span class="p">,</span> <span class="s2">"TNFRSF10B"</span><span class="p">,</span> <span class="s2">"DIABLO"</span><span class="p">,</span> <span class="s2">"APAF1"</span><span class="p">,</span>
+        <span class="s2">"CDKN1A"</span><span class="p">,</span> <span class="s2">"GADD45A"</span><span class="p">,</span> <span class="s2">"GADD45B"</span><span class="p">,</span> <span class="s2">"DDIT3"</span><span class="p">,</span> <span class="s2">"FDXR"</span><span class="p">,</span> <span class="s2">"BTG2"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Oxidative Stress Response"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"NFE2L2"</span><span class="p">,</span> <span class="s2">"HMOX1"</span><span class="p">,</span> <span class="s2">"NQO1"</span><span class="p">,</span> <span class="s2">"GCLC"</span><span class="p">,</span> <span class="s2">"GCLM"</span><span class="p">,</span> <span class="s2">"GSR"</span><span class="p">,</span> <span class="s2">"SOD1"</span><span class="p">,</span> <span class="s2">"SOD2"</span><span class="p">,</span>
+        <span class="s2">"CAT"</span><span class="p">,</span> <span class="s2">"GPX1"</span><span class="p">,</span> <span class="s2">"TXN"</span><span class="p">,</span> <span class="s2">"TXNRD1"</span><span class="p">,</span> <span class="s2">"PRDX1"</span><span class="p">,</span> <span class="s2">"PRDX2"</span><span class="p">,</span> <span class="s2">"SRXN1"</span><span class="p">,</span>
+        <span class="s2">"G6PD"</span><span class="p">,</span> <span class="s2">"GPX4"</span><span class="p">,</span> <span class="s2">"GLRX"</span><span class="p">,</span> <span class="s2">"SLC7A11"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Humoral Plasma Cell"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"MS4A1"</span><span class="p">,</span> <span class="s2">"CD79A"</span><span class="p">,</span> <span class="s2">"CD79B"</span><span class="p">,</span> <span class="s2">"CD19"</span><span class="p">,</span> <span class="s2">"CD37"</span><span class="p">,</span> <span class="s2">"BANK1"</span><span class="p">,</span> <span class="s2">"TCL1A"</span><span class="p">,</span>
+        <span class="s2">"FCRL5"</span><span class="p">,</span> <span class="s2">"POU2AF1"</span><span class="p">,</span> <span class="s2">"MZB1"</span><span class="p">,</span> <span class="s2">"JCHAIN"</span><span class="p">,</span> <span class="s2">"XBP1"</span><span class="p">,</span> <span class="s2">"PRDM1"</span><span class="p">,</span> <span class="s2">"DERL3"</span><span class="p">,</span>
+        <span class="s2">"SDC1"</span><span class="p">,</span> <span class="s2">"TNFRSF17"</span><span class="p">,</span> <span class="s2">"SEC11C"</span><span class="p">,</span> <span class="s2">"HERPUD1"</span><span class="p">,</span> <span class="s2">"FKBP11"</span><span class="p">,</span> <span class="s2">"SLAMF7"</span><span class="p">,</span>
+        <span class="s2">"IGHM"</span><span class="p">,</span> <span class="s2">"IGHG1"</span><span class="p">,</span> <span class="s2">"IGKC"</span><span class="p">,</span> <span class="s2">"IGLC2"</span><span class="p">,</span> <span class="s2">"FDCSP"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Monocyte Macrophage"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"CD14"</span><span class="p">,</span> <span class="s2">"CD68"</span><span class="p">,</span> <span class="s2">"LYZ"</span><span class="p">,</span> <span class="s2">"CSF1R"</span><span class="p">,</span> <span class="s2">"AIF1"</span><span class="p">,</span> <span class="s2">"TYROBP"</span><span class="p">,</span> <span class="s2">"FCER1G"</span><span class="p">,</span>
+        <span class="s2">"CTSS"</span><span class="p">,</span> <span class="s2">"FCGR3A"</span><span class="p">,</span> <span class="s2">"ITGAM"</span><span class="p">,</span> <span class="s2">"MNDA"</span><span class="p">,</span> <span class="s2">"CD163"</span><span class="p">,</span> <span class="s2">"MRC1"</span><span class="p">,</span> <span class="s2">"MSR1"</span><span class="p">,</span>
+        <span class="s2">"MARCO"</span><span class="p">,</span> <span class="s2">"APOE"</span><span class="p">,</span> <span class="s2">"C1QA"</span><span class="p">,</span> <span class="s2">"C1QB"</span><span class="p">,</span> <span class="s2">"C1QC"</span><span class="p">,</span> <span class="s2">"TREM2"</span><span class="p">,</span> <span class="s2">"SELENOP"</span><span class="p">,</span>
+        <span class="s2">"LGALS3"</span><span class="p">,</span> <span class="s2">"FCN1"</span><span class="p">,</span> <span class="s2">"VCAN"</span><span class="p">,</span> <span class="s2">"S100A9"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Tissue-Resident Memory"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"ITGAE"</span><span class="p">,</span> <span class="s2">"ITGA1"</span><span class="p">,</span> <span class="s2">"CXCR6"</span><span class="p">,</span> <span class="s2">"ZNF683"</span><span class="p">,</span> <span class="s2">"CD101"</span><span class="p">,</span> <span class="s2">"RGS1"</span><span class="p">,</span> <span class="s2">"RGS2"</span><span class="p">,</span>
+        <span class="s2">"DUSP6"</span><span class="p">,</span> <span class="s2">"RBPJ"</span><span class="p">,</span> <span class="s2">"CD69"</span><span class="p">,</span> <span class="s2">"ID2"</span><span class="p">,</span> <span class="s2">"PRDM1"</span><span class="p">,</span> <span class="s2">"NR4A1"</span><span class="p">,</span> <span class="s2">"DUSP1"</span><span class="p">,</span>
+        <span class="s2">"EGR1"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"T Follicular Helper"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"CXCL13"</span><span class="p">,</span> <span class="s2">"CXCR5"</span><span class="p">,</span> <span class="s2">"PDCD1"</span><span class="p">,</span> <span class="s2">"ICOS"</span><span class="p">,</span> <span class="s2">"BCL6"</span><span class="p">,</span> <span class="s2">"TOX"</span><span class="p">,</span> <span class="s2">"TOX2"</span><span class="p">,</span>
+        <span class="s2">"IL21"</span><span class="p">,</span> <span class="s2">"BTLA"</span><span class="p">,</span> <span class="s2">"CD200"</span><span class="p">,</span> <span class="s2">"MAF"</span><span class="p">,</span> <span class="s2">"ASCL2"</span><span class="p">,</span> <span class="s2">"SH2D1A"</span><span class="p">,</span> <span class="s2">"CD40LG"</span><span class="p">,</span>
+        <span class="s2">"TNFRSF4"</span><span class="p">,</span> <span class="s2">"BATF"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Hypoxia"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"VEGFA"</span><span class="p">,</span> <span class="s2">"SLC2A1"</span><span class="p">,</span> <span class="s2">"SLC2A3"</span><span class="p">,</span> <span class="s2">"HK1"</span><span class="p">,</span> <span class="s2">"HK2"</span><span class="p">,</span> <span class="s2">"PGK1"</span><span class="p">,</span> <span class="s2">"LDHA"</span><span class="p">,</span>
+        <span class="s2">"ALDOA"</span><span class="p">,</span> <span class="s2">"ENO1"</span><span class="p">,</span> <span class="s2">"PDK1"</span><span class="p">,</span> <span class="s2">"BNIP3L"</span><span class="p">,</span> <span class="s2">"NDRG1"</span><span class="p">,</span> <span class="s2">"ADM"</span><span class="p">,</span> <span class="s2">"ANGPTL4"</span><span class="p">,</span>
+        <span class="s2">"DDIT4"</span><span class="p">,</span> <span class="s2">"PPP1R15A"</span><span class="p">,</span> <span class="s2">"ERO1A"</span><span class="p">,</span> <span class="s2">"P4HA1"</span><span class="p">,</span> <span class="s2">"CA12"</span><span class="p">,</span> <span class="s2">"IGFBP3"</span><span class="p">,</span> <span class="s2">"PLIN2"</span><span class="p">,</span>
     <span class="p">],</span>
 <span class="p">}</span>
 
 <span class="c1"># Filter to available genes and report coverage</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Gene signature coverage:"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Gene signature coverage (19 canonical signatures):"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"-"</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
 <span class="n">filtered_signatures</span> <span class="o">=</span> <span class="p">{}</span>
 <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">genes</span> <span class="ow">in</span> <span class="n">gene_signatures</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -958,19 +1037,12 @@ INFO:sctrial.validation:========================================================
         <span class="n">filtered_signatures</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">found</span>
 
 <span class="c1"># Score gene sets using z-mean method</span>
-<span class="c1"># zmean: z-score each gene across cells, then average z-scores</span>
-<span class="c1"># This accounts for different expression scales across genes</span>
-<span class="c1"># For each signature, finds which genes are present in the dataset and calculated coverage percentage.</span>
-<span class="c1"># Only keeps signatures with ≥ MIN_GENES_FOR_SCORE genes</span>
 <span class="k">if</span> <span class="n">filtered_signatures</span><span class="p">:</span>
     <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span>
         <span class="n">adata</span><span class="p">,</span>
-
         <span class="n">filtered_signatures</span><span class="p">,</span>
-
         <span class="n">layer</span><span class="o">=</span><span class="s2">"log1p_tpm"</span><span class="p">,</span>
-
-        <span class="n">method</span><span class="o">=</span><span class="s2">"zmean"</span><span class="p">,</span>  <span class="c1"># Better than "mean" for combining genes</span>
+        <span class="n">method</span><span class="o">=</span><span class="s2">"zmean"</span><span class="p">,</span>
         <span class="n">prefix</span><span class="o">=</span><span class="s2">"sig_"</span>
     <span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Scored </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">filtered_signatures</span><span class="p">)</span><span class="si">}</span><span class="s2"> signatures using zmean method"</span><span class="p">)</span>
@@ -988,7 +1060,6 @@ INFO:sctrial.validation:========================================================
     <span class="n">df_feat</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">df_feat</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span>
     <span class="n">df_agg</span> <span class="o">=</span> <span class="n">df_feat</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">signature_cols</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
 
-
     <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">signature_cols</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">df_agg</span><span class="p">[</span><span class="n">f</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1e-6</span><span class="p">:</span>
             <span class="n">features_use</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
@@ -996,7 +1067,7 @@ INFO:sctrial.validation:========================================================
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Dropping </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">: near-zero variance"</span><span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Features for analysis (after filtering): </span><span class="si">{</span><span class="n">features_use</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</pre></div>
+<br/></pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -1004,18 +1075,32 @@ INFO:sctrial.validation:========================================================
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Gene signature coverage:
+Gene signature coverage (19 canonical signatures):
 --------------------------------------------------
-Cytotoxicity: 11/11 genes (100%) [OK]
-Exhaustion: 9/9 genes (100%) [OK]
-IFN_Response: 10/10 genes (100%) [OK]
-Memory: 7/7 genes (100%) [OK]
-Activation: 6/6 genes (100%) [OK]
+Cytotoxic T Cell Activity: 17/17 genes (100%) [OK]
+T Cell Exhaustion: 16/16 genes (100%) [OK]
+Checkpoint Receptors: 9/9 genes (100%) [OK]
+Type I Interferon: 25/25 genes (100%) [OK]
+Type II Interferon: 20/20 genes (100%) [OK]
+Memory T Cell: 15/15 genes (100%) [OK]
+T Cell Activation: 15/15 genes (100%) [OK]
+Inflammatory Response: 20/21 genes (95%) [OK]
+Antigen Presentation: 21/21 genes (100%) [OK]
+Cell Proliferation: 22/22 genes (100%) [OK]
+Regulatory T Cell: 15/15 genes (100%) [OK]
+NK Cell Activity: 15/15 genes (100%) [OK]
+Apoptosis: 20/20 genes (100%) [OK]
+Oxidative Stress Response: 19/19 genes (100%) [OK]
+Humoral Plasma Cell: 24/25 genes (96%) [OK]
+Monocyte Macrophage: 24/25 genes (96%) [OK]
+Tissue-Resident Memory: 15/15 genes (100%) [OK]
+T Follicular Helper: 16/16 genes (100%) [OK]
+Hypoxia: 20/21 genes (95%) [OK]
 
-Scored 5 signatures using zmean method
-Signature scores: [&#39;sig_Cytotoxicity&#39;, &#39;sig_Exhaustion&#39;, &#39;sig_IFN_Response&#39;, &#39;sig_Memory&#39;, &#39;sig_Activation&#39;]
+Scored 19 signatures using zmean method
+Signature scores: [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T Cell Exhaustion&#39;, &#39;sig_Checkpoint Receptors&#39;, &#39;sig_Type I Interferon&#39;, &#39;sig_Type II Interferon&#39;, &#39;sig_Memory T Cell&#39;, &#39;sig_T Cell Activation&#39;, &#39;sig_Inflammatory Response&#39;, &#39;sig_Antigen Presentation&#39;, &#39;sig_Cell Proliferation&#39;, &#39;sig_Regulatory T Cell&#39;, &#39;sig_NK Cell Activity&#39;, &#39;sig_Apoptosis&#39;, &#39;sig_Oxidative Stress Response&#39;, &#39;sig_Humoral Plasma Cell&#39;, &#39;sig_Monocyte Macrophage&#39;, &#39;sig_Tissue-Resident Memory&#39;, &#39;sig_T Follicular Helper&#39;, &#39;sig_Hypoxia&#39;]
 
-Features for analysis (after filtering): [&#39;sig_Cytotoxicity&#39;, &#39;sig_Exhaustion&#39;, &#39;sig_IFN_Response&#39;, &#39;sig_Memory&#39;, &#39;sig_Activation&#39;]
+Features for analysis (after filtering): [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T Cell Exhaustion&#39;, &#39;sig_Checkpoint Receptors&#39;, &#39;sig_Type I Interferon&#39;, &#39;sig_Type II Interferon&#39;, &#39;sig_Memory T Cell&#39;, &#39;sig_T Cell Activation&#39;, &#39;sig_Inflammatory Response&#39;, &#39;sig_Antigen Presentation&#39;, &#39;sig_Cell Proliferation&#39;, &#39;sig_Regulatory T Cell&#39;, &#39;sig_NK Cell Activity&#39;, &#39;sig_Apoptosis&#39;, &#39;sig_Oxidative Stress Response&#39;, &#39;sig_Humoral Plasma Cell&#39;, &#39;sig_Monocyte Macrophage&#39;, &#39;sig_Tissue-Resident Memory&#39;, &#39;sig_T Follicular Helper&#39;, &#39;sig_Hypoxia&#39;]
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
@@ -1128,13 +1213,13 @@ PAIRING VERIFICATION (based on valid signature scores)
 ============================================================
 
 Participants with valid Pre+Post scores for ALL features:
-  Total: 10
+  Total: 11
   Responder: 3
-  Non-responder: 7
+  Non-responder: 8
 
 Comparison with cell-level pairing (from cell-11):
   Responder: 3 (cells) = 3 (valid scores) ✓
-  Non-responder: 7 (cells) = 7 (valid scores) ✓
+  Non-responder: 8 (cells) = 8 (valid scores) ✓
 
 Using VALID_PAIRED_BY_RESPONSE for all subsequent analyses.
 </pre></div></div>
@@ -1224,7 +1309,7 @@ Using VALID_PAIRED_BY_RESPONSE for all subsequent analyses.
 CROSS-SECTIONAL ANALYSIS: Responder vs Non-responder
 ============================================================
 
-Pre: Responders=8, Non-responders=10 participants
+Pre: Responders=8, Non-responders=11 participants
 
 Results at Pre:
 </pre></div></div>
@@ -1261,43 +1346,155 @@ Results at Pre:
   <tbody>
     <tr>
       <th>0</th>
-      <td>sig_Cytotoxicity</td>
-      <td>-1.1110</td>
-      <td>0.0139</td>
-      <td>0.0348</td>
-      <td>18</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>-1.3019</td>
+      <td>0.0021</td>
+      <td>0.0180</td>
+      <td>19</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_Exhaustion</td>
-      <td>-0.7932</td>
-      <td>0.0949</td>
-      <td>0.1582</td>
-      <td>18</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>-1.1312</td>
+      <td>0.0102</td>
+      <td>0.0396</td>
+      <td>19</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_IFN_Response</td>
-      <td>-0.2070</td>
-      <td>0.6759</td>
-      <td>0.6759</td>
-      <td>18</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>-1.0442</td>
+      <td>0.0197</td>
+      <td>0.0467</td>
+      <td>19</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>sig_Memory</td>
-      <td>1.1822</td>
-      <td>0.0079</td>
-      <td>0.0348</td>
-      <td>18</td>
+      <td>sig_Type I Interferon</td>
+      <td>-0.3064</td>
+      <td>0.5251</td>
+      <td>0.5667</td>
+      <td>19</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>sig_Activation</td>
-      <td>0.5133</td>
-      <td>0.2927</td>
-      <td>0.3659</td>
-      <td>18</td>
+      <td>sig_Type II Interferon</td>
+      <td>-0.4570</td>
+      <td>0.3396</td>
+      <td>0.4301</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>sig_Memory T Cell</td>
+      <td>0.6745</td>
+      <td>0.1516</td>
+      <td>0.2619</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>sig_T Cell Activation</td>
+      <td>-0.4997</td>
+      <td>0.2950</td>
+      <td>0.4004</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>sig_Inflammatory Response</td>
+      <td>-0.4338</td>
+      <td>0.3654</td>
+      <td>0.4339</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>sig_Antigen Presentation</td>
+      <td>-0.5155</td>
+      <td>0.2795</td>
+      <td>0.4004</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>sig_Cell Proliferation</td>
+      <td>-1.0699</td>
+      <td>0.0164</td>
+      <td>0.0444</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>sig_Regulatory T Cell</td>
+      <td>-1.0972</td>
+      <td>0.0133</td>
+      <td>0.0422</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>sig_NK Cell Activity</td>
+      <td>-1.3004</td>
+      <td>0.0021</td>
+      <td>0.0180</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>sig_Apoptosis</td>
+      <td>-0.9155</td>
+      <td>0.0452</td>
+      <td>0.0858</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>sig_Oxidative Stress Response</td>
+      <td>-1.2721</td>
+      <td>0.0028</td>
+      <td>0.0180</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>0.2979</td>
+      <td>0.5369</td>
+      <td>0.5667</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>sig_Monocyte Macrophage</td>
+      <td>-0.2258</td>
+      <td>0.6405</td>
+      <td>0.6405</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>-0.6064</td>
+      <td>0.2001</td>
+      <td>0.3169</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>sig_T Follicular Helper</td>
+      <td>-0.9503</td>
+      <td>0.0366</td>
+      <td>0.0773</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>sig_Hypoxia</td>
+      <td>-1.1286</td>
+      <td>0.0104</td>
+      <td>0.0396</td>
+      <td>19</td>
     </tr>
   </tbody>
 </table>
@@ -1308,9 +1505,9 @@ Results at Pre:
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-  Significant (FDR&lt;0.25): [&#39;sig_Cytotoxicity&#39;, &#39;sig_Exhaustion&#39;, &#39;sig_Memory&#39;]
+  Significant (FDR&lt;0.25): [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T Cell Exhaustion&#39;, &#39;sig_Checkpoint Receptors&#39;, &#39;sig_Cell Proliferation&#39;, &#39;sig_Regulatory T Cell&#39;, &#39;sig_NK Cell Activity&#39;, &#39;sig_Apoptosis&#39;, &#39;sig_Oxidative Stress Response&#39;, &#39;sig_T Follicular Helper&#39;, &#39;sig_Hypoxia&#39;]
 
-Post: Responders=4, Non-responders=13 participants
+Post: Responders=6, Non-responders=18 participants
 
 Results at Post:
 </pre></div></div>
@@ -1347,43 +1544,155 @@ Results at Post:
   <tbody>
     <tr>
       <th>0</th>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.5520</td>
-      <td>0.3507</td>
-      <td>0.4482</td>
-      <td>17</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>-1.1129</td>
+      <td>0.0145</td>
+      <td>0.0412</td>
+      <td>24</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_Exhaustion</td>
-      <td>-0.5433</td>
-      <td>0.3586</td>
-      <td>0.4482</td>
-      <td>17</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>-1.0672</td>
+      <td>0.0199</td>
+      <td>0.0445</td>
+      <td>24</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_IFN_Response</td>
-      <td>-1.1500</td>
-      <td>0.0397</td>
-      <td>0.1888</td>
-      <td>17</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>-1.0583</td>
+      <td>0.0211</td>
+      <td>0.0445</td>
+      <td>24</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>sig_Memory</td>
-      <td>0.3657</td>
-      <td>0.5399</td>
-      <td>0.5399</td>
-      <td>17</td>
+      <td>sig_Type I Interferon</td>
+      <td>-1.2080</td>
+      <td>0.0071</td>
+      <td>0.0412</td>
+      <td>24</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>sig_Activation</td>
-      <td>-1.0114</td>
-      <td>0.0755</td>
-      <td>0.1888</td>
-      <td>17</td>
+      <td>sig_Type II Interferon</td>
+      <td>-1.2577</td>
+      <td>0.0048</td>
+      <td>0.0412</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>sig_Memory T Cell</td>
+      <td>0.3068</td>
+      <td>0.5272</td>
+      <td>0.5272</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>sig_T Cell Activation</td>
+      <td>-0.9540</td>
+      <td>0.0400</td>
+      <td>0.0629</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>sig_Inflammatory Response</td>
+      <td>-0.7794</td>
+      <td>0.0990</td>
+      <td>0.1107</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>sig_Antigen Presentation</td>
+      <td>-1.2307</td>
+      <td>0.0060</td>
+      <td>0.0412</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>sig_Cell Proliferation</td>
+      <td>-0.9038</td>
+      <td>0.0529</td>
+      <td>0.0629</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>sig_Regulatory T Cell</td>
+      <td>-1.1443</td>
+      <td>0.0116</td>
+      <td>0.0412</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>sig_NK Cell Activity</td>
+      <td>-1.0264</td>
+      <td>0.0258</td>
+      <td>0.0491</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>sig_Apoptosis</td>
+      <td>-0.9042</td>
+      <td>0.0528</td>
+      <td>0.0629</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>sig_Oxidative Stress Response</td>
+      <td>-0.9717</td>
+      <td>0.0361</td>
+      <td>0.0623</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>1.1068</td>
+      <td>0.0152</td>
+      <td>0.0412</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>sig_Monocyte Macrophage</td>
+      <td>-0.4796</td>
+      <td>0.3197</td>
+      <td>0.3375</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>-1.1198</td>
+      <td>0.0139</td>
+      <td>0.0412</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>sig_T Follicular Helper</td>
+      <td>-0.9294</td>
+      <td>0.0460</td>
+      <td>0.0629</td>
+      <td>24</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>sig_Hypoxia</td>
+      <td>-0.9187</td>
+      <td>0.0488</td>
+      <td>0.0629</td>
+      <td>24</td>
     </tr>
   </tbody>
 </table>
@@ -1394,7 +1703,7 @@ Results at Post:
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-  Significant (FDR&lt;0.25): [&#39;sig_IFN_Response&#39;, &#39;sig_Activation&#39;]
+  Significant (FDR&lt;0.25): [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T Cell Exhaustion&#39;, &#39;sig_Checkpoint Receptors&#39;, &#39;sig_Type I Interferon&#39;, &#39;sig_Type II Interferon&#39;, &#39;sig_T Cell Activation&#39;, &#39;sig_Inflammatory Response&#39;, &#39;sig_Antigen Presentation&#39;, &#39;sig_Cell Proliferation&#39;, &#39;sig_Regulatory T Cell&#39;, &#39;sig_NK Cell Activity&#39;, &#39;sig_Apoptosis&#39;, &#39;sig_Oxidative Stress Response&#39;, &#39;sig_Humoral Plasma Cell&#39;, &#39;sig_Tissue-Resident Memory&#39;, &#39;sig_T Follicular Helper&#39;, &#39;sig_Hypoxia&#39;]
 </pre></div></div>
 </div>
 </section>
@@ -1587,42 +1896,154 @@ Pre→Post changes in Responder:
   <tbody>
     <tr>
       <th>0</th>
-      <td>sig_Cytotoxicity</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
       <td>3</td>
-      <td>0.0373</td>
-      <td>1.00</td>
+      <td>0.0563</td>
+      <td>0.75</td>
       <td>1.0</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_Exhaustion</td>
+      <td>sig_T Cell Exhaustion</td>
       <td>3</td>
-      <td>-0.0056</td>
-      <td>1.00</td>
+      <td>0.0384</td>
+      <td>0.75</td>
       <td>1.0</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_IFN_Response</td>
+      <td>sig_Checkpoint Receptors</td>
       <td>3</td>
-      <td>-0.4269</td>
-      <td>0.50</td>
+      <td>0.0675</td>
+      <td>0.75</td>
       <td>1.0</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>sig_Memory</td>
+      <td>sig_Type I Interferon</td>
       <td>3</td>
-      <td>-0.1986</td>
+      <td>-0.2589</td>
       <td>0.75</td>
       <td>1.0</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>sig_Activation</td>
+      <td>sig_Type II Interferon</td>
       <td>3</td>
-      <td>-0.0805</td>
+      <td>-0.1844</td>
+      <td>1.00</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>sig_Memory T Cell</td>
+      <td>3</td>
+      <td>-0.0708</td>
+      <td>0.75</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>sig_T Cell Activation</td>
+      <td>3</td>
+      <td>0.0590</td>
+      <td>1.00</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>sig_Inflammatory Response</td>
+      <td>3</td>
+      <td>-0.1853</td>
+      <td>0.75</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>sig_Antigen Presentation</td>
+      <td>3</td>
+      <td>0.0918</td>
+      <td>0.75</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>sig_Cell Proliferation</td>
+      <td>3</td>
+      <td>0.0016</td>
+      <td>1.00</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>sig_Regulatory T Cell</td>
+      <td>3</td>
+      <td>0.0049</td>
+      <td>1.00</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>sig_NK Cell Activity</td>
+      <td>3</td>
+      <td>0.0017</td>
+      <td>1.00</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>sig_Apoptosis</td>
+      <td>3</td>
+      <td>0.0133</td>
+      <td>1.00</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>sig_Oxidative Stress Response</td>
+      <td>3</td>
+      <td>-0.0433</td>
+      <td>1.00</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>3</td>
+      <td>0.2078</td>
       <td>0.50</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>sig_Monocyte Macrophage</td>
+      <td>3</td>
+      <td>-0.2154</td>
+      <td>0.75</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>3</td>
+      <td>0.0323</td>
+      <td>1.00</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>sig_T Follicular Helper</td>
+      <td>3</td>
+      <td>0.0850</td>
+      <td>0.50</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>sig_Hypoxia</td>
+      <td>3</td>
+      <td>-0.0097</td>
+      <td>1.00</td>
       <td>1.0</td>
     </tr>
   </tbody>
@@ -1635,7 +2056,7 @@ Pre→Post changes in Responder:
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-Non-responder: 7 paired participants (valid scores)
+Non-responder: 8 paired participants (valid scores)
 
 Pre→Post changes in Non-responder:
 </pre></div></div>
@@ -1672,43 +2093,155 @@ Pre→Post changes in Non-responder:
   <tbody>
     <tr>
       <th>0</th>
-      <td>sig_Cytotoxicity</td>
-      <td>7</td>
-      <td>0.1006</td>
-      <td>0.5781</td>
-      <td>0.6875</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>8</td>
+      <td>0.0683</td>
+      <td>0.9453</td>
+      <td>0.9978</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_Exhaustion</td>
-      <td>7</td>
-      <td>0.1602</td>
-      <td>0.1094</td>
-      <td>0.2734</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>8</td>
+      <td>0.1263</td>
+      <td>0.0547</td>
+      <td>0.2474</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_IFN_Response</td>
-      <td>7</td>
-      <td>-0.0008</td>
-      <td>0.6875</td>
-      <td>0.6875</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>8</td>
+      <td>0.1509</td>
+      <td>0.1094</td>
+      <td>0.2598</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>sig_Memory</td>
-      <td>7</td>
-      <td>0.0379</td>
-      <td>0.2969</td>
-      <td>0.4948</td>
+      <td>sig_Type I Interferon</td>
+      <td>8</td>
+      <td>0.0320</td>
+      <td>0.6406</td>
+      <td>0.8694</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>sig_Activation</td>
-      <td>7</td>
-      <td>0.1725</td>
-      <td>0.0156</td>
+      <td>sig_Type II Interferon</td>
+      <td>8</td>
+      <td>0.1115</td>
       <td>0.0781</td>
+      <td>0.2474</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>sig_Memory T Cell</td>
+      <td>8</td>
+      <td>-0.0227</td>
+      <td>1.0000</td>
+      <td>1.0000</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>sig_T Cell Activation</td>
+      <td>8</td>
+      <td>0.0809</td>
+      <td>0.0781</td>
+      <td>0.2474</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>sig_Inflammatory Response</td>
+      <td>8</td>
+      <td>0.0776</td>
+      <td>0.9453</td>
+      <td>0.9978</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>sig_Antigen Presentation</td>
+      <td>8</td>
+      <td>0.1890</td>
+      <td>0.0391</td>
+      <td>0.2474</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>sig_Cell Proliferation</td>
+      <td>8</td>
+      <td>0.1540</td>
+      <td>0.1953</td>
+      <td>0.4123</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>sig_Regulatory T Cell</td>
+      <td>8</td>
+      <td>0.0710</td>
+      <td>0.1094</td>
+      <td>0.2598</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>sig_NK Cell Activity</td>
+      <td>8</td>
+      <td>-0.0141</td>
+      <td>0.4609</td>
+      <td>0.7298</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>sig_Apoptosis</td>
+      <td>8</td>
+      <td>0.0614</td>
+      <td>0.2500</td>
+      <td>0.4318</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>sig_Oxidative Stress Response</td>
+      <td>8</td>
+      <td>0.0627</td>
+      <td>0.7422</td>
+      <td>0.9401</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>8</td>
+      <td>-0.0497</td>
+      <td>0.9453</td>
+      <td>0.9978</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>sig_Monocyte Macrophage</td>
+      <td>8</td>
+      <td>0.1070</td>
+      <td>0.2500</td>
+      <td>0.4318</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>8</td>
+      <td>0.1343</td>
+      <td>0.0391</td>
+      <td>0.2474</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>sig_T Follicular Helper</td>
+      <td>8</td>
+      <td>0.0818</td>
+      <td>0.0547</td>
+      <td>0.2474</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>sig_Hypoxia</td>
+      <td>8</td>
+      <td>0.0657</td>
+      <td>0.6406</td>
+      <td>0.8694</td>
     </tr>
   </tbody>
 </table>
@@ -1719,7 +2252,12 @@ Pre→Post changes in Non-responder:
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-  sig_Activation: ↑ (delta=0.173, FDR=0.078)
+  sig_T Cell Exhaustion: ↑ (delta=0.126, FDR=0.247)
+  sig_Type II Interferon: ↑ (delta=0.112, FDR=0.247)
+  sig_T Cell Activation: ↑ (delta=0.081, FDR=0.247)
+  sig_Antigen Presentation: ↑ (delta=0.189, FDR=0.247)
+  sig_Tissue-Resident Memory: ↑ (delta=0.134, FDR=0.247)
+  sig_T Follicular Helper: ↑ (delta=0.082, FDR=0.247)
 </pre></div></div>
 </div>
 <section id="Signature-Distributions-by-Response-and-Visit">
@@ -1728,40 +2266,35 @@ Pre→Post changes in Non-responder:
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize signature distributions</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize signature distributions (capped at MAX_PLOT_FEATURES for speed)</span>
 <span class="k">if</span> <span class="n">features_use</span><span class="p">:</span>
-    <span class="n">n_features</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">features_use</span><span class="p">)</span>
+    <span class="n">plot_feats</span> <span class="o">=</span> <span class="n">features_use</span><span class="p">[:</span><span class="n">MAX_PLOT_FEATURES</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">features_use</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">MAX_PLOT_FEATURES</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Showing top </span><span class="si">{</span><span class="n">MAX_PLOT_FEATURES</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">features_use</span><span class="p">)</span><span class="si">}</span><span class="s2"> features. "</span>
+              <span class="sa">f</span><span class="s2">"Set MAX_PLOT_FEATURES higher to see all."</span><span class="p">)</span>
+    <span class="n">n_features</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">plot_feats</span><span class="p">)</span>
     <span class="n">n_cols</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">n_features</span><span class="p">)</span>
     <span class="n">n_rows</span> <span class="o">=</span> <span class="p">(</span><span class="n">n_features</span> <span class="o">+</span> <span class="n">n_cols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="n">n_cols</span>
-
 
     <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">n_rows</span><span class="p">,</span> <span class="n">n_cols</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="o">*</span><span class="n">n_cols</span><span class="p">,</span> <span class="mi">4</span><span class="o">*</span><span class="n">n_rows</span><span class="p">))</span>
     <span class="k">if</span> <span class="n">n_features</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
         <span class="n">axes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">axes</span><span class="p">]])</span>
     <span class="n">axes</span> <span class="o">=</span> <span class="n">axes</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="k">if</span> <span class="n">n_features</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="p">[</span><span class="n">axes</span><span class="p">]</span>
 
-
     <span class="n">palette</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"Responder"</span><span class="p">:</span> <span class="s2">"forestgreen"</span><span class="p">,</span> <span class="s2">"Non-responder"</span><span class="p">:</span> <span class="s2">"coral"</span><span class="p">}</span>
 
-
-    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">feat</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">features_use</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">feat</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">plot_feats</span><span class="p">):</span>
         <span class="n">ax</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-
-
-        <span class="c1"># Aggregate to participant level for visualization</span>
         <span class="n">df_plot</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
             <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">"participant_id"</span><span class="p">,</span> <span class="n">RESPONSE_COL</span><span class="p">,</span> <span class="s2">"visit"</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">feat</span><span class="p">]</span>
             <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
             <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
         <span class="p">)</span>
-
-
         <span class="n">sns</span><span class="o">.</span><span class="n">boxplot</span><span class="p">(</span>
             <span class="n">data</span><span class="o">=</span><span class="n">df_plot</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s2">"visit"</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">feat</span><span class="p">,</span> <span class="n">hue</span><span class="o">=</span><span class="n">RESPONSE_COL</span><span class="p">,</span>
             <span class="n">palette</span><span class="o">=</span><span class="n">palette</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="p">[</span><span class="s2">"Pre"</span><span class="p">,</span> <span class="s2">"Post"</span><span class="p">]</span>
         <span class="p">)</span>
-        <span class="c1"># Overlay individual participant points (essential with n=3-7)</span>
         <span class="n">sns</span><span class="o">.</span><span class="n">stripplot</span><span class="p">(</span>
             <span class="n">data</span><span class="o">=</span><span class="n">df_plot</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s2">"visit"</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">feat</span><span class="p">,</span> <span class="n">hue</span><span class="o">=</span><span class="n">RESPONSE_COL</span><span class="p">,</span>
             <span class="n">palette</span><span class="o">=</span><span class="n">palette</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="p">[</span><span class="s2">"Pre"</span><span class="p">,</span> <span class="s2">"Post"</span><span class="p">],</span>
@@ -1774,24 +2307,29 @@ Pre→Post changes in Non-responder:
         <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">get_legend</span><span class="p">()</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
 
-
-    <span class="c1"># Hide unused axes</span>
     <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">axes</span><span class="p">)):</span>
         <span class="n">axes</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">"off"</span><span class="p">)</span>
-
 
     <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"No features to visualize."</span><span class="p">)</span>
-</pre></div>
+<br/></pre></div>
 </div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Showing top 9 of 19 features. Set MAX_PLOT_FEATURES higher to see all.
+</pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_example_immunotherapy_sade_feldman_21_0.png" src="../_images/tutorials_example_immunotherapy_sade_feldman_21_0.png" />
+<img alt="../_images/tutorials_example_immunotherapy_sade_feldman_21_1.png" src="../_images/tutorials_example_immunotherapy_sade_feldman_21_1.png" />
 </div>
 </div>
 </section>
@@ -1925,7 +2463,7 @@ Pre→Post changes in Non-responder:
 DIFFERENCE-IN-DIFFERENCES ANALYSIS
 ============================================================
 
-Paired participants: Responders=3, Non-responders=7
+Paired participants: Responders=3, Non-responders=8
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -1933,15 +2471,43 @@ Paired participants: Responders=3, Non-responders=7
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxic T Cell Activity&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Exhaustion&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_T Cell Exhaustion&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_IFN_Response&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Checkpoint Receptors&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Memory&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Type I Interferon&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Activation&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Type II Interferon&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Memory T Cell&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_T Cell Activation&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Inflammatory Response&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Antigen Presentation&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cell Proliferation&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Regulatory T Cell&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_NK Cell Activity&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Apoptosis&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Oxidative Stress Response&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Humoral Plasma Cell&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Monocyte Macrophage&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Tissue-Resident Memory&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_T Follicular Helper&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Hypoxia&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
 </pre></div></div>
 </div>
@@ -1988,59 +2554,213 @@ DiD Results (permutation p-values, bootstrap SEs):
   </thead>
   <tbody>
     <tr>
-      <th>4</th>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.4285</td>
-      <td>0.0570</td>
-      <td>0.0094</td>
-      <td>0.0470</td>
-      <td>-0.0206</td>
+      <th>14</th>
+      <td>sig_T Cell Activation</td>
+      <td>-0.1986</td>
+      <td>0.1588</td>
+      <td>0.1339</td>
+      <td>0.8670</td>
+      <td>-0.0145</td>
       <td>negligible</td>
-      <td>10</td>
+      <td>11</td>
     </tr>
     <tr>
-      <th>2</th>
-      <td>sig_Exhaustion</td>
-      <td>-0.8100</td>
-      <td>0.3140</td>
-      <td>0.1208</td>
-      <td>0.3020</td>
-      <td>-0.0562</td>
+      <th>4</th>
+      <td>sig_Cell Proliferation</td>
+      <td>-0.6365</td>
+      <td>0.2513</td>
+      <td>0.1720</td>
+      <td>0.8670</td>
+      <td>-0.0483</td>
       <td>negligible</td>
-      <td>10</td>
+      <td>11</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>sig_Memory</td>
-      <td>-0.6818</td>
-      <td>0.2559</td>
-      <td>0.3357</td>
-      <td>0.4605</td>
-      <td>-0.0288</td>
+      <td>sig_Inflammatory Response</td>
+      <td>-1.5403</td>
+      <td>0.2972</td>
+      <td>0.1841</td>
+      <td>0.8670</td>
+      <td>-0.0626</td>
       <td>negligible</td>
-      <td>10</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>sig_Antigen Presentation</td>
+      <td>-0.7241</td>
+      <td>0.2156</td>
+      <td>0.3887</td>
+      <td>0.8670</td>
+      <td>-0.0434</td>
+      <td>negligible</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>sig_Regulatory T Cell</td>
+      <td>-0.4511</td>
+      <td>0.0738</td>
+      <td>0.4083</td>
+      <td>0.8670</td>
+      <td>-0.0386</td>
+      <td>negligible</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>sig_Monocyte Macrophage</td>
+      <td>-1.1112</td>
+      <td>0.1076</td>
+      <td>0.4206</td>
+      <td>0.8670</td>
+      <td>-0.0418</td>
+      <td>negligible</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>sig_T Follicular Helper</td>
+      <td>0.1241</td>
+      <td>0.1594</td>
+      <td>0.4623</td>
+      <td>0.8670</td>
+      <td>0.0099</td>
+      <td>negligible</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>sig_Hypoxia</td>
+      <td>-0.6618</td>
+      <td>0.0899</td>
+      <td>0.4759</td>
+      <td>0.8670</td>
+      <td>-0.0318</td>
+      <td>negligible</td>
+      <td>11</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_IFN_Response</td>
-      <td>-1.7115</td>
-      <td>0.1577</td>
-      <td>0.3684</td>
-      <td>0.4605</td>
-      <td>-0.0928</td>
+      <td>sig_Type II Interferon</td>
+      <td>-1.7913</td>
+      <td>0.1441</td>
+      <td>0.5114</td>
+      <td>0.8670</td>
+      <td>-0.0884</td>
       <td>negligible</td>
-      <td>10</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>sig_Type I Interferon</td>
+      <td>-1.5321</td>
+      <td>0.1140</td>
+      <td>0.5285</td>
+      <td>0.8670</td>
+      <td>-0.0793</td>
+      <td>negligible</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>-0.2175</td>
+      <td>0.3316</td>
+      <td>0.5556</td>
+      <td>0.8670</td>
+      <td>-0.0111</td>
+      <td>negligible</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>sig_T Cell Exhaustion</td>
+      <td>-0.6182</td>
+      <td>0.1820</td>
+      <td>0.5663</td>
+      <td>0.8670</td>
+      <td>-0.0420</td>
+      <td>negligible</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>sig_Apoptosis</td>
+      <td>-0.6047</td>
+      <td>0.0644</td>
+      <td>0.5932</td>
+      <td>0.8670</td>
+      <td>-0.0358</td>
+      <td>negligible</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>sig_NK Cell Activity</td>
+      <td>-0.0640</td>
+      <td>0.1309</td>
+      <td>0.6940</td>
+      <td>0.9378</td>
+      <td>-0.0033</td>
+      <td>negligible</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>sig_Oxidative Stress Response</td>
+      <td>-0.8393</td>
+      <td>0.0802</td>
+      <td>0.7690</td>
+      <td>0.9378</td>
+      <td>-0.0466</td>
+      <td>negligible</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>-0.7539</td>
+      <td>0.2007</td>
+      <td>0.7897</td>
+      <td>0.9378</td>
+      <td>-0.0476</td>
+      <td>negligible</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>sig_Checkpoint Receptors</td>
+      <td>-0.5310</td>
+      <td>0.1273</td>
+      <td>0.9491</td>
+      <td>0.9690</td>
+      <td>-0.0373</td>
+      <td>negligible</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>sig_Memory T Cell</td>
+      <td>0.1185</td>
+      <td>0.0606</td>
+      <td>0.9683</td>
+      <td>0.9690</td>
+      <td>0.0051</td>
+      <td>negligible</td>
+      <td>11</td>
     </tr>
     <tr>
       <th>0</th>
-      <td>sig_Activation</td>
-      <td>-2.0677</td>
-      <td>0.2171</td>
-      <td>0.8130</td>
-      <td>0.8130</td>
-      <td>-0.2062</td>
-      <td>small</td>
-      <td>10</td>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>1.4644</td>
+      <td>0.2000</td>
+      <td>0.9690</td>
+      <td>0.9690</td>
+      <td>0.0947</td>
+      <td>negligible</td>
+      <td>11</td>
     </tr>
   </tbody>
 </table>
@@ -2056,8 +2776,7 @@ Interpretation:
   beta_DiD &gt; 0: Responders increase MORE (or decrease less) than Non-responders
   beta_DiD &lt; 0: Non-responders increase MORE (or decrease less) than Responders
 
-Significant DiD effects (FDR &lt; 0.25):
-  sig_Cytotoxicity: Non-responders increase more (beta=-0.429, FDR=0.047)
+No signatures showed significant differential change (FDR &lt; 0.25)
 </pre></div></div>
 </div>
 <section id="Trial-Interaction-Plot">
@@ -2067,15 +2786,19 @@ Significant DiD effects (FDR &lt; 0.25):
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Interaction plots for ALL features</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Interaction plots (capped at MAX_PLOT_FEATURES for speed)</span>
 <span class="k">if</span> <span class="n">features_use</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-    <span class="n">n_plots</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">features_use</span><span class="p">)</span>
+    <span class="n">plot_feats_int</span> <span class="o">=</span> <span class="n">features_use</span><span class="p">[:</span><span class="n">MAX_PLOT_FEATURES</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">features_use</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">MAX_PLOT_FEATURES</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Showing </span><span class="si">{</span><span class="n">MAX_PLOT_FEATURES</span><span class="si">}</span><span class="s1"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">features_use</span><span class="p">)</span><span class="si">}</span><span class="s1"> features. '</span>
+              <span class="sa">f</span><span class="s1">'Set MAX_PLOT_FEATURES higher to see all.'</span><span class="p">)</span>
+    <span class="n">n_plots</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">plot_feats_int</span><span class="p">)</span>
     <span class="n">n_cols</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">n_plots</span><span class="p">)</span>
     <span class="n">n_rows</span> <span class="o">=</span> <span class="p">(</span><span class="n">n_plots</span> <span class="o">+</span> <span class="n">n_cols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="n">n_cols</span>
     <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">n_rows</span><span class="p">,</span> <span class="n">n_cols</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="o">*</span><span class="n">n_cols</span><span class="p">,</span> <span class="mi">4</span><span class="o">*</span><span class="n">n_rows</span><span class="p">))</span>
     <span class="n">axes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">axes</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
 
-    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">feat</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">features_use</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">feat</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">plot_feats_int</span><span class="p">):</span>
         <span class="n">ax</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">st</span><span class="o">.</span><span class="n">plot_trial_interaction</span><span class="p">(</span>
@@ -2142,14 +2865,22 @@ Significant DiD effects (FDR &lt; 0.25):
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_example_immunotherapy_sade_feldman_25_0.png" src="../_images/tutorials_example_immunotherapy_sade_feldman_25_0.png" />
+<div class="highlight"><pre>
+Showing 9 of 19 features. Set MAX_PLOT_FEATURES higher to see all.
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_example_immunotherapy_sade_feldman_25_1.png" src="../_images/tutorials_example_immunotherapy_sade_feldman_25_1.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_example_immunotherapy_sade_feldman_25_1.png" src="../_images/tutorials_example_immunotherapy_sade_feldman_25_1.png" />
+<img alt="../_images/tutorials_example_immunotherapy_sade_feldman_25_2.png" src="../_images/tutorials_example_immunotherapy_sade_feldman_25_2.png" />
 </div>
 </div>
 <div class="nbinput docutils container">
@@ -2326,53 +3057,193 @@ Effect sizes for DiD (Responder vs Non-responder change):
   <tbody>
     <tr>
       <th>0</th>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.195</td>
-      <td>-0.176</td>
-      <td>-1.946</td>
-      <td>1.631</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>-0.041</td>
+      <td>-0.037</td>
+      <td>-1.663</td>
+      <td>1.934</td>
       <td>3</td>
-      <td>7</td>
+      <td>8</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_Exhaustion</td>
-      <td>-0.694</td>
-      <td>-0.626</td>
-      <td>-2.409</td>
-      <td>0.794</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>-0.455</td>
+      <td>-0.416</td>
+      <td>-2.767</td>
+      <td>1.355</td>
       <td>3</td>
-      <td>7</td>
+      <td>8</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_IFN_Response</td>
-      <td>-1.160</td>
-      <td>-1.047</td>
-      <td>-6.688</td>
-      <td>0.401</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>-0.444</td>
+      <td>-0.406</td>
+      <td>-1.903</td>
+      <td>0.969</td>
       <td>3</td>
-      <td>7</td>
+      <td>8</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>sig_Memory</td>
-      <td>-0.730</td>
-      <td>-0.659</td>
-      <td>-5.604</td>
-      <td>1.440</td>
+      <td>sig_Type I Interferon</td>
+      <td>-0.909</td>
+      <td>-0.831</td>
+      <td>-7.250</td>
+      <td>1.313</td>
       <td>3</td>
-      <td>7</td>
+      <td>8</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>sig_Activation</td>
-      <td>-2.840</td>
-      <td>-2.564</td>
-      <td>-5.458</td>
-      <td>-1.822</td>
+      <td>sig_Type II Interferon</td>
+      <td>-1.028</td>
+      <td>-0.940</td>
+      <td>-5.263</td>
+      <td>0.825</td>
       <td>3</td>
-      <td>7</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>sig_Memory T Cell</td>
+      <td>-0.192</td>
+      <td>-0.176</td>
+      <td>-2.983</td>
+      <td>1.963</td>
+      <td>3</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>sig_T Cell Activation</td>
+      <td>-0.173</td>
+      <td>-0.159</td>
+      <td>-1.814</td>
+      <td>1.360</td>
+      <td>3</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>sig_Inflammatory Response</td>
+      <td>-0.729</td>
+      <td>-0.666</td>
+      <td>-2.124</td>
+      <td>0.990</td>
+      <td>3</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>sig_Antigen Presentation</td>
+      <td>-0.411</td>
+      <td>-0.376</td>
+      <td>-2.825</td>
+      <td>1.457</td>
+      <td>3</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>sig_Cell Proliferation</td>
+      <td>-0.608</td>
+      <td>-0.556</td>
+      <td>-1.384</td>
+      <td>0.313</td>
+      <td>3</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>sig_Regulatory T Cell</td>
+      <td>-0.579</td>
+      <td>-0.529</td>
+      <td>-2.362</td>
+      <td>0.731</td>
+      <td>3</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>sig_NK Cell Activity</td>
+      <td>0.097</td>
+      <td>0.088</td>
+      <td>-1.918</td>
+      <td>2.023</td>
+      <td>3</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>sig_Apoptosis</td>
+      <td>-0.386</td>
+      <td>-0.353</td>
+      <td>-1.781</td>
+      <td>0.629</td>
+      <td>3</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>sig_Oxidative Stress Response</td>
+      <td>-0.554</td>
+      <td>-0.506</td>
+      <td>-1.626</td>
+      <td>0.815</td>
+      <td>3</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>1.177</td>
+      <td>1.076</td>
+      <td>-0.198</td>
+      <td>7.476</td>
+      <td>3</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>sig_Monocyte Macrophage</td>
+      <td>-0.463</td>
+      <td>-0.423</td>
+      <td>-2.581</td>
+      <td>1.328</td>
+      <td>3</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>-0.528</td>
+      <td>-0.482</td>
+      <td>-3.220</td>
+      <td>1.813</td>
+      <td>3</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>sig_T Follicular Helper</td>
+      <td>0.031</td>
+      <td>0.028</td>
+      <td>-1.224</td>
+      <td>1.670</td>
+      <td>3</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>sig_Hypoxia</td>
+      <td>-0.296</td>
+      <td>-0.271</td>
+      <td>-1.344</td>
+      <td>1.068</td>
+      <td>3</td>
+      <td>8</td>
     </tr>
   </tbody>
 </table>
@@ -2491,7 +3362,7 @@ POWER ANALYSIS
 
 Current sample (paired participants):
   Responders: 3
-  Non-responders: 7
+  Non-responders: 8
   Smaller arm: 3
 
 Power with current sample size (n=3 per arm):
@@ -2524,15 +3395,15 @@ Sample size needed for 80% power:
 EFFECTIVE SAMPLE SIZE
 ============================================================
 
-Participants: 25
-Average cells per participant: 527
+Participants: 32
+Average cells per participant: 509
 
 Design effect and effective sample size:
   (n_clusters = participants, cluster_size = avg cells per participant)
-  ICC=0.01: Design effect=6.3, Effective n=2105 (vs 25 participants)
-  ICC=0.05: Design effect=27.3, Effective n=483 (vs 25 participants)
-  ICC=0.1: Design effect=53.6, Effective n=246 (vs 25 participants)
-  ICC=0.2: Design effect=106.3, Effective n=124 (vs 25 participants)
+  ICC=0.01: Design effect=6.1, Effective n=2679 (vs 32 participants)
+  ICC=0.05: Design effect=26.4, Effective n=617 (vs 32 participants)
+  ICC=0.1: Design effect=51.8, Effective n=314 (vs 32 participants)
+  ICC=0.2: Design effect=102.6, Effective n=159 (vs 32 participants)
 
 Note: DiD correctly aggregates to participant level, so design effect
 is already accounted for. Cell counts help reduce within-participant noise.
@@ -2562,9 +3433,14 @@ is already accounted for. Cell counts help reduce within-participant noise.
 
 <span class="k">if</span> <span class="n">features_use</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
     <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Limit to top features by FDR to keep runtime manageable</span>
+        <span class="k">if</span> <span class="s1">'did_results'</span> <span class="ow">in</span> <span class="nb">locals</span><span class="p">()</span> <span class="ow">and</span> <span class="n">did_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">did_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="n">features_mixed</span> <span class="o">=</span> <span class="n">did_results</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">'FDR_DiD'</span><span class="p">)[</span><span class="s1">'feature'</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()[:</span><span class="n">MAX_PLOT_FEATURES</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">features_mixed</span> <span class="o">=</span> <span class="n">features_use</span><span class="p">[:</span><span class="n">MAX_PLOT_FEATURES</span><span class="p">]</span>
         <span class="n">comparison</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">compare_fixed_vs_mixed</span><span class="p">(</span>
             <span class="n">adata</span><span class="p">,</span>
-            <span class="n">features</span><span class="o">=</span><span class="n">features_use</span><span class="p">,</span>
+            <span class="n">features</span><span class="o">=</span><span class="n">features_mixed</span><span class="p">,</span>
             <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
             <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
             <span class="n">aggregate</span><span class="o">=</span><span class="s2">"participant_visit"</span><span class="p">,</span>
@@ -2617,15 +3493,23 @@ Note: With n=10 paired participants, the fixed effects OLS model is rank-deficie
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_T Cell Activation&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Exhaustion&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Apoptosis&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_IFN_Response&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_T Cell Exhaustion&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Memory&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxic T Cell Activity&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Activation&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Type II Interferon&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Hypoxia&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Type I Interferon&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Monocyte Macrophage&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Regulatory T Cell&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
   out = did_fit(
 </pre></div></div>
 </div>
@@ -2670,43 +3554,75 @@ Mixed Effects DiD Results:
   <tbody>
     <tr>
       <th>0</th>
-      <td>sig_Activation</td>
-      <td>-2.0052</td>
-      <td>0.4872</td>
-      <td>0.0000</td>
-      <td>0.6631</td>
+      <td>sig_Apoptosis</td>
+      <td>-0.4380</td>
+      <td>0.7685</td>
+      <td>0.5688</td>
+      <td>0.1260</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.2776</td>
-      <td>0.9828</td>
-      <td>0.7776</td>
-      <td>0.0967</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>-0.0557</td>
+      <td>0.9210</td>
+      <td>0.9517</td>
+      <td>0.0378</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_Exhaustion</td>
-      <td>-0.6802</td>
-      <td>0.6766</td>
-      <td>0.3148</td>
-      <td>0.5556</td>
+      <td>sig_Hypoxia</td>
+      <td>-0.3965</td>
+      <td>0.9065</td>
+      <td>0.6618</td>
+      <td>0.0032</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>sig_IFN_Response</td>
-      <td>-1.4077</td>
-      <td>0.8378</td>
-      <td>0.0929</td>
-      <td>0.2631</td>
+      <td>sig_Monocyte Macrophage</td>
+      <td>-0.7679</td>
+      <td>1.0087</td>
+      <td>0.4465</td>
+      <td>0.0000</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>sig_Memory</td>
-      <td>-1.1225</td>
-      <td>0.9124</td>
-      <td>0.2186</td>
-      <td>0.0000</td>
+      <td>sig_Regulatory T Cell</td>
+      <td>-0.4677</td>
+      <td>0.5468</td>
+      <td>0.3924</td>
+      <td>0.5158</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>sig_T Cell Activation</td>
+      <td>-0.1661</td>
+      <td>0.6484</td>
+      <td>0.7978</td>
+      <td>0.4365</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>sig_T Cell Exhaustion</td>
+      <td>-0.4580</td>
+      <td>0.6818</td>
+      <td>0.5017</td>
+      <td>0.3569</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>sig_Type I Interferon</td>
+      <td>-1.1683</td>
+      <td>0.8702</td>
+      <td>0.1794</td>
+      <td>0.2233</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>sig_Type II Interferon</td>
+      <td>-1.3823</td>
+      <td>0.9100</td>
+      <td>0.1287</td>
+      <td>0.1062</td>
     </tr>
   </tbody>
 </table>
@@ -2719,9 +3635,8 @@ Mixed Effects DiD Results:
 <div class="highlight"><pre>
 
 Notable mixed-effects DiD (p &lt; 0.25, exploratory; Wald z, no small-sample correction):
-  sig_Activation: beta=-2.005, p=0.0000, ICC=0.663
-  sig_IFN_Response: beta=-1.408, p=0.0929, ICC=0.263
-  sig_Memory: beta=-1.123, p=0.2186, ICC=0.000
+  sig_Type I Interferon: beta=-1.168, p=0.1794, ICC=0.223
+  sig_Type II Interferon: beta=-1.382, p=0.1287, ICC=0.106
 
 Point Estimate Comparison (fixed vs mixed):
   Both approaches give similar beta_DiD magnitudes,
@@ -2759,37 +3674,65 @@ Point Estimate Comparison (fixed vs mixed):
   <tbody>
     <tr>
       <th>0</th>
-      <td>sig_Activation</td>
-      <td>-2.0677</td>
-      <td>-2.0052</td>
+      <td>sig_Apoptosis</td>
+      <td>-0.6047</td>
+      <td>-0.4380</td>
       <td>True</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.4285</td>
-      <td>-0.2776</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>-0.2175</td>
+      <td>-0.0557</td>
       <td>True</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_Exhaustion</td>
-      <td>-0.8100</td>
-      <td>-0.6802</td>
+      <td>sig_Hypoxia</td>
+      <td>-0.6618</td>
+      <td>-0.3965</td>
       <td>True</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>sig_IFN_Response</td>
-      <td>-1.7115</td>
-      <td>-1.4077</td>
+      <td>sig_Monocyte Macrophage</td>
+      <td>-1.1112</td>
+      <td>-0.7679</td>
       <td>True</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>sig_Memory</td>
-      <td>-0.6818</td>
-      <td>-1.1225</td>
+      <td>sig_Regulatory T Cell</td>
+      <td>-0.4511</td>
+      <td>-0.4677</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>sig_T Cell Activation</td>
+      <td>-0.1986</td>
+      <td>-0.1661</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>sig_T Cell Exhaustion</td>
+      <td>-0.6182</td>
+      <td>-0.4580</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>sig_Type I Interferon</td>
+      <td>-1.5321</td>
+      <td>-1.1683</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>sig_Type II Interferon</td>
+      <td>-1.7913</td>
+      <td>-1.3823</td>
       <td>True</td>
     </tr>
   </tbody>
@@ -2821,8 +3764,13 @@ Point Estimate Comparison (fixed vs mixed):
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Feature: </span><span class="si">{</span><span class="n">test_feature</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Pre-subset to paired participants + relevant visits so each LOO copy is small</span>
+        <span class="n">ad_loo_input</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span>
+            <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">VALID_PAIRED_ALL</span><span class="p">)</span> <span class="o">&amp;</span>
+            <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span>
+        <span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">loo_results</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">loo_cv_did</span><span class="p">(</span>
-            <span class="n">adata</span><span class="p">,</span>
+            <span class="n">ad_loo_input</span><span class="p">,</span>
             <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="n">test_feature</span><span class="p">],</span>
             <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
             <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
@@ -2906,111 +3854,18 @@ Point Estimate Comparison (fixed vs mixed):
 CROSS-VALIDATION: EFFECT STABILITY
 ============================================================
 
-Running leave-one-out cross-validation on 10 paired participants...
+Running leave-one-out cross-validation on 11 paired participants...
 This assesses how stable DiD estimates are when each participant is removed.
 
-Feature: sig_Cytotoxicity
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Only 9 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters. Consider using use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 9 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
+Feature: sig_T Cell Activation
 
 LOO-CV Results:
-  Full sample beta_DiD: -0.4285
-  Mean LOO beta_DiD:    -0.4183
-  Std of LOO estimates: 0.2748
-  CV (coefficient of variation): 65.69%
+  Full sample beta_DiD: -0.1986
+  Mean LOO beta_DiD:    -0.2181
+  Std of LOO estimates: 0.3304
+  CV (coefficient of variation): 151.54%
 
 Influence Diagnostics (beta_full - beta_loo):
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -3044,152 +3899,68 @@ Influence Diagnostics (beta_full - beta_loo):
     <tr>
       <th>0</th>
       <td>P1</td>
-      <td>-0.3854</td>
-      <td>-0.0431</td>
+      <td>-0.3888</td>
+      <td>0.1902</td>
     </tr>
     <tr>
       <th>1</th>
       <td>P2</td>
-      <td>-0.5432</td>
-      <td>0.1147</td>
+      <td>-0.0299</td>
+      <td>-0.1687</td>
     </tr>
     <tr>
       <th>2</th>
       <td>P3</td>
-      <td>-0.4605</td>
-      <td>0.0319</td>
+      <td>-0.0880</td>
+      <td>-0.1106</td>
     </tr>
     <tr>
       <th>3</th>
       <td>P4</td>
-      <td>0.5289</td>
-      <td>-0.9575</td>
+      <td>0.1983</td>
+      <td>-0.3969</td>
     </tr>
     <tr>
       <th>4</th>
       <td>P6</td>
-      <td>0.0017</td>
-      <td>-0.4303</td>
+      <td>-0.0607</td>
+      <td>-0.1379</td>
     </tr>
     <tr>
       <th>5</th>
       <td>P7</td>
-      <td>-1.2078</td>
-      <td>0.7793</td>
+      <td>0.0455</td>
+      <td>-0.2441</td>
     </tr>
     <tr>
       <th>6</th>
-      <td>P11</td>
-      <td>-0.4285</td>
-      <td>-0.0000</td>
+      <td>P8</td>
+      <td>-1.0724</td>
+      <td>0.8738</td>
     </tr>
     <tr>
       <th>7</th>
       <td>P12</td>
-      <td>-0.4403</td>
-      <td>0.0118</td>
+      <td>-0.2689</td>
+      <td>0.0703</td>
     </tr>
     <tr>
       <th>8</th>
-      <td>P13</td>
-      <td>-0.4285</td>
-      <td>0.0000</td>
+      <td>P15</td>
+      <td>-0.2432</td>
+      <td>0.0446</td>
     </tr>
     <tr>
       <th>9</th>
-      <td>P14</td>
-      <td>-0.4285</td>
-      <td>0.0000</td>
+      <td>P20</td>
+      <td>-0.1811</td>
+      <td>-0.0175</td>
     </tr>
     <tr>
       <th>10</th>
-      <td>P15</td>
-      <td>-0.4487</td>
-      <td>0.0201</td>
-    </tr>
-    <tr>
-      <th>11</th>
-      <td>P18</td>
-      <td>-0.4285</td>
-      <td>-0.0000</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>P20</td>
-      <td>-0.3561</td>
-      <td>-0.0724</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>P21</td>
-      <td>-0.4285</td>
-      <td>0.0000</td>
-    </tr>
-    <tr>
-      <th>14</th>
-      <td>P23</td>
-      <td>-0.4285</td>
-      <td>0.0000</td>
-    </tr>
-    <tr>
-      <th>15</th>
-      <td>P24</td>
-      <td>-0.4285</td>
-      <td>0.0000</td>
-    </tr>
-    <tr>
-      <th>16</th>
-      <td>P25</td>
-      <td>-0.4285</td>
-      <td>0.0000</td>
-    </tr>
-    <tr>
-      <th>17</th>
-      <td>P26</td>
-      <td>-0.4285</td>
-      <td>0.0000</td>
-    </tr>
-    <tr>
-      <th>18</th>
-      <td>P27</td>
-      <td>-0.4285</td>
-      <td>0.0000</td>
-    </tr>
-    <tr>
-      <th>19</th>
       <td>P28</td>
-      <td>-0.7188</td>
-      <td>0.2902</td>
-    </tr>
-    <tr>
-      <th>20</th>
-      <td>P29</td>
-      <td>-0.4285</td>
-      <td>0.0000</td>
-    </tr>
-    <tr>
-      <th>21</th>
-      <td>P30</td>
-      <td>-0.4285</td>
-      <td>0.0000</td>
-    </tr>
-    <tr>
-      <th>22</th>
-      <td>P31</td>
-      <td>-0.4285</td>
-      <td>0.0000</td>
-    </tr>
-    <tr>
-      <th>23</th>
-      <td>P33</td>
-      <td>-0.4285</td>
-      <td>0.0000</td>
-    </tr>
-    <tr>
-      <th>24</th>
-      <td>P35</td>
-      <td>-0.4285</td>
-      <td>0.0000</td>
+      <td>-0.3095</td>
+      <td>0.1109</td>
     </tr>
   </tbody>
 </table>
@@ -3201,16 +3972,15 @@ Influence Diagnostics (beta_full - beta_loo):
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-Highly influential participants (|influence| &gt; 2 SD = 0.539):
-  P4: removing decreases estimate by 0.957
-  P7: removing increases estimate by 0.779
+Highly influential participants (|influence| &gt; 2 SD = 0.630):
+  P8: removing increases estimate by 0.874
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_example_immunotherapy_sade_feldman_35_6.png" src="../_images/tutorials_example_immunotherapy_sade_feldman_35_6.png" />
+<img alt="../_images/tutorials_example_immunotherapy_sade_feldman_35_3.png" src="../_images/tutorials_example_immunotherapy_sade_feldman_35_3.png" />
 </div>
 </div>
 </section>
@@ -3275,26 +4045,54 @@ Highly influential participants (|influence| &gt; 2 SD = 0.539):
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area docutils container">
+<div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxic T Cell Activity&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_T Cell Exhaustion&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Checkpoint Receptors&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Type I Interferon&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Type II Interferon&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Memory T Cell&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_T Cell Activation&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Inflammatory Response&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Antigen Presentation&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cell Proliferation&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Regulatory T Cell&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_NK Cell Activity&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Apoptosis&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Oxidative Stress Response&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Humoral Plasma Cell&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Monocyte Macrophage&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Tissue-Resident Memory&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_T Follicular Helper&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
+/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Hypoxia&#39; with 11 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
+  out = did_fit(
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area stderr docutils container">
+<div class="output_area docutils container">
 <div class="highlight"><pre>
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Cytotoxicity&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Exhaustion&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_IFN_Response&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Memory&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
-/Users/omarm/Documents/Research/projects/sc-trialdiff/sctrial/sc_trial_inference/src/sctrial/stats/did.py:643: UserWarning: Cluster-robust SE is degenerate (NaN) for feature &#39;sig_Activation&#39; with 10 clusters. Falling back to nonrobust (homoskedastic) SE. This typically occurs when each cluster has very few observations (e.g. participant_visit aggregation with 2 visits). Participant fixed effects still absorb within-cluster correlation. Set use_bootstrap=True for more reliable p-values.
-  out = did_fit(
+DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -3330,48 +4128,174 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
   <tbody>
     <tr>
       <th>0</th>
-      <td>sig_Activation</td>
-      <td>-2.0677</td>
-      <td>0.2171</td>
-      <td>0.8130</td>
-      <td>0.8130</td>
-      <td>10</td>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>1.4644</td>
+      <td>0.2000</td>
+      <td>0.9690</td>
+      <td>0.9690</td>
+      <td>11</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_IFN_Response</td>
-      <td>-1.7115</td>
-      <td>0.1577</td>
-      <td>0.3684</td>
-      <td>0.4605</td>
-      <td>10</td>
+      <td>sig_Type II Interferon</td>
+      <td>-1.7913</td>
+      <td>0.1441</td>
+      <td>0.5114</td>
+      <td>0.8670</td>
+      <td>11</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_Exhaustion</td>
-      <td>-0.8100</td>
-      <td>0.3140</td>
-      <td>0.1208</td>
-      <td>0.3020</td>
-      <td>10</td>
+      <td>sig_Type I Interferon</td>
+      <td>-1.5321</td>
+      <td>0.1140</td>
+      <td>0.5285</td>
+      <td>0.8670</td>
+      <td>11</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>sig_Memory</td>
-      <td>-0.6818</td>
-      <td>0.2559</td>
-      <td>0.3357</td>
-      <td>0.4605</td>
-      <td>10</td>
+      <td>sig_Inflammatory Response</td>
+      <td>-1.5403</td>
+      <td>0.2972</td>
+      <td>0.1841</td>
+      <td>0.8670</td>
+      <td>11</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.4285</td>
-      <td>0.0570</td>
-      <td>0.0094</td>
-      <td>0.0470</td>
-      <td>10</td>
+      <td>sig_Cell Proliferation</td>
+      <td>-0.6365</td>
+      <td>0.2513</td>
+      <td>0.1720</td>
+      <td>0.8670</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>-0.7539</td>
+      <td>0.2007</td>
+      <td>0.7897</td>
+      <td>0.9378</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>sig_Oxidative Stress Response</td>
+      <td>-0.8393</td>
+      <td>0.0802</td>
+      <td>0.7690</td>
+      <td>0.9378</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>sig_Antigen Presentation</td>
+      <td>-0.7241</td>
+      <td>0.2156</td>
+      <td>0.3887</td>
+      <td>0.8670</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>sig_T Cell Exhaustion</td>
+      <td>-0.6182</td>
+      <td>0.1820</td>
+      <td>0.5663</td>
+      <td>0.8670</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>sig_Monocyte Macrophage</td>
+      <td>-1.1112</td>
+      <td>0.1076</td>
+      <td>0.4206</td>
+      <td>0.8670</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>sig_Regulatory T Cell</td>
+      <td>-0.4511</td>
+      <td>0.0738</td>
+      <td>0.4083</td>
+      <td>0.8670</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>sig_Checkpoint Receptors</td>
+      <td>-0.5310</td>
+      <td>0.1273</td>
+      <td>0.9491</td>
+      <td>0.9690</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>sig_Apoptosis</td>
+      <td>-0.6047</td>
+      <td>0.0644</td>
+      <td>0.5932</td>
+      <td>0.8670</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>sig_Hypoxia</td>
+      <td>-0.6618</td>
+      <td>0.0899</td>
+      <td>0.4759</td>
+      <td>0.8670</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>sig_T Cell Activation</td>
+      <td>-0.1986</td>
+      <td>0.1588</td>
+      <td>0.1339</td>
+      <td>0.8670</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>-0.2175</td>
+      <td>0.3316</td>
+      <td>0.5556</td>
+      <td>0.8670</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>sig_T Follicular Helper</td>
+      <td>0.1241</td>
+      <td>0.1594</td>
+      <td>0.4623</td>
+      <td>0.8670</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>sig_Memory T Cell</td>
+      <td>0.1185</td>
+      <td>0.0606</td>
+      <td>0.9683</td>
+      <td>0.9690</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>sig_NK Cell Activity</td>
+      <td>-0.0640</td>
+      <td>0.1309</td>
+      <td>0.6940</td>
+      <td>0.9378</td>
+      <td>11</td>
     </tr>
   </tbody>
 </table>
@@ -3406,7 +4330,7 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
     <span class="n">df</span><span class="p">[</span><span class="s2">"visit_num"</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">({</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="mi">0</span><span class="p">,</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="mi">1</span><span class="p">})</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">df</span><span class="p">[</span><span class="s1">'arm_bin'</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">statsmodels.formula.api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">smf</span>
-    <span class="n">fit</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s1"> ~ visit_num + visit_num:arm_bin + C(</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="si">}</span><span class="s1">)'</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+    <span class="n">fit</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Q("</span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s1">") ~ visit_num + visit_num:arm_bin + C(</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="si">}</span><span class="s1">)'</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
     <span class="n">diag</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">check_did_assumptions</span><span class="p">(</span><span class="n">fit</span><span class="p">,</span> <span class="n">return_figures</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">diag</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s1">'figures'</span><span class="p">})</span>
     <span class="k">for</span> <span class="n">fig</span> <span class="ow">in</span> <span class="n">diag</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'figures'</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
@@ -3420,7 +4344,7 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-{&#39;bp_pvalue&#39;: 0.1116488510841677, &#39;jb_pvalue&#39;: 0.06168329354351301, &#39;resid_mean&#39;: -6.026924990822278e-17, &#39;resid_std&#39;: 0.11152634579204851}
+{&#39;bp_pvalue&#39;: 0.11408705262377652, &#39;jb_pvalue&#39;: 0.9360513803315661, &#39;resid_mean&#39;: 2.3874636118211033e-16, &#39;resid_std&#39;: 0.04139423676055592}
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -3428,7 +4352,7 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_52457/434076043.py:20: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_26960/3006181103.py:20: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
   fig.show()
 </pre></div></div>
 </div>
@@ -3487,18 +4411,18 @@ DiDAnalyzer Results (augmented with permutation p-values and bootstrap SEs):
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area docutils container">
+<div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-Biomarker: baseline sig_Cytotoxicity (median split)
+/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_26960/3047706628.py:9: UserWarning: biomarker_col &#39;biomarker_base&#39; contained non-numeric values that were coerced to NaN.
+  res_het = st.test_treatment_heterogeneity(
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area stderr docutils container">
+<div class="output_area docutils container">
 <div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_52457/3047706628.py:9: UserWarning: biomarker_col &#39;biomarker_base&#39; contained non-numeric values that were coerced to NaN.
-  res_het = st.test_treatment_heterogeneity(
+Biomarker: baseline sig_Cytotoxic T Cell Activity (median split)
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -3534,48 +4458,174 @@ Biomarker: baseline sig_Cytotoxicity (median split)
   <tbody>
     <tr>
       <th>0</th>
-      <td>sig_Cytotoxicity</td>
-      <td>0.1346</td>
-      <td>0.9777</td>
-      <td>25</td>
-      <td>-0.0437</td>
-      <td>0.9777</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_Exhaustion</td>
-      <td>1.1305</td>
-      <td>0.6927</td>
-      <td>25</td>
-      <td>-0.0437</td>
-      <td>0.9283</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_IFN_Response</td>
-      <td>3.0689</td>
-      <td>0.5191</td>
-      <td>25</td>
-      <td>-0.0437</td>
-      <td>0.9283</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>sig_Memory</td>
-      <td>-2.3364</td>
-      <td>0.7426</td>
-      <td>25</td>
-      <td>-0.0437</td>
-      <td>0.9283</td>
+      <td>sig_Type I Interferon</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>sig_Activation</td>
-      <td>-1.5663</td>
-      <td>0.3767</td>
-      <td>25</td>
-      <td>-0.0437</td>
-      <td>0.9283</td>
+      <td>sig_Type II Interferon</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>sig_Memory T Cell</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>sig_T Cell Activation</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>sig_Inflammatory Response</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>sig_Antigen Presentation</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>sig_Cell Proliferation</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>sig_Regulatory T Cell</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>sig_NK Cell Activity</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>sig_Apoptosis</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>sig_Oxidative Stress Response</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>sig_Monocyte Macrophage</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>sig_T Follicular Helper</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>sig_Hypoxia</td>
+      <td>0.0</td>
+      <td>NaN</td>
+      <td>32</td>
+      <td>-0.0398</td>
+      <td>NaN</td>
     </tr>
   </tbody>
 </table>
@@ -3639,13 +4689,13 @@ This is expected given the small sample size (n=10 paired).
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Feature: sig_Cytotoxicity
-  |Effect size| = 0.176
-  Approximate RR = exp(0.91 * 0.176) = 1.174
-  E-value = 1.625
+Feature: sig_NK Cell Activity
+  |Effect size| = 0.159
+  Approximate RR = exp(0.91 * 0.159) = 1.155
+  E-value = 1.579
 
   Interpretation: An unmeasured confounder would need to be associated
-  with both treatment and outcome by a risk ratio of at least 1.63
+  with both treatment and outcome by a risk ratio of at least 1.58
   to explain away this observed effect.
 </pre></div></div>
 </div>
@@ -3659,148 +4709,44 @@ Feature: sig_Cytotoxicity
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># 7.10 Bayesian DiD (PyMC)</span>
-<span class="c1">#</span>
-<span class="c1"># Here we fit a Bayesian DiD model with participant random intercepts.</span>
-<span class="c1"># We increase chains/draws and tighten NUTS settings to improve convergence.</span>
-<span class="c1"># NOTE: On some systems, PyTensor may fail to compile C extensions (arch mismatch).</span>
-<span class="c1"># We force a fresh, writable compiledir and disable C compilation to avoid</span>
-<span class="c1"># stale x86_64 artifacts on arm64.</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
-
-<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"PYTENSOR_FLAGS"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"compiledir=</span><span class="si">{</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">'pytensor_'</span><span class="p">)</span><span class="si">}</span><span class="s2">,cxx="</span>
-<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"pytensor"</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
-
-<span class="k">try</span><span class="p">:</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">pymc</span>  <span class="c1"># noqa: F401</span>
-
-    <span class="n">bayes_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_bayes</span><span class="p">(</span>
-        <span class="n">adata</span><span class="p">,</span>
-        <span class="n">features</span><span class="o">=</span><span class="n">features_use</span><span class="p">,</span>
-        <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-        <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
-        <span class="n">draws</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-        <span class="n">tune</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-        <span class="n">chains</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
-        <span class="n">target_accept</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
-        <span class="n">max_treedepth</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
-        <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">display</span><span class="p">(</span><span class="n">bayes_res</span><span class="p">)</span>
-
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"Bayesian DiD note: For small samples, convergence diagnostics may be noisy."</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"If rhat &gt; 1.01 or ESS is low, increase draws/tune or consider stronger priors."</span><span class="p">)</span>
-<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"PyMC not installed; skip Bayesian DiD. Install with: pip install 'sctrial[bayes]'"</span><span class="p">)</span>
-<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"Bayesian DiD failed due to PyMC/PyTensor runtime error."</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Reason: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Bayesian DiD (PyMC) — disabled by default (slow; may crash on arm64)</span>
+<span class="c1"># Set RUN_PYMC = True in the config cell to enable.</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">RUN_PYMC</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Bayesian DiD skipped (RUN_PYMC=False). Set RUN_PYMC=True in the config cell to run."</span><span class="p">)</span>
+    <span class="n">bayes_res</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">os</span><span class="o">,</span><span class="w"> </span><span class="nn">logging</span><span class="o">,</span><span class="w"> </span><span class="nn">tempfile</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"PYTENSOR_FLAGS"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"compiledir=</span><span class="si">{</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">'pytensor_'</span><span class="p">)</span><span class="si">}</span><span class="s2">,cxx="</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"pytensor"</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">pymc</span>  <span class="c1"># noqa: F401</span>
+        <span class="n">bayes_res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_bayes</span><span class="p">(</span>
+            <span class="n">adata</span><span class="p">,</span>
+            <span class="n">features</span><span class="o">=</span><span class="n">features_use</span><span class="p">[:</span><span class="n">MAX_PLOT_FEATURES</span><span class="p">],</span>
+            <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+            <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
+            <span class="n">draws</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+            <span class="n">tune</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+            <span class="n">chains</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">target_accept</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">display</span><span class="p">(</span><span class="n">bayes_res</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"PyMC not installed. Install with: pip install 'sctrial[bayes]'"</span><span class="p">)</span>
+        <span class="n">bayes_res</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Bayesian DiD failed: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">bayes_res</span> <span class="o">=</span> <span class="kc">None</span>
 <br/></pre></div>
 </div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-WARNING:pytensor.tensor.blas:Using NumPy C-API based implementation for BLAS functions.
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area rendered_html docutils container">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>feature</th>
-      <th>beta_DiD</th>
-      <th>ci_low</th>
-      <th>ci_high</th>
-      <th>p_bayes</th>
-      <th>n_units</th>
-      <th>FDR_bayes</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>sig_Activation</td>
-      <td>-1.308934</td>
-      <td>-2.218745</td>
-      <td>-0.178968</td>
-      <td>0.0240</td>
-      <td>10</td>
-      <td>0.12000</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>sig_IFN_Response</td>
-      <td>-0.831203</td>
-      <td>-2.042766</td>
-      <td>0.395837</td>
-      <td>0.1760</td>
-      <td>10</td>
-      <td>0.44000</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>sig_Exhaustion</td>
-      <td>-0.376584</td>
-      <td>-1.371484</td>
-      <td>0.716734</td>
-      <td>0.4620</td>
-      <td>10</td>
-      <td>0.63125</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>sig_Memory</td>
-      <td>-0.428317</td>
-      <td>-1.683976</td>
-      <td>0.901422</td>
-      <td>0.5050</td>
-      <td>10</td>
-      <td>0.63125</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.151005</td>
-      <td>-1.406070</td>
-      <td>1.138568</td>
-      <td>0.7955</td>
-      <td>10</td>
-      <td>0.79550</td>
-    </tr>
-  </tbody>
-</table>
-</div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Bayesian DiD note: For small samples, convergence diagnostics may be noisy.
-If rhat &gt; 1.01 or ESS is low, increase draws/tune or consider stronger priors.
+Bayesian DiD skipped (RUN_PYMC=False). Set RUN_PYMC=True in the config cell to run.
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
@@ -3848,11 +4794,20 @@ If rhat &gt; 1.01 or ESS is low, increase draws/tune or consider stronger priors
 </pre></div>
 </div>
 </div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+PyMC not available -- showing frequentist DiD forest plot instead.
+
+</pre></div></div>
+</div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_example_immunotherapy_sade_feldman_46_0.png" src="../_images/tutorials_example_immunotherapy_sade_feldman_46_0.png" />
+<img alt="../_images/tutorials_example_immunotherapy_sade_feldman_46_1.png" src="../_images/tutorials_example_immunotherapy_sade_feldman_46_1.png" />
 </div>
 </div>
 </section>

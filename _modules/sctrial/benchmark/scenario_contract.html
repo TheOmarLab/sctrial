@@ -1,0 +1,863 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sctrial.benchmark.scenario_contract &#8212; sctrial 0.3.3 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=44e57e90" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
+
+    <script src="../../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/benchmark/scenario_contract';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../../../_static/logo_icon.svg"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../concepts.html">Concepts and Methods</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      <main id="main-content" class="bd-main" role="main">
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">sctrial.benchmark.scenario_contract</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for sctrial.benchmark.scenario_contract</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Requested-versus-realised validation for every simulated scenario.</span>
+
+<span class="sd">WHY THIS EXISTS</span>
+<span class="sd">---------------</span>
+<span class="sd">A scenario is a request. The simulator produces a realisation. Nothing in the</span>
+<span class="sd">pipeline compared the two, so when a frozen calibration field leaked into the</span>
+<span class="sd">experimental design, every two-arm scenario from n=8 to n=60 simulated eleven</span>
+<span class="sd">participants while recording the sample size that had been asked for. The</span>
+<span class="sd">sample-size axis of the benchmark was flat and the results looked entirely</span>
+<span class="sd">plausible.</span>
+
+<span class="sd">The specific leak is fixed. This module addresses the CLASS: any generating</span>
+<span class="sd">field that can be captured by an upstream default -- arm sizes, visits, cell</span>
+<span class="sd">yield, panel size, signal count -- is checked here against what actually came</span>
+<span class="sd">out of the simulator, and a mismatch stops the scenario instead of being</span>
+<span class="sd">averaged into a figure.</span>
+
+<span class="sd">WHAT IS ASSERTED EXACTLY AND WHAT IS NOT</span>
+<span class="sd">----------------------------------------</span>
+<span class="sd">Exact equality is asserted only where the pipeline is deterministic given the</span>
+<span class="sd">request: arm sizes, panel size, signal count, and a fixed cell yield.</span>
+
+<span class="sd">Where the request specifies a DISTRIBUTION rather than a value, asserting a</span>
+<span class="sd">count would be wrong -- it would fail on correct behaviour. There the generating</span>
+<span class="sd">MODE is asserted instead. The important case is cell yield: a scenario that asks</span>
+<span class="sd">for the empirical distribution must show dispersion across participant-visits,</span>
+<span class="sd">because a single repeated value is the signature of a fixed value having leaked</span>
+<span class="sd">in. That check is what would have caught the original defect from the other</span>
+<span class="sd">direction, and it is the reason this module tests realised state rather than</span>
+<span class="sd">re-reading the configuration it was handed.</span>
+<span class="sd">"""</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="c1"># A scenario whose realised state cannot be checked at all is not "passing".</span>
+<span class="c1"># Silence and success have to be distinguishable, so every check reports whether</span>
+<span class="c1"># it ran, and a scenario with no evidence is INSUFFICIENT rather than OK.</span>
+<span class="n">_UNCHECKABLE</span> <span class="o">=</span> <span class="s2">"no realised evidence recorded"</span>
+
+
+<div class="viewcode-block" id="Violation">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.scenario_contract.Violation">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Violation</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""One requested-versus-realised mismatch."""</span>
+
+    <span class="n">field</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">requested</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="n">realised</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="n">detail</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="si">}</span><span class="s2">: requested </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">requested</span><span class="si">!r}</span><span class="s2">, realised "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">realised</span><span class="si">!r}</span><span class="s2"> -- </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">detail</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ContractReport">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.scenario_contract.ContractReport">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ContractReport</span><span class="p">:</span>
+    <span class="n">scenario</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">violations</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Violation</span><span class="p">]</span>
+    <span class="n">checked</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">unchecked</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ok</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">violations</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">raise_if_violated</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">violations</span><span class="p">:</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">  "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">violations</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"SCENARIO CONTRACT VIOLATED for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="si">}</span><span class="s2">:</span><span class="se">\n</span><span class="s2">  </span><span class="si">{</span><span class="n">lines</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span>
+                <span class="s2">"The simulated data does not match the requested design. This is "</span>
+                <span class="s2">"the failure class that previously flattened the sample-size axis; "</span>
+                <span class="s2">"the scenario is refused rather than recorded."</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="s2">"OK"</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ok</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">violations</span><span class="p">)</span><span class="si">}</span><span class="s2"> VIOLATION(S)"</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checked</span><span class="p">)</span><span class="si">}</span><span class="s2"> checks)"</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unchecked</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">"; UNCHECKED: </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unchecked</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+        <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_requested</span><span class="p">(</span><span class="n">scenario</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""The scenario's own generating fields.</span>
+
+<span class="sd">    Design lives in `config_kwargs`, not at the top level. Reading the top level</span>
+<span class="sd">    would silently return None for every field and make each check vacuously</span>
+<span class="sd">    pass -- a validator that cannot fail is worse than none, because it is</span>
+<span class="sd">    reported as a passing check.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">scenario</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"config_kwargs"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_expected_arms</span><span class="p">(</span><span class="n">scenario</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">cfg</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Participants per arm implied by the REQUEST.</span>
+
+<span class="sd">    `arm_ratio` is a scenario-owned field. When a scenario sets it (the</span>
+<span class="sd">    TNBC-matched 6/5 design), that is the request; when it does not, `n_per_arm`</span>
+<span class="sd">    is, and any non-None `arm_ratio` reaching the simulator came from somewhere</span>
+<span class="sd">    it should not have.</span>
+<span class="sd">    """</span>
+    <span class="n">req</span> <span class="o">=</span> <span class="n">_requested</span><span class="p">(</span><span class="n">scenario</span><span class="p">)</span>
+    <span class="n">design</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"design"</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="s2">"design"</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+    <span class="n">n_per_arm</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"n_per_arm"</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="s2">"n_per_arm"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)))</span>
+    <span class="k">if</span> <span class="n">design</span> <span class="o">==</span> <span class="s2">"single_arm"</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">n_per_arm</span><span class="p">,</span> <span class="mi">0</span>
+    <span class="n">ratio</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"arm_ratio"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ratio</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">ratio</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">ratio</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">n_per_arm</span><span class="p">,</span> <span class="n">n_per_arm</span>
+
+
+<div class="viewcode-block" id="check_simulation">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.scenario_contract.check_simulation">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_simulation</span><span class="p">(</span>
+    <span class="n">scenario</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">sim</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="n">panel_genes</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
+    <span class="n">signal_genes</span><span class="p">:</span> <span class="nb">set</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ContractReport</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Validate one realised simulation against the scenario that requested it.</span>
+
+<span class="sd">    Runs per iteration, immediately after `simulate_trial_v2`, so a mismatch is</span>
+<span class="sd">    caught on the first replicate rather than after a scenario has burned a</span>
+<span class="sd">    72-hour allocation.</span>
+<span class="sd">    """</span>
+    <span class="n">v</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Violation</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">checked</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">unchecked</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">arms</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sim</span><span class="p">[</span><span class="s2">"latent"</span><span class="p">][</span><span class="s2">"arms"</span><span class="p">])</span>
+    <span class="n">n_treated</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">a</span> <span class="o">==</span> <span class="s2">"Treated"</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">arms</span><span class="p">)</span>
+    <span class="n">n_control</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">arms</span><span class="p">)</span> <span class="o">-</span> <span class="n">n_treated</span>
+    <span class="n">want_t</span><span class="p">,</span> <span class="n">want_c</span> <span class="o">=</span> <span class="n">_expected_arms</span><span class="p">(</span><span class="n">scenario</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+
+    <span class="c1"># --- design ---------------------------------------------------------</span>
+    <span class="n">checked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"arm_sizes"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">n_treated</span><span class="p">,</span> <span class="n">n_control</span><span class="p">)</span> <span class="o">!=</span> <span class="p">(</span><span class="n">want_t</span><span class="p">,</span> <span class="n">want_c</span><span class="p">):</span>
+        <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">Violation</span><span class="p">(</span>
+                <span class="s2">"arm_sizes"</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">want_t</span><span class="si">}</span><span class="s2">T/</span><span class="si">{</span><span class="n">want_c</span><span class="si">}</span><span class="s2">C"</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_treated</span><span class="si">}</span><span class="s2">T/</span><span class="si">{</span><span class="n">n_control</span><span class="si">}</span><span class="s2">C"</span><span class="p">,</span>
+                <span class="s2">"a design field leaked in from the frozen calibration, or "</span>
+                <span class="s2">"arm_ratio overrode n_per_arm"</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="n">checked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"n_participants"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arms</span><span class="p">)</span> <span class="o">!=</span> <span class="n">want_t</span> <span class="o">+</span> <span class="n">want_c</span><span class="p">:</span>
+        <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">Violation</span><span class="p">(</span><span class="s2">"n_participants"</span><span class="p">,</span> <span class="n">want_t</span> <span class="o">+</span> <span class="n">want_c</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">arms</span><span class="p">),</span> <span class="s2">"total participants"</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="c1"># --- visits ---------------------------------------------------------</span>
+    <span class="c1"># The IDENTITY of dropped visits is random; the COUNT is not.</span>
+    <span class="n">pb</span> <span class="o">=</span> <span class="n">sim</span><span class="p">[</span><span class="s2">"pseudobulk_counts"</span><span class="p">]</span>
+    <span class="k">if</span> <span class="s2">"visit"</span> <span class="ow">in</span> <span class="n">pb</span> <span class="ow">and</span> <span class="s2">"participant"</span> <span class="ow">in</span> <span class="n">pb</span><span class="p">:</span>
+        <span class="n">checked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"visits"</span><span class="p">)</span>
+        <span class="n">n_pv</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pb</span><span class="p">[[</span><span class="s2">"participant"</span><span class="p">,</span> <span class="s2">"visit"</span><span class="p">]]</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">())</span>
+        <span class="n">n_expected_pv</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">arms</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
+        <span class="n">n_drop</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">arms</span><span class="p">)</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="s2">"missing_rate"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">0.0</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="n">n_pv</span> <span class="o">!=</span> <span class="n">n_expected_pv</span> <span class="o">-</span> <span class="n">n_drop</span><span class="p">:</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">Violation</span><span class="p">(</span>
+                    <span class="s2">"visits"</span><span class="p">,</span>
+                    <span class="n">n_expected_pv</span> <span class="o">-</span> <span class="n">n_drop</span><span class="p">,</span>
+                    <span class="n">n_pv</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"participant-visits at missing_rate=</span><span class="si">{</span><span class="n">cfg</span><span class="o">.</span><span class="n">missing_rate</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">unchecked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"visits"</span><span class="p">)</span>
+
+    <span class="c1"># --- cellular sampling ----------------------------------------------</span>
+    <span class="n">cells</span> <span class="o">=</span> <span class="n">pb</span><span class="p">[</span><span class="s2">"n_cells"</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">fixed</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="s2">"cells_per_pv_fixed"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">checked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"cells_per_pv"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">fixed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Deterministic: every participant-visit gets exactly this many.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">cells</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">==</span> <span class="n">cells</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">==</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed</span><span class="p">)):</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">Violation</span><span class="p">(</span>
+                    <span class="s2">"cells_per_pv"</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"fixed </span><span class="si">{</span><span class="n">fixed</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"min </span><span class="si">{</span><span class="n">cells</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> max </span><span class="si">{</span><span class="n">cells</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                    <span class="s2">"a fixed cell yield was requested but not realised"</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">cells</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">==</span> <span class="n">cells</span><span class="o">.</span><span class="n">max</span><span class="p">():</span>
+        <span class="c1"># THE B1 SIGNATURE, from the other direction. A scenario that asked for</span>
+        <span class="c1"># the empirical distribution and received one repeated value did not get</span>
+        <span class="c1"># what it asked for -- something upstream supplied a fixed count.</span>
+        <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">Violation</span><span class="p">(</span>
+                <span class="s2">"cells_per_pv"</span><span class="p">,</span>
+                <span class="s2">"empirical distribution"</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"constant </span><span class="si">{</span><span class="n">cells</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="s2">"a constant cell yield reached a scenario that requested the "</span>
+                <span class="s2">"empirical distribution; a fixed value has leaked in"</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="c1"># --- gene set -------------------------------------------------------</span>
+    <span class="n">checked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"panel_size"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">panel_genes</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">int</span><span class="p">(</span><span class="n">scenario</span><span class="p">[</span><span class="s2">"panel_size"</span><span class="p">]):</span>
+        <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">Violation</span><span class="p">(</span><span class="s2">"panel_size"</span><span class="p">,</span> <span class="n">scenario</span><span class="p">[</span><span class="s2">"panel_size"</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">panel_genes</span><span class="p">),</span> <span class="s2">"tested genes"</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="c1"># --- signal ---------------------------------------------------------</span>
+    <span class="n">checked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"n_signal"</span><span class="p">)</span>
+    <span class="n">want_sig</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">scenario</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"n_signal"</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">signal_genes</span><span class="p">)</span> <span class="o">!=</span> <span class="n">want_sig</span><span class="p">:</span>
+        <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">Violation</span><span class="p">(</span><span class="s2">"n_signal"</span><span class="p">,</span> <span class="n">want_sig</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">signal_genes</span><span class="p">),</span> <span class="s2">"affected genes"</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="n">checked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"signal_fraction"</span><span class="p">)</span>
+    <span class="n">realised_frac</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">signal_genes</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">panel_genes</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">want_frac</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">scenario</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"signal_fraction"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">realised_frac</span> <span class="o">-</span> <span class="n">want_frac</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1e-9</span><span class="p">:</span>
+        <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">Violation</span><span class="p">(</span>
+                <span class="s2">"signal_fraction"</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">want_frac</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">realised_frac</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="s2">"realised fraction differs from the scenario's nominal fraction; "</span>
+                <span class="s2">"manuscript labels must be derived from the realised field"</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ContractReport</span><span class="p">(</span><span class="n">scenario</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="n">v</span><span class="p">,</span> <span class="n">checked</span><span class="p">,</span> <span class="n">unchecked</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="check_scenario_results">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.scenario_contract.check_scenario_results">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_scenario_results</span><span class="p">(</span>
+    <span class="n">scenario_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">scenario</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">manifest_sha</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ContractReport</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Validate a completed scenario's result table before it is marked complete.</span>
+
+<span class="sd">    `check_simulation` guards each replicate as it is produced. This is the</span>
+<span class="sd">    second gate: it re-derives the same quantities from the RECORDED columns, so</span>
+<span class="sd">    a defect in the recording path -- rather than in the simulation path -- is</span>
+<span class="sd">    also caught. The two are deliberately redundant; the original defect survived</span>
+<span class="sd">    precisely because only one layer was checked.</span>
+<span class="sd">    """</span>
+    <span class="n">v</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Violation</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">checked</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">unchecked</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ContractReport</span><span class="p">(</span>
+            <span class="n">scenario_id</span><span class="p">,</span> <span class="p">[</span><span class="n">Violation</span><span class="p">(</span><span class="s2">"rows"</span><span class="p">,</span> <span class="s2">"&gt;0"</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">"empty result table"</span><span class="p">)],</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_uniq</span><span class="p">(</span><span class="n">col</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()))</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="n">req</span> <span class="o">=</span> <span class="n">_requested</span><span class="p">(</span><span class="n">scenario</span><span class="p">)</span>
+    <span class="n">want_t</span><span class="p">,</span> <span class="n">want_c</span> <span class="o">=</span> <span class="n">_expected_arms</span><span class="p">(</span><span class="n">scenario</span><span class="p">,</span> <span class="n">_CfgView</span><span class="p">(</span><span class="n">scenario</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">want</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="p">(</span><span class="s2">"n_treated"</span><span class="p">,</span> <span class="n">want_t</span><span class="p">,</span> <span class="s2">"treated participants"</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"n_control"</span><span class="p">,</span> <span class="n">want_c</span><span class="p">,</span> <span class="s2">"control participants"</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"panel_size"</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">scenario</span><span class="p">[</span><span class="s2">"panel_size"</span><span class="p">]),</span> <span class="s2">"tested genes"</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"n_signal_realised"</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">scenario</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"n_signal"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span> <span class="s2">"affected genes"</span><span class="p">),</span>
+    <span class="p">):</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="n">_uniq</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">vals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">unchecked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">checked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">vals</span> <span class="o">!=</span> <span class="p">[</span><span class="n">want</span><span class="p">]:</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Violation</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">want</span><span class="p">,</span> <span class="n">vals</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">, across all replicates"</span><span class="p">))</span>
+
+    <span class="c1"># Cell yield: the same distinction as in check_simulation, re-derived from</span>
+    <span class="c1"># what was recorded rather than from the simulator's own object.</span>
+    <span class="k">if</span> <span class="s2">"cells_per_pv_min"</span> <span class="ow">in</span> <span class="n">df</span> <span class="ow">and</span> <span class="s2">"cells_per_pv_max"</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
+        <span class="n">checked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"cells_per_pv"</span><span class="p">)</span>
+        <span class="n">lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"cells_per_pv_min"</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+        <span class="n">hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"cells_per_pv_max"</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+        <span class="n">fixed</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cells_per_pv_fixed"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fixed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">lo</span> <span class="o">==</span> <span class="n">hi</span> <span class="o">==</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed</span><span class="p">)):</span>
+                <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">Violation</span><span class="p">(</span><span class="s2">"cells_per_pv"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"fixed </span><span class="si">{</span><span class="n">fixed</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="n">lo</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">hi</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">]"</span><span class="p">,</span>
+                              <span class="s2">"requested fixed yield not realised"</span><span class="p">)</span>
+                <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">lo</span> <span class="o">==</span> <span class="n">hi</span><span class="p">:</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">Violation</span><span class="p">(</span><span class="s2">"cells_per_pv"</span><span class="p">,</span> <span class="s2">"empirical distribution"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"constant </span><span class="si">{</span><span class="n">lo</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                          <span class="s2">"a fixed cell yield leaked into a scenario that requested "</span>
+                          <span class="s2">"the empirical distribution"</span><span class="p">)</span>
+            <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">unchecked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"cells_per_pv"</span><span class="p">)</span>
+
+    <span class="c1"># Provenance.</span>
+    <span class="k">if</span> <span class="n">manifest_sha</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">"manifest_sha256"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Violation</span><span class="p">(</span><span class="s2">"manifest_sha256"</span><span class="p">,</span> <span class="n">manifest_sha</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"unstamped rows"</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">checked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"manifest_sha256"</span><span class="p">)</span>
+            <span class="n">got</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"manifest_sha256"</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()))</span>
+            <span class="k">if</span> <span class="n">got</span> <span class="o">!=</span> <span class="p">[</span><span class="n">manifest_sha</span><span class="p">]:</span>
+                <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">Violation</span><span class="p">(</span><span class="s2">"manifest_sha256"</span><span class="p">,</span> <span class="n">manifest_sha</span><span class="p">,</span> <span class="n">got</span><span class="p">,</span>
+                              <span class="s2">"rows from a different manifest"</span><span class="p">)</span>
+                <span class="p">)</span>
+
+    <span class="k">if</span> <span class="s2">"scenario"</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
+        <span class="n">checked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"scenario_id"</span><span class="p">)</span>
+        <span class="n">got</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"scenario"</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()))</span>
+        <span class="k">if</span> <span class="n">got</span> <span class="o">!=</span> <span class="p">[</span><span class="n">scenario_id</span><span class="p">]:</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Violation</span><span class="p">(</span><span class="s2">"scenario_id"</span><span class="p">,</span> <span class="n">scenario_id</span><span class="p">,</span> <span class="n">got</span><span class="p">,</span> <span class="s2">"mislabelled rows"</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">unchecked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"scenario_id"</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ContractReport</span><span class="p">(</span><span class="n">scenario_id</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">checked</span><span class="p">,</span> <span class="n">unchecked</span><span class="p">)</span></div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_CfgView</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Adapter so `_expected_arms` reads a scenario dict like a config object."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scenario</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">req</span> <span class="o">=</span> <span class="n">_requested</span><span class="p">(</span><span class="n">scenario</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_per_arm</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"n_per_arm"</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">design</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"design"</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">missing_rate</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"missing_rate"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">0.0</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="evaluability_by_method">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.scenario_contract.evaluability_by_method">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">evaluability_by_method</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Fraction of prespecified genes each method actually returned inference for.</span>
+
+<span class="sd">    Reported, never used to filter. A method that drops genes at low cell yield</span>
+<span class="sd">    has a lower end-to-end detection rate, and that is a benchmark result rather</span>
+<span class="sd">    than a reason to shrink its denominator.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span> <span class="ow">or</span> <span class="s2">"method"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span> <span class="ow">or</span> <span class="s2">"evaluable"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{}</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">m</span><span class="p">):</span> <span class="nb">float</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s2">"evaluable"</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">m</span><span class="p">,</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">"method"</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="p">}</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_rate_mcse</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">signal</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Replicate-level Monte Carlo SE of the null-FPR or the power."""</span>
+    <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span> <span class="ow">or</span> <span class="s2">"iteration"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">)</span>
+    <span class="n">sub</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">"pvalue"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"is_signal"</span><span class="p">]</span> <span class="o">==</span> <span class="n">signal</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">)</span>
+    <span class="n">per_rep</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">hit</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">"pvalue"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">"iteration"</span><span class="p">)[</span><span class="s2">"hit"</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">per_rep</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">per_rep</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">per_rep</span><span class="p">)))</span>
+
+
+<div class="viewcode-block" id="completion_record">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.scenario_contract.completion_record">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">completion_record</span><span class="p">(</span>
+    <span class="n">scenario_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">scenario</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">stop_reason</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">max_replicates</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">manifest_sha</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">mcse_target_fpr</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">mcse_target_power</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""The per-scenario completion record.</span>
+
+<span class="sd">    Written ONLY after a scenario finishes, so its absence marks truncation. This</span>
+<span class="sd">    matters because adaptive stopping makes replicate count a per-scenario</span>
+<span class="sd">    outcome: a scenario killed part-way through an extension still holds more</span>
+<span class="sd">    rows than the base batch, so a count threshold cannot distinguish it from one</span>
+<span class="sd">    that legitimately stopped early. The record can.</span>
+<span class="sd">    """</span>
+    <span class="n">worst_f</span> <span class="o">=</span> <span class="n">worst_p</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">per_method</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">method</span><span class="p">,</span> <span class="n">grp</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">"method"</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">_rate_mcse</span><span class="p">(</span><span class="n">grp</span><span class="p">,</span> <span class="n">signal</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">_rate_mcse</span><span class="p">(</span><span class="n">grp</span><span class="p">,</span> <span class="n">signal</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">per_method</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">method</span><span class="p">)]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"fpr_mcse"</span><span class="p">:</span> <span class="n">f</span><span class="p">,</span> <span class="s2">"power_mcse"</span><span class="p">:</span> <span class="n">p</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+            <span class="n">worst_f</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">worst_f</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+            <span class="n">worst_p</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">worst_p</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"scenario_id"</span><span class="p">:</span> <span class="n">scenario_id</span><span class="p">,</span>
+        <span class="s2">"n_replicates_completed"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"iteration"</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()),</span>
+        <span class="s2">"stop_reason"</span><span class="p">:</span> <span class="n">stop_reason</span><span class="p">,</span>
+        <span class="s2">"fpr_mcse"</span><span class="p">:</span> <span class="n">worst_f</span><span class="p">,</span>
+        <span class="s2">"power_mcse"</span><span class="p">:</span> <span class="n">worst_p</span><span class="p">,</span>
+        <span class="s2">"max_replicates"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_replicates</span><span class="p">),</span>
+        <span class="s2">"mcse_target_fpr"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">mcse_target_fpr</span><span class="p">),</span>
+        <span class="s2">"mcse_target_power"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">mcse_target_power</span><span class="p">),</span>
+        <span class="s2">"per_method_mcse"</span><span class="p">:</span> <span class="n">per_method</span><span class="p">,</span>
+        <span class="s2">"manifest_sha256"</span><span class="p">:</span> <span class="n">manifest_sha</span><span class="p">,</span>
+        <span class="s2">"evaluability"</span><span class="p">:</span> <span class="n">evaluability_by_method</span><span class="p">(</span><span class="n">df</span><span class="p">),</span>
+        <span class="s2">"n_participants"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"n_participants"</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="s2">"n_participants"</span> <span class="ow">in</span> <span class="n">df</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">"panel_size"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">scenario</span><span class="p">[</span><span class="s2">"panel_size"</span><span class="p">]),</span>
+        <span class="s2">"n_signal"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">scenario</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"n_signal"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
+        <span class="s2">"signal_fraction_realised"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"signal_fraction_realised"</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">if</span> <span class="s2">"signal_fraction_realised"</span> <span class="ow">in</span> <span class="n">df</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">),</span>
+    <span class="p">}</span></div>
+
+
+
+<span class="c1"># `adaptive_disabled` is valid but NOT acceptable for a definitive run: see</span>
+<span class="c1"># aggregate_benchmark.py, which requires it to be opted into explicitly.</span>
+<span class="n">VALID_STOP_REASONS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"precision_reached"</span><span class="p">,</span> <span class="s2">"max_replicates_reached"</span><span class="p">,</span> <span class="s2">"adaptive_disabled"</span><span class="p">)</span>
+<span class="n">DEFINITIVE_STOP_REASONS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"precision_reached"</span><span class="p">,</span> <span class="s2">"max_replicates_reached"</span><span class="p">)</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

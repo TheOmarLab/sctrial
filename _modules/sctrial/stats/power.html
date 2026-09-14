@@ -367,7 +367,7 @@
                 <article class="bd-article">
                   
   <h1>Source code for sctrial.stats.power</h1><div class="highlight"><pre>
-<span></span><span class="sd">"""Power analysis utilities for trial planning.</span>
+<span></span><span class="sa">r</span><span class="sd">"""Power analysis utilities for trial planning.</span>
 
 <span class="sd">This module provides sample size and power calculations for both</span>
 <span class="sd">**two-arm DiD** and **single-arm paired** (pre/post) designs in</span>
@@ -377,13 +377,13 @@
 <span class="sd">-----------------------</span>
 <span class="sd">**Two-arm DiD** (treatment × time interaction):</span>
 
-<span class="sd">    Power = Φ(|δ|/SE - z_{1-α/2}),   SE = σ × √(4/n)</span>
+<span class="sd">    Power = Φ(\|δ\|/SE - z_{1-α/2}),   SE = σ × √(4/n)</span>
 
 <span class="sd">    n = 4σ²(z_{1-α/2} + z_{1-β})² / δ²</span>
 
 <span class="sd">**Single-arm paired** (within-arm pre→post change):</span>
 
-<span class="sd">    Power = Φ(|δ|/SE - z_{1-α/2}),   SE = σ × √(2/n)</span>
+<span class="sd">    Power = Φ(\|δ\|/SE - z_{1-α/2}),   SE = σ × √(2/n)</span>
 
 <span class="sd">    n = 2σ²(z_{1-α/2} + z_{1-β})² / δ²</span>
 

@@ -403,7 +403,7 @@
 <section id="1.-Setup-and-Configuration">
 <h2>1. Setup and Configuration<a class="headerlink" href="#1.-Setup-and-Configuration" title="Link to this heading">#</a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Imports - consolidated in one cell</span>
@@ -456,7 +456,7 @@ sctrial version: 0.3.3
 <section id="2.-Data-Loading-and-Processing">
 <h2>2. Data Loading and Processing<a class="headerlink" href="#2.-Data-Loading-and-Processing" title="Link to this heading">#</a></h2>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dataset loaders and helpers</span>
@@ -466,7 +466,7 @@ sctrial version: 0.3.3
 </div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Load data</span>
@@ -482,7 +482,7 @@ sctrial version: 0.3.3
 </pre></div>
 </div>
 </div>
-<div class="nboutput docutils container">
+<div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
@@ -490,20 +490,11 @@ sctrial version: 0.3.3
 
 === Dataset Summary ===
 Cells: 205,202
-Genes: 24,929
+Genes: 24,634
 Severity groups: [&#39;Severe&#39;, &#39;Mild&#39;]
 DFO bins: [&#39;DFO_0-7&#39;, &#39;DFO_15+&#39;, &#39;DFO_8-14&#39;]
 Cell types: 50
 Participants: 34
-</pre></div></div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_52813/900064142.py:2: UserWarning: Cached file lacks processing_params metadata; cannot verify it matches current settings. Consider reprocessing with force_reprocess=True.
-  adata = load_stephenson_data(force_reprocess=False)
 </pre></div></div>
 </div>
 </section>
@@ -511,7 +502,7 @@ Participants: 34
 <h2>3. Sample Size Assessment<a class="headerlink" href="#3.-Sample-Size-Assessment" title="Link to this heading">#</a></h2>
 <p>Before analysis, we assess sample sizes to determine appropriate statistical methods.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Sample sizes by severity and timepoint</span>
@@ -651,7 +642,7 @@ Longitudinal pairing (DFO 0-7 → 8-14): 0 participants
 <h2>4. Study Design Configuration<a class="headerlink" href="#4.-Study-Design-Configuration" title="Link to this heading">#</a></h2>
 <p>We configure the comparison structure. Note: We use sctrial’s <code class="docutils literal notranslate"><span class="pre">TrialDesign</span></code> for convenience, but this is an <strong>observational</strong> comparison, not a randomized trial.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add log1p-CPM normalization</span>
@@ -701,7 +692,6 @@ Longitudinal pairing (DFO 0-7 → 8-14): 0 participants
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Added log1p_cpm layer
 Available DFO bins: [&#39;DFO_0-7&#39;, &#39;DFO_15+&#39;, &#39;DFO_8-14&#39;]
 Available covariates: [&#39;Age_interval&#39;, &#39;Sex&#39;, &#39;Site&#39;, &#39;Smoker&#39;]
 
@@ -713,10 +703,10 @@ severity
 Mild              7446     16252     22525     21651     35854     17798
 Severe               0      5589     15433     32828      4164      2233
 
-Age_interval  (80, 89]  (90, 99]
+Age_interval  (80, 89]
 severity
-Mild             14410         0
-Severe            9019         0
+Mild             14410
+Severe            9019
 
 Sex:
 Sex       Female   Male
@@ -732,7 +722,7 @@ Severe         6397  44275   18594
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
 <div class="output_area docutils container">
@@ -745,7 +735,7 @@ TrialDesign(participant_col=&#39;participant_id&#39;, visit_col=&#39;dfo_bin&#39
 <h2>4.1 Baseline Covariate Balance (Treated vs Control)<a class="headerlink" href="#4.1-Baseline-Covariate-Balance-(Treated-vs-Control)" title="Link to this heading">#</a></h2>
 <p>Here we assess baseline covariate balance between severity groups at the earliest visit. Standardized mean differences (SMD) below 0.1 indicate good balance.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Baseline covariate balance (select visit with most balanced counts)</span>
@@ -837,7 +827,7 @@ Selected baseline visit: DFO_8-14 (treated=5, control=11)
 </div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Covariates for adjusted analyses (baseline balance indicated imbalance)</span>
@@ -859,7 +849,7 @@ Adjusted covariates: [&#39;Age_interval&#39;, &#39;Sex&#39;, &#39;Site&#39;]
 <h2>5. Cell Type Quality Control<a class="headerlink" href="#5.-Cell-Type-Quality-Control" title="Link to this heading">#</a></h2>
 <p>Filter to well-represented cell types for robust analysis.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Cell type counts</span>
@@ -1003,7 +993,7 @@ Top 15 cell types:
 <section id="6.-UMAP-Visualization">
 <h2>6. UMAP Visualization<a class="headerlink" href="#6.-UMAP-Visualization" title="Link to this heading">#</a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compute UMAP if missing</span>
@@ -1060,49 +1050,126 @@ Top 15 cell types:
 </section>
 <section id="7.-COVID-19-Immune-Signatures">
 <h2>7. COVID-19 Immune Signatures<a class="headerlink" href="#7.-COVID-19-Immune-Signatures" title="Link to this heading">#</a></h2>
-<p>We define biologically relevant gene signatures for COVID-19 immune profiling, including:</p>
+<p>We define the 19 canonical gene signatures (matching the shared signature library used in the manuscript figures) using <code class="docutils literal notranslate"><span class="pre">st.score_gene_sets</span></code> with the z-mean method. Key signatures for COVID-19 profiling include:</p>
 <ul class="simple">
-<li><p><strong>Interferon response</strong>: Key antiviral pathway, often elevated in severe disease</p></li>
-<li><p><strong>Inflammation</strong>: S100 alarmins and cytokines associated with cytokine storm</p></li>
-<li><p><strong>Cytotoxicity</strong>: NK/CD8 T cell function, important for viral clearance</p></li>
-<li><p><strong>T cell exhaustion</strong>: Dysfunction markers elevated in severe/prolonged infection</p></li>
-<li><p><strong>Myeloid activation</strong>: Monocyte/macrophage markers, drivers of pathology</p></li>
+<li><p><strong>Type I / Type II Interferon</strong>: Key antiviral pathways, often elevated in severe disease</p></li>
+<li><p><strong>Inflammatory Response</strong>: Cytokines and S100 alarmins associated with cytokine storm</p></li>
+<li><p><strong>Cytotoxic T Cell Activity</strong>: NK/CD8 T cell effector function, important for viral clearance</p></li>
+<li><p><strong>T Cell Exhaustion</strong>: Dysfunction markers elevated in severe/prolonged infection</p></li>
+<li><p><strong>Monocyte Macrophage</strong>: Monocyte/macrophage markers, drivers of immunopathology</p></li>
+<li><p><strong>Humoral Plasma Cell</strong>: B cell and plasma cell responses</p></li>
+<li><p><em>(plus 13 additional canonical signatures)</em></p></li>
 </ul>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">available_genes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
 
-<span class="c1"># COVID-19 relevant gene signatures</span>
+<span class="c1"># Canonical 19-signature dictionary (matches manuscript figures _shared.py)</span>
 <span class="n">gene_signatures</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">"IFN_Response"</span><span class="p">:</span> <span class="p">[</span>
-        <span class="s2">"ISG15"</span><span class="p">,</span> <span class="s2">"IFI6"</span><span class="p">,</span> <span class="s2">"IFIT1"</span><span class="p">,</span> <span class="s2">"IFIT2"</span><span class="p">,</span> <span class="s2">"IFIT3"</span><span class="p">,</span> <span class="s2">"MX1"</span><span class="p">,</span> <span class="s2">"MX2"</span><span class="p">,</span>
-        <span class="s2">"STAT1"</span><span class="p">,</span> <span class="s2">"STAT2"</span><span class="p">,</span> <span class="s2">"OAS1"</span><span class="p">,</span> <span class="s2">"OAS2"</span><span class="p">,</span> <span class="s2">"OAS3"</span><span class="p">,</span> <span class="s2">"IRF7"</span><span class="p">,</span> <span class="s2">"IFITM1"</span><span class="p">,</span> <span class="s2">"IFITM3"</span>
+    <span class="s2">"Cytotoxic T Cell Activity"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"GZMB"</span><span class="p">,</span> <span class="s2">"GZMA"</span><span class="p">,</span> <span class="s2">"GZMH"</span><span class="p">,</span> <span class="s2">"GZMK"</span><span class="p">,</span> <span class="s2">"GZMM"</span><span class="p">,</span> <span class="s2">"PRF1"</span><span class="p">,</span> <span class="s2">"GNLY"</span><span class="p">,</span> <span class="s2">"NKG7"</span><span class="p">,</span>
+        <span class="s2">"KLRK1"</span><span class="p">,</span> <span class="s2">"KLRD1"</span><span class="p">,</span> <span class="s2">"KLRG1"</span><span class="p">,</span> <span class="s2">"FASLG"</span><span class="p">,</span> <span class="s2">"IFNG"</span><span class="p">,</span> <span class="s2">"CST7"</span><span class="p">,</span> <span class="s2">"CCL5"</span><span class="p">,</span>
+        <span class="s2">"CX3CR1"</span><span class="p">,</span> <span class="s2">"FGFBP2"</span><span class="p">,</span>
     <span class="p">],</span>
-    <span class="s2">"Inflammation"</span><span class="p">:</span> <span class="p">[</span>
-        <span class="s2">"S100A8"</span><span class="p">,</span> <span class="s2">"S100A9"</span><span class="p">,</span> <span class="s2">"S100A12"</span><span class="p">,</span> <span class="s2">"LYZ"</span><span class="p">,</span> <span class="s2">"VCAN"</span><span class="p">,</span> <span class="s2">"IL1B"</span><span class="p">,</span>
-        <span class="s2">"CXCL8"</span><span class="p">,</span> <span class="s2">"TNF"</span><span class="p">,</span> <span class="s2">"NFKBIA"</span><span class="p">,</span> <span class="s2">"CCL2"</span><span class="p">,</span> <span class="s2">"CCL3"</span><span class="p">,</span> <span class="s2">"CCL4"</span>
+    <span class="s2">"T Cell Exhaustion"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"TOX"</span><span class="p">,</span> <span class="s2">"TOX2"</span><span class="p">,</span> <span class="s2">"PDCD1"</span><span class="p">,</span> <span class="s2">"HAVCR2"</span><span class="p">,</span> <span class="s2">"LAG3"</span><span class="p">,</span> <span class="s2">"TIGIT"</span><span class="p">,</span> <span class="s2">"ENTPD1"</span><span class="p">,</span>
+        <span class="s2">"CXCL13"</span><span class="p">,</span> <span class="s2">"LAYN"</span><span class="p">,</span> <span class="s2">"CD38"</span><span class="p">,</span> <span class="s2">"PRDM1"</span><span class="p">,</span> <span class="s2">"BATF"</span><span class="p">,</span> <span class="s2">"NR4A2"</span><span class="p">,</span> <span class="s2">"NR4A3"</span><span class="p">,</span>
+        <span class="s2">"CD160"</span><span class="p">,</span> <span class="s2">"CD244"</span><span class="p">,</span>
     <span class="p">],</span>
-    <span class="s2">"Cytotoxicity"</span><span class="p">:</span> <span class="p">[</span>
-        <span class="s2">"GZMB"</span><span class="p">,</span> <span class="s2">"GZMA"</span><span class="p">,</span> <span class="s2">"GZMH"</span><span class="p">,</span> <span class="s2">"GZMK"</span><span class="p">,</span> <span class="s2">"PRF1"</span><span class="p">,</span> <span class="s2">"GNLY"</span><span class="p">,</span> <span class="s2">"NKG7"</span><span class="p">,</span>
-        <span class="s2">"KLRD1"</span><span class="p">,</span> <span class="s2">"KLRB1"</span><span class="p">,</span> <span class="s2">"IFNG"</span>
+    <span class="s2">"Checkpoint Receptors"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"PDCD1"</span><span class="p">,</span> <span class="s2">"CTLA4"</span><span class="p">,</span> <span class="s2">"LAG3"</span><span class="p">,</span> <span class="s2">"HAVCR2"</span><span class="p">,</span> <span class="s2">"TIGIT"</span><span class="p">,</span> <span class="s2">"BTLA"</span><span class="p">,</span> <span class="s2">"CD160"</span><span class="p">,</span>
+        <span class="s2">"CD244"</span><span class="p">,</span> <span class="s2">"CD96"</span><span class="p">,</span>
     <span class="p">],</span>
-    <span class="s2">"T_Cell_Exhaustion"</span><span class="p">:</span> <span class="p">[</span>
-        <span class="s2">"PDCD1"</span><span class="p">,</span> <span class="s2">"LAG3"</span><span class="p">,</span> <span class="s2">"HAVCR2"</span><span class="p">,</span> <span class="s2">"TIGIT"</span><span class="p">,</span> <span class="s2">"CTLA4"</span><span class="p">,</span> <span class="s2">"TOX"</span><span class="p">,</span> <span class="s2">"ENTPD1"</span>
+    <span class="s2">"Type I Interferon"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"ISG15"</span><span class="p">,</span> <span class="s2">"IFI27"</span><span class="p">,</span> <span class="s2">"IFI44"</span><span class="p">,</span> <span class="s2">"IFI44L"</span><span class="p">,</span> <span class="s2">"IFI35"</span><span class="p">,</span> <span class="s2">"MX1"</span><span class="p">,</span> <span class="s2">"OAS1"</span><span class="p">,</span>
+        <span class="s2">"OASL"</span><span class="p">,</span> <span class="s2">"IFIT2"</span><span class="p">,</span> <span class="s2">"IFIT3"</span><span class="p">,</span> <span class="s2">"IFITM3"</span><span class="p">,</span> <span class="s2">"RSAD2"</span><span class="p">,</span> <span class="s2">"LY6E"</span><span class="p">,</span> <span class="s2">"USP18"</span><span class="p">,</span>
+        <span class="s2">"IRF7"</span><span class="p">,</span> <span class="s2">"STAT2"</span><span class="p">,</span> <span class="s2">"ISG20"</span><span class="p">,</span> <span class="s2">"BST2"</span><span class="p">,</span> <span class="s2">"HERC6"</span><span class="p">,</span> <span class="s2">"EPSTI1"</span><span class="p">,</span> <span class="s2">"SAMD9L"</span><span class="p">,</span>
+        <span class="s2">"PARP9"</span><span class="p">,</span> <span class="s2">"RTP4"</span><span class="p">,</span> <span class="s2">"LGALS3BP"</span><span class="p">,</span> <span class="s2">"CMPK2"</span><span class="p">,</span>
     <span class="p">],</span>
-    <span class="s2">"Myeloid_Activation"</span><span class="p">:</span> <span class="p">[</span>
-        <span class="s2">"CD14"</span><span class="p">,</span> <span class="s2">"FCGR3A"</span><span class="p">,</span> <span class="s2">"CD68"</span><span class="p">,</span> <span class="s2">"MARCO"</span><span class="p">,</span> <span class="s2">"MSR1"</span><span class="p">,</span> <span class="s2">"CD163"</span><span class="p">,</span>
-        <span class="s2">"CTSS"</span><span class="p">,</span> <span class="s2">"CST3"</span><span class="p">,</span> <span class="s2">"LGALS3"</span><span class="p">,</span> <span class="s2">"AIF1"</span>
+    <span class="s2">"Type II Interferon"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"STAT1"</span><span class="p">,</span> <span class="s2">"IRF1"</span><span class="p">,</span> <span class="s2">"GBP1"</span><span class="p">,</span> <span class="s2">"GBP2"</span><span class="p">,</span> <span class="s2">"GBP4"</span><span class="p">,</span> <span class="s2">"GBP5"</span><span class="p">,</span> <span class="s2">"CXCL9"</span><span class="p">,</span>
+        <span class="s2">"CXCL10"</span><span class="p">,</span> <span class="s2">"CXCL11"</span><span class="p">,</span> <span class="s2">"IDO1"</span><span class="p">,</span> <span class="s2">"SOCS1"</span><span class="p">,</span> <span class="s2">"SOCS3"</span><span class="p">,</span> <span class="s2">"JAK2"</span><span class="p">,</span> <span class="s2">"UBE2L6"</span><span class="p">,</span>
+        <span class="s2">"WARS"</span><span class="p">,</span> <span class="s2">"IL18BP"</span><span class="p">,</span> <span class="s2">"VCAM1"</span><span class="p">,</span> <span class="s2">"SERPING1"</span><span class="p">,</span> <span class="s2">"FGL2"</span><span class="p">,</span> <span class="s2">"IFI30"</span><span class="p">,</span>
     <span class="p">],</span>
-    <span class="s2">"B_Cell_Activation"</span><span class="p">:</span> <span class="p">[</span>
-        <span class="s2">"MS4A1"</span><span class="p">,</span> <span class="s2">"CD19"</span><span class="p">,</span> <span class="s2">"CD79A"</span><span class="p">,</span> <span class="s2">"CD79B"</span><span class="p">,</span> <span class="s2">"BANK1"</span><span class="p">,</span> <span class="s2">"CD74"</span><span class="p">,</span>
-        <span class="s2">"HLA-DRA"</span><span class="p">,</span> <span class="s2">"HLA-DRB1"</span><span class="p">,</span> <span class="s2">"IGHM"</span><span class="p">,</span> <span class="s2">"IGHG1"</span>
+    <span class="s2">"Memory T Cell"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"IL7R"</span><span class="p">,</span> <span class="s2">"TCF7"</span><span class="p">,</span> <span class="s2">"LEF1"</span><span class="p">,</span> <span class="s2">"CCR7"</span><span class="p">,</span> <span class="s2">"SELL"</span><span class="p">,</span> <span class="s2">"CD27"</span><span class="p">,</span> <span class="s2">"CD28"</span><span class="p">,</span> <span class="s2">"ID3"</span><span class="p">,</span>
+        <span class="s2">"REL"</span><span class="p">,</span> <span class="s2">"FOXP1"</span><span class="p">,</span> <span class="s2">"BACH2"</span><span class="p">,</span> <span class="s2">"MYB"</span><span class="p">,</span> <span class="s2">"FOXO1"</span><span class="p">,</span> <span class="s2">"KLF2"</span><span class="p">,</span> <span class="s2">"S1PR1"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"T Cell Activation"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"CD69"</span><span class="p">,</span> <span class="s2">"CD44"</span><span class="p">,</span> <span class="s2">"IL2RA"</span><span class="p">,</span> <span class="s2">"ICOS"</span><span class="p">,</span> <span class="s2">"TNFRSF4"</span><span class="p">,</span> <span class="s2">"TNFRSF9"</span><span class="p">,</span> <span class="s2">"CD40LG"</span><span class="p">,</span>
+        <span class="s2">"EGR1"</span><span class="p">,</span> <span class="s2">"EGR2"</span><span class="p">,</span> <span class="s2">"EGR3"</span><span class="p">,</span> <span class="s2">"NR4A1"</span><span class="p">,</span> <span class="s2">"MYC"</span><span class="p">,</span> <span class="s2">"IL2RB"</span><span class="p">,</span> <span class="s2">"IRF4"</span><span class="p">,</span>
+        <span class="s2">"TNFRSF18"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Inflammatory Response"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"IL1B"</span><span class="p">,</span> <span class="s2">"IL6"</span><span class="p">,</span> <span class="s2">"TNF"</span><span class="p">,</span> <span class="s2">"CXCL8"</span><span class="p">,</span> <span class="s2">"CCL2"</span><span class="p">,</span> <span class="s2">"CCL3"</span><span class="p">,</span> <span class="s2">"CCL4"</span><span class="p">,</span> <span class="s2">"NFKB1"</span><span class="p">,</span>
+        <span class="s2">"NLRP3"</span><span class="p">,</span> <span class="s2">"CASP1"</span><span class="p">,</span> <span class="s2">"CXCL1"</span><span class="p">,</span> <span class="s2">"CXCL2"</span><span class="p">,</span> <span class="s2">"CXCL3"</span><span class="p">,</span> <span class="s2">"CCL20"</span><span class="p">,</span> <span class="s2">"PTGS2"</span><span class="p">,</span>
+        <span class="s2">"IL1A"</span><span class="p">,</span> <span class="s2">"TNFAIP3"</span><span class="p">,</span> <span class="s2">"NFKBIA"</span><span class="p">,</span> <span class="s2">"IL18"</span><span class="p">,</span> <span class="s2">"S100A8"</span><span class="p">,</span> <span class="s2">"S100A9"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Antigen Presentation"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"HLA-A"</span><span class="p">,</span> <span class="s2">"HLA-B"</span><span class="p">,</span> <span class="s2">"HLA-C"</span><span class="p">,</span> <span class="s2">"B2M"</span><span class="p">,</span> <span class="s2">"TAP1"</span><span class="p">,</span> <span class="s2">"TAP2"</span><span class="p">,</span> <span class="s2">"TAPBP"</span><span class="p">,</span>
+        <span class="s2">"NLRC5"</span><span class="p">,</span> <span class="s2">"PSMB8"</span><span class="p">,</span> <span class="s2">"PSMB9"</span><span class="p">,</span> <span class="s2">"PSMB10"</span><span class="p">,</span> <span class="s2">"CIITA"</span><span class="p">,</span> <span class="s2">"CD74"</span><span class="p">,</span> <span class="s2">"HLA-DRA"</span><span class="p">,</span>
+        <span class="s2">"HLA-DRB1"</span><span class="p">,</span> <span class="s2">"HLA-DPA1"</span><span class="p">,</span> <span class="s2">"HLA-DPB1"</span><span class="p">,</span> <span class="s2">"HLA-DQA1"</span><span class="p">,</span> <span class="s2">"HLA-DMA"</span><span class="p">,</span>
+        <span class="s2">"HLA-DMB"</span><span class="p">,</span> <span class="s2">"CTSS"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Cell Proliferation"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"MKI67"</span><span class="p">,</span> <span class="s2">"TOP2A"</span><span class="p">,</span> <span class="s2">"PCNA"</span><span class="p">,</span> <span class="s2">"CDK1"</span><span class="p">,</span> <span class="s2">"CCNB1"</span><span class="p">,</span> <span class="s2">"CCNA2"</span><span class="p">,</span> <span class="s2">"MCM2"</span><span class="p">,</span>
+        <span class="s2">"MCM7"</span><span class="p">,</span> <span class="s2">"TYMS"</span><span class="p">,</span> <span class="s2">"BIRC5"</span><span class="p">,</span> <span class="s2">"UBE2C"</span><span class="p">,</span> <span class="s2">"CENPF"</span><span class="p">,</span> <span class="s2">"CENPE"</span><span class="p">,</span> <span class="s2">"CCNB2"</span><span class="p">,</span>
+        <span class="s2">"RRM2"</span><span class="p">,</span> <span class="s2">"HMGB2"</span><span class="p">,</span> <span class="s2">"TPX2"</span><span class="p">,</span> <span class="s2">"NUSAP1"</span><span class="p">,</span> <span class="s2">"CKS2"</span><span class="p">,</span> <span class="s2">"AURKA"</span><span class="p">,</span> <span class="s2">"CKS1B"</span><span class="p">,</span>
+        <span class="s2">"STMN1"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Regulatory T Cell"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"FOXP3"</span><span class="p">,</span> <span class="s2">"IKZF2"</span><span class="p">,</span> <span class="s2">"IKZF4"</span><span class="p">,</span> <span class="s2">"IL2RA"</span><span class="p">,</span> <span class="s2">"CTLA4"</span><span class="p">,</span> <span class="s2">"TNFRSF18"</span><span class="p">,</span>
+        <span class="s2">"TNFRSF4"</span><span class="p">,</span> <span class="s2">"TNFRSF9"</span><span class="p">,</span> <span class="s2">"TIGIT"</span><span class="p">,</span> <span class="s2">"ENTPD1"</span><span class="p">,</span> <span class="s2">"LRRC32"</span><span class="p">,</span> <span class="s2">"RTKN2"</span><span class="p">,</span>
+        <span class="s2">"CCR8"</span><span class="p">,</span> <span class="s2">"LAYN"</span><span class="p">,</span> <span class="s2">"IL1R2"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"NK Cell Activity"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"FCGR3A"</span><span class="p">,</span> <span class="s2">"NCR1"</span><span class="p">,</span> <span class="s2">"NCR3"</span><span class="p">,</span> <span class="s2">"NCR2"</span><span class="p">,</span> <span class="s2">"KLRF1"</span><span class="p">,</span> <span class="s2">"KLRC1"</span><span class="p">,</span> <span class="s2">"KLRC2"</span><span class="p">,</span>
+        <span class="s2">"KLRD1"</span><span class="p">,</span> <span class="s2">"KLRB1"</span><span class="p">,</span> <span class="s2">"IL2RB"</span><span class="p">,</span> <span class="s2">"TBX21"</span><span class="p">,</span> <span class="s2">"GZMM"</span><span class="p">,</span> <span class="s2">"SH2D1B"</span><span class="p">,</span> <span class="s2">"GNLY"</span><span class="p">,</span>
+        <span class="s2">"NKG7"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Apoptosis"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"BAX"</span><span class="p">,</span> <span class="s2">"BAK1"</span><span class="p">,</span> <span class="s2">"BID"</span><span class="p">,</span> <span class="s2">"BCL2L11"</span><span class="p">,</span> <span class="s2">"BBC3"</span><span class="p">,</span> <span class="s2">"PMAIP1"</span><span class="p">,</span> <span class="s2">"CASP3"</span><span class="p">,</span>
+        <span class="s2">"CASP7"</span><span class="p">,</span> <span class="s2">"CASP8"</span><span class="p">,</span> <span class="s2">"CASP9"</span><span class="p">,</span> <span class="s2">"FAS"</span><span class="p">,</span> <span class="s2">"TNFRSF10B"</span><span class="p">,</span> <span class="s2">"DIABLO"</span><span class="p">,</span> <span class="s2">"APAF1"</span><span class="p">,</span>
+        <span class="s2">"CDKN1A"</span><span class="p">,</span> <span class="s2">"GADD45A"</span><span class="p">,</span> <span class="s2">"GADD45B"</span><span class="p">,</span> <span class="s2">"DDIT3"</span><span class="p">,</span> <span class="s2">"FDXR"</span><span class="p">,</span> <span class="s2">"BTG2"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Oxidative Stress Response"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"NFE2L2"</span><span class="p">,</span> <span class="s2">"HMOX1"</span><span class="p">,</span> <span class="s2">"NQO1"</span><span class="p">,</span> <span class="s2">"GCLC"</span><span class="p">,</span> <span class="s2">"GCLM"</span><span class="p">,</span> <span class="s2">"GSR"</span><span class="p">,</span> <span class="s2">"SOD1"</span><span class="p">,</span> <span class="s2">"SOD2"</span><span class="p">,</span>
+        <span class="s2">"CAT"</span><span class="p">,</span> <span class="s2">"GPX1"</span><span class="p">,</span> <span class="s2">"TXN"</span><span class="p">,</span> <span class="s2">"TXNRD1"</span><span class="p">,</span> <span class="s2">"PRDX1"</span><span class="p">,</span> <span class="s2">"PRDX2"</span><span class="p">,</span> <span class="s2">"SRXN1"</span><span class="p">,</span>
+        <span class="s2">"G6PD"</span><span class="p">,</span> <span class="s2">"GPX4"</span><span class="p">,</span> <span class="s2">"GLRX"</span><span class="p">,</span> <span class="s2">"SLC7A11"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Humoral Plasma Cell"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"MS4A1"</span><span class="p">,</span> <span class="s2">"CD79A"</span><span class="p">,</span> <span class="s2">"CD79B"</span><span class="p">,</span> <span class="s2">"CD19"</span><span class="p">,</span> <span class="s2">"CD37"</span><span class="p">,</span> <span class="s2">"BANK1"</span><span class="p">,</span> <span class="s2">"TCL1A"</span><span class="p">,</span>
+        <span class="s2">"FCRL5"</span><span class="p">,</span> <span class="s2">"POU2AF1"</span><span class="p">,</span> <span class="s2">"MZB1"</span><span class="p">,</span> <span class="s2">"JCHAIN"</span><span class="p">,</span> <span class="s2">"XBP1"</span><span class="p">,</span> <span class="s2">"PRDM1"</span><span class="p">,</span> <span class="s2">"DERL3"</span><span class="p">,</span>
+        <span class="s2">"SDC1"</span><span class="p">,</span> <span class="s2">"TNFRSF17"</span><span class="p">,</span> <span class="s2">"SEC11C"</span><span class="p">,</span> <span class="s2">"HERPUD1"</span><span class="p">,</span> <span class="s2">"FKBP11"</span><span class="p">,</span> <span class="s2">"SLAMF7"</span><span class="p">,</span>
+        <span class="s2">"IGHM"</span><span class="p">,</span> <span class="s2">"IGHG1"</span><span class="p">,</span> <span class="s2">"IGKC"</span><span class="p">,</span> <span class="s2">"IGLC2"</span><span class="p">,</span> <span class="s2">"FDCSP"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Monocyte Macrophage"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"CD14"</span><span class="p">,</span> <span class="s2">"CD68"</span><span class="p">,</span> <span class="s2">"LYZ"</span><span class="p">,</span> <span class="s2">"CSF1R"</span><span class="p">,</span> <span class="s2">"AIF1"</span><span class="p">,</span> <span class="s2">"TYROBP"</span><span class="p">,</span> <span class="s2">"FCER1G"</span><span class="p">,</span>
+        <span class="s2">"CTSS"</span><span class="p">,</span> <span class="s2">"FCGR3A"</span><span class="p">,</span> <span class="s2">"ITGAM"</span><span class="p">,</span> <span class="s2">"MNDA"</span><span class="p">,</span> <span class="s2">"CD163"</span><span class="p">,</span> <span class="s2">"MRC1"</span><span class="p">,</span> <span class="s2">"MSR1"</span><span class="p">,</span>
+        <span class="s2">"MARCO"</span><span class="p">,</span> <span class="s2">"APOE"</span><span class="p">,</span> <span class="s2">"C1QA"</span><span class="p">,</span> <span class="s2">"C1QB"</span><span class="p">,</span> <span class="s2">"C1QC"</span><span class="p">,</span> <span class="s2">"TREM2"</span><span class="p">,</span> <span class="s2">"SELENOP"</span><span class="p">,</span>
+        <span class="s2">"LGALS3"</span><span class="p">,</span> <span class="s2">"FCN1"</span><span class="p">,</span> <span class="s2">"VCAN"</span><span class="p">,</span> <span class="s2">"S100A9"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Tissue-Resident Memory"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"ITGAE"</span><span class="p">,</span> <span class="s2">"ITGA1"</span><span class="p">,</span> <span class="s2">"CXCR6"</span><span class="p">,</span> <span class="s2">"ZNF683"</span><span class="p">,</span> <span class="s2">"CD101"</span><span class="p">,</span> <span class="s2">"RGS1"</span><span class="p">,</span> <span class="s2">"RGS2"</span><span class="p">,</span>
+        <span class="s2">"DUSP6"</span><span class="p">,</span> <span class="s2">"RBPJ"</span><span class="p">,</span> <span class="s2">"CD69"</span><span class="p">,</span> <span class="s2">"ID2"</span><span class="p">,</span> <span class="s2">"PRDM1"</span><span class="p">,</span> <span class="s2">"NR4A1"</span><span class="p">,</span> <span class="s2">"DUSP1"</span><span class="p">,</span>
+        <span class="s2">"EGR1"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"T Follicular Helper"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"CXCL13"</span><span class="p">,</span> <span class="s2">"CXCR5"</span><span class="p">,</span> <span class="s2">"PDCD1"</span><span class="p">,</span> <span class="s2">"ICOS"</span><span class="p">,</span> <span class="s2">"BCL6"</span><span class="p">,</span> <span class="s2">"TOX"</span><span class="p">,</span> <span class="s2">"TOX2"</span><span class="p">,</span>
+        <span class="s2">"IL21"</span><span class="p">,</span> <span class="s2">"BTLA"</span><span class="p">,</span> <span class="s2">"CD200"</span><span class="p">,</span> <span class="s2">"MAF"</span><span class="p">,</span> <span class="s2">"ASCL2"</span><span class="p">,</span> <span class="s2">"SH2D1A"</span><span class="p">,</span> <span class="s2">"CD40LG"</span><span class="p">,</span>
+        <span class="s2">"TNFRSF4"</span><span class="p">,</span> <span class="s2">"BATF"</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="s2">"Hypoxia"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">"VEGFA"</span><span class="p">,</span> <span class="s2">"SLC2A1"</span><span class="p">,</span> <span class="s2">"SLC2A3"</span><span class="p">,</span> <span class="s2">"HK1"</span><span class="p">,</span> <span class="s2">"HK2"</span><span class="p">,</span> <span class="s2">"PGK1"</span><span class="p">,</span> <span class="s2">"LDHA"</span><span class="p">,</span>
+        <span class="s2">"ALDOA"</span><span class="p">,</span> <span class="s2">"ENO1"</span><span class="p">,</span> <span class="s2">"PDK1"</span><span class="p">,</span> <span class="s2">"BNIP3L"</span><span class="p">,</span> <span class="s2">"NDRG1"</span><span class="p">,</span> <span class="s2">"ADM"</span><span class="p">,</span> <span class="s2">"ANGPTL4"</span><span class="p">,</span>
+        <span class="s2">"DDIT4"</span><span class="p">,</span> <span class="s2">"PPP1R15A"</span><span class="p">,</span> <span class="s2">"ERO1A"</span><span class="p">,</span> <span class="s2">"P4HA1"</span><span class="p">,</span> <span class="s2">"CA12"</span><span class="p">,</span> <span class="s2">"IGFBP3"</span><span class="p">,</span> <span class="s2">"PLIN2"</span><span class="p">,</span>
     <span class="p">],</span>
 <span class="p">}</span>
 
 <span class="c1"># Filter to available genes and report coverage</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Gene signature coverage:"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Gene signature coverage (19 canonical signatures):"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"-"</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
 <span class="n">filtered_signatures</span> <span class="o">=</span> <span class="p">{}</span>
 <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">genes</span> <span class="ow">in</span> <span class="n">gene_signatures</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -1112,7 +1179,7 @@ Top 15 cell types:
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">found</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">MIN_GENES_FOR_SCORE</span><span class="p">:</span>
         <span class="n">filtered_signatures</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">found</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  ⚠️  Skipping (need ≥</span><span class="si">{</span><span class="n">MIN_GENES_FOR_SCORE</span><span class="si">}</span><span class="s2"> genes)"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Skipping (need &gt;=</span><span class="si">{</span><span class="n">MIN_GENES_FOR_SCORE</span><span class="si">}</span><span class="s2"> genes)"</span><span class="p">)</span>
 
 <span class="c1"># Score gene sets using z-mean method (accounts for different expression scales)</span>
 <span class="k">if</span> <span class="n">filtered_signatures</span><span class="p">:</span>
@@ -1120,15 +1187,15 @@ Top 15 cell types:
         <span class="n">adata</span><span class="p">,</span>
         <span class="n">filtered_signatures</span><span class="p">,</span>
         <span class="n">layer</span><span class="o">=</span><span class="s2">"log1p_cpm"</span><span class="p">,</span>
-        <span class="n">method</span><span class="o">=</span><span class="s2">"zmean"</span><span class="p">,</span>  <span class="c1"># Z-score normalization for fair weighting</span>
+        <span class="n">method</span><span class="o">=</span><span class="s2">"zmean"</span><span class="p">,</span>
         <span class="n">prefix</span><span class="o">=</span><span class="s2">"sig_"</span>
     <span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">✓ Scored </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">filtered_signatures</span><span class="p">)</span><span class="si">}</span><span class="s2"> signatures"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2"> Scored </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">filtered_signatures</span><span class="p">)</span><span class="si">}</span><span class="s2"> signatures"</span><span class="p">)</span>
 
 <span class="c1"># Get signature columns</span>
 <span class="n">signature_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"sig_"</span><span class="p">)]</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Signature scores available: </span><span class="si">{</span><span class="n">signature_cols</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</pre></div>
+<br/></pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -1136,18 +1203,31 @@ Top 15 cell types:
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Gene signature coverage:
+Gene signature coverage (19 canonical signatures):
 --------------------------------------------------
-IFN_Response: 15/15 genes (100%)
-Inflammation: 12/12 genes (100%)
-Cytotoxicity: 10/10 genes (100%)
-T_Cell_Exhaustion: 7/7 genes (100%)
-Myeloid_Activation: 10/10 genes (100%)
-B_Cell_Activation: 10/10 genes (100%)
+Cytotoxic T Cell Activity: 17/17 genes (100%)
+T Cell Exhaustion: 16/16 genes (100%)
+Checkpoint Receptors: 9/9 genes (100%)
+Type I Interferon: 25/25 genes (100%)
+Type II Interferon: 19/20 genes (95%)
+Memory T Cell: 14/15 genes (93%)
+T Cell Activation: 15/15 genes (100%)
+Inflammatory Response: 21/21 genes (100%)
+Antigen Presentation: 21/21 genes (100%)
+Cell Proliferation: 22/22 genes (100%)
+Regulatory T Cell: 15/15 genes (100%)
+NK Cell Activity: 15/15 genes (100%)
+Apoptosis: 20/20 genes (100%)
+Oxidative Stress Response: 18/19 genes (95%)
+Humoral Plasma Cell: 24/25 genes (96%)
+Monocyte Macrophage: 25/25 genes (100%)
+Tissue-Resident Memory: 15/15 genes (100%)
+T Follicular Helper: 16/16 genes (100%)
+Hypoxia: 21/21 genes (100%)
 
-✓ Scored 6 signatures
+ Scored 19 signatures
 
-Signature scores available: [&#39;sig_IFN_Response&#39;, &#39;sig_Inflammation&#39;, &#39;sig_Cytotoxicity&#39;, &#39;sig_T_Cell_Exhaustion&#39;, &#39;sig_Myeloid_Activation&#39;, &#39;sig_B_Cell_Activation&#39;]
+Signature scores available: [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T Cell Exhaustion&#39;, &#39;sig_Checkpoint Receptors&#39;, &#39;sig_Type I Interferon&#39;, &#39;sig_Type II Interferon&#39;, &#39;sig_Memory T Cell&#39;, &#39;sig_T Cell Activation&#39;, &#39;sig_Inflammatory Response&#39;, &#39;sig_Antigen Presentation&#39;, &#39;sig_Cell Proliferation&#39;, &#39;sig_Regulatory T Cell&#39;, &#39;sig_NK Cell Activity&#39;, &#39;sig_Apoptosis&#39;, &#39;sig_Oxidative Stress Response&#39;, &#39;sig_Humoral Plasma Cell&#39;, &#39;sig_Monocyte Macrophage&#39;, &#39;sig_Tissue-Resident Memory&#39;, &#39;sig_T Follicular Helper&#39;, &#39;sig_Hypoxia&#39;]
 </pre></div></div>
 </div>
 </section>
@@ -1160,7 +1240,7 @@ Signature scores available: [&#39;sig_IFN_Response&#39;, &#39;sig_Inflammation&#
 <li><p>FDR correction for multiple testing</p></li>
 </ul>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run comparisons at each timepoint using sctrial's built-in function</span>
@@ -1277,50 +1357,154 @@ DFO_15+:
   <tbody>
     <tr>
       <th>0</th>
-      <td>sig_IFN_Response</td>
-      <td>0.4732</td>
-      <td>0.5456</td>
-      <td>0.6547</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>0.7073</td>
+      <td>0.3557</td>
+      <td>0.9375</td>
       <td>8</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_Inflammation</td>
-      <td>1.3433</td>
-      <td>0.0449</td>
-      <td>0.2692</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>0.4132</td>
+      <td>0.5991</td>
+      <td>0.9375</td>
       <td>8</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_Cytotoxicity</td>
-      <td>0.6567</td>
-      <td>0.3939</td>
-      <td>0.6136</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>0.0826</td>
+      <td>0.9173</td>
+      <td>0.9375</td>
       <td>8</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>sig_T_Cell_Exhaustion</td>
-      <td>0.2095</td>
-      <td>0.7917</td>
-      <td>0.7917</td>
+      <td>sig_Type I Interferon</td>
+      <td>0.4334</td>
+      <td>0.5810</td>
+      <td>0.9375</td>
       <td>8</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>sig_Myeloid_Activation</td>
-      <td>0.6372</td>
-      <td>0.4091</td>
-      <td>0.6136</td>
+      <td>sig_Type II Interferon</td>
+      <td>0.6399</td>
+      <td>0.4069</td>
+      <td>0.9375</td>
       <td>8</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>sig_B_Cell_Activation</td>
-      <td>-1.0558</td>
-      <td>0.1451</td>
-      <td>0.4352</td>
+      <td>sig_Memory T Cell</td>
+      <td>-0.9252</td>
+      <td>0.2128</td>
+      <td>0.9375</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>sig_T Cell Activation</td>
+      <td>-0.0940</td>
+      <td>0.9059</td>
+      <td>0.9375</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>sig_Inflammatory Response</td>
+      <td>0.7047</td>
+      <td>0.3577</td>
+      <td>0.9375</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>sig_Antigen Presentation</td>
+      <td>-0.5003</td>
+      <td>0.5220</td>
+      <td>0.9375</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>sig_Cell Proliferation</td>
+      <td>0.3280</td>
+      <td>0.6780</td>
+      <td>0.9375</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>sig_Regulatory T Cell</td>
+      <td>0.4100</td>
+      <td>0.6020</td>
+      <td>0.9375</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>sig_NK Cell Activity</td>
+      <td>0.6846</td>
+      <td>0.3727</td>
+      <td>0.9375</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>sig_Apoptosis</td>
+      <td>-0.2463</td>
+      <td>0.7560</td>
+      <td>0.9375</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>sig_Oxidative Stress Response</td>
+      <td>-0.0624</td>
+      <td>0.9375</td>
+      <td>0.9375</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>-0.3339</td>
+      <td>0.6724</td>
+      <td>0.9375</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>sig_Monocyte Macrophage</td>
+      <td>0.9365</td>
+      <td>0.2064</td>
+      <td>0.9375</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>-0.1212</td>
+      <td>0.8789</td>
+      <td>0.9375</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>sig_T Follicular Helper</td>
+      <td>-0.1505</td>
+      <td>0.8498</td>
+      <td>0.9375</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>sig_Hypoxia</td>
+      <td>-0.2393</td>
+      <td>0.7628</td>
+      <td>0.9375</td>
       <td>8</td>
     </tr>
   </tbody>
@@ -1336,7 +1520,7 @@ DFO_15+:
 DFO_8-14:
 </pre></div></div>
 </div>
-<div class="nboutput docutils container">
+<div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area rendered_html docutils container">
@@ -1368,68 +1552,164 @@ DFO_8-14:
   <tbody>
     <tr>
       <th>0</th>
-      <td>sig_IFN_Response</td>
-      <td>-0.0684</td>
-      <td>0.9042</td>
-      <td>0.9712</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>0.1083</td>
+      <td>0.8488</td>
+      <td>0.9947</td>
       <td>16</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_Inflammation</td>
-      <td>-0.0576</td>
-      <td>0.9192</td>
-      <td>0.9712</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>0.2592</td>
+      <td>0.6471</td>
+      <td>0.9947</td>
       <td>16</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_Cytotoxicity</td>
-      <td>0.1428</td>
-      <td>0.8014</td>
-      <td>0.9712</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>0.2125</td>
+      <td>0.7077</td>
+      <td>0.9947</td>
       <td>16</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>sig_T_Cell_Exhaustion</td>
-      <td>0.7136</td>
-      <td>0.1953</td>
-      <td>0.5860</td>
+      <td>sig_Type I Interferon</td>
+      <td>-0.0038</td>
+      <td>0.9947</td>
+      <td>0.9947</td>
       <td>16</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>sig_Myeloid_Activation</td>
-      <td>0.0205</td>
-      <td>0.9712</td>
-      <td>0.9712</td>
+      <td>sig_Type II Interferon</td>
+      <td>-0.3955</td>
+      <td>0.4825</td>
+      <td>0.9947</td>
       <td>16</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>sig_B_Cell_Activation</td>
-      <td>1.0750</td>
-      <td>0.0414</td>
-      <td>0.2483</td>
+      <td>sig_Memory T Cell</td>
+      <td>-0.3468</td>
+      <td>0.5389</td>
+      <td>0.9947</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>sig_T Cell Activation</td>
+      <td>-0.1168</td>
+      <td>0.8370</td>
+      <td>0.9947</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>sig_Inflammatory Response</td>
+      <td>-0.1321</td>
+      <td>0.8160</td>
+      <td>0.9947</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>sig_Antigen Presentation</td>
+      <td>-0.1378</td>
+      <td>0.8082</td>
+      <td>0.9947</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>sig_Cell Proliferation</td>
+      <td>1.0609</td>
+      <td>0.0446</td>
+      <td>0.4237</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>sig_Regulatory T Cell</td>
+      <td>0.7941</td>
+      <td>0.1464</td>
+      <td>0.9271</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>sig_NK Cell Activity</td>
+      <td>0.0613</td>
+      <td>0.9141</td>
+      <td>0.9947</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>sig_Apoptosis</td>
+      <td>-0.2132</td>
+      <td>0.7069</td>
+      <td>0.9947</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>sig_Oxidative Stress Response</td>
+      <td>0.6504</td>
+      <td>0.2405</td>
+      <td>0.9947</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>1.2357</td>
+      <td>0.0158</td>
+      <td>0.3001</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>sig_Monocyte Macrophage</td>
+      <td>-0.0170</td>
+      <td>0.9761</td>
+      <td>0.9947</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>-0.3109</td>
+      <td>0.5822</td>
+      <td>0.9947</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>sig_T Follicular Helper</td>
+      <td>0.3914</td>
+      <td>0.4871</td>
+      <td>0.9947</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>sig_Hypoxia</td>
+      <td>0.3308</td>
+      <td>0.5580</td>
+      <td>0.9947</td>
       <td>16</td>
     </tr>
   </tbody>
 </table>
 </div></div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-  Significant (FDR&lt;0.25): [&#39;sig_B_Cell_Activation&#39;]
-</pre></div></div>
-</div>
-<section id="6.1-Adjusted-Cross-Sectional-Comparisons">
-<h3>6.1 Adjusted Cross-Sectional Comparisons<a class="headerlink" href="#6.1-Adjusted-Cross-Sectional-Comparisons" title="Link to this heading">#</a></h3>
+<section id="8.1-Adjusted-Cross-Sectional-Comparisons">
+<h3>8.1 Adjusted Cross-Sectional Comparisons<a class="headerlink" href="#8.1-Adjusted-Cross-Sectional-Comparisons" title="Link to this heading">#</a></h3>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Adjusted cross-sectional analysis (includes covariates)</span>
@@ -1507,50 +1787,154 @@ Adjusted results at visit: DFO_0-7
   <tbody>
     <tr>
       <th>0</th>
-      <td>sig_IFN_Response</td>
-      <td>0.0000</td>
-      <td>0.9999</td>
-      <td>0.9999</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>1.6032</td>
+      <td>0.2774</td>
+      <td>0.5583</td>
       <td>10</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_Inflammation</td>
-      <td>-0.6617</td>
-      <td>0.5035</td>
-      <td>0.7553</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>0.0658</td>
+      <td>0.9558</td>
+      <td>0.9942</td>
       <td>10</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_Cytotoxicity</td>
-      <td>1.5344</td>
-      <td>0.3092</td>
-      <td>0.7016</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>-0.0629</td>
+      <td>0.9665</td>
+      <td>0.9942</td>
       <td>10</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>sig_T_Cell_Exhaustion</td>
-      <td>0.0728</td>
-      <td>0.9344</td>
-      <td>0.9999</td>
+      <td>sig_Type I Interferon</td>
+      <td>-0.0310</td>
+      <td>0.9529</td>
+      <td>0.9942</td>
       <td>10</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>sig_Myeloid_Activation</td>
-      <td>-0.8469</td>
-      <td>0.2063</td>
-      <td>0.7016</td>
+      <td>sig_Type II Interferon</td>
+      <td>-1.0476</td>
+      <td>0.0435</td>
+      <td>0.1999</td>
       <td>10</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>sig_B_Cell_Activation</td>
-      <td>-1.4705</td>
-      <td>0.3508</td>
-      <td>0.7016</td>
+      <td>sig_Memory T Cell</td>
+      <td>-0.7990</td>
+      <td>0.0668</td>
+      <td>0.2115</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>sig_T Cell Activation</td>
+      <td>-0.8079</td>
+      <td>0.0923</td>
+      <td>0.2505</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>sig_Inflammatory Response</td>
+      <td>-0.8251</td>
+      <td>0.4945</td>
+      <td>0.7829</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>sig_Antigen Presentation</td>
+      <td>-1.0444</td>
+      <td>0.3007</td>
+      <td>0.5583</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>sig_Cell Proliferation</td>
+      <td>0.0112</td>
+      <td>0.9942</td>
+      <td>0.9942</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>sig_Regulatory T Cell</td>
+      <td>-0.2294</td>
+      <td>0.6239</td>
+      <td>0.8214</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>sig_NK Cell Activity</td>
+      <td>0.7910</td>
+      <td>0.5856</td>
+      <td>0.8214</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>sig_Apoptosis</td>
+      <td>-1.3513</td>
+      <td>0.0059</td>
+      <td>0.1122</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>sig_Oxidative Stress Response</td>
+      <td>-1.4389</td>
+      <td>0.0365</td>
+      <td>0.1999</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>-0.3907</td>
+      <td>0.6485</td>
+      <td>0.8214</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>sig_Monocyte Macrophage</td>
+      <td>-0.8579</td>
+      <td>0.2538</td>
+      <td>0.5583</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>-1.8448</td>
+      <td>0.0526</td>
+      <td>0.1999</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>sig_T Follicular Helper</td>
+      <td>-0.7806</td>
+      <td>0.3233</td>
+      <td>0.5583</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>sig_Hypoxia</td>
+      <td>-1.5210</td>
+      <td>0.0207</td>
+      <td>0.1969</td>
       <td>10</td>
     </tr>
   </tbody>
@@ -1598,50 +1982,154 @@ Adjusted results at visit: DFO_8-14
   <tbody>
     <tr>
       <th>0</th>
-      <td>sig_IFN_Response</td>
-      <td>-0.3551</td>
-      <td>0.4643</td>
-      <td>0.8604</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>-0.2901</td>
+      <td>0.7362</td>
+      <td>0.9142</td>
       <td>16</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>sig_Inflammation</td>
-      <td>0.0796</td>
-      <td>0.8381</td>
-      <td>0.8604</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>0.6987</td>
+      <td>0.2205</td>
+      <td>0.4656</td>
       <td>16</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.1519</td>
-      <td>0.8604</td>
-      <td>0.8604</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>-0.0466</td>
+      <td>0.9075</td>
+      <td>0.9579</td>
       <td>16</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>sig_T_Cell_Exhaustion</td>
-      <td>0.4013</td>
-      <td>0.5100</td>
-      <td>0.8604</td>
+      <td>sig_Type I Interferon</td>
+      <td>-0.2702</td>
+      <td>0.5857</td>
+      <td>0.8560</td>
       <td>16</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>sig_Myeloid_Activation</td>
-      <td>0.0866</td>
-      <td>0.8155</td>
-      <td>0.8604</td>
+      <td>sig_Type II Interferon</td>
+      <td>-0.3901</td>
+      <td>0.4237</td>
+      <td>0.7319</td>
       <td>16</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>sig_B_Cell_Activation</td>
-      <td>0.9085</td>
-      <td>0.2525</td>
-      <td>0.8604</td>
+      <td>sig_Memory T Cell</td>
+      <td>-0.0927</td>
+      <td>0.7926</td>
+      <td>0.9142</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>sig_T Cell Activation</td>
+      <td>0.3347</td>
+      <td>0.3558</td>
+      <td>0.6761</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>sig_Inflammatory Response</td>
+      <td>0.7218</td>
+      <td>0.1863</td>
+      <td>0.4425</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>sig_Antigen Presentation</td>
+      <td>-0.3277</td>
+      <td>0.6905</td>
+      <td>0.9142</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>sig_Cell Proliferation</td>
+      <td>1.4313</td>
+      <td>0.0131</td>
+      <td>0.1480</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>sig_Regulatory T Cell</td>
+      <td>1.0010</td>
+      <td>0.0296</td>
+      <td>0.1480</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>sig_NK Cell Activity</td>
+      <td>0.1767</td>
+      <td>0.8179</td>
+      <td>0.9142</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>sig_Apoptosis</td>
+      <td>0.6596</td>
+      <td>0.0450</td>
+      <td>0.1480</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>sig_Oxidative Stress Response</td>
+      <td>0.8233</td>
+      <td>0.0337</td>
+      <td>0.1480</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>1.3473</td>
+      <td>0.0313</td>
+      <td>0.1480</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>sig_Monocyte Macrophage</td>
+      <td>0.0157</td>
+      <td>0.9663</td>
+      <td>0.9663</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>0.3744</td>
+      <td>0.4975</td>
+      <td>0.7876</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>sig_T Follicular Helper</td>
+      <td>0.2950</td>
+      <td>0.0688</td>
+      <td>0.1868</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>sig_Hypoxia</td>
+      <td>0.9004</td>
+      <td>0.0467</td>
+      <td>0.1480</td>
       <td>16</td>
     </tr>
   </tbody>
@@ -1653,7 +2141,7 @@ Adjusted results at visit: DFO_8-14
 <section id="9.-Visualization-of-Severity-Differences">
 <h2>9. Visualization of Severity Differences<a class="headerlink" href="#9.-Visualization-of-Severity-Differences" title="Link to this heading">#</a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize signature distributions by severity and timepoint</span>
@@ -1752,7 +2240,7 @@ Adjusted results at visit: DFO_8-14
 <h2>10. Cell-Type Specific Analysis<a class="headerlink" href="#10.-Cell-Type-Specific-Analysis" title="Link to this heading">#</a></h2>
 <p>Examine severity differences within specific immune cell populations.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Focus on major immune populations</span>
@@ -1826,19 +2314,19 @@ Adjusted results at visit: DFO_8-14
 Lineage distribution:
 lineage
 CD4_T        49451
-CD8_T        46464
-Other        38546
+Monocytes    42563
 NK           35643
-Monocytes    26237
-B_cells       4827
+CD8_T        33613
+B_cells      28582
+Other        11316
 DCs           4034
 Name: count, dtype: int64
 
 === Cell-Type Specific Analysis at DFO_8-14 ===
     (auto-selected: best participant balance across arms)
 CD4_T (n=20,684 cells, 16 participants):
-CD8_T (n=22,232 cells, 16 participants):
-Monocytes (n=11,322 cells, 15 participants):
+CD8_T (n=15,382 cells, 16 participants):
+Monocytes (n=19,550 cells, 16 participants):
 NK (n=14,538 cells, 16 participants):
 
 Results (participant-level Mann-Whitney U via sctrial):
@@ -1877,130 +2365,130 @@ Results (participant-level Mann-Whitney U via sctrial):
     <tr>
       <th>0</th>
       <td>CD4_T</td>
-      <td>sig_IFN_Response</td>
-      <td>0.0404</td>
-      <td>0.9130</td>
-      <td>1.0000</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>-0.0332</td>
+      <td>0.7427</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>1</th>
       <td>CD4_T</td>
-      <td>sig_Inflammation</td>
-      <td>-0.0197</td>
-      <td>0.9130</td>
-      <td>1.0000</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>0.0153</td>
+      <td>0.4409</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>2</th>
       <td>CD4_T</td>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.0369</td>
-      <td>0.5833</td>
-      <td>1.0000</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>0.0417</td>
+      <td>0.1804</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>3</th>
       <td>CD4_T</td>
-      <td>sig_T_Cell_Exhaustion</td>
-      <td>0.0545</td>
-      <td>0.0897</td>
-      <td>0.9194</td>
+      <td>sig_Type I Interferon</td>
+      <td>0.0393</td>
+      <td>0.9130</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>4</th>
       <td>CD8_T</td>
-      <td>sig_IFN_Response</td>
-      <td>-0.0394</td>
-      <td>1.0000</td>
-      <td>1.0000</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>0.2510</td>
+      <td>0.3773</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>5</th>
       <td>CD8_T</td>
-      <td>sig_Inflammation</td>
-      <td>0.1593</td>
-      <td>0.6612</td>
-      <td>1.0000</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>0.0273</td>
+      <td>0.7427</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>6</th>
       <td>CD8_T</td>
-      <td>sig_Cytotoxicity</td>
-      <td>0.2083</td>
-      <td>0.2212</td>
-      <td>1.0000</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>0.0516</td>
+      <td>0.4409</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>7</th>
       <td>CD8_T</td>
-      <td>sig_T_Cell_Exhaustion</td>
-      <td>0.0961</td>
-      <td>0.1149</td>
-      <td>0.9194</td>
+      <td>sig_Type I Interferon</td>
+      <td>0.0324</td>
+      <td>0.8269</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>8</th>
       <td>Monocytes</td>
-      <td>sig_IFN_Response</td>
-      <td>0.1161</td>
-      <td>0.8591</td>
-      <td>1.0000</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>-0.0265</td>
+      <td>0.1804</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>9</th>
       <td>Monocytes</td>
-      <td>sig_Inflammation</td>
-      <td>0.0580</td>
-      <td>0.5135</td>
-      <td>1.0000</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>-0.0340</td>
+      <td>0.6612</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>10</th>
       <td>Monocytes</td>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.0634</td>
-      <td>0.8591</td>
-      <td>1.0000</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>-0.0148</td>
+      <td>0.6612</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>11</th>
       <td>Monocytes</td>
-      <td>sig_T_Cell_Exhaustion</td>
-      <td>-0.0218</td>
-      <td>0.9530</td>
-      <td>1.0000</td>
+      <td>sig_Type I Interferon</td>
+      <td>0.0377</td>
+      <td>0.6612</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>12</th>
       <td>NK</td>
-      <td>sig_IFN_Response</td>
-      <td>0.0015</td>
-      <td>1.0000</td>
-      <td>1.0000</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>-0.0238</td>
+      <td>0.5833</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>13</th>
       <td>NK</td>
-      <td>sig_Inflammation</td>
-      <td>0.0093</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>-0.0271</td>
       <td>0.9130</td>
-      <td>1.0000</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>14</th>
       <td>NK</td>
-      <td>sig_Cytotoxicity</td>
-      <td>0.0206</td>
-      <td>0.6612</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>-0.0231</td>
       <td>1.0000</td>
+      <td>1.0</td>
     </tr>
     <tr>
       <th>15</th>
       <td>NK</td>
-      <td>sig_T_Cell_Exhaustion</td>
-      <td>0.0294</td>
-      <td>0.6612</td>
+      <td>sig_Type I Interferon</td>
+      <td>0.0001</td>
       <td>1.0000</td>
+      <td>1.0</td>
     </tr>
   </tbody>
 </table>
@@ -2018,7 +2506,7 @@ Results (participant-level Mann-Whitney U via sctrial):
 <h2>11. Cell Type Abundance Differences<a class="headerlink" href="#11.-Cell-Type-Abundance-Differences" title="Link to this heading">#</a></h2>
 <p>Compare cell type composition between severity groups.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Calculate cell type proportions per participant</span>
@@ -2105,10 +2593,10 @@ Note: Each data point = one participant&#39;s cell type proportion
 --------------------------------------------------
 </pre></div></div>
 </div>
-<section id="9.1-Adjusted-Abundance-DiD">
-<h3>9.1 Adjusted Abundance DiD<a class="headerlink" href="#9.1-Adjusted-Abundance-DiD" title="Link to this heading">#</a></h3>
+<section id="11.1-Adjusted-Abundance-DiD">
+<h3>11.1 Adjusted Abundance DiD<a class="headerlink" href="#11.1-Adjusted-Abundance-DiD" title="Link to this heading">#</a></h3>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Adjusted abundance DiD (covariates)</span>
@@ -2790,7 +3278,7 @@ No paired participants for abundance DiD. Running baseline cross-sectional abund
 <h2>12. Individual Gene Analysis<a class="headerlink" href="#12.-Individual-Gene-Analysis" title="Link to this heading">#</a></h2>
 <p>Examine specific genes of interest for COVID-19.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Key COVID-19 genes</span>
@@ -2879,7 +3367,7 @@ Analyzing 12 COVID-relevant genes
 <h3>13.1 Effect Sizes for Cross-Sectional Comparisons<a class="headerlink" href="#13.1-Effect-Sizes-for-Cross-Sectional-Comparisons" title="Link to this heading">#</a></h3>
 <p>Effect sizes quantify the magnitude of differences between Mild and Severe cases.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -3031,132 +3519,418 @@ Effect sizes (Severe vs Mild):
     <tr>
       <th>0</th>
       <td>DFO_15+</td>
-      <td>sig_IFN_Response</td>
-      <td>0.453</td>
-      <td>0.393</td>
-      <td>-0.730</td>
-      <td>4.212</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>0.707</td>
+      <td>0.614</td>
+      <td>-1.688</td>
+      <td>6.606</td>
       <td>4</td>
       <td>4</td>
     </tr>
     <tr>
       <th>1</th>
       <td>DFO_15+</td>
-      <td>sig_Inflammation</td>
-      <td>1.787</td>
-      <td>1.552</td>
-      <td>0.527</td>
-      <td>5.782</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>0.392</td>
+      <td>0.341</td>
+      <td>-1.053</td>
+      <td>2.652</td>
       <td>4</td>
       <td>4</td>
     </tr>
     <tr>
       <th>2</th>
       <td>DFO_15+</td>
-      <td>sig_Cytotoxicity</td>
-      <td>0.649</td>
-      <td>0.564</td>
-      <td>-1.608</td>
-      <td>5.717</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>0.077</td>
+      <td>0.066</td>
+      <td>-2.077</td>
+      <td>1.728</td>
       <td>4</td>
       <td>4</td>
     </tr>
     <tr>
       <th>3</th>
       <td>DFO_15+</td>
-      <td>sig_T_Cell_Exhaustion</td>
-      <td>0.195</td>
-      <td>0.170</td>
-      <td>-1.177</td>
-      <td>2.273</td>
+      <td>sig_Type I Interferon</td>
+      <td>0.412</td>
+      <td>0.358</td>
+      <td>-0.849</td>
+      <td>4.844</td>
       <td>4</td>
       <td>4</td>
     </tr>
     <tr>
       <th>4</th>
       <td>DFO_15+</td>
-      <td>sig_Myeloid_Activation</td>
-      <td>0.627</td>
-      <td>0.545</td>
-      <td>-0.630</td>
-      <td>12.730</td>
+      <td>sig_Type II Interferon</td>
+      <td>0.631</td>
+      <td>0.548</td>
+      <td>-0.715</td>
+      <td>3.076</td>
       <td>4</td>
       <td>4</td>
     </tr>
     <tr>
       <th>5</th>
       <td>DFO_15+</td>
-      <td>sig_B_Cell_Activation</td>
-      <td>-1.184</td>
-      <td>-1.028</td>
-      <td>-4.996</td>
-      <td>0.038</td>
+      <td>sig_Memory T Cell</td>
+      <td>-0.986</td>
+      <td>-0.856</td>
+      <td>-5.441</td>
+      <td>0.473</td>
       <td>4</td>
       <td>4</td>
     </tr>
     <tr>
       <th>6</th>
-      <td>DFO_8-14</td>
-      <td>sig_IFN_Response</td>
-      <td>-0.066</td>
-      <td>-0.063</td>
-      <td>-0.772</td>
-      <td>1.212</td>
-      <td>11</td>
-      <td>5</td>
+      <td>DFO_15+</td>
+      <td>sig_T Cell Activation</td>
+      <td>-0.087</td>
+      <td>-0.076</td>
+      <td>-3.461</td>
+      <td>4.153</td>
+      <td>4</td>
+      <td>4</td>
     </tr>
     <tr>
       <th>7</th>
-      <td>DFO_8-14</td>
-      <td>sig_Inflammation</td>
-      <td>-0.056</td>
-      <td>-0.053</td>
-      <td>-0.884</td>
-      <td>1.050</td>
-      <td>11</td>
-      <td>5</td>
+      <td>DFO_15+</td>
+      <td>sig_Inflammatory Response</td>
+      <td>0.704</td>
+      <td>0.612</td>
+      <td>-0.583</td>
+      <td>2.820</td>
+      <td>4</td>
+      <td>4</td>
     </tr>
     <tr>
       <th>8</th>
-      <td>DFO_8-14</td>
-      <td>sig_Cytotoxicity</td>
-      <td>0.138</td>
-      <td>0.131</td>
-      <td>-0.791</td>
-      <td>1.333</td>
-      <td>11</td>
-      <td>5</td>
+      <td>DFO_15+</td>
+      <td>sig_Antigen Presentation</td>
+      <td>-0.481</td>
+      <td>-0.418</td>
+      <td>-1.982</td>
+      <td>1.007</td>
+      <td>4</td>
+      <td>4</td>
     </tr>
     <tr>
       <th>9</th>
-      <td>DFO_8-14</td>
-      <td>sig_T_Cell_Exhaustion</td>
-      <td>0.734</td>
-      <td>0.693</td>
-      <td>-0.150</td>
-      <td>1.941</td>
-      <td>11</td>
-      <td>5</td>
+      <td>DFO_15+</td>
+      <td>sig_Cell Proliferation</td>
+      <td>0.308</td>
+      <td>0.268</td>
+      <td>-1.369</td>
+      <td>1.878</td>
+      <td>4</td>
+      <td>4</td>
     </tr>
     <tr>
       <th>10</th>
+      <td>DFO_15+</td>
+      <td>sig_Regulatory T Cell</td>
+      <td>0.389</td>
+      <td>0.338</td>
+      <td>-0.912</td>
+      <td>3.330</td>
+      <td>4</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>DFO_15+</td>
+      <td>sig_NK Cell Activity</td>
+      <td>0.681</td>
+      <td>0.592</td>
+      <td>-1.521</td>
+      <td>8.783</td>
+      <td>4</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>DFO_15+</td>
+      <td>sig_Apoptosis</td>
+      <td>-0.230</td>
+      <td>-0.200</td>
+      <td>-2.273</td>
+      <td>1.247</td>
+      <td>4</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>DFO_15+</td>
+      <td>sig_Oxidative Stress Response</td>
+      <td>-0.058</td>
+      <td>-0.050</td>
+      <td>-1.523</td>
+      <td>2.062</td>
+      <td>4</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>DFO_15+</td>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>-0.314</td>
+      <td>-0.273</td>
+      <td>-2.832</td>
+      <td>0.973</td>
+      <td>4</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>DFO_15+</td>
+      <td>sig_Monocyte Macrophage</td>
+      <td>1.002</td>
+      <td>0.870</td>
+      <td>-0.233</td>
+      <td>10.230</td>
+      <td>4</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>DFO_15+</td>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>-0.112</td>
+      <td>-0.098</td>
+      <td>-2.338</td>
+      <td>3.204</td>
+      <td>4</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>DFO_15+</td>
+      <td>sig_T Follicular Helper</td>
+      <td>-0.140</td>
+      <td>-0.121</td>
+      <td>-2.726</td>
+      <td>2.598</td>
+      <td>4</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>DFO_15+</td>
+      <td>sig_Hypoxia</td>
+      <td>-0.223</td>
+      <td>-0.194</td>
+      <td>-2.013</td>
+      <td>2.287</td>
+      <td>4</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <th>19</th>
       <td>DFO_8-14</td>
-      <td>sig_Myeloid_Activation</td>
-      <td>0.020</td>
-      <td>0.019</td>
-      <td>-0.785</td>
-      <td>1.062</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>0.105</td>
+      <td>0.099</td>
+      <td>-0.823</td>
+      <td>1.337</td>
       <td>11</td>
       <td>5</td>
     </tr>
     <tr>
-      <th>11</th>
+      <th>20</th>
       <td>DFO_8-14</td>
-      <td>sig_B_Cell_Activation</td>
-      <td>1.211</td>
-      <td>1.145</td>
-      <td>0.164</td>
-      <td>3.557</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>0.252</td>
+      <td>0.239</td>
+      <td>-0.971</td>
+      <td>1.476</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>21</th>
+      <td>DFO_8-14</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>0.206</td>
+      <td>0.195</td>
+      <td>-0.918</td>
+      <td>1.419</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>22</th>
+      <td>DFO_8-14</td>
+      <td>sig_Type I Interferon</td>
+      <td>-0.004</td>
+      <td>-0.003</td>
+      <td>-0.683</td>
+      <td>1.337</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>23</th>
+      <td>DFO_8-14</td>
+      <td>sig_Type II Interferon</td>
+      <td>-0.389</td>
+      <td>-0.368</td>
+      <td>-1.071</td>
+      <td>0.896</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>24</th>
+      <td>DFO_8-14</td>
+      <td>sig_Memory T Cell</td>
+      <td>-0.340</td>
+      <td>-0.321</td>
+      <td>-1.391</td>
+      <td>0.540</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>25</th>
+      <td>DFO_8-14</td>
+      <td>sig_T Cell Activation</td>
+      <td>-0.113</td>
+      <td>-0.107</td>
+      <td>-1.372</td>
+      <td>0.977</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>26</th>
+      <td>DFO_8-14</td>
+      <td>sig_Inflammatory Response</td>
+      <td>-0.128</td>
+      <td>-0.121</td>
+      <td>-1.615</td>
+      <td>1.277</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>27</th>
+      <td>DFO_8-14</td>
+      <td>sig_Antigen Presentation</td>
+      <td>-0.133</td>
+      <td>-0.126</td>
+      <td>-0.919</td>
+      <td>0.777</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>28</th>
+      <td>DFO_8-14</td>
+      <td>sig_Cell Proliferation</td>
+      <td>1.190</td>
+      <td>1.125</td>
+      <td>0.032</td>
+      <td>2.878</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>29</th>
+      <td>DFO_8-14</td>
+      <td>sig_Regulatory T Cell</td>
+      <td>0.829</td>
+      <td>0.784</td>
+      <td>-0.104</td>
+      <td>1.926</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>30</th>
+      <td>DFO_8-14</td>
+      <td>sig_NK Cell Activity</td>
+      <td>0.059</td>
+      <td>0.056</td>
+      <td>-1.002</td>
+      <td>1.352</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>31</th>
+      <td>DFO_8-14</td>
+      <td>sig_Apoptosis</td>
+      <td>-0.207</td>
+      <td>-0.196</td>
+      <td>-1.658</td>
+      <td>0.851</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>32</th>
+      <td>DFO_8-14</td>
+      <td>sig_Oxidative Stress Response</td>
+      <td>0.661</td>
+      <td>0.625</td>
+      <td>-0.110</td>
+      <td>2.867</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>33</th>
+      <td>DFO_8-14</td>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>1.481</td>
+      <td>1.400</td>
+      <td>0.465</td>
+      <td>3.630</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>34</th>
+      <td>DFO_8-14</td>
+      <td>sig_Monocyte Macrophage</td>
+      <td>-0.016</td>
+      <td>-0.016</td>
+      <td>-0.810</td>
+      <td>0.974</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>35</th>
+      <td>DFO_8-14</td>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>-0.304</td>
+      <td>-0.287</td>
+      <td>-1.634</td>
+      <td>0.864</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>36</th>
+      <td>DFO_8-14</td>
+      <td>sig_T Follicular Helper</td>
+      <td>0.385</td>
+      <td>0.364</td>
+      <td>-0.683</td>
+      <td>1.598</td>
+      <td>11</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>37</th>
+      <td>DFO_8-14</td>
+      <td>sig_Hypoxia</td>
+      <td>0.324</td>
+      <td>0.306</td>
+      <td>-0.764</td>
+      <td>1.513</td>
       <td>11</td>
       <td>5</td>
     </tr>
@@ -3184,7 +3958,7 @@ Effect sizes (Severe vs Mild):
 <p>Power analysis helps understand what effect sizes this study could detect and plan future longitudinal studies.</p>
 <p><strong>Caveat</strong>: This dataset has <strong>no longitudinally paired participants</strong> for the primary Mild vs Severe comparison. The power curves below use the average group size as a rough guide for what a <em>future</em> paired longitudinal study of this scale could detect — they do <strong>not</strong> represent the power of the current cross-sectional design. Cross-sectional comparisons generally have lower power than paired longitudinal designs.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -3247,7 +4021,8 @@ Effect sizes (Severe vs Mild):
 
 <span class="n">iccs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.30</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
 <span class="n">design_effects</span> <span class="o">=</span> <span class="p">[</span><span class="n">st</span><span class="o">.</span><span class="n">design_effect</span><span class="p">(</span><span class="n">cells_per_pt</span><span class="p">,</span> <span class="n">icc</span><span class="p">)</span> <span class="k">for</span> <span class="n">icc</span> <span class="ow">in</span> <span class="n">iccs</span><span class="p">]</span>
-<span class="n">effective_ns</span> <span class="o">=</span> <span class="p">[</span><span class="n">st</span><span class="o">.</span><span class="n">effective_sample_size</span><span class="p">(</span><span class="n">total_cells</span><span class="p">,</span> <span class="n">cells_per_pt</span><span class="p">,</span> <span class="n">icc</span><span class="p">)</span> <span class="k">for</span> <span class="n">icc</span> <span class="ow">in</span> <span class="n">iccs</span><span class="p">]</span>
+<span class="n">n_participants</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"participant_id"</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+<span class="n">effective_ns</span> <span class="o">=</span> <span class="p">[</span><span class="n">st</span><span class="o">.</span><span class="n">effective_sample_size</span><span class="p">(</span><span class="n">n_participants</span><span class="p">,</span> <span class="n">cells_per_pt</span><span class="p">,</span> <span class="n">icc</span><span class="p">)</span> <span class="k">for</span> <span class="n">icc</span> <span class="ow">in</span> <span class="n">iccs</span><span class="p">]</span>
 
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">iccs</span><span class="p">,</span> <span class="n">design_effects</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"steelblue"</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Intraclass Correlation (ICC)"</span><span class="p">)</span>
@@ -3408,7 +4183,7 @@ KEY INSIGHTS
 <h3>Single-Gene Cross-Sectional Check (Participant-Level)<a class="headerlink" href="#Single-Gene-Cross-Sectional-Check-(Participant-Level)" title="Link to this heading">#</a></h3>
 <p>Here, we use a focused single-gene comparison to validate cross-sectional differences at the participant level. This avoids pseudoreplication and provides an interpretable effect for one gene in a specific lineage.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Single-Gene Cross-Sectional Check (Participant-Level) ==="</span><span class="p">)</span>
@@ -3539,12 +4314,12 @@ KEY INSIGHTS
       <td>[B_cells]</td>
       <td>Severe</td>
       <td>Mild</td>
-      <td>10</td>
+      <td>11</td>
       <td>23</td>
-      <td>1.055019</td>
-      <td>1.117754</td>
-      <td>-0.062736</td>
-      <td>0.890947</td>
+      <td>0.416558</td>
+      <td>0.465953</td>
+      <td>-0.049395</td>
+      <td>0.632249</td>
       <td>B_cells</td>
     </tr>
     <tr>
@@ -3569,10 +4344,10 @@ KEY INSIGHTS
       <td>Mild</td>
       <td>11</td>
       <td>23</td>
-      <td>0.474734</td>
-      <td>0.659512</td>
-      <td>-0.184778</td>
-      <td>0.658669</td>
+      <td>0.406572</td>
+      <td>0.488814</td>
+      <td>-0.082242</td>
+      <td>0.941309</td>
       <td>CD8_T</td>
     </tr>
     <tr>
@@ -3595,12 +4370,12 @@ KEY INSIGHTS
       <td>[Monocytes]</td>
       <td>Severe</td>
       <td>Mild</td>
-      <td>10</td>
-      <td>16</td>
-      <td>0.936911</td>
-      <td>1.244191</td>
-      <td>-0.307280</td>
-      <td>0.279944</td>
+      <td>11</td>
+      <td>23</td>
+      <td>0.780016</td>
+      <td>0.974678</td>
+      <td>-0.194662</td>
+      <td>0.768375</td>
       <td>Monocytes</td>
     </tr>
     <tr>
@@ -3625,10 +4400,10 @@ KEY INSIGHTS
       <td>Mild</td>
       <td>11</td>
       <td>23</td>
-      <td>0.242101</td>
-      <td>0.342777</td>
-      <td>-0.100676</td>
-      <td>0.712779</td>
+      <td>0.221410</td>
+      <td>0.340090</td>
+      <td>-0.118680</td>
+      <td>0.357408</td>
       <td>Other</td>
     </tr>
   </tbody>
@@ -3657,7 +4432,7 @@ KEY INSIGHTS
 <div><p><strong>Note:</strong> This dataset has no longitudinally paired participants, so the code falls back to a <strong>repeated-cross-sectional (unpaired) OLS DiD</strong>. This is a weaker design than a true paired DiD — treat any discoveries as <strong>exploratory hypothesis-generating</strong> only, not confirmatory.</p>
 </div></blockquote>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">signature_cols</span><span class="p">:</span>
@@ -3827,9 +4602,9 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>DFO_15+</td>
       <td>Severe</td>
       <td>B_cells</td>
-      <td>sig_B_Cell_Activation</td>
-      <td>0.899969</td>
-      <td>65</td>
+      <td>sig_Antigen Presentation</td>
+      <td>0.255384</td>
+      <td>209</td>
     </tr>
     <tr>
       <th>1</th>
@@ -3837,9 +4612,9 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>DFO_15+</td>
       <td>Severe</td>
       <td>B_cells</td>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.434286</td>
-      <td>65</td>
+      <td>sig_Apoptosis</td>
+      <td>0.055282</td>
+      <td>209</td>
     </tr>
     <tr>
       <th>2</th>
@@ -3847,9 +4622,9 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>DFO_15+</td>
       <td>Severe</td>
       <td>B_cells</td>
-      <td>sig_IFN_Response</td>
-      <td>-0.220424</td>
-      <td>65</td>
+      <td>sig_Cell Proliferation</td>
+      <td>0.126665</td>
+      <td>209</td>
     </tr>
     <tr>
       <th>3</th>
@@ -3857,9 +4632,9 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>DFO_15+</td>
       <td>Severe</td>
       <td>B_cells</td>
-      <td>sig_Inflammation</td>
-      <td>-0.356552</td>
-      <td>65</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>-0.074214</td>
+      <td>209</td>
     </tr>
     <tr>
       <th>4</th>
@@ -3867,9 +4642,9 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
       <td>DFO_15+</td>
       <td>Severe</td>
       <td>B_cells</td>
-      <td>sig_Myeloid_Activation</td>
-      <td>-0.215348</td>
-      <td>65</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>-0.429571</td>
+      <td>209</td>
     </tr>
   </tbody>
 </table>
@@ -3880,7 +4655,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/71/dc4p4yz15s74z9c69xy6sk_00000gt/T/ipykernel_52813/2438914800.py:67: UserWarning: FDR correction is applied within each &#39;module&#39; group (column FDR_DiD). Per-group FDR does not control the overall false discovery rate across all tests. Consult FDR_DiD_global (when fdr_global=True) for a globally corrected q-value.
+/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_99779/2438914800.py:67: UserWarning: FDR correction is applied within each &#39;module&#39; group (column FDR_DiD). Per-group FDR does not control the overall false discovery rate across all tests. Consult FDR_DiD_global (when fdr_global=True) for a globally corrected q-value.
   return st.module_score_did_by_pool(
 </pre></div></div>
 </div>
@@ -3921,284 +4696,284 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
   </thead>
   <tbody>
     <tr>
-      <th>10</th>
-      <td>CD4_T</td>
-      <td>sig_Myeloid_Activation</td>
-      <td>0.033539</td>
-      <td>-0.022396</td>
-      <td>0.055934</td>
-      <td>0.005882</td>
-      <td>1.448392e-02</td>
-      <td>1.435256e-01</td>
-      <td>18</td>
-      <td>0.041177</td>
-      <td>0.247059</td>
-    </tr>
-    <tr>
-      <th>39</th>
-      <td>Other</td>
-      <td>sig_Inflammation</td>
-      <td>0.063717</td>
-      <td>-0.031208</td>
-      <td>0.094925</td>
-      <td>0.060188</td>
-      <td>9.327552e-02</td>
-      <td>3.731571e-01</td>
-      <td>18</td>
-      <td>0.421313</td>
-      <td>0.766013</td>
-    </tr>
-    <tr>
-      <th>0</th>
-      <td>B_cells</td>
-      <td>sig_B_Cell_Activation</td>
-      <td>0.023480</td>
-      <td>0.316719</td>
-      <td>-0.293239</td>
-      <td>0.088852</td>
-      <td>7.913530e-01</td>
-      <td>3.046176e-02</td>
-      <td>18</td>
-      <td>0.287586</td>
-      <td>0.766013</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>CD8_T</td>
-      <td>sig_B_Cell_Activation</td>
-      <td>0.084332</td>
-      <td>-0.041179</td>
-      <td>0.125511</td>
-      <td>0.090395</td>
-      <td>1.523304e-01</td>
-      <td>3.956929e-01</td>
-      <td>18</td>
-      <td>0.287586</td>
-      <td>0.766013</td>
-    </tr>
-    <tr>
-      <th>36</th>
-      <td>Other</td>
-      <td>sig_B_Cell_Activation</td>
-      <td>-0.062174</td>
-      <td>0.331806</td>
-      <td>-0.393980</td>
-      <td>0.123251</td>
-      <td>7.678999e-01</td>
-      <td>3.764561e-02</td>
-      <td>18</td>
-      <td>0.287586</td>
-      <td>0.766013</td>
-    </tr>
-    <tr>
       <th>9</th>
+      <td>B_cells</td>
+      <td>sig_Monocyte Macrophage</td>
+      <td>0.012421</td>
+      <td>-0.035665</td>
+      <td>0.048086</td>
+      <td>0.006500</td>
+      <td>1.361194e-01</td>
+      <td>0.020210</td>
+      <td>18</td>
+      <td>0.045500</td>
+      <td>0.718733</td>
+    </tr>
+    <tr>
+      <th>37</th>
       <td>CD4_T</td>
-      <td>sig_Inflammation</td>
-      <td>0.025529</td>
-      <td>-0.057104</td>
-      <td>0.082633</td>
-      <td>0.148328</td>
-      <td>5.669148e-01</td>
-      <td>1.350545e-01</td>
+      <td>sig_Type II Interferon</td>
+      <td>0.057539</td>
+      <td>-0.116316</td>
+      <td>0.173855</td>
+      <td>0.019131</td>
+      <td>4.203365e-01</td>
+      <td>0.000354</td>
       <td>18</td>
-      <td>0.454691</td>
-      <td>0.766013</td>
+      <td>0.050437</td>
+      <td>0.718733</td>
     </tr>
     <tr>
-      <th>22</th>
-      <td>DCs</td>
-      <td>sig_Myeloid_Activation</td>
-      <td>0.342098</td>
-      <td>0.152212</td>
-      <td>0.189887</td>
-      <td>0.163697</td>
-      <td>4.228575e-03</td>
-      <td>4.767019e-02</td>
+      <th>94</th>
+      <td>Monocytes</td>
+      <td>sig_Type II Interferon</td>
+      <td>-0.121601</td>
+      <td>-0.441053</td>
+      <td>0.319452</td>
+      <td>0.020166</td>
+      <td>2.247482e-01</td>
+      <td>0.000007</td>
       <td>18</td>
-      <td>0.306405</td>
-      <td>0.766013</td>
+      <td>0.050437</td>
+      <td>0.718733</td>
     </tr>
     <tr>
-      <th>40</th>
-      <td>Other</td>
-      <td>sig_Myeloid_Activation</td>
-      <td>0.032732</td>
-      <td>-0.017220</td>
-      <td>0.049952</td>
-      <td>0.177722</td>
-      <td>2.535658e-01</td>
-      <td>4.907715e-01</td>
+      <th>56</th>
+      <td>CD8_T</td>
+      <td>sig_Type II Interferon</td>
+      <td>0.080186</td>
+      <td>-0.099801</td>
+      <td>0.179987</td>
+      <td>0.021616</td>
+      <td>2.476298e-01</td>
+      <td>0.021417</td>
       <td>18</td>
-      <td>0.306405</td>
-      <td>0.766013</td>
+      <td>0.050437</td>
+      <td>0.718733</td>
     </tr>
     <tr>
-      <th>5</th>
+      <th>28</th>
+      <td>CD4_T</td>
+      <td>sig_Monocyte Macrophage</td>
+      <td>0.004282</td>
+      <td>-0.041806</td>
+      <td>0.046088</td>
+      <td>0.039128</td>
+      <td>7.902376e-01</td>
+      <td>0.009327</td>
+      <td>18</td>
+      <td>0.136947</td>
+      <td>0.875250</td>
+    </tr>
+    <tr>
+      <th>50</th>
+      <td>CD8_T</td>
+      <td>sig_Regulatory T Cell</td>
+      <td>0.060579</td>
+      <td>-0.028357</td>
+      <td>0.088936</td>
+      <td>0.046339</td>
+      <td>9.530340e-02</td>
+      <td>0.317496</td>
+      <td>18</td>
+      <td>0.215342</td>
+      <td>0.875250</td>
+    </tr>
+    <tr>
+      <th>31</th>
+      <td>CD4_T</td>
+      <td>sig_Regulatory T Cell</td>
+      <td>0.071323</td>
+      <td>-0.042156</td>
+      <td>0.113480</td>
+      <td>0.061526</td>
+      <td>1.924073e-01</td>
+      <td>0.191786</td>
+      <td>18</td>
+      <td>0.215342</td>
+      <td>0.875250</td>
+    </tr>
+    <tr>
+      <th>18</th>
       <td>B_cells</td>
-      <td>sig_T_Cell_Exhaustion</td>
-      <td>0.161363</td>
-      <td>-0.061513</td>
-      <td>0.222876</td>
-      <td>0.186291</td>
-      <td>2.116081e-01</td>
-      <td>5.922744e-01</td>
+      <td>sig_Type II Interferon</td>
+      <td>-0.004134</td>
+      <td>-0.097863</td>
+      <td>0.093729</td>
+      <td>0.073625</td>
+      <td>9.330677e-01</td>
+      <td>0.000089</td>
       <td>18</td>
-      <td>0.906840</td>
-      <td>0.766013</td>
+      <td>0.095046</td>
+      <td>0.875250</td>
     </tr>
     <tr>
-      <th>33</th>
+      <th>113</th>
       <td>NK</td>
-      <td>sig_Inflammation</td>
-      <td>0.108476</td>
-      <td>0.020518</td>
-      <td>0.087958</td>
-      <td>0.194868</td>
-      <td>2.098862e-02</td>
-      <td>6.833466e-01</td>
+      <td>sig_Type II Interferon</td>
+      <td>0.051381</td>
+      <td>-0.066763</td>
+      <td>0.118144</td>
+      <td>0.080356</td>
+      <td>3.456472e-01</td>
+      <td>0.124200</td>
       <td>18</td>
-      <td>0.454691</td>
-      <td>0.766013</td>
+      <td>0.095046</td>
+      <td>0.875250</td>
     </tr>
     <tr>
-      <th>16</th>
-      <td>CD8_T</td>
-      <td>sig_Myeloid_Activation</td>
-      <td>0.125039</td>
-      <td>-0.265575</td>
-      <td>0.390613</td>
-      <td>0.204761</td>
-      <td>6.135721e-01</td>
-      <td>1.815111e-01</td>
-      <td>18</td>
-      <td>0.306405</td>
-      <td>0.766013</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>B_cells</td>
-      <td>sig_Myeloid_Activation</td>
-      <td>0.051348</td>
-      <td>-0.035312</td>
-      <td>0.086660</td>
-      <td>0.218861</td>
-      <td>3.390088e-01</td>
-      <td>4.643447e-01</td>
-      <td>18</td>
-      <td>0.306405</td>
-      <td>0.766013</td>
-    </tr>
-    <tr>
-      <th>15</th>
-      <td>CD8_T</td>
-      <td>sig_Inflammation</td>
-      <td>0.158589</td>
-      <td>-0.197572</td>
-      <td>0.356161</td>
-      <td>0.291135</td>
-      <td>6.090213e-01</td>
-      <td>2.486595e-01</td>
-      <td>18</td>
-      <td>0.509486</td>
-      <td>0.831897</td>
-    </tr>
-    <tr>
-      <th>14</th>
-      <td>CD8_T</td>
-      <td>sig_IFN_Response</td>
-      <td>-0.576200</td>
-      <td>-0.744433</td>
-      <td>0.168233</td>
-      <td>0.304934</td>
-      <td>7.579125e-08</td>
-      <td>3.598030e-09</td>
-      <td>18</td>
-      <td>0.735373</td>
-      <td>0.831897</td>
-    </tr>
-    <tr>
-      <th>38</th>
-      <td>Other</td>
-      <td>sig_IFN_Response</td>
-      <td>-0.369401</td>
-      <td>-0.517339</td>
-      <td>0.147938</td>
-      <td>0.305060</td>
-      <td>4.902311e-09</td>
-      <td>4.886264e-05</td>
-      <td>18</td>
-      <td>0.735373</td>
-      <td>0.831897</td>
-    </tr>
-    <tr>
-      <th>23</th>
+      <th>75</th>
       <td>DCs</td>
-      <td>sig_T_Cell_Exhaustion</td>
-      <td>0.103597</td>
-      <td>0.183398</td>
-      <td>-0.079801</td>
-      <td>0.316913</td>
-      <td>1.869413e-01</td>
-      <td>7.120731e-09</td>
+      <td>sig_Type II Interferon</td>
+      <td>0.099679</td>
+      <td>-0.180316</td>
+      <td>0.279996</td>
+      <td>0.081468</td>
+      <td>4.828776e-01</td>
+      <td>0.043298</td>
       <td>18</td>
-      <td>0.906840</td>
-      <td>0.831897</td>
+      <td>0.095046</td>
+      <td>0.875250</td>
     </tr>
     <tr>
-      <th>3</th>
-      <td>B_cells</td>
-      <td>sig_Inflammation</td>
-      <td>-0.011181</td>
-      <td>-0.056999</td>
-      <td>0.045818</td>
-      <td>0.405382</td>
-      <td>7.451818e-01</td>
-      <td>1.890339e-01</td>
+      <th>104</th>
+      <td>NK</td>
+      <td>sig_Monocyte Macrophage</td>
+      <td>0.026409</td>
+      <td>-0.010286</td>
+      <td>0.036695</td>
+      <td>0.088830</td>
+      <td>2.208636e-02</td>
+      <td>0.569794</td>
       <td>18</td>
-      <td>0.567535</td>
-      <td>0.872738</td>
+      <td>0.165750</td>
+      <td>0.875250</td>
     </tr>
     <tr>
       <th>25</th>
-      <td>Monocytes</td>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.039196</td>
-      <td>-0.010555</td>
-      <td>-0.028641</td>
-      <td>0.409974</td>
-      <td>1.599962e-01</td>
-      <td>6.386748e-01</td>
-      <td>18</td>
-      <td>0.967076</td>
-      <td>0.872738</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>CD8_T</td>
-      <td>sig_Cytotoxicity</td>
-      <td>-0.280668</td>
-      <td>0.020925</td>
-      <td>-0.301593</td>
-      <td>0.429210</td>
-      <td>4.224859e-01</td>
-      <td>9.143946e-01</td>
-      <td>18</td>
-      <td>0.967076</td>
-      <td>0.872738</td>
-    </tr>
-    <tr>
-      <th>11</th>
       <td>CD4_T</td>
-      <td>sig_T_Cell_Exhaustion</td>
-      <td>0.049772</td>
-      <td>0.007516</td>
-      <td>0.042256</td>
-      <td>0.439720</td>
-      <td>2.531214e-01</td>
-      <td>8.332307e-01</td>
+      <td>sig_Hypoxia</td>
+      <td>0.159209</td>
+      <td>0.022439</td>
+      <td>0.136769</td>
+      <td>0.093014</td>
+      <td>5.103041e-02</td>
+      <td>0.444655</td>
       <td>18</td>
-      <td>0.906840</td>
-      <td>0.872738</td>
+      <td>0.475952</td>
+      <td>0.875250</td>
+    </tr>
+    <tr>
+      <th>107</th>
+      <td>NK</td>
+      <td>sig_Regulatory T Cell</td>
+      <td>0.118349</td>
+      <td>0.039809</td>
+      <td>0.078540</td>
+      <td>0.094175</td>
+      <td>2.974803e-05</td>
+      <td>0.289469</td>
+      <td>18</td>
+      <td>0.219741</td>
+      <td>0.875250</td>
+    </tr>
+    <tr>
+      <th>51</th>
+      <td>CD8_T</td>
+      <td>sig_T Cell Activation</td>
+      <td>0.191334</td>
+      <td>0.058516</td>
+      <td>0.132819</td>
+      <td>0.102992</td>
+      <td>9.464380e-03</td>
+      <td>0.172901</td>
+      <td>18</td>
+      <td>0.368526</td>
+      <td>0.875250</td>
+    </tr>
+    <tr>
+      <th>43</th>
+      <td>CD8_T</td>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>0.087774</td>
+      <td>-0.011407</td>
+      <td>0.099180</td>
+      <td>0.104823</td>
+      <td>1.240236e-01</td>
+      <td>0.701375</td>
+      <td>18</td>
+      <td>0.449847</td>
+      <td>0.875250</td>
+    </tr>
+    <tr>
+      <th>108</th>
+      <td>NK</td>
+      <td>sig_T Cell Activation</td>
+      <td>0.199677</td>
+      <td>0.097204</td>
+      <td>0.102473</td>
+      <td>0.105293</td>
+      <td>2.076444e-09</td>
+      <td>0.068507</td>
+      <td>18</td>
+      <td>0.368526</td>
+      <td>0.875250</td>
+    </tr>
+    <tr>
+      <th>123</th>
+      <td>Other</td>
+      <td>sig_Monocyte Macrophage</td>
+      <td>0.032530</td>
+      <td>-0.025789</td>
+      <td>0.058319</td>
+      <td>0.130064</td>
+      <td>1.300227e-01</td>
+      <td>0.418430</td>
+      <td>18</td>
+      <td>0.165750</td>
+      <td>0.933005</td>
+    </tr>
+    <tr>
+      <th>44</th>
+      <td>CD8_T</td>
+      <td>sig_Hypoxia</td>
+      <td>0.167578</td>
+      <td>0.058348</td>
+      <td>0.109231</td>
+      <td>0.135986</td>
+      <td>2.161701e-02</td>
+      <td>0.033359</td>
+      <td>18</td>
+      <td>0.475952</td>
+      <td>0.933005</td>
+    </tr>
+    <tr>
+      <th>66</th>
+      <td>DCs</td>
+      <td>sig_Monocyte Macrophage</td>
+      <td>0.495102</td>
+      <td>0.218690</td>
+      <td>0.276412</td>
+      <td>0.140132</td>
+      <td>6.280042e-04</td>
+      <td>0.083729</td>
+      <td>18</td>
+      <td>0.165750</td>
+      <td>0.933005</td>
+    </tr>
+    <tr>
+      <th>47</th>
+      <td>CD8_T</td>
+      <td>sig_Monocyte Macrophage</td>
+      <td>-0.007196</td>
+      <td>-0.037414</td>
+      <td>0.030218</td>
+      <td>0.142071</td>
+      <td>5.721417e-01</td>
+      <td>0.021685</td>
+      <td>18</td>
+      <td>0.165750</td>
+      <td>0.933005</td>
     </tr>
   </tbody>
 </table>
@@ -4216,7 +4991,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 <h3>Parallel Trends Visualization (Early Visits)<a class="headerlink" href="#Parallel-Trends-Visualization-(Early-Visits)" title="Link to this heading">#</a></h3>
 <p>Here we visualize pre-treatment trends across early visits to assess whether arms move in parallel before divergence. This is a diagnostic, not a formal test.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">signature_cols</span><span class="p">:</span>
@@ -4302,13 +5077,13 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#6.-UMAP-Visualization">6. UMAP Visualization</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#7.-COVID-19-Immune-Signatures">7. COVID-19 Immune Signatures</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#8.-Cross-Sectional-Comparisons:-Severity-Differences-at-Each-Timepoint">8. Cross-Sectional Comparisons: Severity Differences at Each Timepoint</a><ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#6.1-Adjusted-Cross-Sectional-Comparisons">6.1 Adjusted Cross-Sectional Comparisons</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#8.1-Adjusted-Cross-Sectional-Comparisons">8.1 Adjusted Cross-Sectional Comparisons</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#9.-Visualization-of-Severity-Differences">9. Visualization of Severity Differences</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#10.-Cell-Type-Specific-Analysis">10. Cell-Type Specific Analysis</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#11.-Cell-Type-Abundance-Differences">11. Cell Type Abundance Differences</a><ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#9.1-Adjusted-Abundance-DiD">9.1 Adjusted Abundance DiD</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#11.1-Adjusted-Abundance-DiD">11.1 Adjusted Abundance DiD</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#12.-Individual-Gene-Analysis">12. Individual Gene Analysis</a></li>

@@ -1,0 +1,771 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sctrial.benchmark.metrics &#8212; sctrial 0.3.3 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=44e57e90" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
+
+    <script src="../../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/benchmark/metrics';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../../../_static/logo_icon.svg"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../concepts.html">Concepts and Methods</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/index.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/design.html">Trial Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/statistics.html">Statistical Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/scoring.html">Scoring and Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/plotting.html">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/datasets.html">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/workflow.html">Workflow and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/benchmark.html">Benchmark Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/utilities.html">Utilities and Validation</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../best_practices.html">Best Practices Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../faq.html">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../performance.html">Performance Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      <main id="main-content" class="bd-main" role="main">
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">sctrial.benchmark.metrics</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for sctrial.benchmark.metrics</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Benchmark metrics for method comparison.</span>
+
+<span class="sd">All metrics follow the locked rules from the NatMeth benchmark plan:</span>
+
+<span class="sd">1. Top-k stability computed separately for simulation and real-data subsampling</span>
+<span class="sd">2. CI coverage only reported where intervals are defined (N/A for Wilcoxon)</span>
+<span class="sd">3. λ_GC is a secondary null diagnostic, not a headline metric</span>
+<span class="sd">4. Non-convergence split into: convergence / numerical / timeout</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span> <span class="k">as</span> <span class="n">sp_stats</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
+
+
+<div class="viewcode-block" id="compute_fpr">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.metrics.compute_fpr">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_fpr</span><span class="p">(</span>
+    <span class="n">pvalues</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Per-test false positive rate under the null.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pvalues : array</span>
+<span class="sd">        P-values from null genes only.</span>
+<span class="sd">    alpha : float</span>
+<span class="sd">        Significance threshold.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict with "fpr", "n_tests", "wilson_ci_lo", "wilson_ci_hi"</span>
+<span class="sd">    """</span>
+    <span class="n">pvalues</span> <span class="o">=</span> <span class="n">pvalues</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">pvalues</span><span class="p">)]</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pvalues</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"fpr"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"n_tests"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">"wilson_ci_lo"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"wilson_ci_hi"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">}</span>
+
+    <span class="n">k</span> <span class="o">=</span> <span class="p">(</span><span class="n">pvalues</span> <span class="o">&lt;</span> <span class="n">alpha</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">fpr</span> <span class="o">=</span> <span class="n">k</span> <span class="o">/</span> <span class="n">n</span>
+
+    <span class="c1"># Wilson confidence interval</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="mf">1.96</span>
+    <span class="n">denom</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">z</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="n">n</span>
+    <span class="n">center</span> <span class="o">=</span> <span class="p">(</span><span class="n">fpr</span> <span class="o">+</span> <span class="n">z</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">))</span> <span class="o">/</span> <span class="n">denom</span>
+    <span class="n">spread</span> <span class="o">=</span> <span class="n">z</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fpr</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">fpr</span><span class="p">)</span> <span class="o">/</span> <span class="n">n</span> <span class="o">+</span> <span class="n">z</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">n</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span> <span class="o">/</span> <span class="n">denom</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"fpr"</span><span class="p">:</span> <span class="n">fpr</span><span class="p">,</span>
+        <span class="s2">"n_tests"</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span>
+        <span class="s2">"wilson_ci_lo"</span><span class="p">:</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">center</span> <span class="o">-</span> <span class="n">spread</span><span class="p">),</span>
+        <span class="s2">"wilson_ci_hi"</span><span class="p">:</span> <span class="nb">min</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">center</span> <span class="o">+</span> <span class="n">spread</span><span class="p">),</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="compute_fdr_tpr">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.metrics.compute_fdr_tpr">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_fdr_tpr</span><span class="p">(</span>
+    <span class="n">pvalues</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">is_signal</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">q</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""FDR and TPR (power) at a given BH threshold.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pvalues : array</span>
+<span class="sd">        P-values for all genes (null + signal).</span>
+<span class="sd">    is_signal : array of bool</span>
+<span class="sd">        True for genes with non-zero effect.</span>
+<span class="sd">    q : float</span>
+<span class="sd">        BH-FDR threshold.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict with "fdr", "tpr", "n_discoveries", "n_true_positives", "n_signal"</span>
+<span class="sd">    """</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">pvalues</span><span class="p">)</span>
+    <span class="n">pvalues</span> <span class="o">=</span> <span class="n">pvalues</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="n">is_signal</span> <span class="o">=</span> <span class="n">is_signal</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pvalues</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">"fdr"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">"tpr"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">"n_discoveries"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">"n_true_positives"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">"n_signal"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="n">reject</span> <span class="o">=</span> <span class="n">multipletests</span><span class="p">(</span><span class="n">pvalues</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">q</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">"fdr_bh"</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">n_disc</span> <span class="o">=</span> <span class="n">reject</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">n_tp</span> <span class="o">=</span> <span class="p">(</span><span class="n">reject</span> <span class="o">&amp;</span> <span class="n">is_signal</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">n_fp</span> <span class="o">=</span> <span class="p">(</span><span class="n">reject</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">is_signal</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">n_signal</span> <span class="o">=</span> <span class="n">is_signal</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+    <span class="n">fdr</span> <span class="o">=</span> <span class="n">n_fp</span> <span class="o">/</span> <span class="n">n_disc</span> <span class="k">if</span> <span class="n">n_disc</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+    <span class="n">tpr</span> <span class="o">=</span> <span class="n">n_tp</span> <span class="o">/</span> <span class="n">n_signal</span> <span class="k">if</span> <span class="n">n_signal</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"fdr"</span><span class="p">:</span> <span class="n">fdr</span><span class="p">,</span>
+        <span class="s2">"tpr"</span><span class="p">:</span> <span class="n">tpr</span><span class="p">,</span>
+        <span class="s2">"n_discoveries"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_disc</span><span class="p">),</span>
+        <span class="s2">"n_true_positives"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_tp</span><span class="p">),</span>
+        <span class="s2">"n_signal"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_signal</span><span class="p">),</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="compute_bias_rmse">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.metrics.compute_bias_rmse">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_bias_rmse</span><span class="p">(</span>
+    <span class="n">estimated</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">true</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Bias and RMSE of effect-size estimates.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    estimated : array</span>
+<span class="sd">        Estimated β values.</span>
+<span class="sd">    true : array</span>
+<span class="sd">        True β values.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict with "bias", "rmse", "n"</span>
+<span class="sd">    """</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="o">~</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">estimated</span><span class="p">)</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">true</span><span class="p">))</span>
+    <span class="n">est</span> <span class="o">=</span> <span class="n">estimated</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="n">tru</span> <span class="o">=</span> <span class="n">true</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">est</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"bias"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"rmse"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"n"</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+
+    <span class="n">errors</span> <span class="o">=</span> <span class="n">est</span> <span class="o">-</span> <span class="n">tru</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"bias"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">errors</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+        <span class="s2">"rmse"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">errors</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">())),</span>
+        <span class="s2">"n"</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="compute_ci_coverage">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.metrics.compute_ci_coverage">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ci_coverage</span><span class="p">(</span>
+    <span class="n">ci_lo</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">ci_hi</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">true</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""CI coverage rate (95% nominal).</span>
+
+<span class="sd">    Returns None if no valid intervals are available (e.g., Wilcoxon).</span>
+<span class="sd">    This follows locked rule 2: coverage only where intervals are defined.</span>
+<span class="sd">    """</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="o">~</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">ci_lo</span><span class="p">)</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">ci_hi</span><span class="p">)</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">true</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># N/A — method does not produce intervals</span>
+
+    <span class="n">lo</span> <span class="o">=</span> <span class="n">ci_lo</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="n">hi</span> <span class="o">=</span> <span class="n">ci_hi</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="n">tru</span> <span class="o">=</span> <span class="n">true</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+
+    <span class="n">covered</span> <span class="o">=</span> <span class="p">(</span><span class="n">tru</span> <span class="o">&gt;=</span> <span class="n">lo</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">tru</span> <span class="o">&lt;=</span> <span class="n">hi</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"coverage"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">covered</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+        <span class="s2">"n"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="compute_sign_recovery">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.metrics.compute_sign_recovery">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_sign_recovery</span><span class="p">(</span>
+    <span class="n">estimated</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">true</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""Fraction of correct effect-size signs for \|β\| &gt; threshold."""</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">true</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">estimated</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"sign_recovery"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"n"</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+
+    <span class="n">correct</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">estimated</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">true</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"sign_recovery"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">correct</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+        <span class="s2">"n"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="compute_lambda_gc">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.metrics.compute_lambda_gc">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_lambda_gc</span><span class="p">(</span><span class="n">pvalues</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Genomic inflation factor from null p-values.</span>
+
+<span class="sd">    Secondary diagnostic (locked rule 3): use alongside FPR and QQ,</span>
+<span class="sd">    not as a headline metric.</span>
+<span class="sd">    """</span>
+    <span class="n">pvalues</span> <span class="o">=</span> <span class="n">pvalues</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">pvalues</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pvalues</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="n">chi2_obs</span> <span class="o">=</span> <span class="n">sp_stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">pvalues</span><span class="p">,</span> <span class="mf">1e-300</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">df</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">chi2_obs</span><span class="p">)</span> <span class="o">/</span> <span class="n">sp_stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">df</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="compute_topk_jaccard">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.metrics.compute_topk_jaccard">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_topk_jaccard</span><span class="p">(</span>
+    <span class="n">ranking_a</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+    <span class="n">ranking_b</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+    <span class="n">k</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Jaccard overlap of top-k genes between two rankings.</span>
+
+<span class="sd">    Rankings are Series indexed by gene name, values are p-values</span>
+<span class="sd">    (lower = more significant).</span>
+<span class="sd">    """</span>
+    <span class="n">top_a</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">ranking_a</span><span class="o">.</span><span class="n">nsmallest</span><span class="p">(</span><span class="n">k</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">top_b</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">ranking_b</span><span class="o">.</span><span class="n">nsmallest</span><span class="p">(</span><span class="n">k</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">top_a</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">top_b</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+
+    <span class="n">intersection</span> <span class="o">=</span> <span class="n">top_a</span> <span class="o">&amp;</span> <span class="n">top_b</span>
+    <span class="n">union</span> <span class="o">=</span> <span class="n">top_a</span> <span class="o">|</span> <span class="n">top_b</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">intersection</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">union</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_failure_rates">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.metrics.compute_failure_rates">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_failure_rates</span><span class="p">(</span><span class="n">results</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Compute failure rates split by mode (locked rule 4).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    results : list of dict</span>
+<span class="sd">        Each dict has "failure_mode": None | "convergence" | "numerical" | "timeout"</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict with keys: "convergence_rate", "numerical_rate", "timeout_rate", "total_failure_rate", "n"</span>
+<span class="sd">    """</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">"convergence_rate"</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">"numerical_rate"</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">"timeout_rate"</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">"total_failure_rate"</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">"n"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="n">modes</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"failure_mode"</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span><span class="p">]</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"convergence_rate"</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">m</span> <span class="o">==</span> <span class="s2">"convergence"</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">modes</span><span class="p">)</span> <span class="o">/</span> <span class="n">n</span><span class="p">,</span>
+        <span class="s2">"numerical_rate"</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">m</span> <span class="o">==</span> <span class="s2">"numerical"</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">modes</span><span class="p">)</span> <span class="o">/</span> <span class="n">n</span><span class="p">,</span>
+        <span class="s2">"timeout_rate"</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">m</span> <span class="o">==</span> <span class="s2">"timeout"</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">modes</span><span class="p">)</span> <span class="o">/</span> <span class="n">n</span><span class="p">,</span>
+        <span class="s2">"total_failure_rate"</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">m</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">modes</span><span class="p">)</span> <span class="o">/</span> <span class="n">n</span><span class="p">,</span>
+        <span class="s2">"n"</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="summarize_iteration">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.metrics.summarize_iteration">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">summarize_iteration</span><span class="p">(</span>
+    <span class="n">results</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">],</span>
+    <span class="n">truth</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+    <span class="n">signal_genes</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Compute all metrics for a single method on a single iteration.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    results : dict</span>
+<span class="sd">        gene_name → {"beta", "pvalue", "ci_lo", "ci_hi", "converged", "failure_mode"}</span>
+<span class="sd">    truth : dict</span>
+<span class="sd">        gene_name → true effect size</span>
+<span class="sd">    signal_genes : set</span>
+<span class="sd">        Gene names with non-zero true effects</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict of all metrics</span>
+<span class="sd">    """</span>
+    <span class="n">genes</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="n">pvals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">results</span><span class="p">[</span><span class="n">g</span><span class="p">][</span><span class="s2">"pvalue"</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">genes</span><span class="p">])</span>
+    <span class="n">betas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">results</span><span class="p">[</span><span class="n">g</span><span class="p">][</span><span class="s2">"beta"</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">genes</span><span class="p">])</span>
+    <span class="n">true_betas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">truth</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">genes</span><span class="p">])</span>
+    <span class="n">is_sig</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">g</span> <span class="ow">in</span> <span class="n">signal_genes</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">genes</span><span class="p">])</span>
+
+    <span class="n">ci_lo</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">results</span><span class="p">[</span><span class="n">g</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ci_lo"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">genes</span><span class="p">])</span>
+    <span class="n">ci_hi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">results</span><span class="p">[</span><span class="n">g</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ci_hi"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">genes</span><span class="p">])</span>
+
+    <span class="c1"># Null genes only</span>
+    <span class="n">null_mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">is_sig</span>
+    <span class="n">null_pvals</span> <span class="o">=</span> <span class="n">pvals</span><span class="p">[</span><span class="n">null_mask</span><span class="p">]</span>
+
+    <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># FPR (null genes)</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">compute_fpr</span><span class="p">(</span><span class="n">null_pvals</span><span class="p">))</span>
+
+    <span class="c1"># FDR + TPR (all genes, if there are signal genes)</span>
+    <span class="k">if</span> <span class="n">is_sig</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="n">fdr_tpr</span> <span class="o">=</span> <span class="n">compute_fdr_tpr</span><span class="p">(</span><span class="n">pvals</span><span class="p">,</span> <span class="n">is_sig</span><span class="p">)</span>
+        <span class="n">out</span><span class="p">[</span><span class="s2">"fdr"</span><span class="p">]</span> <span class="o">=</span> <span class="n">fdr_tpr</span><span class="p">[</span><span class="s2">"fdr"</span><span class="p">]</span>
+        <span class="n">out</span><span class="p">[</span><span class="s2">"tpr"</span><span class="p">]</span> <span class="o">=</span> <span class="n">fdr_tpr</span><span class="p">[</span><span class="s2">"tpr"</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">out</span><span class="p">[</span><span class="s2">"fdr"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">out</span><span class="p">[</span><span class="s2">"tpr"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="c1"># Bias + RMSE</span>
+    <span class="n">bias_rmse</span> <span class="o">=</span> <span class="n">compute_bias_rmse</span><span class="p">(</span><span class="n">betas</span><span class="p">,</span> <span class="n">true_betas</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="s2">"bias"</span><span class="p">]</span> <span class="o">=</span> <span class="n">bias_rmse</span><span class="p">[</span><span class="s2">"bias"</span><span class="p">]</span>
+    <span class="n">out</span><span class="p">[</span><span class="s2">"rmse"</span><span class="p">]</span> <span class="o">=</span> <span class="n">bias_rmse</span><span class="p">[</span><span class="s2">"rmse"</span><span class="p">]</span>
+
+    <span class="c1"># CI coverage (may be None for methods without CIs)</span>
+    <span class="n">coverage</span> <span class="o">=</span> <span class="n">compute_ci_coverage</span><span class="p">(</span><span class="n">ci_lo</span><span class="p">,</span> <span class="n">ci_hi</span><span class="p">,</span> <span class="n">true_betas</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="s2">"coverage"</span><span class="p">]</span> <span class="o">=</span> <span class="n">coverage</span><span class="p">[</span><span class="s2">"coverage"</span><span class="p">]</span> <span class="k">if</span> <span class="n">coverage</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">out</span><span class="p">[</span><span class="s2">"coverage_applicable"</span><span class="p">]</span> <span class="o">=</span> <span class="n">coverage</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+    <span class="c1"># Sign recovery</span>
+    <span class="n">sign</span> <span class="o">=</span> <span class="n">compute_sign_recovery</span><span class="p">(</span><span class="n">betas</span><span class="p">,</span> <span class="n">true_betas</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="s2">"sign_recovery"</span><span class="p">]</span> <span class="o">=</span> <span class="n">sign</span><span class="p">[</span><span class="s2">"sign_recovery"</span><span class="p">]</span>
+
+    <span class="c1"># λ_GC (null genes)</span>
+    <span class="n">out</span><span class="p">[</span><span class="s2">"lambda_gc"</span><span class="p">]</span> <span class="o">=</span> <span class="n">compute_lambda_gc</span><span class="p">(</span><span class="n">null_pvals</span><span class="p">)</span>
+
+    <span class="c1"># Failure rates</span>
+    <span class="n">failures</span> <span class="o">=</span> <span class="n">compute_failure_rates</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+    <span class="n">out</span><span class="p">[</span><span class="s2">"convergence_failure_rate"</span><span class="p">]</span> <span class="o">=</span> <span class="n">failures</span><span class="p">[</span><span class="s2">"convergence_rate"</span><span class="p">]</span>
+    <span class="n">out</span><span class="p">[</span><span class="s2">"numerical_failure_rate"</span><span class="p">]</span> <span class="o">=</span> <span class="n">failures</span><span class="p">[</span><span class="s2">"numerical_rate"</span><span class="p">]</span>
+    <span class="n">out</span><span class="p">[</span><span class="s2">"timeout_failure_rate"</span><span class="p">]</span> <span class="o">=</span> <span class="n">failures</span><span class="p">[</span><span class="s2">"timeout_rate"</span><span class="p">]</span>
+    <span class="n">out</span><span class="p">[</span><span class="s2">"total_failure_rate"</span><span class="p">]</span> <span class="o">=</span> <span class="n">failures</span><span class="p">[</span><span class="s2">"total_failure_rate"</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">out</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2026, Omar Lab, Cedars-Sinai Medical Center.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

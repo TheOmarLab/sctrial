@@ -500,6 +500,8 @@
     <span class="k">return</span> <span class="n">repo</span> <span class="o">/</span> <span class="s2">"manuscript"</span> <span class="o">/</span> <span class="s2">"benchmark"</span> <span class="o">/</span> <span class="s2">"validation"</span>
 
 
+<div class="viewcode-block" id="load_tnbc_targets">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.load_tnbc_targets">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_tnbc_targets</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Empirical TNBC targets measured from the processed h5ad.</span>
 
@@ -516,7 +518,8 @@
             <span class="s2">"benchmark produced 2.3e7 UMIs per cell."</span>
         <span class="p">)</span>
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fh</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fh</span><span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="TranscriptomeSimConfig">
@@ -695,6 +698,8 @@
     <span class="c1"># single supported path is scripts/calibrate_simulator.py.</span>
 
 
+<div class="viewcode-block" id="load_empirical">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.load_empirical">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_empirical</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Empirical TNBC nuisance pools (library sizes, cells per participant-visit).</span>
 
@@ -706,9 +711,12 @@
     <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
         <span class="k">return</span> <span class="kc">None</span>
     <span class="n">d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">d</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">files</span><span class="p">}</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">d</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">files</span><span class="p">}</span></div>
 
 
+
+<div class="viewcode-block" id="gene_baseline_rates">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.gene_baseline_rates">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">gene_baseline_rates</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="n">TranscriptomeSimConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""``alpha_g``: log gene proportions, summing to 1 on the exponential scale.</span>
 
@@ -738,7 +746,8 @@
             <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">props</span><span class="p">)</span>
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
     <span class="n">alpha</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">gene_rate_log_mean</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">gene_rate_log_sd</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">G</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">alpha</span> <span class="o">-</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()))</span>
+    <span class="k">return</span> <span class="n">alpha</span> <span class="o">-</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()))</span></div>
+
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_gene_rate_permutation</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="n">TranscriptomeSimConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -752,6 +761,8 @@
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span><span class="o">.</span><span class="n">permutation</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">n_genes_transcriptome</span><span class="p">)</span>
 
 
+<div class="viewcode-block" id="expected_counts_per_cell">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.expected_counts_per_cell">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">expected_counts_per_cell</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="n">TranscriptomeSimConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Expected counts per cell for each gene: ``E[L] * exp(alpha_g)``."""</span>
     <span class="n">emp</span> <span class="o">=</span> <span class="n">load_empirical</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">empirical_path</span><span class="p">)</span>
@@ -760,9 +771,12 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># L ~ lognormal(mu - sd^2/2, sd), so E[L] = exp(mu).</span>
         <span class="n">mean_lib</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">lib_log_mean</span><span class="p">))</span>
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">gene_baseline_rates</span><span class="p">(</span><span class="n">cfg</span><span class="p">))</span> <span class="o">*</span> <span class="n">mean_lib</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">gene_baseline_rates</span><span class="p">(</span><span class="n">cfg</span><span class="p">))</span> <span class="o">*</span> <span class="n">mean_lib</span></div>
 
 
+
+<div class="viewcode-block" id="eligible_panel_genes">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.eligible_panel_genes">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">eligible_panel_genes</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="n">TranscriptomeSimConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Indices of genes a real analysis would carry into testing."""</span>
     <span class="n">exp_counts</span> <span class="o">=</span> <span class="n">expected_counts_per_cell</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
@@ -772,7 +786,8 @@
             <span class="sa">f</span><span class="s2">"no gene reaches </span><span class="si">{</span><span class="n">cfg</span><span class="o">.</span><span class="n">panel_min_mean_count</span><span class="si">}</span><span class="s2"> expected counts per cell; "</span>
             <span class="s2">"the rate distribution or the library size is miscalibrated"</span>
         <span class="p">)</span>
-    <span class="k">return</span> <span class="n">idx</span>
+    <span class="k">return</span> <span class="n">idx</span></div>
+
 
 
 <div class="viewcode-block" id="nested_panels">
@@ -895,6 +910,8 @@
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">draws</span><span class="p">),</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
 
 
+<div class="viewcode-block" id="build_params">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.build_params">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">build_params</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="n">TranscriptomeSimConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Draw every gene-level and participant-level latent parameter.</span>
 
@@ -1076,9 +1093,12 @@
         <span class="s2">"cells_pv"</span><span class="p">:</span> <span class="n">cells_pv</span><span class="p">,</span>
         <span class="s2">"re_jensen"</span><span class="p">:</span> <span class="n">re_jensen</span><span class="p">,</span>
         <span class="s2">"config"</span><span class="p">:</span> <span class="n">cfg</span><span class="p">,</span>
-    <span class="p">}</span>
+    <span class="p">}</span></div>
 
 
+
+<div class="viewcode-block" id="iter_pv_blocks">
+<a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.iter_pv_blocks">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">iter_pv_blocks</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="n">TranscriptomeSimConfig</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Yield one participant-visit block of cell-level counts at a time.</span>
 
@@ -1149,7 +1169,8 @@
                 <span class="s2">"library"</span><span class="p">:</span> <span class="n">L</span><span class="p">,</span>
                 <span class="s2">"pi"</span><span class="p">:</span> <span class="n">pi</span><span class="p">,</span>
                 <span class="s2">"ti"</span><span class="p">:</span> <span class="n">ti</span><span class="p">,</span>
-            <span class="p">}</span>
+            <span class="p">}</span></div>
+
 
 
 <div class="viewcode-block" id="oracle_estimands">
@@ -1225,19 +1246,30 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    dict with</span>
-<span class="sd">        ``adata``                cell-level raw counts (sparse), obs has</span>
-<span class="sd">                                 participant/visit/arm and the OBSERVED library total</span>
-<span class="sd">        ``pseudobulk_counts``    participant x visit summed counts, full transcriptome</span>
-<span class="sd">        ``pseudobulk_means``     participant x visit mean counts, full transcriptome</span>
-<span class="sd">        ``gene_names``           transcriptome gene names</span>
-<span class="sd">        ``panels``               nested panel -&gt; gene names</span>
-<span class="sd">        ``truth``                beta_g by gene (the injected effect)</span>
-<span class="sd">        ``oracle``               per-gene truth on each method class's own estimand</span>
-<span class="sd">                                 scale (see :func:`oracle_estimands`)</span>
-<span class="sd">        ``latent``               VALIDATION ONLY: b_ig, u_igt, alpha_g, phi_g.</span>
-<span class="sd">                                 Never use as an analysis input.</span>
-<span class="sd">        ``config``               the config used</span>
+<span class="sd">    dict</span>
+<span class="sd">        A dictionary with the following keys:</span>
+
+<span class="sd">        ``adata``</span>
+<span class="sd">            Cell-level raw counts (sparse); obs has participant/visit/arm and</span>
+<span class="sd">            the OBSERVED library total.</span>
+<span class="sd">        ``pseudobulk_counts``</span>
+<span class="sd">            Participant x visit summed counts, full transcriptome.</span>
+<span class="sd">        ``pseudobulk_means``</span>
+<span class="sd">            Participant x visit mean counts, full transcriptome.</span>
+<span class="sd">        ``gene_names``</span>
+<span class="sd">            Transcriptome gene names.</span>
+<span class="sd">        ``panels``</span>
+<span class="sd">            Nested panel -&gt; gene names.</span>
+<span class="sd">        ``truth``</span>
+<span class="sd">            Beta_g by gene (the injected effect).</span>
+<span class="sd">        ``oracle``</span>
+<span class="sd">            Per-gene truth on each method class's own estimand scale</span>
+<span class="sd">            (see :func:`oracle_estimands`).</span>
+<span class="sd">        ``latent``</span>
+<span class="sd">            VALIDATION ONLY: b_ig, u_igt, alpha_g, phi_g.</span>
+<span class="sd">            Never use as an analysis input.</span>
+<span class="sd">        ``config``</span>
+<span class="sd">            The config used.</span>
 <span class="sd">    """</span>
     <span class="n">params</span> <span class="o">=</span> <span class="n">build_params</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
     <span class="n">gene_names</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">"gene_names"</span><span class="p">]</span>
