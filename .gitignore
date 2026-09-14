@@ -55,3 +55,11 @@ run_nb*.sh
 CLAUDE.md
 .claude/
 .mcp.json
+
+# Local-only outputs and tool config. `manuscript/` under the repo root is a
+# scratch mirror of the real delivery tree, which lives OUTSIDE the repo at
+# sc-trialdiff/manuscript/. Committing it once pulled in stale diagnostic CSVs
+# from scripts that had already been deleted.
+manuscript/
+.plugin-config/
+uv.lock

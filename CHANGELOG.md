@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.3] - 2026-04-05
 
 ### Added
-- `sctrial.benchmark` subpackage: hierarchical gamma-Poisson simulator (`SimulationConfig`, `simulate_trial`, `calibrate_from_real_data`) and benchmark orchestrator (`run_benchmark`) for controlled method comparisons
+- `sctrial.benchmark` subpackage: hierarchical gamma-Poisson simulator and benchmark orchestrator for controlled method comparisons. (Superseded in a later release by the transcriptome-scale `TranscriptomeSimConfig` / `simulate_trial_v2`; the original `SimulationConfig` API described here no longer exists.)
 - `run_gsea_cross_sectional()` and `run_gsea_within_arm()` now exported from `sctrial.stats`
 - `sensitivity_analysis()` now exported from `sctrial.stats`
 - Concepts and Methods documentation page with statistical background and references

@@ -37,6 +37,27 @@ def _ensure_gseapy() -> None:
         )
 
 
+def _finalize_ranking(valid: pd.DataFrame) -> pd.DataFrame:
+    """Return a clean feature/rank table safe for gseapy.prerank.
+
+    ``.dropna()`` alone is not enough: a degenerate OLS (e.g. a zero-variance
+    gene, or a small panel like AML's 11 participants with haemoglobin retained)
+    can yield an infinite beta and hence an infinite rank, which gseapy turns
+    into a "float division by zero". Duplicate gene identifiers likewise break
+    prerank's running-sum normalisation. So drop non-finite ranks and collapse
+    duplicate features (keeping the strongest-magnitude rank) before sorting.
+    """
+    out = valid[["feature", "rank"]].copy()
+    out["rank"] = out["rank"].replace([np.inf, -np.inf], np.nan)
+    out = out.dropna(subset=["rank"])
+    if out["feature"].duplicated().any():
+        out = (
+            out.reindex(out["rank"].abs().sort_values(ascending=False).index)
+            .drop_duplicates(subset="feature", keep="first")
+        )
+    return out.sort_values("rank", ascending=False)
+
+
 def _rank_did_results(
     res: pd.DataFrame,
     rank_by: str,
@@ -61,7 +82,7 @@ def _rank_did_results(
     else:
         raise ValueError(f"Unknown rank_by: {rank_by}")
 
-    return valid[["feature", "rank"]].dropna().sort_values("rank", ascending=False)
+    return _finalize_ranking(valid)
 
 
 def _rank_between_arm_results(
@@ -88,7 +109,7 @@ def _rank_between_arm_results(
     else:
         raise ValueError(f"Unknown rank_by: {rank_by}")
 
-    return valid[["feature", "rank"]].dropna().sort_values("rank", ascending=False)
+    return _finalize_ranking(valid)
 
 
 def _rank_within_arm_results(
@@ -115,7 +136,7 @@ def _rank_within_arm_results(
     else:
         raise ValueError(f"Unknown rank_by: {rank_by}")
 
-    return valid[["feature", "rank"]].dropna().sort_values("rank", ascending=False)
+    return _finalize_ranking(valid)
 
 
 def run_gsea_cross_sectional(

@@ -27,19 +27,35 @@ meta   <- read.csv("{meta_csv}", row.names=1, stringsAsFactors=TRUE)
 meta$arm   <- factor(meta$arm, levels=c("{control}", "{treated}"))
 meta$visit <- factor(meta$visit, levels=c("{pre}", "{post}"))
 
-# Two-arm: ~arm * visit interaction model.
-# NOTE: excluded from main benchmark — limma-voom's
-# duplicateCorrelation crashes at n>=40 and unblocked ~arm*visit
-# is conservative. Kept for optional standalone use only.
+# Two-arm: ~arm * visit interaction, with the repeated measure carried by
+# duplicateCorrelation below.
 design <- model.matrix(~arm * visit, data=meta)
 
+# NORMALISATION-SCOPE CONTRACT. lib.size is the FULL-TRANSCRIPTOME total supplied
+# by the caller, not colSums of the tested panel. With a panel denominator a
+# coordinated signal moves the reference every null gene is measured against, and
+# each null gene acquires an offsetting apparent effect. Roughly two thirds of the
+# "empirical-Bayes inflation" previously reported for dreamlet is that artifact.
+# keep.lib.sizes=TRUE prevents filterByExpr from recomputing it from the panel.
 y <- DGEList(counts=t(counts))
+y$samples$lib.size <- meta$lib_size
 keep <- filterByExpr(y, design, min.count=1)
-y <- y[keep, , keep.lib.sizes=FALSE]
+y <- y[keep, , keep.lib.sizes=TRUE]
 y <- calcNormFactors(y)
 
-v <- voom(y, design)
-fit <- lmFit(v, design)
+v0 <- voom(y, design)
+
+# GATE G: the conventional pseudobulk comparator. A two-arm paired design needs
+# the repeated measure modelled; ~arm*visit alone treats the two visits of a
+# participant as independent. Participant fixed effects are rank-deficient
+# (participant is nested within arm), so the conventional limma route is
+# duplicateCorrelation with participant as the block, iterated once as the limma
+# user guide prescribes. It is allowed to FAIL rather than fall back silently:
+# a fallback would report a different model under the same method name.
+corfit <- duplicateCorrelation(v0, design, block=meta$participant)
+v <- voom(y, design, block=meta$participant, correlation=corfit$consensus)
+corfit <- duplicateCorrelation(v, design, block=meta$participant)
+fit <- lmFit(v, design, block=meta$participant, correlation=corfit$consensus)
 fit <- eBayes(fit)
 
 coef_idx <- ncol(design)
@@ -60,9 +76,16 @@ meta$participant <- factor(meta$participant)
 
 design <- model.matrix(~participant + visit, data=meta)
 
+# NORMALISATION-SCOPE CONTRACT. lib.size is the FULL-TRANSCRIPTOME total supplied
+# by the caller, not colSums of the tested panel. With a panel denominator a
+# coordinated signal moves the reference every null gene is measured against, and
+# each null gene acquires an offsetting apparent effect. Roughly two thirds of the
+# "empirical-Bayes inflation" previously reported for dreamlet is that artifact.
+# keep.lib.sizes=TRUE prevents filterByExpr from recomputing it from the panel.
 y <- DGEList(counts=t(counts))
+y$samples$lib.size <- meta$lib_size
 keep <- filterByExpr(y, design, min.count=1)
-y <- y[keep, , keep.lib.sizes=FALSE]
+y <- y[keep, , keep.lib.sizes=TRUE]
 y <- calcNormFactors(y)
 
 v <- voom(y, design)
@@ -76,6 +99,15 @@ res <- topTable(fit, coef=coef_idx, number=Inf, sort.by="none",
 write.csv(res, "{output_csv}")
 """
 
+# limma/voom/dreamlet/edgeR report log2 fold-changes; the simulator injects the
+# effect on the NATURAL log scale (simulator.py: log_mu += effect) and NEBULA,
+# sctrial_did and wilcoxon_paired all report natural-log betas. Harvesting logFC
+# unconverted put log2 values into the same `estimated_beta` column as natural-log
+# truth, inflating every dreamlet effect by 1/ln2 = 1.4427 and manufacturing the
+# "substantial effect-size bias" finding: measured dreamlet signal-gene beta was
+# 0.7157 vs 0.5/ln2 = 0.7213, while every natural-log method sat at 0.498-0.504.
+_LN2 = float(np.log(2.0))  # log2 -> natural log
+
 
 def run(
     pseudobulk: pd.DataFrame,
@@ -87,6 +119,7 @@ def run(
     control_label: str = "Control",
     visits: tuple[str, str] = ("Pre", "Post"),
     design_type: str = "two_arm",
+    lib_size=None,
 ) -> dict[str, dict]:
     """Run limma-voom on pseudobulk counts with participant blocking."""
     with tempfile.TemporaryDirectory() as _tmpdir:
@@ -101,6 +134,15 @@ def run(
 
         meta_df = pseudobulk[[participant_col, arm_col, visit_col]].copy()
         meta_df.columns = ["participant", "arm", "visit"]
+        # Full-transcriptome library size. Required: without it the model
+        # normalises against the tested panel, whose total moves with the
+        # signal. See sctrial.benchmark.contracts.
+        if lib_size is None:
+            raise ValueError(
+                "an explicit full-transcriptome lib_size is required; a panel-derived "
+                "library size makes the normalisation reference move with the signal"
+            )
+        meta_df["lib_size"] = np.asarray(lib_size, dtype=float)
         meta_df.index = sample_ids
         meta_csv = td / "meta.csv"
         meta_df.to_csv(meta_csv)
@@ -140,10 +182,10 @@ def run(
         if gene in res.index:
             row = res.loc[gene]
             out[gene] = {
-                "beta": float(row.get("logFC", np.nan)),
+                "beta": float(row.get("logFC", np.nan)) * _LN2,
                 "pvalue": float(row.get("P.Value", np.nan)),
-                "ci_lo": float(row.get("CI.L", np.nan)),
-                "ci_hi": float(row.get("CI.R", np.nan)),
+                "ci_lo": float(row.get("CI.L", np.nan)) * _LN2,
+                "ci_hi": float(row.get("CI.R", np.nan)) * _LN2,
                 "converged": True,
                 "failure_mode": None,
             }
