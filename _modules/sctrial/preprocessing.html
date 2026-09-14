@@ -26,8 +26,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
@@ -35,10 +35,10 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=44e57e90" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
     <script src="../../_static/documentation_options.js?v=d198571b"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
@@ -148,11 +148,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -165,8 +172,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -177,8 +183,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -220,11 +225,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -237,8 +249,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -249,8 +260,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -274,6 +284,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
 </ul>
@@ -359,12 +370,20 @@
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;add_log1p_cpm_layer&quot;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"add_log1p_cpm_layer"</span><span class="p">,</span>
+    <span class="s2">"flag_artifact_genes"</span><span class="p">,</span>
+    <span class="s2">"is_artifact_gene"</span><span class="p">,</span>
+    <span class="s2">"drop_artifact_genes"</span><span class="p">,</span>
+    <span class="s2">"exclude_artifacts_from_hvg"</span><span class="p">,</span>
+    <span class="s2">"add_qc_class_metrics"</span><span class="p">,</span>
+<span class="p">]</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -374,14 +393,14 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">add_log1p_cpm_layer</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
-    <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;counts&quot;</span><span class="p">,</span>
-    <span class="n">out_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span>
+    <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">"counts"</span><span class="p">,</span>
+    <span class="n">out_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"log1p_cpm"</span><span class="p">,</span>
     <span class="n">layer_out</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># alias for out_layer</span>
     <span class="n">scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e6</span><span class="p">,</span>
     <span class="n">overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AnnData</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add log1p(CPM) normalization as a layer.</span>
+<span class="w">    </span><span class="sd">"""Add log1p(CPM) normalization as a layer.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -412,19 +431,19 @@
 <span class="sd">        matrix contains negative values.</span>
 <span class="sd">    KeyError</span>
 <span class="sd">        If ``counts_layer`` is not found in ``adata.layers``.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">layer_out</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">out_layer</span> <span class="o">=</span> <span class="n">layer_out</span>
 
     <span class="c1"># --- Validate scale ---</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span> <span class="ow">or</span> <span class="n">scale</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;scale must be a finite positive number, got </span><span class="si">{</span><span class="n">scale</span><span class="si">!r}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"scale must be a finite positive number, got </span><span class="si">{</span><span class="n">scale</span><span class="si">!r}</span><span class="s2">."</span><span class="p">)</span>
 
     <span class="n">ad</span> <span class="o">=</span> <span class="n">adata</span> <span class="k">if</span> <span class="n">inplace</span> <span class="k">else</span> <span class="n">adata</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
     <span class="k">if</span> <span class="p">(</span><span class="n">out_layer</span> <span class="ow">in</span> <span class="n">ad</span><span class="o">.</span><span class="n">layers</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">overwrite</span><span class="p">):</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="s2">&quot;Layer &#39;</span><span class="si">%s</span><span class="s2">&#39; already exists; returning unchanged (pass overwrite=True to recompute).&quot;</span><span class="p">,</span>
+            <span class="s2">"Layer '</span><span class="si">%s</span><span class="s2">' already exists; returning unchanged (pass overwrite=True to recompute)."</span><span class="p">,</span>
             <span class="n">out_layer</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">ad</span>
@@ -435,10 +454,10 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">counts_layer</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ad</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;counts_layer=&#39;</span><span class="si">{</span><span class="n">counts_layer</span><span class="si">}</span><span class="s2">&#39; not found in adata.layers. &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;Available layers: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">ad</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">. &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;Either add adata.layers[&#39;</span><span class="si">{</span><span class="n">counts_layer</span><span class="si">}</span><span class="s2">&#39;]=&lt;counts&gt; or &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;pass counts_layer=None to use adata.X.&quot;</span>
+                <span class="sa">f</span><span class="s2">"counts_layer='</span><span class="si">{</span><span class="n">counts_layer</span><span class="si">}</span><span class="s2">' not found in adata.layers. "</span>
+                <span class="sa">f</span><span class="s2">"Available layers: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">ad</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">. "</span>
+                <span class="sa">f</span><span class="s2">"Either add adata.layers['</span><span class="si">{</span><span class="n">counts_layer</span><span class="si">}</span><span class="s2">']=&lt;counts&gt; or "</span>
+                <span class="sa">f</span><span class="s2">"pass counts_layer=None to use adata.X."</span>
             <span class="p">)</span>
         <span class="n">X</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">counts_layer</span><span class="p">]</span>
 
@@ -451,14 +470,14 @@
     <span class="k">if</span> <span class="n">vals</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">vals</span><span class="p">)):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;Counts matrix contains non-finite values (NaN or inf). &quot;</span>
-                <span class="s2">&quot;log1p(CPM) requires finite non-negative counts.&quot;</span>
+                <span class="s2">"Counts matrix contains non-finite values (NaN or inf). "</span>
+                <span class="s2">"log1p(CPM) requires finite non-negative counts."</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Counts matrix contains negative values (min=</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span><span class="si">:</span><span class="s2">.4g</span><span class="si">}</span><span class="s2">). &quot;</span>
-                <span class="s2">&quot;log1p(CPM) requires non-negative counts. &quot;</span>
-                <span class="s2">&quot;Pass raw counts, not log-transformed or z-scored data.&quot;</span>
+                <span class="sa">f</span><span class="s2">"Counts matrix contains negative values (min=</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span><span class="si">:</span><span class="s2">.4g</span><span class="si">}</span><span class="s2">). "</span>
+                <span class="s2">"log1p(CPM) requires non-negative counts. "</span>
+                <span class="s2">"Pass raw counts, not log-transformed or z-scored data."</span>
             <span class="p">)</span>
 
     <span class="c1"># Compute log1p(CPM)</span>
@@ -469,9 +488,9 @@
         <span class="n">n_zero</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">libsize</span> <span class="o">==</span> <span class="mi">0</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">n_zero</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> cell(s) have zero total counts and will have all-zero &quot;</span>
-                <span class="s2">&quot;CPM values. Consider filtering these cells before &quot;</span>
-                <span class="s2">&quot;normalization.&quot;</span><span class="p">,</span>
+                <span class="s2">"</span><span class="si">%d</span><span class="s2"> cell(s) have zero total counts and will have all-zero "</span>
+                <span class="s2">"CPM values. Consider filtering these cells before "</span>
+                <span class="s2">"normalization."</span><span class="p">,</span>
                 <span class="n">n_zero</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="c1"># Safe division: 0/0 → 0 via replacing zero libsizes with inf</span>
@@ -486,9 +505,9 @@
         <span class="n">n_zero</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">libsize</span> <span class="o">==</span> <span class="mi">0</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">n_zero</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> cell(s) have zero total counts and will have all-zero &quot;</span>
-                <span class="s2">&quot;CPM values. Consider filtering these cells before &quot;</span>
-                <span class="s2">&quot;normalization.&quot;</span><span class="p">,</span>
+                <span class="s2">"</span><span class="si">%d</span><span class="s2"> cell(s) have zero total counts and will have all-zero "</span>
+                <span class="s2">"CPM values. Consider filtering these cells before "</span>
+                <span class="s2">"normalization."</span><span class="p">,</span>
                 <span class="n">n_zero</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="c1"># Safe division: 0/0 → 0 via replacing zero libsizes with inf</span>
@@ -499,8 +518,169 @@
 
     <span class="n">ad</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">out_layer</span><span class="p">]</span> <span class="o">=</span> <span class="n">X_log</span>
     <span class="c1"># Store provenance for reproducibility</span>
-    <span class="n">ad</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;sctrial&quot;</span><span class="p">,</span> <span class="p">{})[</span><span class="s2">&quot;log1p_cpm_scale&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>
+    <span class="n">ad</span><span class="o">.</span><span class="n">uns</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"sctrial"</span><span class="p">,</span> <span class="p">{})[</span><span class="s2">"log1p_cpm_scale"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">ad</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Technical-artifact gene QC (ambient / housekeeping correction)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Gene classes that dominate UNBIASED gene-level differential expression and GSEA</span>
+<span class="c1"># leading-edges as technical/housekeeping signal rather than biology, so they are</span>
+<span class="c1"># flagged here (upstream, at preprocessing) and excluded from the HVG/analysis</span>
+<span class="c1"># feature set. Ambient hemoglobin reflects red-blood-cell lysis; ribosomal and</span>
+<span class="c1"># replication-histone genes are highly-expressed housekeeping that dominate rankings.</span>
+<span class="c1"># Cell-cycle / proliferation genes are deliberately NOT flagged -- they are real</span>
+<span class="c1"># biology and are used by the proliferation gene signatures. Patterns are anchored</span>
+<span class="c1"># to END so signaling genes that merely share a prefix (e.g. RPS6KA*, the ribosomal</span>
+<span class="c1"># protein S6 kinases) are NOT flagged. Genes are kept in the object; only flagged.</span>
+<span class="n">_HB_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+    <span class="sa">r</span><span class="s2">"^(HBA[12]|HBB|HBD|HBE1|HBG[12]|HBM|HBQ1|HBZ|ALAS2|SLC4A1|EPB42|CA1|AHSP)$"</span><span class="p">,</span>
+    <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">_RIBO_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"^(RP[SL]\d+[A-Z]?\d?|RPLP\d|RPSA|FAU|UBA52)$"</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">_HIST_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"^HIST\d[0-9A-Z]*$"</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="is_artifact_gene">
+<a class="viewcode-back" href="../../api/scoring.html#sctrial.preprocessing.is_artifact_gene">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_artifact_gene</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""True if *name* is a technical-artifact gene (hemoglobin/erythroid, ribosomal,</span>
+<span class="sd">    or replication-histone) to be excluded from unbiased HVG/DE/GSEA. Cell-cycle</span>
+<span class="sd">    genes are NOT artifacts. Anchored so prefix-sharing signaling genes are kept."""</span>
+    <span class="n">g</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">_HB_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_RIBO_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_HIST_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">g</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="flag_artifact_genes">
+<a class="viewcode-back" href="../../api/scoring.html#sctrial.preprocessing.flag_artifact_genes">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">flag_artifact_genes</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AnnData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Flag technical-artifact gene classes on ``adata.var`` for QC exclusion.</span>
+
+<span class="sd">    Sets boolean columns ``is_hb`` (hemoglobin/erythroid), ``is_ribo`` (ribosomal</span>
+<span class="sd">    proteins), ``is_histone`` (replication histones), and their union ``is_artifact``.</span>
+<span class="sd">    Depends only on ``adata.var_names`` (gene symbols), so it never touches counts or</span>
+<span class="sd">    library sizes and behaves identically for TPM, raw-count, and log-normalized data.</span>
+<span class="sd">    Genes are kept in the object; only flagged, so signature scoring (which uses</span>
+<span class="sd">    explicit curated gene lists, none of which are artifacts) is unaffected. Cell-cycle</span>
+<span class="sd">    genes are deliberately not flagged (used by the proliferation signatures).</span>
+<span class="sd">    """</span>
+    <span class="n">ad</span> <span class="o">=</span> <span class="n">adata</span> <span class="k">if</span> <span class="n">inplace</span> <span class="k">else</span> <span class="n">adata</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">ad</span><span class="o">.</span><span class="n">var_names</span><span class="p">]</span>
+    <span class="n">ad</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"is_hb"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">bool</span><span class="p">(</span><span class="n">_HB_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">g</span><span class="p">))</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">names</span><span class="p">])</span>
+    <span class="n">ad</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"is_ribo"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">bool</span><span class="p">(</span><span class="n">_RIBO_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">g</span><span class="p">))</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">names</span><span class="p">])</span>
+    <span class="n">ad</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"is_histone"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">bool</span><span class="p">(</span><span class="n">_HIST_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">g</span><span class="p">))</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">names</span><span class="p">])</span>
+    <span class="n">ad</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"is_artifact"</span><span class="p">]</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"is_hb"</span><span class="p">]</span> <span class="o">|</span> <span class="n">ad</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"is_ribo"</span><span class="p">]</span> <span class="o">|</span> <span class="n">ad</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"is_histone"</span><span class="p">]</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="s2">"Flagged </span><span class="si">%d</span><span class="s2"> artifact genes for QC exclusion (hb=</span><span class="si">%d</span><span class="s2">, ribo=</span><span class="si">%d</span><span class="s2">, histone=</span><span class="si">%d</span><span class="s2">)."</span><span class="p">,</span>
+        <span class="nb">int</span><span class="p">(</span><span class="n">ad</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"is_artifact"</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span> <span class="nb">int</span><span class="p">(</span><span class="n">ad</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"is_hb"</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+        <span class="nb">int</span><span class="p">(</span><span class="n">ad</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"is_ribo"</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span> <span class="nb">int</span><span class="p">(</span><span class="n">ad</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"is_histone"</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ad</span></div>
+
+
+
+<div class="viewcode-block" id="exclude_artifacts_from_hvg">
+<a class="viewcode-back" href="../../api/scoring.html#sctrial.preprocessing.exclude_artifacts_from_hvg">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">exclude_artifacts_from_hvg</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AnnData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Remove flagged artifact genes from the highly-variable set in place.</span>
+
+<span class="sd">    Sets ``var['highly_variable'] &amp;= ~var['is_artifact']`` so every HVG-driven step</span>
+<span class="sd">    (PCA/clustering, gene-level DE, GSEA rankings) skips technical-artifact genes.</span>
+<span class="sd">    Runs :func:`flag_artifact_genes` first if the flag is missing. No-op if</span>
+<span class="sd">    ``highly_variable`` has not been computed yet.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="s2">"is_artifact"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">:</span>
+        <span class="n">flag_artifact_genes</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"highly_variable"</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">:</span>
+        <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"highly_variable"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"highly_variable"</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"is_artifact"</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">adata</span></div>
+
+
+
+<div class="viewcode-block" id="drop_artifact_genes">
+<a class="viewcode-back" href="../../api/scoring.html#sctrial.preprocessing.drop_artifact_genes">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">drop_artifact_genes</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">drop_hb</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">drop_ribo</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">drop_histone</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AnnData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Remove technical-artifact gene classes from *adata* in place (upstream QC).</span>
+
+<span class="sd">    Removes hemoglobin/erythroid, ribosomal, and replication-histone genes so that</span>
+<span class="sd">    EVERY downstream analysis inherits a clean gene set with no per-analysis handling:</span>
+<span class="sd">    HVG/PCA/clustering, gene-level differential expression, and GSEA (which ranks the</span>
+<span class="sd">    full ``var_names`` list, so it would otherwise be dominated by these housekeeping/</span>
+<span class="sd">    ambient genes in its leading edges). Cell-cycle genes are NOT removed -- they are</span>
+<span class="sd">    real biology and are used by the proliferation gene signatures.</span>
+
+<span class="sd">    **Set ``drop_hb=False`` for erythroid-containing tissues.** The hemoglobin rule</span>
+<span class="sd">    encodes a PERIPHERAL-BLOOD assumption: that hemoglobin reads are ambient</span>
+<span class="sd">    contamination from lysed red cells. In bone marrow that assumption is false --</span>
+<span class="sd">    erythroid precursors are a genuine, published population there, and hemoglobin</span>
+<span class="sd">    (with ALAS2, AHSP, SLC4A1) is their defining identity programme, not noise.</span>
+<span class="sd">    Removing it deletes the biology instead of the artifact. Ribosomal and</span>
+<span class="sd">    replication-histone genes remain safe to drop in either tissue.</span>
+
+<span class="sd">    Must be run AFTER normalization (per-cell library sizes must be computed over all</span>
+<span class="sd">    genes, including the ambient/housekeeping ones) and after any QC-metric computation.</span>
+<span class="sd">    The removed gene symbols are recorded in ``adata.uns['artifact_genes_removed']``</span>
+<span class="sd">    and the classes actually dropped in ``adata.uns['artifact_classes_dropped']``.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="s2">"is_artifact"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">:</span>
+        <span class="n">flag_artifact_genes</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+    <span class="n">drop</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">n_vars</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">classes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">enabled</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">drop_hb</span><span class="p">,</span> <span class="s2">"is_hb"</span><span class="p">,</span> <span class="s2">"hemoglobin"</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">drop_ribo</span><span class="p">,</span> <span class="s2">"is_ribo"</span><span class="p">,</span> <span class="s2">"ribosomal"</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">drop_histone</span><span class="p">,</span> <span class="s2">"is_histone"</span><span class="p">,</span> <span class="s2">"histone"</span><span class="p">),</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">enabled</span><span class="p">:</span>
+            <span class="n">drop</span> <span class="o">|=</span> <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+            <span class="n">classes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">keep</span> <span class="o">=</span> <span class="o">~</span><span class="n">drop</span>
+    <span class="n">removed</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">[</span><span class="n">drop</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">_inplace_subset_var</span><span class="p">(</span><span class="n">keep</span><span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">"artifact_genes_removed"</span><span class="p">]</span> <span class="o">=</span> <span class="n">removed</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s2">"artifact_classes_dropped"</span><span class="p">]</span> <span class="o">=</span> <span class="n">classes</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="s2">"Removed </span><span class="si">%d</span><span class="s2"> technical-artifact genes (classes=</span><span class="si">%s</span><span class="s2">; kept </span><span class="si">%d</span><span class="s2">)."</span><span class="p">,</span>
+        <span class="nb">len</span><span class="p">(</span><span class="n">removed</span><span class="p">),</span> <span class="s2">","</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">classes</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"none"</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">keep</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">adata</span></div>
+
+
+
+<div class="viewcode-block" id="add_qc_class_metrics">
+<a class="viewcode-back" href="../../api/scoring.html#sctrial.preprocessing.add_qc_class_metrics">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_qc_class_metrics</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">"counts"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AnnData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Add ``pct_counts_hb`` / ``pct_counts_ribo`` (and ``pct_counts_mt``) QC metrics.</span>
+
+<span class="sd">    Uses ``counts_layer`` if present in ``adata.layers`` else ``adata.X``. Optional and</span>
+<span class="sd">    informational -- the analysis exclusion is driven by :func:`flag_artifact_genes`.</span>
+<span class="sd">    Requires scanpy.</span>
+<span class="sd">    """</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
+
+    <span class="k">if</span> <span class="s2">"is_hb"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">:</span>
+        <span class="n">flag_artifact_genes</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"hb"</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"is_hb"</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"ribo"</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"is_ribo"</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="s2">"mt"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">:</span>
+        <span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="s2">"mt"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"MT-"</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">])</span>
+    <span class="n">layer</span> <span class="o">=</span> <span class="n">counts_layer</span> <span class="k">if</span> <span class="p">(</span><span class="n">counts_layer</span> <span class="ow">and</span> <span class="n">counts_layer</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">qc_vars</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"mt"</span><span class="p">,</span> <span class="s2">"ribo"</span><span class="p">,</span> <span class="s2">"hb"</span><span class="p">)</span> <span class="k">if</span> <span class="nb">bool</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">any</span><span class="p">())]</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">calculate_qc_metrics</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span> <span class="n">qc_vars</span><span class="o">=</span><span class="n">qc_vars</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span> <span class="n">percent_top</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">log1p</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">adata</span></div>
 
 </pre></div>
 
@@ -527,8 +707,8 @@
     </div>
   </div>
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">

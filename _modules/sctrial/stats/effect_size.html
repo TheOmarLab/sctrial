@@ -26,8 +26,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="../../../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
@@ -35,10 +35,10 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=44e57e90" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
     <script src="../../../_static/documentation_options.js?v=d198571b"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
@@ -148,11 +148,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -165,8 +172,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -177,8 +183,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -220,11 +225,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -237,8 +249,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -249,8 +260,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -274,6 +284,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
 </ul>
@@ -356,44 +367,44 @@
                 <article class="bd-article">
                   
   <h1>Source code for sctrial.stats.effect_size</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Effect size calculations for trial-aware inference.</span>
+<span></span><span class="sd">"""Effect size calculations for trial-aware inference.</span>
 
-<span class="sd">This module provides standardized effect size measures (Cohen&#39;s d, Hedge&#39;s g)</span>
+<span class="sd">This module provides standardized effect size measures (Cohen's d, Hedge's g)</span>
 <span class="sd">and confidence intervals for DiD analyses.</span>
 
 <span class="sd">Statistical Background</span>
 <span class="sd">----------------------</span>
-<span class="sd">**Cohen&#39;s d** and **Hedge&#39;s g** are standardized effect size measures that express</span>
+<span class="sd">**Cohen's d** and **Hedge's g** are standardized effect size measures that express</span>
 <span class="sd">the difference between groups in standard deviation units, enabling comparison</span>
 <span class="sd">across studies with different scales.</span>
 
-<span class="sd">**Cohen&#39;s d vs Bootstrap CI**: These serve complementary purposes:</span>
-<span class="sd">- Cohen&#39;s d: Standardized effect size for meta-analysis and interpretation</span>
+<span class="sd">**Cohen's d vs Bootstrap CI**: These serve complementary purposes:</span>
+<span class="sd">- Cohen's d: Standardized effect size for meta-analysis and interpretation</span>
 <span class="sd">- Bootstrap CI: Uncertainty quantification on any estimator</span>
 
 <span class="sd">**Recommendation**: Report BOTH standardized effect sizes (for interpretation/meta-analysis)</span>
-<span class="sd">AND confidence intervals (for statistical inference). Bootstrap CI on Cohen&#39;s d</span>
+<span class="sd">AND confidence intervals (for statistical inference). Bootstrap CI on Cohen's d</span>
 <span class="sd">provides the best of both worlds.</span>
 
-<span class="sd">**Hedge&#39;s g vs Cohen&#39;s d**: Hedge&#39;s g applies a small-sample correction factor</span>
-<span class="sd">(J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)) that reduces upward bias in small samples. Use Hedge&#39;s g when</span>
+<span class="sd">**Hedge's g vs Cohen's d**: Hedge's g applies a small-sample correction factor</span>
+<span class="sd">(J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)) that reduces upward bias in small samples. Use Hedge's g when</span>
 <span class="sd">n &lt; 20 per group; for larger samples they are nearly identical.</span>
 
 <span class="sd">Mathematical Definitions</span>
 <span class="sd">------------------------</span>
-<span class="sd">Cohen&#39;s d for DiD:</span>
+<span class="sd">Cohen's d for DiD:</span>
 <span class="sd">    d = β_DiD / s_pooled</span>
 
 <span class="sd">    where s_pooled = sqrt(((n₁-1)s₁² + (n₂-1)s₂²) / (n₁+n₂-2))</span>
 
-<span class="sd">Hedge&#39;s g:</span>
+<span class="sd">Hedge's g:</span>
 <span class="sd">    g = d × J</span>
 
-<span class="sd">    where J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)  (Hedges&#39; correction factor)</span>
+<span class="sd">    where J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)  (Hedges' correction factor)</span>
 
 <span class="sd">95% CI via noncentral t-distribution:</span>
 <span class="sd">    SE(d) ≈ sqrt((n₁+n₂)/(n₁×n₂) + d²/(2(n₁+n₂-2)))</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -409,16 +420,16 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.regression.linear_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegressionResultsWrapper</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s2">&quot;cohens_d&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;hedges_g&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;cohens_d_from_did&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;cohens_d_from_did_approx&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;effect_size_ci&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;add_effect_sizes_to_did&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;EffectSizeMethod&quot;</span><span class="p">,</span>
+    <span class="s2">"cohens_d"</span><span class="p">,</span>
+    <span class="s2">"hedges_g"</span><span class="p">,</span>
+    <span class="s2">"cohens_d_from_did"</span><span class="p">,</span>
+    <span class="s2">"cohens_d_from_did_approx"</span><span class="p">,</span>
+    <span class="s2">"effect_size_ci"</span><span class="p">,</span>
+    <span class="s2">"add_effect_sizes_to_did"</span><span class="p">,</span>
+    <span class="s2">"EffectSizeMethod"</span><span class="p">,</span>
 <span class="p">]</span>
 
-<span class="n">EffectSizeMethod</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;cohens_d&quot;</span><span class="p">,</span> <span class="s2">&quot;hedges_g&quot;</span><span class="p">]</span>
+<span class="n">EffectSizeMethod</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">"cohens_d"</span><span class="p">,</span> <span class="s2">"hedges_g"</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="cohens_d">
@@ -428,9 +439,9 @@
     <span class="n">group2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">pooled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate Cohen&#39;s d effect size between two groups.</span>
+<span class="w">    </span><span class="sd">"""Calculate Cohen's d effect size between two groups.</span>
 
-<span class="sd">    Cohen&#39;s d expresses the difference between group means in standard</span>
+<span class="sd">    Cohen's d expresses the difference between group means in standard</span>
 <span class="sd">    deviation units:</span>
 
 <span class="sd">        d = (mean₁ - mean₂) / s_pooled</span>
@@ -443,12 +454,12 @@
 <span class="sd">        Second group values (e.g., control group).</span>
 <span class="sd">    pooled</span>
 <span class="sd">        If True (default), use pooled standard deviation.</span>
-<span class="sd">        If False, use only group1&#39;s standard deviation (Glass&#39;s delta).</span>
+<span class="sd">        If False, use only group1's standard deviation (Glass's delta).</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    float</span>
-<span class="sd">        Cohen&#39;s d effect size. Positive values indicate group1 &gt; group2.</span>
+<span class="sd">        Cohen's d effect size. Positive values indicate group1 &gt; group2.</span>
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
@@ -458,7 +469,7 @@
 <span class="sd">    - ``|d|`` ≈ 0.8: large effect</span>
 
 <span class="sd">    These are rough guidelines; practical significance depends on context.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">g1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">group1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">g2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">group2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 
@@ -478,7 +489,7 @@
         <span class="n">pooled_var</span> <span class="o">=</span> <span class="p">((</span><span class="n">n1</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">var1</span> <span class="o">+</span> <span class="p">(</span><span class="n">n2</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">var2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n1</span> <span class="o">+</span> <span class="n">n2</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
         <span class="n">pooled_sd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">pooled_var</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># Glass&#39;s delta: use only group1&#39;s SD</span>
+        <span class="c1"># Glass's delta: use only group1's SD</span>
         <span class="n">pooled_sd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">pooled_sd</span> <span class="o">&lt;</span> <span class="mf">1e-12</span><span class="p">:</span>
@@ -494,9 +505,9 @@
     <span class="n">group1</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">group2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate Hedge&#39;s g effect size (bias-corrected Cohen&#39;s d).</span>
+<span class="w">    </span><span class="sd">"""Calculate Hedge's g effect size (bias-corrected Cohen's d).</span>
 
-<span class="sd">    Hedge&#39;s g applies a correction factor J to Cohen&#39;s d that reduces</span>
+<span class="sd">    Hedge's g applies a correction factor J to Cohen's d that reduces</span>
 <span class="sd">    upward bias in small samples:</span>
 
 <span class="sd">        g = d × J</span>
@@ -512,7 +523,7 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    float</span>
-<span class="sd">        Hedge&#39;s g effect size.</span>
+<span class="sd">        Hedge's g effect size.</span>
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
@@ -521,9 +532,9 @@
 <span class="sd">        J = Γ(df/2) / (√(df/2) × Γ((df-1)/2))</span>
 
 <span class="sd">    which is more accurate than the common approximation for small df.</span>
-<span class="sd">    Use Hedge&#39;s g when sample sizes are small (n &lt; 20 per group).</span>
-<span class="sd">    For larger samples, Cohen&#39;s d and Hedge&#39;s g are nearly identical.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    Use Hedge's g when sample sizes are small (n &lt; 20 per group).</span>
+<span class="sd">    For larger samples, Cohen's d and Hedge's g are nearly identical.</span>
+<span class="sd">    """</span>
     <span class="n">g1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">group1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">g2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">group2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 
@@ -536,7 +547,7 @@
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">d</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-    <span class="c1"># Hedges&#39; correction factor</span>
+    <span class="c1"># Hedges' correction factor</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">n1</span> <span class="o">+</span> <span class="n">n2</span> <span class="o">-</span> <span class="mi">2</span>
     <span class="k">if</span> <span class="n">df</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
@@ -556,14 +567,14 @@
     <span class="n">n1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">n2</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
-    <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;nct&quot;</span><span class="p">,</span> <span class="s2">&quot;bootstrap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;nct&quot;</span><span class="p">,</span>
+    <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">"nct"</span><span class="p">,</span> <span class="s2">"bootstrap"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"nct"</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate confidence interval for an effect size.</span>
+<span class="w">    </span><span class="sd">"""Calculate confidence interval for an effect size.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    d</span>
-<span class="sd">        Effect size (Cohen&#39;s d or Hedge&#39;s g).</span>
+<span class="sd">        Effect size (Cohen's d or Hedge's g).</span>
 <span class="sd">    n1</span>
 <span class="sd">        Sample size of group 1.</span>
 <span class="sd">    n2</span>
@@ -571,10 +582,10 @@
 <span class="sd">    alpha</span>
 <span class="sd">        Significance level (default 0.05 for 95% CI).</span>
 <span class="sd">    method</span>
-<span class="sd">        - &quot;nct&quot;: Wald-type CI using the Hedges &amp; Olkin (1985) large-sample</span>
+<span class="sd">        - "nct": Wald-type CI using the Hedges &amp; Olkin (1985) large-sample</span>
 <span class="sd">          variance approximation with t critical values. Fast and adequate for</span>
 <span class="sd">          most sample sizes.</span>
-<span class="sd">        - &quot;bootstrap&quot;: Not implemented here; use bootstrap_effect_size_ci</span>
+<span class="sd">        - "bootstrap": Not implemented here; use bootstrap_effect_size_ci</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -588,11 +599,11 @@
 <span class="sd">        SE(d) = √( (n₁+n₂)/(n₁·n₂) + d² / (2·(n₁+n₂-2)) )</span>
 
 <span class="sd">    with t critical values at df = n₁ + n₂ - 2.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="ow">or</span> <span class="n">n1</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">n2</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;nct&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">"nct"</span><span class="p">:</span>
         <span class="c1"># Approximate SE using Hedges &amp; Olkin (1985) formula</span>
         <span class="n">se_d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">n1</span> <span class="o">+</span> <span class="n">n2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n1</span> <span class="o">*</span> <span class="n">n2</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">d</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">n1</span> <span class="o">+</span> <span class="n">n2</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)))</span>
         <span class="n">df</span> <span class="o">=</span> <span class="n">n1</span> <span class="o">+</span> <span class="n">n2</span> <span class="o">-</span> <span class="mi">2</span>
@@ -604,7 +615,7 @@
 
         <span class="k">return</span> <span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown method: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">. Use &#39;nct&#39;.&quot;</span><span class="p">)</span></div>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Unknown method: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">. Use 'nct'."</span><span class="p">)</span></div>
 
 
 
@@ -614,9 +625,9 @@
     <span class="n">delta_treated</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">delta_control</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate Cohen&#39;s d for DiD from participant-level change scores.</span>
+<span class="w">    </span><span class="sd">"""Calculate Cohen's d for DiD from participant-level change scores.</span>
 
-<span class="sd">    This computes the **exact** Cohen&#39;s d for the difference in change scores:</span>
+<span class="sd">    This computes the **exact** Cohen's d for the difference in change scores:</span>
 
 <span class="sd">        d = (mean(Δ_treated) - mean(Δ_control)) / s_pooled</span>
 
@@ -632,8 +643,8 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    float</span>
-<span class="sd">        Cohen&#39;s d effect size based on change-score distributions.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">        Cohen's d effect size based on change-score distributions.</span>
+<span class="sd">    """</span>
     <span class="n">d_t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">delta_treated</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">d_c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">delta_control</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">d_t</span> <span class="o">=</span> <span class="n">d_t</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">d_t</span><span class="p">)]</span>
@@ -652,7 +663,7 @@
     <span class="n">beta_did</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">residual_std</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Approximate Cohen&#39;s d from a DiD regression coefficient (deprecated).</span>
+<span class="w">    </span><span class="sd">"""Approximate Cohen's d from a DiD regression coefficient (deprecated).</span>
 
 <span class="sd">    This uses the regression residual SD instead of pooled SD of change scores,</span>
 <span class="sd">    which can mis-scale effect sizes when designs are imbalanced or heteroscedastic.</span>
@@ -667,7 +678,7 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    float</span>
-<span class="sd">        Approximate Cohen&#39;s d effect size.</span>
+<span class="sd">        Approximate Cohen's d effect size.</span>
 
 <span class="sd">    Warns</span>
 <span class="sd">    -----</span>
@@ -677,10 +688,10 @@
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
 <span class="sd">    Deprecated: use ``cohens_d_from_did(delta_treated, delta_control)`` instead.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-        <span class="s2">&quot;cohens_d_from_did_approx() is deprecated. &quot;</span>
-        <span class="s2">&quot;Use cohens_d_from_did(delta_treated, delta_control) for exact d.&quot;</span><span class="p">,</span>
+        <span class="s2">"cohens_d_from_did_approx() is deprecated. "</span>
+        <span class="s2">"Use cohens_d_from_did(delta_treated, delta_control) for exact d."</span><span class="p">,</span>
         <span class="ne">DeprecationWarning</span><span class="p">,</span>
         <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
     <span class="p">)</span>
@@ -693,9 +704,9 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">_compute_effect_size_from_fit</span><span class="p">(</span>
     <span class="n">fit</span><span class="p">:</span> <span class="n">RegressionResultsWrapper</span><span class="p">,</span>
     <span class="n">term_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">method</span><span class="p">:</span> <span class="n">EffectSizeMethod</span> <span class="o">=</span> <span class="s2">&quot;hedges_g&quot;</span><span class="p">,</span>
+    <span class="n">method</span><span class="p">:</span> <span class="n">EffectSizeMethod</span> <span class="o">=</span> <span class="s2">"hedges_g"</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract effect size from a fitted regression model.</span>
+<span class="w">    </span><span class="sd">"""Extract effect size from a fitted regression model.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -704,23 +715,23 @@
 <span class="sd">    term_name</span>
 <span class="sd">        Name of the coefficient to compute effect size for.</span>
 <span class="sd">    method</span>
-<span class="sd">        &quot;cohens_d&quot; or &quot;hedges_g&quot;.</span>
+<span class="sd">        "cohens_d" or "hedges_g".</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    dict</span>
-<span class="sd">        Dictionary with &#39;d&#39;, &#39;se_d&#39;, &#39;d_lower&#39;, &#39;d_upper&#39; keys.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">        Dictionary with 'd', 'se_d', 'd_lower', 'd_upper' keys.</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">term_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;d&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;se_d&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;d_lower&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;d_upper&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"d"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"se_d"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"d_lower"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"d_upper"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">}</span>
 
     <span class="n">beta</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">term_name</span><span class="p">]</span>
     <span class="n">resid_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">scale</span><span class="p">)</span>  <span class="c1"># Residual standard deviation</span>
 
     <span class="n">d</span> <span class="o">=</span> <span class="n">beta</span> <span class="o">/</span> <span class="n">resid_std</span> <span class="k">if</span> <span class="n">resid_std</span> <span class="o">&gt;</span> <span class="mf">1e-12</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-    <span class="c1"># Apply Hedge&#39;s correction if requested (exact gamma correction)</span>
-    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;hedges_g&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">d</span><span class="p">):</span>
+    <span class="c1"># Apply Hedge's correction if requested (exact gamma correction)</span>
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">"hedges_g"</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">d</span><span class="p">):</span>
         <span class="n">df</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">df_resid</span>
         <span class="k">if</span> <span class="n">df</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">j</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">gammaln</span><span class="p">(</span><span class="n">df</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">df</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span> <span class="o">-</span> <span class="n">gammaln</span><span class="p">((</span><span class="n">df</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)))</span>
@@ -741,22 +752,22 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="n">d_lower</span> <span class="o">=</span> <span class="n">d_upper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;d&quot;</span><span class="p">:</span> <span class="n">d</span><span class="p">,</span> <span class="s2">&quot;se_d&quot;</span><span class="p">:</span> <span class="n">se_d</span><span class="p">,</span> <span class="s2">&quot;d_lower&quot;</span><span class="p">:</span> <span class="n">d_lower</span><span class="p">,</span> <span class="s2">&quot;d_upper&quot;</span><span class="p">:</span> <span class="n">d_upper</span><span class="p">}</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"d"</span><span class="p">:</span> <span class="n">d</span><span class="p">,</span> <span class="s2">"se_d"</span><span class="p">:</span> <span class="n">se_d</span><span class="p">,</span> <span class="s2">"d_lower"</span><span class="p">:</span> <span class="n">d_lower</span><span class="p">,</span> <span class="s2">"d_upper"</span><span class="p">:</span> <span class="n">d_upper</span><span class="p">}</span>
 
 
 <div class="viewcode-block" id="add_effect_sizes_to_did">
 <a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.effect_size.add_effect_sizes_to_did">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">add_effect_sizes_to_did</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-    <span class="n">beta_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span>
-    <span class="n">se_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;se_DiD&quot;</span><span class="p">,</span>
-    <span class="n">n_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;n_units&quot;</span><span class="p">,</span>
-    <span class="n">resid_sd_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;resid_sd&quot;</span><span class="p">,</span>
-    <span class="n">method</span><span class="p">:</span> <span class="n">EffectSizeMethod</span> <span class="o">=</span> <span class="s2">&quot;hedges_g&quot;</span><span class="p">,</span>
+    <span class="n">beta_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"beta_DiD"</span><span class="p">,</span>
+    <span class="n">se_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"se_DiD"</span><span class="p">,</span>
+    <span class="n">n_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"n_units"</span><span class="p">,</span>
+    <span class="n">resid_sd_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"resid_sd"</span><span class="p">,</span>
+    <span class="n">method</span><span class="p">:</span> <span class="n">EffectSizeMethod</span> <span class="o">=</span> <span class="s2">"hedges_g"</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add standardized effect sizes to a DiD results DataFrame.</span>
+<span class="w">    </span><span class="sd">"""Add standardized effect sizes to a DiD results DataFrame.</span>
 
-<span class="sd">    This function computes Cohen&#39;s d or Hedge&#39;s g from the DiD coefficients</span>
+<span class="sd">    This function computes Cohen's d or Hedge's g from the DiD coefficients</span>
 <span class="sd">    and adds columns for the effect size and its confidence interval.</span>
 
 <span class="sd">    When the ``resid_sd`` column is present (populated by ``did_table``),</span>
@@ -776,23 +787,23 @@
 <span class="sd">    resid_sd_col</span>
 <span class="sd">        Name of the residual standard deviation column (from OLS/WLS fit).</span>
 <span class="sd">    method</span>
-<span class="sd">        &quot;cohens_d&quot; or &quot;hedges_g&quot; (recommended for small samples).</span>
+<span class="sd">        "cohens_d" or "hedges_g" (recommended for small samples).</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame</span>
 <span class="sd">        Input DataFrame with added columns:</span>
-<span class="sd">        - &#39;effect_size&#39;: Cohen&#39;s d or Hedge&#39;s g</span>
-<span class="sd">        - &#39;effect_size_lower&#39;: Lower 95% CI bound</span>
-<span class="sd">        - &#39;effect_size_upper&#39;: Upper 95% CI bound</span>
-<span class="sd">        - &#39;effect_size_interpretation&#39;: &quot;small&quot;, &quot;medium&quot;, &quot;large&quot;</span>
+<span class="sd">        - 'effect_size': Cohen's d or Hedge's g</span>
+<span class="sd">        - 'effect_size_lower': Lower 95% CI bound</span>
+<span class="sd">        - 'effect_size_upper': Upper 95% CI bound</span>
+<span class="sd">        - 'effect_size_interpretation': "small", "medium", "large"</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
 <span class="sd">    &gt;&gt;&gt; res = did_table(adata, features=genes, design=design, visits=visits)</span>
 <span class="sd">    &gt;&gt;&gt; res = add_effect_sizes_to_did(res)</span>
-<span class="sd">    &gt;&gt;&gt; print(res[[&quot;feature&quot;, &quot;beta_DiD&quot;, &quot;effect_size&quot;, &quot;effect_size_interpretation&quot;]])</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    &gt;&gt;&gt; print(res[["feature", "beta_DiD", "effect_size", "effect_size_interpretation"]])</span>
+<span class="sd">    """</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">has_resid_sd</span> <span class="o">=</span> <span class="n">resid_sd_col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span>
 
@@ -810,7 +821,7 @@
             <span class="n">effect_sizes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
             <span class="n">effect_lower</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
             <span class="n">effect_upper</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
-            <span class="n">interpretations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">interpretations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
             <span class="k">continue</span>
 
         <span class="c1"># Assume balanced arms for CI calculation (n1 = n2 = n/2)</span>
@@ -827,8 +838,8 @@
 
         <span class="n">d</span> <span class="o">=</span> <span class="n">beta</span> <span class="o">/</span> <span class="n">denom</span> <span class="k">if</span> <span class="n">denom</span> <span class="o">&gt;</span> <span class="mf">1e-12</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-        <span class="c1"># Apply Hedge&#39;s correction (exact gamma correction)</span>
-        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;hedges_g&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="ow">and</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="c1"># Apply Hedge's correction (exact gamma correction)</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">"hedges_g"</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="ow">and</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
             <span class="n">df_hedges</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">2</span>  <span class="c1"># Renamed to avoid shadowing DataFrame parameter</span>
             <span class="k">if</span> <span class="n">df_hedges</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">j</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
@@ -859,19 +870,19 @@
         <span class="c1"># Interpretation</span>
         <span class="n">abs_d</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
         <span class="k">if</span> <span class="n">abs_d</span> <span class="o">&lt;</span> <span class="mf">0.2</span><span class="p">:</span>
-            <span class="n">interp</span> <span class="o">=</span> <span class="s2">&quot;negligible&quot;</span>
+            <span class="n">interp</span> <span class="o">=</span> <span class="s2">"negligible"</span>
         <span class="k">elif</span> <span class="n">abs_d</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="p">:</span>
-            <span class="n">interp</span> <span class="o">=</span> <span class="s2">&quot;small&quot;</span>
+            <span class="n">interp</span> <span class="o">=</span> <span class="s2">"small"</span>
         <span class="k">elif</span> <span class="n">abs_d</span> <span class="o">&lt;</span> <span class="mf">0.8</span><span class="p">:</span>
-            <span class="n">interp</span> <span class="o">=</span> <span class="s2">&quot;medium&quot;</span>
+            <span class="n">interp</span> <span class="o">=</span> <span class="s2">"medium"</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">interp</span> <span class="o">=</span> <span class="s2">&quot;large&quot;</span>
+            <span class="n">interp</span> <span class="o">=</span> <span class="s2">"large"</span>
         <span class="n">interpretations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">interp</span><span class="p">)</span>
 
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;effect_size&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">effect_sizes</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;effect_size_lower&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">effect_lower</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;effect_size_upper&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">effect_upper</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;effect_size_interpretation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">interpretations</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">"effect_size"</span><span class="p">]</span> <span class="o">=</span> <span class="n">effect_sizes</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">"effect_size_lower"</span><span class="p">]</span> <span class="o">=</span> <span class="n">effect_lower</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">"effect_size_upper"</span><span class="p">]</span> <span class="o">=</span> <span class="n">effect_upper</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">"effect_size_interpretation"</span><span class="p">]</span> <span class="o">=</span> <span class="n">interpretations</span>
 
     <span class="k">return</span> <span class="n">df</span></div>
 
@@ -880,7 +891,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">bootstrap_effect_size_ci</span><span class="p">(</span>
     <span class="n">group1</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">group2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-    <span class="n">method</span><span class="p">:</span> <span class="n">EffectSizeMethod</span> <span class="o">=</span> <span class="s2">&quot;hedges_g&quot;</span><span class="p">,</span>
+    <span class="n">method</span><span class="p">:</span> <span class="n">EffectSizeMethod</span> <span class="o">=</span> <span class="s2">"hedges_g"</span><span class="p">,</span>
     <span class="n">n_boot</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">999</span><span class="p">,</span>
     <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
@@ -888,7 +899,7 @@
     <span class="n">n_bootstrap</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">ci</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute effect size with bootstrap confidence interval.</span>
+<span class="w">    </span><span class="sd">"""Compute effect size with bootstrap confidence interval.</span>
 
 <span class="sd">    This provides the most robust CI for effect sizes, especially</span>
 <span class="sd">    with non-normal distributions or small samples.</span>
@@ -898,7 +909,7 @@
 <span class="sd">    group1, group2</span>
 <span class="sd">        Arrays of values for each group.</span>
 <span class="sd">    method</span>
-<span class="sd">        &quot;cohens_d&quot; or &quot;hedges_g&quot;.</span>
+<span class="sd">        "cohens_d" or "hedges_g".</span>
 <span class="sd">    n_boot</span>
 <span class="sd">        Number of bootstrap resamples.</span>
 <span class="sd">    alpha</span>
@@ -914,7 +925,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    tuple[float, float, float]</span>
 <span class="sd">        (effect_size, ci_lower, ci_upper)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="c1"># Handle deprecated parameter aliases</span>
     <span class="k">if</span> <span class="n">n_bootstrap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">n_boot</span> <span class="o">=</span> <span class="n">n_bootstrap</span>
@@ -932,7 +943,7 @@
         <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
 
     <span class="c1"># Point estimate</span>
-    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;hedges_g&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">"hedges_g"</span><span class="p">:</span>
         <span class="n">d_obs</span> <span class="o">=</span> <span class="n">hedges_g</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">d_obs</span> <span class="o">=</span> <span class="n">cohens_d</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">)</span>
@@ -943,7 +954,7 @@
         <span class="n">b1</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n1</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">b2</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">g2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n2</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;hedges_g&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">"hedges_g"</span><span class="p">:</span>
             <span class="n">boot_d</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">hedges_g</span><span class="p">(</span><span class="n">b1</span><span class="p">,</span> <span class="n">b2</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">boot_d</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">cohens_d</span><span class="p">(</span><span class="n">b1</span><span class="p">,</span> <span class="n">b2</span><span class="p">)</span>
@@ -978,8 +989,8 @@
     </div>
   </div>
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">

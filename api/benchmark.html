@@ -27,8 +27,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
@@ -36,10 +36,10 @@
     <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=44e57e90" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
     <script src="../_static/documentation_options.js?v=d198571b"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
@@ -48,6 +48,8 @@
     <script src="../_static/copybutton.js?v=f281be69"></script>
     <script src="../_static/design-tabs.js?v=f930bc37"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api/benchmark';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
     <link rel="icon" href="../_static/logo_icon.svg"/>
@@ -151,11 +153,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -168,8 +177,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -180,8 +188,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -227,11 +234,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -244,8 +258,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -256,8 +269,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -281,6 +293,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
 </ul>
@@ -364,112 +377,217 @@
                   
   <section id="benchmark-simulation">
 <h1>Benchmark Simulation<a class="headerlink" href="#benchmark-simulation" title="Link to this heading">#</a></h1>
-<p>Hierarchical gamma-Poisson simulator for generating realistic scRNA-seq
-clinical trial data with known ground truth, and orchestration tools for
-running controlled benchmarks across multiple statistical methods.</p>
+<p>Transcriptome-scale hierarchical gamma-Poisson simulator for generating
+realistic single-cell clinical-trial data with known ground truth, plus the
+calibration, validation and orchestration tools used to benchmark statistical
+methods against it.</p>
+<p>The generative model, per cell <code class="docutils literal notranslate"><span class="pre">c</span></code> of participant <code class="docutils literal notranslate"><span class="pre">i</span></code> at visit <code class="docutils literal notranslate"><span class="pre">t</span></code>,
+gene <code class="docutils literal notranslate"><span class="pre">g</span></code>:</p>
+<div class="math notranslate nohighlight">
+\[\log \mu_{icgt} = \log L_{ic} + \alpha_g + b_{ig} + u_{igt}
+                  + \gamma_g \mathrm{Post}_t + \beta_g (T_i \times \mathrm{Post}_t)\]</div>
+<p>with <span class="math notranslate nohighlight">\(Y \sim \mathrm{NB}(\mu, \phi_g)\)</span> and
+<span class="math notranslate nohighlight">\(\mathrm{Var} = \mu + \phi_g \mu^2\)</span>. The full transcriptome is simulated;
+analysis panels are drawn from it as nested subsets of the detectable genes, so
+normalisation and library-size offsets see the whole transcriptome exactly as a
+real workflow would.</p>
 <section id="simulator">
 <h2>Simulator<a class="headerlink" href="#simulator" title="Link to this heading">#</a></h2>
 <dl class="py class">
-<dt class="sig sig-object py" id="sctrial.benchmark.SimulationConfig">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">SimulationConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">design:</span> <span class="pre">~typing.Literal['two_arm'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'single_arm']</span> <span class="pre">=</span> <span class="pre">'two_arm'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_per_arm:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_genes:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">effects:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">float]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean_cells_per_visit:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_count_mode:</span> <span class="pre">~typing.Literal['poisson'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'lognormal']</span> <span class="pre">=</span> <span class="pre">'poisson'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_count_cv:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arm_ratio:</span> <span class="pre">tuple[int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">int]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">missing_rate:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dispersion_mode:</span> <span class="pre">~typing.Literal['calibrated'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'fixed'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'extreme']</span> <span class="pre">=</span> <span class="pre">'calibrated'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dispersion_fixed:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">participant_sd:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">baseline_mean:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">2.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">baseline_sd:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_effect:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_library_size:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">library_size_sd:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sctrial/benchmark/simulator.html#SimulationConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.benchmark.SimulationConfig" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>Configuration for a single simulation run.</p>
+<dt class="sig sig-object py" id="sctrial.benchmark.TranscriptomeSimConfig">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">TranscriptomeSimConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_per_arm:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">design:</span> <span class="pre">~typing.Literal['two_arm'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'single_arm']</span> <span class="pre">=</span> <span class="pre">'two_arm'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_genes_transcriptome:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">20284</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arm_ratio:</span> <span class="pre">tuple[int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">int]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">panel_min_mean_count:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">panel_sizes:</span> <span class="pre">tuple[int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">...]</span> <span class="pre">=</span> <span class="pre">(50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">2000)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cells_per_pv_mean:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">5898.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cells_per_pv_cv:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.911</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cells_per_pv_min:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">147</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cells_per_pv_max:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">27653</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cells_scale:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cells_per_pv_fixed:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">missing_rate:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_empirical_library:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_empirical_cells_per_pv:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">empirical_path:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lib_log_mean:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">7.7333</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lib_log_sd:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_empirical_gene_rates:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gene_rate_log_mean:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">-4.5338</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gene_rate_log_sd:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">2.6428</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_empirical_dispersion:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dispersion_median:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.4416</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dispersion_mean_slope:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">-0.1753</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dispersion_anchor:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">-10.5486</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dispersion_residual_sd:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">1.3224</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">between_participant_sd:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.5969</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prepost_corr:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.3987</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_effect:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">effects:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">float]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sctrial/benchmark/simulator_v2.html#TranscriptomeSimConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.benchmark.TranscriptomeSimConfig" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Configuration for the transcriptome-scale simulator.</p>
+<p>Defaults are the TNBC-calibrated values. Every one is an empirical quantity, so
+a run with defaults is a calibrated run — the previous design’s defaults were
+arbitrary and silently used whenever calibration was not threaded through.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="sctrial.benchmark.TranscriptomeSimConfig.participant_sd">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">participant_sd</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#sctrial.benchmark.TranscriptomeSimConfig.participant_sd" title="Link to this definition">#</a></dt>
+<dd><p>the participant component of the total between-participant SD.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>design</strong> (<em>{&quot;two_arm&quot;</em><em>, </em><em>&quot;single_arm&quot;}</em>) – Trial design family.</p></li>
-<li><p><strong>n_per_arm</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Participants per arm. For two-arm designs with equal allocation,
-total participants = 2 × n_per_arm. For single-arm, this IS the
-total participant count.</p></li>
-<li><p><strong>n_genes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Total genes to simulate.</p></li>
-<li><p><strong>effects</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em>) – Gene-name → true effect size. Genes not listed have β₂=0 (null).</p></li>
-<li><p><strong>mean_cells_per_visit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Average cells per participant-visit.</p></li>
-<li><p><strong>cell_count_mode</strong> (<em>{&quot;poisson&quot;</em><em>, </em><em>&quot;lognormal&quot;}</em>) – How cell counts vary across participant-visits.</p></li>
-<li><p><strong>cell_count_cv</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Coefficient of variation for lognormal cell counts (ignored if poisson).</p></li>
-<li><p><strong>arm_ratio</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – Ratio of treated:control (e.g., (3, 7) for unbalanced). Only for two-arm.
-If None, uses equal allocation.</p></li>
-<li><p><strong>missing_rate</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Fraction of participants missing their Post visit (0.0 = no attrition).</p></li>
-<li><p><strong>dispersion_mode</strong> (<em>{&quot;calibrated&quot;</em><em>, </em><em>&quot;fixed&quot;</em><em>, </em><em>&quot;extreme&quot;}</em>) – How gene-specific θ_g is drawn.</p></li>
-<li><p><strong>dispersion_fixed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Fixed θ for all genes (only if dispersion_mode=”fixed”).</p></li>
-<li><p><strong>participant_sd</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – SD of participant random intercept (σ_participant).</p></li>
-<li><p><strong>baseline_mean</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Mean of β₀g across genes (log-scale).</p></li>
-<li><p><strong>baseline_sd</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – SD of β₀g across genes.</p></li>
-<li><p><strong>time_effect</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Global time effect β₁ (applied to all genes).</p></li>
-<li><p><strong>target_library_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Target library size per cell.</p></li>
-<li><p><strong>library_size_sd</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – SD of log-library size.</p></li>
-<li><p><strong>seed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Random seed.</p></li>
-</ul>
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>sigma_b</p>
 </dd>
 </dl>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="sctrial.benchmark.TranscriptomeSimConfig.participant_visit_sd">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">participant_visit_sd</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#sctrial.benchmark.TranscriptomeSimConfig.participant_visit_sd" title="Link to this definition">#</a></dt>
+<dd><p>the participant x visit component.</p>
+<p>corr(pre, post) = sigma_b^2 / (sigma_b^2 + sigma_u^2), so
+sigma_u = sd * sqrt(1 - corr). This is the level whose absence made
+<code class="docutils literal notranslate"><span class="pre">participant_sd</span></code> inert in the old simulator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>sigma_u</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 <dl class="py function">
-<dt class="sig sig-object py" id="sctrial.benchmark.simulate_trial">
-<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">simulate_trial</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sctrial.benchmark.SimulationConfig" title="sctrial.benchmark.simulator.SimulationConfig"><span class="pre">SimulationConfig</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="../_modules/sctrial/benchmark/simulator.html#simulate_trial"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.benchmark.simulate_trial" title="Link to this definition">#</a></dt>
-<dd><p>Generate a complete simulated trial dataset.</p>
+<dt class="sig sig-object py" id="sctrial.benchmark.simulate_trial_v2">
+<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">simulate_trial_v2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sctrial.benchmark.TranscriptomeSimConfig" title="sctrial.benchmark.simulator_v2.TranscriptomeSimConfig"><span class="pre">TranscriptomeSimConfig</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="../_modules/sctrial/benchmark/simulator_v2.html#simulate_trial_v2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.benchmark.simulate_trial_v2" title="Link to this definition">#</a></dt>
+<dd><p>Simulate a full transcriptome under the three-level hierarchical NB model.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>“adata”           : AnnData — cell-level counts (X = raw counts, obs has metadata)
-“pseudobulk_means”: DataFrame — participant-visit mean expression (for sctrial/Wilcoxon)
-“pseudobulk_counts”: DataFrame — participant-visit summed counts (for edgeR/limma/dreamlet)
-“truth”           : dict[str, float] — gene → true interaction effect
-“config”          : SimulationConfig</p>
+<dd class="field-odd"><p><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">adata</span></code>                cell-level raw counts (sparse), obs has</dt><dd><p>participant/visit/arm and the OBSERVED library total</p>
+</dd>
+</dl>
+<p><code class="docutils literal notranslate"><span class="pre">pseudobulk_counts</span></code>    participant x visit summed counts, full transcriptome
+<code class="docutils literal notranslate"><span class="pre">pseudobulk_means</span></code>     participant x visit mean counts, full transcriptome
+<code class="docutils literal notranslate"><span class="pre">gene_names</span></code>           transcriptome gene names
+<code class="docutils literal notranslate"><span class="pre">panels</span></code>               nested panel -&gt; gene names
+<code class="docutils literal notranslate"><span class="pre">truth</span></code>                beta_g by gene (the injected effect)
+<code class="docutils literal notranslate"><span class="pre">oracle</span></code>               per-gene truth on each method class’s own estimand</p>
+<blockquote>
+<div><p>scale (see <a class="reference internal" href="#sctrial.benchmark.oracle_estimands" title="sctrial.benchmark.oracle_estimands"><code class="xref py py-func docutils literal notranslate"><span class="pre">oracle_estimands()</span></code></a>)</p>
+</div></blockquote>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">latent</span></code>               VALIDATION ONLY: b_ig, u_igt, alpha_g, phi_g.</dt><dd><p>Never use as an analysis input.</p>
+</dd>
+</dl>
+<p><code class="docutils literal notranslate"><span class="pre">config</span></code>               the config used</p>
+</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>dict with keys</p>
+<dd class="field-even"><p>dict with</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="sctrial.benchmark.calibrate_from_real_data">
-<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">calibrate_from_real_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata_real</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count_layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">participant_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'participant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visit_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'visit'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="../_modules/sctrial/benchmark/simulator.html#calibrate_from_real_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.benchmark.calibrate_from_real_data" title="Link to this definition">#</a></dt>
-<dd><p>Extract distributional parameters from real scRNA-seq data.</p>
-<p>Uses raw counts for dispersion/library-size calibration (critical for
-the NB generative model), and normalized expression for ICC estimation.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>adata_real</strong> (<em>AnnData</em>) – Real dataset.</p></li>
-<li><p><strong>layer</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Normalized expression layer (for ICC). If None, uses .X.</p></li>
-<li><p><strong>count_layer</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Raw count layer for dispersion and library size calibration.
-If None, auto-detects: checks for integer .X, then “counts” layer.
-If no raw counts available, estimates from normalized data.</p></li>
-<li><p><strong>participant_col</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Column name for participant IDs.</p></li>
-<li><p><strong>visit_col</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Column name for visit/timepoint.</p></li>
-</ul>
+<dt class="sig sig-object py" id="sctrial.benchmark.make_signal">
+<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">make_signal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">panel_genes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">architecture</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'balanced'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'heterogeneous'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'one_directional'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'balanced'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">magnitude</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Generator</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/sctrial/benchmark/simulator_v2.html#make_signal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.benchmark.make_signal" title="Link to this definition">#</a></dt>
+<dd><p>Effect sizes for the tested panel under one of three signal architectures.</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">balanced</span></code> (primary)</dt><dd><p>Half +magnitude, half -magnitude. No net directional shift, so the library
+size is unmoved and there is no compositional artifact.</p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>“mean_cells_per_visit” : float
-“cell_count_cv” : float
-“participant_icc” : float  (median across genes)
-“dispersion_median” : float
-“baseline_mean” : float  (log-scale, on raw counts)
-“baseline_sd” : float
-“library_size_mean” : float  (log-scale, on raw counts)
-“library_size_sd” : float
-“has_raw_counts” : bool</p>
+<dt><code class="docutils literal notranslate"><span class="pre">heterogeneous</span></code> (primary)</dt><dd><p>Symmetric mixture of weak/moderate/large effects — the most realistic.</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>dict with keys</p>
+<dt><code class="docutils literal notranslate"><span class="pre">one_directional</span></code> (stress test)</dt><dd><p>All +magnitude. This is the previous design. Retain it, but label it a
+COMPOSITION-STRESS scenario: the coordinated shift moves the library-size
+reference, and roughly two thirds of the dreamlet inflation previously
+attributed to empirical-Bayes moderation is attributable to it.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="sctrial.benchmark.validate_simulator">
-<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">validate_simulator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sctrial.benchmark.SimulationConfig" title="sctrial.benchmark.simulator.SimulationConfig"><span class="pre">SimulationConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">adata_real</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">participant_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'participant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visit_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'visit'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="../_modules/sctrial/benchmark/simulator.html#validate_simulator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.benchmark.validate_simulator" title="Link to this definition">#</a></dt>
-<dd><p>Compare simulated data properties against real data.</p>
-<p>Compares on a common scale: if real data is normalized (no raw counts),
-the simulated raw counts are log1p-CPM-normalized before comparison.
-If real data has raw counts, compares counts directly.</p>
+<dt class="sig sig-object py" id="sctrial.benchmark.nested_panels">
+<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">nested_panels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sctrial.benchmark.TranscriptomeSimConfig" title="sctrial.benchmark.simulator_v2.TranscriptomeSimConfig"><span class="pre">TranscriptomeSimConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">sizes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Generator</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/sctrial/benchmark/simulator_v2.html#nested_panels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.benchmark.nested_panels" title="Link to this definition">#</a></dt>
+<dd><p>Nested analysis panels drawn from the DETECTABLE genes.</p>
+<p>Nesting is what lets a panel-size effect be separated from a gene-identity
+effect. With independently drawn panels the two are confounded, and the
+previous benchmark’s “progressive miscalibration with panel size” could not be
+distinguished from a change in which genes were tested.</p>
+<p>Panels are drawn from <code class="xref py py-func docutils literal notranslate"><span class="pre">eligible_panel_genes()</span></code>, not from the whole
+transcriptome. The transcriptome is still simulated in full and still supplies
+every normalisation denominator and offset; it is only the TESTED set that is
+restricted, exactly as a real pipeline restricts it.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sctrial.benchmark.oracle_estimands">
+<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">oracle_estimands</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/sctrial/benchmark/simulator_v2.html#oracle_estimands"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.benchmark.oracle_estimands" title="Link to this definition">#</a></dt>
+<dd><p>Per-gene POPULATION truth on each METHOD CLASS’s own estimand scale.</p>
+<p>Different methods do not estimate the same functional, so scoring them all
+against the injected <code class="docutils literal notranslate"><span class="pre">beta</span></code> silently penalises whichever method’s estimand
+differs most from it. Two published conclusions have already been produced
+that way (log2-versus-natural-log, then this).</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">count_link</span></code></dt><dd><p>The log-link coefficient: exactly <code class="docutils literal notranslate"><span class="pre">beta_g</span></code>. This is the estimand of
+NEBULA (NB log link) and of log-CPM pseudobulk models (dreamlet,
+limma-voom, edgeR): with full-transcriptome normalisation the library
+reference does not move with a panel-restricted effect, so
+<code class="docutils literal notranslate"><span class="pre">DiD[log</span> <span class="pre">CPM_g]</span> <span class="pre">=</span> <span class="pre">beta_g</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">log1p_cpm</span></code></dt><dd><p>The estimand targeted by sctrial and the Wilcoxon change score: the
+difference-in-differences of <code class="docutils literal notranslate"><span class="pre">log(1</span> <span class="pre">+</span> <span class="pre">CPM)</span></code> at participant level.
+Because <code class="docutils literal notranslate"><span class="pre">d/dx</span> <span class="pre">log(1+x)</span> <span class="pre">=</span> <span class="pre">1/(1+x)</span></code> this equals <code class="docutils literal notranslate"><span class="pre">beta_g</span></code> only when
+CPM &gt;&gt; 1, and is attenuated for low-expression genes at realistic depth.
+The attenuation is a real property of the estimand and is reported, not
+corrected away.</p>
+</dd>
+</dl>
+<p>MARGINALISED, NOT CONDITIONED. The expectation is taken over the participant
+and participant x visit random effects rather than evaluated at their
+realised values. Conditioning on the realised draw makes the “truth” a random
+quantity: under a true null it returns values like +0.15 and -0.86 instead of
+zero, so a perfectly calibrated method would be scored as biased and a null
+scenario would have a non-null target. The random effects are exactly the
+variability the standard error is meant to cover.</p>
+<p>The expectation <code class="docutils literal notranslate"><span class="pre">E[log(1</span> <span class="pre">+</span> <span class="pre">exp(m</span> <span class="pre">+</span> <span class="pre">eps))]</span></code>, <code class="docutils literal notranslate"><span class="pre">eps</span> <span class="pre">~</span> <span class="pre">N(0,</span> <span class="pre">sigma_b^2</span> <span class="pre">+</span>
+<span class="pre">sigma_u^2)</span></code>, is evaluated by Gauss-Hermite quadrature.</p>
+</dd></dl>
+
+</section>
+<section id="method-contracts">
+<h2>Method contracts<a class="headerlink" href="#method-contracts" title="Link to this heading">#</a></h2>
+<p>Different methods do not estimate the same functional, and they require
+different input representations. Both are declared explicitly rather than
+inferred at call time.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="sctrial.benchmark.prepare_inputs">
+<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">prepare_inputs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">panel_genes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="../_modules/sctrial/benchmark/contracts.html#prepare_inputs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.benchmark.prepare_inputs" title="Link to this definition">#</a></dt>
+<dd><p>Build every method’s contracted input from one simulated dataset.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>“cell_level” : dict — mean-variance, zero fraction, library size
-“pseudobulk_level” : dict — ICC, cell-count distribution, mean distribution</p>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">participant_log1p_cpm</span></code>  outcome frame for sctrial / Wilcoxon
+<code class="docutils literal notranslate"><span class="pre">pseudobulk_counts</span></code>      panel raw counts for the count-based models
+<code class="docutils literal notranslate"><span class="pre">lib_size</span></code>               full-transcriptome total per pseudobulk sample
+<code class="docutils literal notranslate"><span class="pre">cell_counts</span></code>            cell-level AnnData restricted to the panel
+<code class="docutils literal notranslate"><span class="pre">cell_lib_size</span></code>          full-transcriptome library size per cell
+<code class="docutils literal notranslate"><span class="pre">oracle</span></code>                 per-gene truth keyed by estimand name
+<code class="docutils literal notranslate"><span class="pre">panel_genes</span></code>            the tested panel</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>dict with keys</p>
+<dd class="field-even"><p>dict with</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="sctrial.benchmark.METHOD_INPUT">
+<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">METHOD_INPUT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'dreamlet':</span> <span class="pre">'pseudobulk_counts',</span> <span class="pre">'edger_qlf':</span> <span class="pre">'pseudobulk_counts',</span> <span class="pre">'limma_voom':</span> <span class="pre">'pseudobulk_counts',</span> <span class="pre">'nebula':</span> <span class="pre">'cell_counts',</span> <span class="pre">'sctrial_did':</span> <span class="pre">'participant_log1p_cpm',</span> <span class="pre">'sctrial_mixed':</span> <span class="pre">'participant_log1p_cpm',</span> <span class="pre">'wilcoxon_paired':</span> <span class="pre">'participant_log1p_cpm'}</span></em><a class="headerlink" href="#sctrial.benchmark.METHOD_INPUT" title="Link to this definition">#</a></dt>
+<dd><p>dict() -&gt; new empty dictionary
+dict(mapping) -&gt; new dictionary initialized from a mapping object’s</p>
+<blockquote>
+<div><p>(key, value) pairs</p>
+</div></blockquote>
+<dl>
+<dt>dict(iterable) -&gt; new dictionary initialized as if via:</dt><dd><p>d = {}
+for k, v in iterable:</p>
+<blockquote>
+<div><p>d[k] = v</p>
+</div></blockquote>
+</dd>
+<dt>dict(<a href="#id1"><span class="problematic" id="id2">**</span></a>kwargs) -&gt; new dictionary initialized with the name=value pairs</dt><dd><p>in the keyword argument list.  For example:  dict(one=1, two=2)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="sctrial.benchmark.METHOD_ESTIMAND">
+<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">METHOD_ESTIMAND</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'dreamlet':</span> <span class="pre">'count_link',</span> <span class="pre">'edger_qlf':</span> <span class="pre">'count_link',</span> <span class="pre">'limma_voom':</span> <span class="pre">'count_link',</span> <span class="pre">'nebula':</span> <span class="pre">'count_link',</span> <span class="pre">'sctrial_did':</span> <span class="pre">'log1p_cpm',</span> <span class="pre">'sctrial_mixed':</span> <span class="pre">'log1p_cpm',</span> <span class="pre">'wilcoxon_paired':</span> <span class="pre">'log1p_cpm'}</span></em><a class="headerlink" href="#sctrial.benchmark.METHOD_ESTIMAND" title="Link to this definition">#</a></dt>
+<dd><p>dict() -&gt; new empty dictionary
+dict(mapping) -&gt; new dictionary initialized from a mapping object’s</p>
+<blockquote>
+<div><p>(key, value) pairs</p>
+</div></blockquote>
+<dl>
+<dt>dict(iterable) -&gt; new dictionary initialized as if via:</dt><dd><p>d = {}
+for k, v in iterable:</p>
+<blockquote>
+<div><p>d[k] = v</p>
+</div></blockquote>
+</dd>
+<dt>dict(<a href="#id3"><span class="problematic" id="id4">**</span></a>kwargs) -&gt; new dictionary initialized with the name=value pairs</dt><dd><p>in the keyword argument list.  For example:  dict(one=1, two=2)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -479,28 +597,19 @@ If real data has raw counts, compares counts directly.</p>
 <h2>Orchestrator<a class="headerlink" href="#orchestrator" title="Link to this heading">#</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="sctrial.benchmark.run_benchmark">
-<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">run_benchmark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">designs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">methods</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iterations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'benchmark_results'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="../_modules/sctrial/benchmark/orchestrator.html#run_benchmark"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.benchmark.run_benchmark" title="Link to this definition">#</a></dt>
-<dd><p>Run the full NatMeth benchmark grid.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>designs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Design families to run. Default: [“two_arm”, “single_arm”].</p></li>
-<li><p><strong>methods</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Methods to benchmark. Default: CORE_METHODS.</p></li>
-<li><p><strong>n_iterations</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Monte Carlo iterations per scenario.</p></li>
-<li><p><strong>n_jobs</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Parallel workers. Use -1 for all cores.</p></li>
-<li><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><em>Path</em>) – Directory for output CSVs and figures.</p></li>
-<li><p><strong>resume</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, skip scenarios that already have results in output_dir.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>DataFrame with all results concatenated.</p>
-</dd>
-</dl>
+<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">run_benchmark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">designs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">methods</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iterations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'benchmark_results'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">manifest</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">completion_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="../_modules/sctrial/benchmark/orchestrator.html#run_benchmark"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.benchmark.run_benchmark" title="Link to this definition">#</a></dt>
+<dd><p>Run the core scenario grid.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sctrial.benchmark.run_sensitivity_benchmark">
+<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">run_sensitivity_benchmark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">designs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">methods</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iterations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'benchmark_results/sensitivity'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">manifest</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">panels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">completion_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="../_modules/sctrial/benchmark/orchestrator.html#run_sensitivity_benchmark"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.benchmark.run_sensitivity_benchmark" title="Link to this definition">#</a></dt>
+<dd><p>Run the panel-size x signal-fraction sensitivity grid.</p>
 </dd></dl>
 
 <dl class="py data">
 <dt class="sig sig-object py" id="sctrial.benchmark.CORE_METHODS">
-<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">CORE_METHODS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['sctrial_did',</span> <span class="pre">'dreamlet',</span> <span class="pre">'nebula',</span> <span class="pre">'wilcoxon_paired']</span></em><a class="headerlink" href="#sctrial.benchmark.CORE_METHODS" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.</span></span><span class="sig-name descname"><span class="pre">CORE_METHODS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['sctrial_did',</span> <span class="pre">'dreamlet',</span> <span class="pre">'nebula',</span> <span class="pre">'wilcoxon_paired',</span> <span class="pre">'limma_voom']</span></em><a class="headerlink" href="#sctrial.benchmark.CORE_METHODS" title="Link to this definition">#</a></dt>
 <dd><p>Built-in mutable sequence.</p>
 <p>If no argument is given, the constructor creates a new empty list.
 The argument must be an iterable if specified.</p>
@@ -554,14 +663,26 @@ The argument must be an iterable if specified.</p>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#simulator">Simulator</a><ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.SimulationConfig"><code class="docutils literal notranslate"><span class="pre">SimulationConfig</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.simulate_trial"><code class="docutils literal notranslate"><span class="pre">simulate_trial()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.calibrate_from_real_data"><code class="docutils literal notranslate"><span class="pre">calibrate_from_real_data()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.validate_simulator"><code class="docutils literal notranslate"><span class="pre">validate_simulator()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.TranscriptomeSimConfig"><code class="docutils literal notranslate"><span class="pre">TranscriptomeSimConfig</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.TranscriptomeSimConfig.participant_sd"><code class="docutils literal notranslate"><span class="pre">TranscriptomeSimConfig.participant_sd</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.TranscriptomeSimConfig.participant_visit_sd"><code class="docutils literal notranslate"><span class="pre">TranscriptomeSimConfig.participant_visit_sd</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.simulate_trial_v2"><code class="docutils literal notranslate"><span class="pre">simulate_trial_v2()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.make_signal"><code class="docutils literal notranslate"><span class="pre">make_signal()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.nested_panels"><code class="docutils literal notranslate"><span class="pre">nested_panels()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.oracle_estimands"><code class="docutils literal notranslate"><span class="pre">oracle_estimands()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#method-contracts">Method contracts</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.prepare_inputs"><code class="docutils literal notranslate"><span class="pre">prepare_inputs()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.METHOD_INPUT"><code class="docutils literal notranslate"><span class="pre">METHOD_INPUT</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.METHOD_ESTIMAND"><code class="docutils literal notranslate"><span class="pre">METHOD_ESTIMAND</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#orchestrator">Orchestrator</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.run_benchmark"><code class="docutils literal notranslate"><span class="pre">run_benchmark()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.run_sensitivity_benchmark"><code class="docutils literal notranslate"><span class="pre">run_sensitivity_benchmark()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sctrial.benchmark.CORE_METHODS"><code class="docutils literal notranslate"><span class="pre">CORE_METHODS</span></code></a></li>
 </ul>
 </li>
@@ -596,8 +717,8 @@ The argument must be an iterable if specified.</p>
     </div>
   </div>
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">

@@ -26,8 +26,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="../../../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
@@ -35,10 +35,10 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=44e57e90" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
     <script src="../../../_static/documentation_options.js?v=d198571b"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
@@ -148,11 +148,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -165,8 +172,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -177,8 +183,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -220,11 +225,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -237,8 +249,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -249,8 +260,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -274,6 +284,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
 </ul>
@@ -356,7 +367,7 @@
                 <article class="bd-article">
                   
   <h1>Source code for sctrial.stats.cv</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Cross-validation utilities for effect stability assessment.</span>
+<span></span><span class="sd">"""Cross-validation utilities for effect stability assessment.</span>
 
 <span class="sd">This module provides leave-one-out (LOO) and k-fold cross-validation</span>
 <span class="sd">for assessing the robustness of DiD estimates.</span>
@@ -384,7 +395,7 @@
 
 <span class="sd">Metrics:</span>
 <span class="sd">- Influence: ``|beta_DiD - beta_DiD^(-i)| / SE(beta_DiD)``</span>
-<span class="sd">- Cook&#39;s D analog for DiD</span>
+<span class="sd">- Cook's D analog for DiD</span>
 
 <span class="sd">K-Fold Cross-Validation</span>
 <span class="sd">-----------------------</span>
@@ -399,7 +410,7 @@
 <span class="sd">- High LOO variance: Effect driven by few participants</span>
 <span class="sd">- Consistently signed CV estimates: Robust effect</span>
 <span class="sd">- Estimate changes sign across folds: Unreliable effect</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -415,10 +426,10 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">AggregateMode</span><span class="p">,</span> <span class="n">did_table</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s2">&quot;loo_cv_did&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;kfold_cv_did&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;influence_diagnostics&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;cv_summary&quot;</span><span class="p">,</span>
+    <span class="s2">"loo_cv_did"</span><span class="p">,</span>
+    <span class="s2">"kfold_cv_did"</span><span class="p">,</span>
+    <span class="s2">"influence_diagnostics"</span><span class="p">,</span>
+    <span class="s2">"cv_summary"</span><span class="p">,</span>
 <span class="p">]</span>
 
 
@@ -431,10 +442,10 @@
     <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
     <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">exclude_crossovers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="n">aggregate</span><span class="p">:</span> <span class="n">AggregateMode</span> <span class="o">=</span> <span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+    <span class="n">aggregate</span><span class="p">:</span> <span class="n">AggregateMode</span> <span class="o">=</span> <span class="s2">"participant_visit"</span><span class="p">,</span>
     <span class="n">standardize</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Leave-one-out cross-validation for DiD analysis.</span>
+<span class="w">    </span><span class="sd">"""Leave-one-out cross-validation for DiD analysis.</span>
 
 <span class="sd">    For each participant, fits the DiD model without that participant</span>
 <span class="sd">    and records the effect estimate. This reveals which participants</span>
@@ -455,7 +466,7 @@
 <span class="sd">    exclude_crossovers</span>
 <span class="sd">        Exclude crossover participants.</span>
 <span class="sd">    aggregate</span>
-<span class="sd">        Aggregation mode passed to did_table (default &quot;participant_visit&quot;).</span>
+<span class="sd">        Aggregation mode passed to did_table (default "participant_visit").</span>
 <span class="sd">    standardize</span>
 <span class="sd">        Whether to z-score the outcome variable before fitting (default True).</span>
 
@@ -471,11 +482,11 @@
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
-<span class="sd">    &gt;&gt;&gt; loo = loo_cv_did(adata, features=[&quot;sig_IFN&quot;], design=design, visits=visits)</span>
+<span class="sd">    &gt;&gt;&gt; loo = loo_cv_did(adata, features=["sig_IFN"], design=design, visits=visits)</span>
 <span class="sd">    &gt;&gt;&gt; # Find influential participants</span>
-<span class="sd">    &gt;&gt;&gt; influential = loo[loo[&quot;influence&quot;] &gt; 1.0]</span>
-<span class="sd">    &gt;&gt;&gt; print(f&quot;Influential participants: {influential[&#39;excluded&#39;].unique()}&quot;)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    &gt;&gt;&gt; influential = loo[loo["influence"] &gt; 1.0]</span>
+<span class="sd">    &gt;&gt;&gt; print(f"Influential participants: {influential['excluded'].unique()}")</span>
+<span class="sd">    """</span>
     <span class="c1"># Get paired participants</span>
     <span class="n">ad</span> <span class="o">=</span> <span class="n">subset_primary</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">)</span>
     <span class="n">participants</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
@@ -491,8 +502,8 @@
         <span class="n">aggregate</span><span class="o">=</span><span class="n">aggregate</span><span class="p">,</span>
         <span class="n">standardize</span><span class="o">=</span><span class="n">standardize</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">full_betas</span> <span class="o">=</span> <span class="n">full_res</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;feature&quot;</span><span class="p">)[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
-    <span class="n">full_ses</span> <span class="o">=</span> <span class="n">full_res</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;feature&quot;</span><span class="p">)[</span><span class="s2">&quot;se_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+    <span class="n">full_betas</span> <span class="o">=</span> <span class="n">full_res</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">"feature"</span><span class="p">)[</span><span class="s2">"beta_DiD"</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+    <span class="n">full_ses</span> <span class="o">=</span> <span class="n">full_res</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">"feature"</span><span class="p">)[</span><span class="s2">"se_DiD"</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
 
     <span class="c1"># LOO iterations</span>
     <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
@@ -514,9 +525,9 @@
             <span class="p">)</span>
 
             <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">res_loo</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-                <span class="n">feat</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span>
-                <span class="n">beta_loo</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span>
-                <span class="n">se_loo</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;se_DiD&quot;</span><span class="p">]</span>
+                <span class="n">feat</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">"feature"</span><span class="p">]</span>
+                <span class="n">beta_loo</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">"beta_DiD"</span><span class="p">]</span>
+                <span class="n">se_loo</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">"se_DiD"</span><span class="p">]</span>
 
                 <span class="c1"># Influence measure</span>
                 <span class="n">beta_full</span> <span class="o">=</span> <span class="n">full_betas</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">feat</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
@@ -528,29 +539,29 @@
 
                 <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                     <span class="p">{</span>
-                        <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
-                        <span class="s2">&quot;excluded&quot;</span><span class="p">:</span> <span class="n">pid</span><span class="p">,</span>
-                        <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="n">beta_loo</span><span class="p">,</span>
-                        <span class="s2">&quot;se_DiD&quot;</span><span class="p">:</span> <span class="n">se_loo</span><span class="p">,</span>
-                        <span class="s2">&quot;beta_full&quot;</span><span class="p">:</span> <span class="n">beta_full</span><span class="p">,</span>
-                        <span class="s2">&quot;influence&quot;</span><span class="p">:</span> <span class="n">influence</span><span class="p">,</span>
+                        <span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                        <span class="s2">"excluded"</span><span class="p">:</span> <span class="n">pid</span><span class="p">,</span>
+                        <span class="s2">"beta_DiD"</span><span class="p">:</span> <span class="n">beta_loo</span><span class="p">,</span>
+                        <span class="s2">"se_DiD"</span><span class="p">:</span> <span class="n">se_loo</span><span class="p">,</span>
+                        <span class="s2">"beta_full"</span><span class="p">:</span> <span class="n">beta_full</span><span class="p">,</span>
+                        <span class="s2">"influence"</span><span class="p">:</span> <span class="n">influence</span><span class="p">,</span>
                     <span class="p">}</span>
                 <span class="p">)</span>
 
         <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;LOO CV: model failed when excluding participant </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"LOO CV: model failed when excluding participant </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features</span><span class="p">:</span>
                 <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                     <span class="p">{</span>
-                        <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
-                        <span class="s2">&quot;excluded&quot;</span><span class="p">:</span> <span class="n">pid</span><span class="p">,</span>
-                        <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
-                        <span class="s2">&quot;se_DiD&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
-                        <span class="s2">&quot;beta_full&quot;</span><span class="p">:</span> <span class="n">full_betas</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">feat</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
-                        <span class="s2">&quot;influence&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                        <span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                        <span class="s2">"excluded"</span><span class="p">:</span> <span class="n">pid</span><span class="p">,</span>
+                        <span class="s2">"beta_DiD"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                        <span class="s2">"se_DiD"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                        <span class="s2">"beta_full"</span><span class="p">:</span> <span class="n">full_betas</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">feat</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+                        <span class="s2">"influence"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
                     <span class="p">}</span>
                 <span class="p">)</span>
 
@@ -571,7 +582,7 @@
     <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">exclude_crossovers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;K-fold cross-validation for DiD effect stability.</span>
+<span class="w">    </span><span class="sd">"""K-fold cross-validation for DiD effect stability.</span>
 
 <span class="sd">    Randomly partitions participants into K folds and estimates DiD</span>
 <span class="sd">    using K-1 folds. Repeating this process gives a distribution of</span>
@@ -614,9 +625,9 @@
 <span class="sd">    --------</span>
 <span class="sd">    &gt;&gt;&gt; cv = kfold_cv_did(adata, features=genes, design=design, visits=visits, k=5)</span>
 <span class="sd">    &gt;&gt;&gt; # Check stability</span>
-<span class="sd">    &gt;&gt;&gt; stable = cv[cv[&quot;sign_consistency&quot;] &gt; 0.9]</span>
-<span class="sd">    &gt;&gt;&gt; print(f&quot;Stable effects: {len(stable)} / {len(cv)}&quot;)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    &gt;&gt;&gt; stable = cv[cv["sign_consistency"] &gt; 0.9]</span>
+<span class="sd">    &gt;&gt;&gt; print(f"Stable effects: {len(stable)} / {len(cv)}")</span>
+<span class="sd">    """</span>
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
 
     <span class="c1"># Get paired participants</span>
@@ -631,7 +642,7 @@
     <span class="n">full_res</span> <span class="o">=</span> <span class="n">did_table</span><span class="p">(</span>
         <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span>
     <span class="p">)</span>
-    <span class="n">full_betas</span> <span class="o">=</span> <span class="n">full_res</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;feature&quot;</span><span class="p">)[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+    <span class="n">full_betas</span> <span class="o">=</span> <span class="n">full_res</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">"feature"</span><span class="p">)[</span><span class="s2">"beta_DiD"</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
 
     <span class="c1"># Collect CV estimates</span>
     <span class="n">cv_estimates</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="n">feat</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features</span><span class="p">}</span>
@@ -686,9 +697,9 @@
                 <span class="p">)</span>
 
                 <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">res_fold</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-                    <span class="n">feat</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span>
+                    <span class="n">feat</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">"feature"</span><span class="p">]</span>
                     <span class="k">if</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">cv_estimates</span><span class="p">:</span>
-                        <span class="n">cv_estimates</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">])</span>
+                        <span class="n">cv_estimates</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">"beta_DiD"</span><span class="p">])</span>
 
             <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
                 <span class="n">n_failed_folds</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -696,7 +707,7 @@
     <span class="k">if</span> <span class="n">n_failed_folds</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">total_folds</span> <span class="o">=</span> <span class="n">n_repeats</span> <span class="o">*</span> <span class="n">k</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;K-fold CV: </span><span class="si">{</span><span class="n">n_failed_folds</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total_folds</span><span class="si">}</span><span class="s2"> folds failed to fit.&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"K-fold CV: </span><span class="si">{</span><span class="n">n_failed_folds</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total_folds</span><span class="si">}</span><span class="s2"> folds failed to fit."</span><span class="p">,</span>
             <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
         <span class="p">)</span>
 
@@ -725,15 +736,15 @@
 
         <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
             <span class="p">{</span>
-                <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
-                <span class="s2">&quot;beta_full&quot;</span><span class="p">:</span> <span class="n">beta_full</span><span class="p">,</span>
-                <span class="s2">&quot;beta_cv_mean&quot;</span><span class="p">:</span> <span class="n">cv_mean</span><span class="p">,</span>
-                <span class="s2">&quot;beta_cv_sd&quot;</span><span class="p">:</span> <span class="n">cv_sd</span><span class="p">,</span>
-                <span class="s2">&quot;beta_cv_lower&quot;</span><span class="p">:</span> <span class="n">cv_lower</span><span class="p">,</span>
-                <span class="s2">&quot;beta_cv_upper&quot;</span><span class="p">:</span> <span class="n">cv_upper</span><span class="p">,</span>
-                <span class="s2">&quot;cv_stability&quot;</span><span class="p">:</span> <span class="n">stability</span><span class="p">,</span>
-                <span class="s2">&quot;sign_consistency&quot;</span><span class="p">:</span> <span class="n">sign_consistency</span><span class="p">,</span>
-                <span class="s2">&quot;n_cv_samples&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">),</span>
+                <span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                <span class="s2">"beta_full"</span><span class="p">:</span> <span class="n">beta_full</span><span class="p">,</span>
+                <span class="s2">"beta_cv_mean"</span><span class="p">:</span> <span class="n">cv_mean</span><span class="p">,</span>
+                <span class="s2">"beta_cv_sd"</span><span class="p">:</span> <span class="n">cv_sd</span><span class="p">,</span>
+                <span class="s2">"beta_cv_lower"</span><span class="p">:</span> <span class="n">cv_lower</span><span class="p">,</span>
+                <span class="s2">"beta_cv_upper"</span><span class="p">:</span> <span class="n">cv_upper</span><span class="p">,</span>
+                <span class="s2">"cv_stability"</span><span class="p">:</span> <span class="n">stability</span><span class="p">,</span>
+                <span class="s2">"sign_consistency"</span><span class="p">:</span> <span class="n">sign_consistency</span><span class="p">,</span>
+                <span class="s2">"n_cv_samples"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">),</span>
             <span class="p">}</span>
         <span class="p">)</span>
 
@@ -747,7 +758,7 @@
     <span class="n">loo_results</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Summarize influence diagnostics from LOO results.</span>
+<span class="w">    </span><span class="sd">"""Summarize influence diagnostics from LOO results.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -765,14 +776,14 @@
 <span class="sd">        - influence: Influence score for this participant</span>
 <span class="sd">        - beta_DiD: DiD estimate without this participant</span>
 <span class="sd">        - is_influential: Whether influence &gt; threshold</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">loo_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
 
     <span class="c1"># Return per-participant results with influence flag</span>
     <span class="n">result</span> <span class="o">=</span> <span class="n">loo_results</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;is_influential&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;influence&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">threshold</span>
-    <span class="k">return</span> <span class="n">result</span><span class="p">[[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;excluded&quot;</span><span class="p">,</span> <span class="s2">&quot;influence&quot;</span><span class="p">,</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;beta_full&quot;</span><span class="p">,</span> <span class="s2">&quot;is_influential&quot;</span><span class="p">]]</span></div>
+    <span class="n">result</span><span class="p">[</span><span class="s2">"is_influential"</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"influence"</span><span class="p">]</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">threshold</span>
+    <span class="k">return</span> <span class="n">result</span><span class="p">[[</span><span class="s2">"feature"</span><span class="p">,</span> <span class="s2">"excluded"</span><span class="p">,</span> <span class="s2">"influence"</span><span class="p">,</span> <span class="s2">"beta_DiD"</span><span class="p">,</span> <span class="s2">"beta_full"</span><span class="p">,</span> <span class="s2">"is_influential"</span><span class="p">]]</span></div>
 
 
 
@@ -782,7 +793,7 @@
     <span class="n">cv_results</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a summary of CV results (works with both LOO and k-fold).</span>
+<span class="w">    </span><span class="sd">"""Generate a summary of CV results (works with both LOO and k-fold).</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -800,18 +811,18 @@
 <span class="sd">        - mean_loo: Mean of LOO estimates</span>
 <span class="sd">        - std_loo: Standard deviation of LOO estimates</span>
 <span class="sd">        - cv: Coefficient of variation (std/mean)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">cv_results</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
     <span class="c1"># Detect LOO vs kfold format</span>
-    <span class="n">is_loo</span> <span class="o">=</span> <span class="s2">&quot;excluded&quot;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span>
+    <span class="n">is_loo</span> <span class="o">=</span> <span class="s2">"excluded"</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span>
 
     <span class="k">if</span> <span class="n">is_loo</span><span class="p">:</span>
         <span class="c1"># LOO format: one row per feature-participant</span>
         <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">feat</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;feature&quot;</span><span class="p">):</span>
-            <span class="n">betas</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="s2">&quot;beta_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
-            <span class="n">beta_full</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="s2">&quot;beta_full&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="s2">&quot;beta_full&quot;</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="k">for</span> <span class="n">feat</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">"feature"</span><span class="p">):</span>
+            <span class="n">betas</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="s2">"beta_DiD"</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="n">beta_full</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="s2">"beta_full"</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="s2">"beta_full"</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">betas</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
                 <span class="n">mean_loo</span> <span class="o">=</span> <span class="n">betas</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
@@ -822,27 +833,27 @@
 
             <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
-                    <span class="s2">&quot;mean_estimate&quot;</span><span class="p">:</span> <span class="n">beta_full</span><span class="p">,</span>
-                    <span class="s2">&quot;mean_loo&quot;</span><span class="p">:</span> <span class="n">mean_loo</span><span class="p">,</span>
-                    <span class="s2">&quot;std_loo&quot;</span><span class="p">:</span> <span class="n">std_loo</span><span class="p">,</span>
-                    <span class="s2">&quot;cv&quot;</span><span class="p">:</span> <span class="n">cv</span><span class="p">,</span>
-                    <span class="s2">&quot;n_loo&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">betas</span><span class="p">),</span>
+                    <span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                    <span class="s2">"mean_estimate"</span><span class="p">:</span> <span class="n">beta_full</span><span class="p">,</span>
+                    <span class="s2">"mean_loo"</span><span class="p">:</span> <span class="n">mean_loo</span><span class="p">,</span>
+                    <span class="s2">"std_loo"</span><span class="p">:</span> <span class="n">std_loo</span><span class="p">,</span>
+                    <span class="s2">"cv"</span><span class="p">:</span> <span class="n">cv</span><span class="p">,</span>
+                    <span class="s2">"n_loo"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">betas</span><span class="p">),</span>
                 <span class="p">}</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
 
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># kfold format: one row per feature</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="s2">&quot;feature&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;mean_estimate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;beta_full&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
-        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;mean_loo&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;beta_cv_mean&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
-        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;std_loo&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;beta_cv_sd&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="s2">"feature"</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">"mean_estimate"</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"beta_full"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">"mean_loo"</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"beta_cv_mean"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">"std_loo"</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"beta_cv_sd"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
 
         <span class="c1"># Calculate CV</span>
-        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;cv&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
-            <span class="n">result</span><span class="p">[</span><span class="s2">&quot;mean_loo&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mf">1e-12</span><span class="p">,</span>
-            <span class="n">result</span><span class="p">[</span><span class="s2">&quot;std_loo&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">/</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;mean_loo&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">abs</span><span class="p">(),</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">"cv"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">result</span><span class="p">[</span><span class="s2">"mean_loo"</span><span class="p">]</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mf">1e-12</span><span class="p">,</span>
+            <span class="n">result</span><span class="p">[</span><span class="s2">"std_loo"</span><span class="p">]</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">/</span> <span class="n">result</span><span class="p">[</span><span class="s2">"mean_loo"</span><span class="p">]</span><span class="o">.</span><span class="n">abs</span><span class="p">(),</span>
             <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span></div>
@@ -872,8 +883,8 @@
     </div>
   </div>
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">

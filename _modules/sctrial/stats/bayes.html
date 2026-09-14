@@ -26,8 +26,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="../../../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
@@ -35,10 +35,10 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=44e57e90" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
     <script src="../../../_static/documentation_options.js?v=d198571b"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
@@ -148,11 +148,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -165,8 +172,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -177,8 +183,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -220,11 +225,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -237,8 +249,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -249,8 +260,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -274,6 +284,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
 </ul>
@@ -374,7 +385,7 @@
     <span class="n">_prepare_did_obs</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;did_table_bayes&quot;</span><span class="p">,</span> <span class="s2">&quot;prior_predictive_check&quot;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"did_table_bayes"</span><span class="p">,</span> <span class="s2">"prior_predictive_check"</span><span class="p">]</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_build_did_model</span><span class="p">(</span>
@@ -387,7 +398,7 @@
     <span class="n">sigma_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
     <span class="n">covariate_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the Bayesian DiD PyMC model and return it as a context manager.</span>
+<span class="w">    </span><span class="sd">"""Build the Bayesian DiD PyMC model and return it as a context manager.</span>
 
 <span class="sd">    This is a shared helper used by both ``did_table_bayes`` and</span>
 <span class="sd">    ``prior_predictive_check`` so that the prior specification stays in sync.</span>
@@ -397,31 +408,31 @@
 <span class="sd">    covariate_matrix</span>
 <span class="sd">        Optional (n_obs, n_covariates) array of covariate values to include</span>
 <span class="sd">        as additional fixed effects.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">pymc</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pm</span>
     <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-            <span class="s2">&quot;pymc is required for Bayesian DiD. Install with: pip install sctrial[bayes]&quot;</span>
+            <span class="s2">"pymc is required for Bayesian DiD. Install with: pip install sctrial[bayes]"</span>
         <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
 
     <span class="n">interaction</span> <span class="o">=</span> <span class="n">time_vals</span> <span class="o">*</span> <span class="n">arm_vals</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Model</span><span class="p">()</span>
     <span class="k">with</span> <span class="n">model</span><span class="p">:</span>
-        <span class="n">sigma</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">HalfNormal</span><span class="p">(</span><span class="s2">&quot;sigma&quot;</span><span class="p">,</span> <span class="n">sigma_scale</span><span class="p">)</span>
-        <span class="n">alpha</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">&quot;alpha&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">n_units</span><span class="p">)</span>
-        <span class="n">beta_time</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">&quot;beta_time&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">)</span>
-        <span class="n">beta_arm</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">&quot;beta_arm&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">)</span>
-        <span class="n">beta_did</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">&quot;beta_did&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">)</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">HalfNormal</span><span class="p">(</span><span class="s2">"sigma"</span><span class="p">,</span> <span class="n">sigma_scale</span><span class="p">)</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">"alpha"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">n_units</span><span class="p">)</span>
+        <span class="n">beta_time</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">"beta_time"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">)</span>
+        <span class="n">beta_arm</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">"beta_arm"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">)</span>
+        <span class="n">beta_did</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">"beta_did"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">)</span>
         <span class="n">mu</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">alpha</span><span class="p">[</span><span class="n">unit_codes</span><span class="p">]</span> <span class="o">+</span> <span class="n">beta_time</span> <span class="o">*</span> <span class="n">time_vals</span> <span class="o">+</span> <span class="n">beta_arm</span> <span class="o">*</span> <span class="n">arm_vals</span> <span class="o">+</span> <span class="n">beta_did</span> <span class="o">*</span> <span class="n">interaction</span>
         <span class="p">)</span>
         <span class="c1"># Add covariate fixed effects if provided</span>
         <span class="k">if</span> <span class="n">covariate_matrix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">covariate_matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">n_cov</span> <span class="o">=</span> <span class="n">covariate_matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-            <span class="n">beta_cov</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">&quot;beta_cov&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">n_cov</span><span class="p">)</span>
+            <span class="n">beta_cov</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">"beta_cov"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">prior_scale</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">n_cov</span><span class="p">)</span>
             <span class="n">mu</span> <span class="o">=</span> <span class="n">mu</span> <span class="o">+</span> <span class="n">pm</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">covariate_matrix</span><span class="p">,</span> <span class="n">beta_cov</span><span class="p">)</span>
-        <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="n">y</span><span class="p">)</span>
+        <span class="n">pm</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="s2">"y"</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="n">y</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">model</span>
 
 
@@ -435,10 +446,10 @@
     <span class="o">*</span><span class="p">,</span>
     <span class="n">exclude_crossovers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">celltype</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">aggregate</span><span class="p">:</span> <span class="n">AggregateMode</span> <span class="o">=</span> <span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+    <span class="n">aggregate</span><span class="p">:</span> <span class="n">AggregateMode</span> <span class="o">=</span> <span class="s2">"participant_visit"</span><span class="p">,</span>
     <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">standardize</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="n">agg</span><span class="p">:</span> <span class="n">AggregateFunc</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+    <span class="n">agg</span><span class="p">:</span> <span class="n">AggregateFunc</span> <span class="o">=</span> <span class="s2">"mean"</span><span class="p">,</span>
     <span class="n">covariates</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">prior_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
     <span class="n">sigma_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
@@ -449,7 +460,7 @@
     <span class="n">max_treedepth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bayesian DiD with participant random intercepts.</span>
+<span class="w">    </span><span class="sd">"""Bayesian DiD with participant random intercepts.</span>
 
 <span class="sd">    Fits a simple hierarchical model:</span>
 
@@ -482,13 +493,13 @@
 <span class="sd">    celltype</span>
 <span class="sd">        If provided, subset to this cell type before analysis.</span>
 <span class="sd">    aggregate</span>
-<span class="sd">        Aggregation mode (``&quot;participant_visit&quot;`` or ``&quot;cell&quot;``).</span>
+<span class="sd">        Aggregation mode (``"participant_visit"`` or ``"cell"``).</span>
 <span class="sd">    layer</span>
 <span class="sd">        Expression layer for gene features (``None`` uses ``adata.X``).</span>
 <span class="sd">    standardize</span>
 <span class="sd">        Whether to z-score outcomes before model fitting.</span>
 <span class="sd">    agg</span>
-<span class="sd">        Aggregation function (``&quot;mean&quot;``, ``&quot;median&quot;``, or ``&quot;pct_pos&quot;``).</span>
+<span class="sd">        Aggregation function (``"mean"``, ``"median"``, or ``"pct_pos"``).</span>
 <span class="sd">    covariates</span>
 <span class="sd">        Optional covariate columns to include as fixed effects.</span>
 <span class="sd">    prior_scale</span>
@@ -520,22 +531,22 @@
 <span class="sd">        - p_bayes: Two-sided posterior tail probability (not a frequentist p-value)</span>
 <span class="sd">        - n_units: Number of paired units used</span>
 <span class="sd">        - FDR_bayes: BH-adjusted p_bayes</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">pymc</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pm</span>
     <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
-        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;pymc is required for did_table_bayes&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">"pymc is required for did_table_bayes"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
 
     <span class="n">ad</span><span class="p">,</span> <span class="n">obs</span> <span class="o">=</span> <span class="n">_prepare_did_obs</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">celltype</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="p">)</span>
 
-    <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">,</span> <span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="s2">&quot;arm_bin&quot;</span><span class="p">]</span>
+    <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">,</span> <span class="s2">"visit_num"</span><span class="p">,</span> <span class="s2">"arm_bin"</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">covariates</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Covariate &#39;</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">&#39; not found in adata.obs&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Covariate '</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">' not found in adata.obs"</span><span class="p">)</span>
             <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
 
     <span class="n">df</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">cols</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -557,11 +568,11 @@
         <span class="n">select_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">unit</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">arm_bin</span><span class="p">,</span> <span class="n">feat</span><span class="p">]</span> <span class="o">+</span> <span class="n">cov_cols</span>
         <span class="n">df_feat</span> <span class="o">=</span> <span class="n">df_use</span><span class="p">[</span><span class="n">select_cols</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">df_feat</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">})</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">"beta_DiD"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"n_units"</span><span class="p">:</span> <span class="mi">0</span><span class="p">})</span>
             <span class="k">continue</span>
 
         <span class="c1"># participant index for random intercepts (remove unused categories)</span>
-        <span class="n">unit_cat</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;category&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">remove_unused_categories</span><span class="p">()</span>
+        <span class="n">unit_cat</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">"category"</span><span class="p">)</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">remove_unused_categories</span><span class="p">()</span>
         <span class="n">unit_codes</span> <span class="o">=</span> <span class="n">unit_cat</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">codes</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
         <span class="n">n_units</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">unit_cat</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">categories</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
         <span class="n">time_vals</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">time</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
@@ -571,7 +582,7 @@
         <span class="k">if</span> <span class="n">standardize</span><span class="p">:</span>
             <span class="n">y_std</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">y_std</span><span class="p">)</span> <span class="ow">or</span> <span class="n">y_std</span> <span class="o">&lt;</span> <span class="mf">1e-12</span><span class="p">:</span>
-                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="n">n_units</span><span class="p">})</span>
+                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">"beta_DiD"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"n_units"</span><span class="p">:</span> <span class="n">n_units</span><span class="p">})</span>
                 <span class="k">continue</span>
             <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">y</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">y_std</span>
 
@@ -600,12 +611,12 @@
                 <span class="n">tune</span><span class="o">=</span><span class="n">tune</span><span class="p">,</span>
                 <span class="n">chains</span><span class="o">=</span><span class="n">chains</span><span class="p">,</span>
                 <span class="n">target_accept</span><span class="o">=</span><span class="n">target_accept</span><span class="p">,</span>
-                <span class="n">nuts</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;max_treedepth&quot;</span><span class="p">:</span> <span class="n">max_treedepth</span><span class="p">},</span>
+                <span class="n">nuts</span><span class="o">=</span><span class="p">{</span><span class="s2">"max_treedepth"</span><span class="p">:</span> <span class="n">max_treedepth</span><span class="p">},</span>
                 <span class="n">random_seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
                 <span class="n">progressbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="p">)</span>
 
-        <span class="n">post</span> <span class="o">=</span> <span class="n">idata</span><span class="o">.</span><span class="n">posterior</span><span class="p">[</span><span class="s2">&quot;beta_did&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="n">post</span> <span class="o">=</span> <span class="n">idata</span><span class="o">.</span><span class="n">posterior</span><span class="p">[</span><span class="s2">"beta_did"</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
         <span class="n">beta_mean</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
         <span class="n">ci_low</span><span class="p">,</span> <span class="n">ci_high</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">post</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.025</span><span class="p">,</span> <span class="mf">0.975</span><span class="p">])</span>
         <span class="n">n_post</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
@@ -613,17 +624,17 @@
 
         <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
             <span class="p">{</span>
-                <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
-                <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="n">beta_mean</span><span class="p">,</span>
-                <span class="s2">&quot;ci_low&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">ci_low</span><span class="p">),</span>
-                <span class="s2">&quot;ci_high&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">ci_high</span><span class="p">),</span>
-                <span class="s2">&quot;p_bayes&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">p_bayes</span><span class="p">),</span>
-                <span class="s2">&quot;n_units&quot;</span><span class="p">:</span> <span class="n">n_units</span><span class="p">,</span>
+                <span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                <span class="s2">"beta_DiD"</span><span class="p">:</span> <span class="n">beta_mean</span><span class="p">,</span>
+                <span class="s2">"ci_low"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">ci_low</span><span class="p">),</span>
+                <span class="s2">"ci_high"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">ci_high</span><span class="p">),</span>
+                <span class="s2">"p_bayes"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">p_bayes</span><span class="p">),</span>
+                <span class="s2">"n_units"</span><span class="p">:</span> <span class="n">n_units</span><span class="p">,</span>
             <span class="p">}</span>
         <span class="p">)</span>
 
-    <span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;p_bayes&quot;</span><span class="p">,</span> <span class="n">na_position</span><span class="o">=</span><span class="s2">&quot;last&quot;</span><span class="p">)</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">apply_fdr</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">&quot;p_bayes&quot;</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">&quot;FDR_bayes&quot;</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">"p_bayes"</span><span class="p">,</span> <span class="n">na_position</span><span class="o">=</span><span class="s2">"last"</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">apply_fdr</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">"p_bayes"</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">"FDR_bayes"</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 
@@ -646,7 +657,7 @@
     <span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run prior predictive check for the Bayesian DiD model.</span>
+<span class="w">    </span><span class="sd">"""Run prior predictive check for the Bayesian DiD model.</span>
 
 <span class="sd">    Samples from the prior predictive distribution to verify that the chosen</span>
 <span class="sd">    priors produce plausible outcome values *before* fitting the model.  This</span>
@@ -684,15 +695,15 @@
 <span class="sd">          observed data across all requested features.</span>
 <span class="sd">        - ``prior_covers_data`` : bool -- whether the 95 % prior predictive</span>
 <span class="sd">          interval covers the full observed data range.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">pymc</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pm</span>
     <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
-        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;pymc is required for prior_predictive_check&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">"pymc is required for prior_predictive_check"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
 
     <span class="n">ad</span><span class="p">,</span> <span class="n">obs</span> <span class="o">=</span> <span class="n">_prepare_did_obs</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">celltype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-    <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">,</span> <span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="s2">&quot;arm_bin&quot;</span><span class="p">]</span>
+    <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">,</span> <span class="s2">"visit_num"</span><span class="p">,</span> <span class="s2">"arm_bin"</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">)</span>
 
@@ -704,8 +715,8 @@
         <span class="n">final_features</span><span class="p">,</span>
         <span class="n">design</span><span class="p">,</span>
         <span class="n">visits</span><span class="p">,</span>
-        <span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+        <span class="s2">"participant_visit"</span><span class="p">,</span>
+        <span class="s2">"mean"</span><span class="p">,</span>
         <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span>
 
@@ -723,7 +734,7 @@
         <span class="n">all_observed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">unit_cat</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;category&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">remove_unused_categories</span><span class="p">()</span>
+            <span class="n">unit_cat</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">"category"</span><span class="p">)</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">remove_unused_categories</span><span class="p">()</span>
             <span class="n">unit_codes</span> <span class="o">=</span> <span class="n">unit_cat</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">codes</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
             <span class="n">n_units</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">unit_cat</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">categories</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
             <span class="n">time_vals</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">time</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
@@ -739,12 +750,12 @@
             <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No usable features found for prior predictive check.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"No usable features found for prior predictive check."</span><span class="p">)</span>
 
     <span class="k">with</span> <span class="n">model</span><span class="p">:</span>
         <span class="n">idata</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">sample_prior_predictive</span><span class="p">(</span><span class="n">samples</span><span class="o">=</span><span class="n">n_samples</span><span class="p">,</span> <span class="n">random_seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
 
-    <span class="n">prior_pred</span> <span class="o">=</span> <span class="n">idata</span><span class="o">.</span><span class="n">prior_predictive</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">prior_pred</span> <span class="o">=</span> <span class="n">idata</span><span class="o">.</span><span class="n">prior_predictive</span><span class="p">[</span><span class="s2">"y"</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
 
     <span class="n">obs_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">all_observed</span><span class="p">)</span>
     <span class="n">obs_min</span><span class="p">,</span> <span class="n">obs_max</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">obs_all</span><span class="o">.</span><span class="n">min</span><span class="p">()),</span> <span class="nb">float</span><span class="p">(</span><span class="n">obs_all</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
@@ -753,9 +764,9 @@
     <span class="n">prior_covers_data</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">pp_low</span> <span class="o">&lt;=</span> <span class="n">obs_min</span> <span class="ow">and</span> <span class="n">pp_high</span> <span class="o">&gt;=</span> <span class="n">obs_max</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">&quot;prior_predictive&quot;</span><span class="p">:</span> <span class="n">prior_pred</span><span class="p">,</span>
-        <span class="s2">&quot;observed_range&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">obs_min</span><span class="p">,</span> <span class="n">obs_max</span><span class="p">),</span>
-        <span class="s2">&quot;prior_covers_data&quot;</span><span class="p">:</span> <span class="n">prior_covers_data</span><span class="p">,</span>
+        <span class="s2">"prior_predictive"</span><span class="p">:</span> <span class="n">prior_pred</span><span class="p">,</span>
+        <span class="s2">"observed_range"</span><span class="p">:</span> <span class="p">(</span><span class="n">obs_min</span><span class="p">,</span> <span class="n">obs_max</span><span class="p">),</span>
+        <span class="s2">"prior_covers_data"</span><span class="p">:</span> <span class="n">prior_covers_data</span><span class="p">,</span>
     <span class="p">}</span></div>
 
 </pre></div>
@@ -783,8 +794,8 @@
     </div>
   </div>
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">

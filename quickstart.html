@@ -27,8 +27,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -36,10 +36,10 @@
     <link rel="stylesheet" type="text/css" href="_static/custom.css?v=44e57e90" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
     <script src="_static/documentation_options.js?v=d198571b"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
@@ -151,11 +151,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -168,8 +175,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -180,8 +186,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -227,11 +232,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -244,8 +256,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -256,8 +267,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -281,6 +291,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
 </ul>
@@ -368,41 +379,41 @@
 
 <span class="c1"># 1. Define Design (two-arm trial)</span>
 <span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
-    <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;pid&quot;</span><span class="p">,</span>
-    <span class="n">visit_col</span><span class="o">=</span><span class="s2">&quot;visit&quot;</span><span class="p">,</span>
-    <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;arm&quot;</span><span class="p">,</span>
-    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Treated&quot;</span><span class="p">,</span>
-    <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Control&quot;</span><span class="p">,</span>
-    <span class="n">celltype_col</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span><span class="p">,</span>
+    <span class="n">participant_col</span><span class="o">=</span><span class="s2">"pid"</span><span class="p">,</span>
+    <span class="n">visit_col</span><span class="o">=</span><span class="s2">"visit"</span><span class="p">,</span>
+    <span class="n">arm_col</span><span class="o">=</span><span class="s2">"arm"</span><span class="p">,</span>
+    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">"Treated"</span><span class="p">,</span>
+    <span class="n">arm_control</span><span class="o">=</span><span class="s2">"Control"</span><span class="p">,</span>
+    <span class="n">celltype_col</span><span class="o">=</span><span class="s2">"cell_type"</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="c1"># For single-arm studies (e.g. vaccination, single-agent therapy):</span>
 <span class="c1"># design = st.TrialDesign(</span>
-<span class="c1">#     participant_col=&quot;pid&quot;,</span>
-<span class="c1">#     visit_col=&quot;visit&quot;,</span>
+<span class="c1">#     participant_col="pid",</span>
+<span class="c1">#     visit_col="visit",</span>
 <span class="c1">#     arm_col=None,  # No arm column needed</span>
-<span class="c1">#     celltype_col=&quot;cell_type&quot;,</span>
+<span class="c1">#     celltype_col="cell_type",</span>
 <span class="c1"># )</span>
 
 <span class="c1"># 2. Preprocess (add log1p‑CPM layer)</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="s2">"counts"</span><span class="p">)</span>
 
 <span class="c1"># 3. Score Gene Sets (module scores)</span>
-<span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Signature1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;GENE1&quot;</span><span class="p">,</span> <span class="s2">&quot;GENE2&quot;</span><span class="p">,</span> <span class="s2">&quot;GENE3&quot;</span><span class="p">]}</span>
+<span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"Signature1"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"GENE1"</span><span class="p">,</span> <span class="s2">"GENE2"</span><span class="p">,</span> <span class="s2">"GENE3"</span><span class="p">]}</span>
 <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">gene_sets</span><span class="p">,</span>
-    <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span>
-    <span class="n">method</span><span class="o">=</span><span class="s2">&quot;zmean&quot;</span><span class="p">,</span>
-    <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">,</span>
+    <span class="n">layer</span><span class="o">=</span><span class="s2">"log1p_cpm"</span><span class="p">,</span>
+    <span class="n">method</span><span class="o">=</span><span class="s2">"zmean"</span><span class="p">,</span>
+    <span class="n">prefix</span><span class="o">=</span><span class="s2">"ms_"</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="c1"># 4. Run DiD</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
-    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_Signature1&quot;</span><span class="p">],</span>
+    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">"ms_Signature1"</span><span class="p">],</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
 <span class="p">)</span>
 
 <span class="c1"># 5. Summarize &amp; visualize</span>
@@ -417,16 +428,16 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Chain common steps in a single workflow</span>
 <span class="n">res</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">st</span><span class="o">.</span><span class="n">workflow</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
-    <span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">counts_layer</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">)</span>
-    <span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">gene_sets</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
-    <span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_Signature1&quot;</span><span class="p">],</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>
+    <span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">counts_layer</span><span class="o">=</span><span class="s2">"counts"</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">gene_sets</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">"log1p_cpm"</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"ms_"</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">"ms_Signature1"</span><span class="p">],</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">))</span>
     <span class="o">.</span><span class="n">result</span><span class="p">()</span>
 <span class="p">)</span>
 </pre></div>
 </div>
 <p><strong>Pairing diagnostics</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Count paired participants before longitudinal analysis</span>
-<span class="n">paired</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">],</span> <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;pid&quot;</span><span class="p">)</span>
+<span class="n">paired</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="s2">"visit"</span><span class="p">,</span> <span class="p">[</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">],</span> <span class="n">participant_col</span><span class="o">=</span><span class="s2">"pid"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">paired</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -435,27 +446,27 @@
 <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets_aucell</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">gene_sets</span><span class="p">,</span>
-    <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;log1p_cpm&quot;</span><span class="p">,</span>
-    <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;aucell_&quot;</span><span class="p">,</span>
+    <span class="n">layer</span><span class="o">=</span><span class="s2">"log1p_cpm"</span><span class="p">,</span>
+    <span class="n">prefix</span><span class="o">=</span><span class="s2">"aucell_"</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
 <p><strong>Cross‑sectional comparisons</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cross</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">between_arm_comparison</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
-    <span class="n">visit</span><span class="o">=</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span>
-    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_Signature1&quot;</span><span class="p">],</span>
+    <span class="n">visit</span><span class="o">=</span><span class="s2">"V1"</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">"ms_Signature1"</span><span class="p">],</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span><span class="p">,</span>
+    <span class="n">aggregate</span><span class="o">=</span><span class="s2">"participant_visit"</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
 <p><strong>GSEA on DiD results</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">gsea</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">run_gsea_did</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
-    <span class="n">gene_sets</span><span class="o">=</span><span class="s2">&quot;KEGG_2021_Human&quot;</span><span class="p">,</span>
+    <span class="n">gene_sets</span><span class="o">=</span><span class="s2">"KEGG_2021_Human"</span><span class="p">,</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
 <span class="p">)</span>
 <span class="n">st</span><span class="o">.</span><span class="n">plot_gsea_heatmap</span><span class="p">(</span><span class="n">gsea</span><span class="p">,</span> <span class="n">fdr_thresh</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">top_n</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
 </pre></div>
@@ -463,10 +474,10 @@
 <p><strong>Pseudobulk export</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pb</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">pseudobulk_export</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
-    <span class="n">genes</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;IFNG&quot;</span><span class="p">,</span> <span class="s2">&quot;GZMB&quot;</span><span class="p">,</span> <span class="s2">&quot;NKG7&quot;</span><span class="p">],</span>
+    <span class="n">genes</span><span class="o">=</span><span class="p">[</span><span class="s2">"IFNG"</span><span class="p">,</span> <span class="s2">"GZMB"</span><span class="p">,</span> <span class="s2">"NKG7"</span><span class="p">],</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
-    <span class="n">celltype_col</span><span class="o">=</span><span class="s2">&quot;cell_type&quot;</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
+    <span class="n">celltype_col</span><span class="o">=</span><span class="s2">"cell_type"</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -559,8 +570,8 @@
     </div>
   </div>
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">

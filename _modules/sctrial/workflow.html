@@ -26,8 +26,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
@@ -35,10 +35,10 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=44e57e90" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
     <script src="../../_static/documentation_options.js?v=d198571b"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
@@ -148,11 +148,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -165,8 +172,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -177,8 +183,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -220,11 +225,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -237,8 +249,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -249,8 +260,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -274,6 +284,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
 </ul>
@@ -356,7 +367,7 @@
                 <article class="bd-article">
                   
   <h1>Source code for sctrial.workflow</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;End-to-end trial analysis workflow: TrialWorkflow and convenience pipeline.&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""End-to-end trial analysis workflow: TrialWorkflow and convenience pipeline."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -375,19 +386,19 @@
 <a class="viewcode-back" href="../../api/workflow.html#sctrial.workflow.TrialWorkflow">[docs]</a>
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">TrialWorkflow</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fluent API for common sctrial workflows.</span>
+<span class="w">    </span><span class="sd">"""Fluent API for common sctrial workflows.</span>
 
 <span class="sd">    This class provides a minimal chainable interface for common tasks:</span>
 <span class="sd">    preprocessing, gene scoring, and DiD analysis.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span>
     <span class="n">last_result</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="TrialWorkflow.add_log1p_cpm_layer">
 <a class="viewcode-back" href="../../api/workflow.html#sctrial.workflow.TrialWorkflow.add_log1p_cpm_layer">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">add_log1p_cpm_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;counts&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrialWorkflow</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a log1p-CPM layer to the workflow AnnData.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_log1p_cpm_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"counts"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrialWorkflow</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Add a log1p-CPM layer to the workflow AnnData.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -398,7 +409,7 @@
 <span class="sd">        -------</span>
 <span class="sd">        TrialWorkflow</span>
 <span class="sd">            The workflow object with the new log1p-CPM layer added.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">adata</span> <span class="o">=</span> <span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="n">counts_layer</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span></div>
 
@@ -410,12 +421,12 @@
         <span class="n">gene_sets</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
         <span class="o">*</span><span class="p">,</span>
         <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;zmean&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;zmean&quot;</span><span class="p">,</span>
-        <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ms_&quot;</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">"zmean"</span><span class="p">,</span> <span class="s2">"mean"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"zmean"</span><span class="p">,</span>
+        <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"ms_"</span><span class="p">,</span>
         <span class="n">min_genes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
         <span class="n">overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrialWorkflow</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Score gene sets and store module scores in `adata.obs`.</span>
+<span class="w">        </span><span class="sd">"""Score gene sets and store module scores in `adata.obs`.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -426,10 +437,10 @@
 <span class="sd">        layer</span>
 <span class="sd">            Layer name in `adata.layers` to use for expression data.</span>
 <span class="sd">            If None, uses `adata.X`.</span>
-<span class="sd">            For log1p-CPM workflows, use layer=&quot;log1p_cpm&quot;.</span>
+<span class="sd">            For log1p-CPM workflows, use layer="log1p_cpm".</span>
 <span class="sd">        method</span>
-<span class="sd">            Scoring method. ``&quot;zmean&quot;`` (default) z-scores each gene across</span>
-<span class="sd">            cells then averages; ``&quot;mean&quot;`` uses raw mean expression.</span>
+<span class="sd">            Scoring method. ``"zmean"`` (default) z-scores each gene across</span>
+<span class="sd">            cells then averages; ``"mean"`` uses raw mean expression.</span>
 <span class="sd">        prefix</span>
 <span class="sd">            Prefix to add to column names (e.g., ``ms_`` for module scores).</span>
 <span class="sd">        min_genes</span>
@@ -443,7 +454,7 @@
 <span class="sd">        -------</span>
 <span class="sd">        TrialWorkflow</span>
 <span class="sd">            The workflow object with the gene sets scored and module scores stored in ``adata.obs``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">adata</span> <span class="o">=</span> <span class="n">score_gene_sets</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">adata</span><span class="p">,</span>
             <span class="n">gene_sets</span><span class="p">,</span>
@@ -466,7 +477,7 @@
         <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
         <span class="n">config</span><span class="p">:</span> <span class="n">DiDConfig</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrialWorkflow</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run DiD and store the result on the workflow.</span>
+<span class="w">        </span><span class="sd">"""Run DiD and store the result on the workflow.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -484,7 +495,7 @@
 <span class="sd">        -------</span>
 <span class="sd">        TrialWorkflow</span>
 <span class="sd">            The workflow object with the DiD result stored in ``self.last_result``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="o">=</span> <span class="n">did_table</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">adata</span><span class="p">,</span>
             <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
@@ -498,13 +509,13 @@
 <div class="viewcode-block" id="TrialWorkflow.result">
 <a class="viewcode-back" href="../../api/workflow.html#sctrial.workflow.TrialWorkflow.result">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the last result computed in the workflow.</span>
+<span class="w">        </span><span class="sd">"""Return the last result computed in the workflow.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        Any</span>
 <span class="sd">            The last result computed in the workflow (e.g., a DataFrame).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span></div>
 </div>
 
@@ -513,7 +524,7 @@
 <div class="viewcode-block" id="workflow">
 <a class="viewcode-back" href="../../api/workflow.html#sctrial.workflow.workflow">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">workflow</span><span class="p">(</span><span class="n">adata</span><span class="p">:</span> <span class="n">AnnData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrialWorkflow</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a TrialWorkflow for fluent chaining.</span>
+<span class="w">    </span><span class="sd">"""Create a TrialWorkflow for fluent chaining.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -524,7 +535,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    TrialWorkflow</span>
 <span class="sd">        A TrialWorkflow object with the AnnData object set.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">return</span> <span class="n">TrialWorkflow</span><span class="p">(</span><span class="n">adata</span><span class="o">=</span><span class="n">adata</span><span class="p">)</span></div>
 
 </pre></div>
@@ -552,8 +563,8 @@
     </div>
   </div>
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">

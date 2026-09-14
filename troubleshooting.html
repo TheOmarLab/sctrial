@@ -27,8 +27,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -36,10 +36,10 @@
     <link rel="stylesheet" type="text/css" href="_static/custom.css?v=44e57e90" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
     <script src="_static/documentation_options.js?v=d198571b"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
@@ -151,11 +151,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -168,8 +175,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -180,8 +186,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -227,11 +232,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -244,8 +256,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -256,8 +267,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -281,6 +291,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
 </ul>
@@ -430,10 +441,10 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 <p><strong>Problem</strong>: <code class="docutils literal notranslate"><span class="pre">ImportError:</span> <span class="pre">matplotlib</span> <span class="pre">is</span> <span class="pre">required</span> <span class="pre">for</span> <span class="pre">plotting</span></code></p>
 <p><strong>Solution</strong>:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install with plotting dependencies</span>
-pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;sctrial[plots]&#39;</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'sctrial[plots]'</span>
 
 <span class="c1"># Or install all optional dependencies</span>
-pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;sctrial[plots,gsea]&#39;</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'sctrial[plots,gsea]'</span>
 </pre></div>
 </div>
 </section>
@@ -451,19 +462,19 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 
 <span class="c1"># First score gene sets</span>
-<span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;OXPHOS&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;COX7A1&quot;</span><span class="p">,</span> <span class="s2">&quot;ATP5F1A&quot;</span><span class="p">]}</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
+<span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"OXPHOS"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"COX7A1"</span><span class="p">,</span> <span class="s2">"ATP5F1A"</span><span class="p">]}</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"ms_"</span><span class="p">)</span>
 
 <span class="c1"># Then run DiD</span>
-<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ms_OXPHOS&quot;</span><span class="p">],</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s2">"ms_OXPHOS"</span><span class="p">],</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">))</span>
 </pre></div>
 </div>
 <ol class="arabic simple" start="2">
 <li><p>Check for typos in feature names:</p></li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># List available features</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Obs columns:&quot;</span><span class="p">,</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()[:</span><span class="mi">10</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Var names:&quot;</span><span class="p">,</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="o">.</span><span class="n">tolist</span><span class="p">()[:</span><span class="mi">10</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Obs columns:"</span><span class="p">,</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()[:</span><span class="mi">10</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Var names:"</span><span class="p">,</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="o">.</span><span class="n">tolist</span><span class="p">()[:</span><span class="mi">10</span><span class="p">])</span>
 </pre></div>
 </div>
 </section>
@@ -486,11 +497,11 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 <li><p>Or manually specify the correct column names:</p></li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
-    <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;donor_id&quot;</span><span class="p">,</span>  <span class="c1"># Your actual column name</span>
-    <span class="n">visit_col</span><span class="o">=</span><span class="s2">&quot;timepoint&quot;</span><span class="p">,</span>
-    <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;treatment&quot;</span><span class="p">,</span>
-    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Drug_A&quot;</span><span class="p">,</span>
-    <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Placebo&quot;</span>
+    <span class="n">participant_col</span><span class="o">=</span><span class="s2">"donor_id"</span><span class="p">,</span>  <span class="c1"># Your actual column name</span>
+    <span class="n">visit_col</span><span class="o">=</span><span class="s2">"timepoint"</span><span class="p">,</span>
+    <span class="n">arm_col</span><span class="o">=</span><span class="s2">"treatment"</span><span class="p">,</span>
+    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">"Drug_A"</span><span class="p">,</span>
+    <span class="n">arm_control</span><span class="o">=</span><span class="s2">"Placebo"</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -512,15 +523,15 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 <ol class="arabic simple">
 <li><p>Check how many paired participants you have:</p></li>
 </ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">n_paired</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Paired participants: </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">n_paired</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="s2">"visit"</span><span class="p">,</span> <span class="p">[</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Paired participants: </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 <ol class="arabic simple" start="2">
 <li><p>Verify visit filtering:</p></li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check visit distribution</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">size</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">"participant_id"</span><span class="p">,</span> <span class="s2">"visit"</span><span class="p">])</span><span class="o">.</span><span class="n">size</span><span class="p">())</span>
 </pre></div>
 </div>
 <ol class="arabic simple" start="3">
@@ -542,8 +553,8 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check feature variance</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="n">feature_var</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;ms_OXPHOS&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">var</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Feature variance: </span><span class="si">{</span><span class="n">feature_var</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">feature_var</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"ms_OXPHOS"</span><span class="p">]</span><span class="o">.</span><span class="n">var</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Feature variance: </span><span class="si">{</span><span class="n">feature_var</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="c1"># If variance is very low (&lt; 1e-8), feature is constant</span>
 <span class="c1"># Solution: Remove or investigate why feature has no variation</span>
@@ -571,7 +582,7 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use bootstrap for small samples</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
     <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># More robust for small N</span>
     <span class="n">n_boot</span><span class="o">=</span><span class="mi">999</span>  <span class="c1"># 999 is usually sufficient; use 9999 for final results</span>
 <span class="p">)</span>
@@ -584,7 +595,7 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Try cell-type-specific analysis</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_by_celltype</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">)</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">)</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -602,8 +613,8 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
 
 <span class="c1"># Ensure counts are sparse</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]):</span>
-    <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">&quot;counts&quot;</span><span class="p">])</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">"counts"</span><span class="p">]):</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">"counts"</span><span class="p">]</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">"counts"</span><span class="p">])</span>
 </pre></div>
 </div>
 <ol class="arabic simple" start="2">
@@ -616,7 +627,7 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">),</span> <span class="n">batch_size</span><span class="p">):</span>
     <span class="n">batch</span> <span class="o">=</span> <span class="n">features</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">batch_size</span><span class="p">]</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">batch</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">batch</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">))</span>
     <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
 
 <span class="n">full_results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -627,7 +638,7 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
 
-<span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s2">&quot;large_dataset.h5ad&quot;</span><span class="p">,</span> <span class="n">backed</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s2">"large_dataset.h5ad"</span><span class="p">,</span> <span class="n">backed</span><span class="o">=</span><span class="s1">'r'</span><span class="p">)</span>
 <span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[:,</span> <span class="n">genes_of_interest</span><span class="p">]</span><span class="o">.</span><span class="n">to_memory</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -650,8 +661,8 @@ weights. See the <a class="reference internal" href="performance.html"><span cla
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Aggregate to participant-visit level (much faster)</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
-    <span class="n">aggregate</span><span class="o">=</span><span class="s2">&quot;participant_visit&quot;</span>  <span class="c1"># This is default and fastest</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
+    <span class="n">aggregate</span><span class="o">=</span><span class="s2">"participant_visit"</span>  <span class="c1"># This is default and fastest</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -660,8 +671,8 @@ weights. See the <a class="reference internal" href="performance.html"><span cla
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Analyze only module scores, not all genes</span>
 <span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="o">...</span><span class="p">}</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
-<span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;ms_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">gene_sets</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"ms_"</span><span class="p">)</span>
+<span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"ms_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">gene_sets</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
 </pre></div>
 </div>
 <ol class="arabic simple" start="3">
@@ -681,7 +692,7 @@ weights. See the <a class="reference internal" href="performance.html"><span cla
 <p><strong>Solution</strong>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use non-interactive backend</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span>
-<span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;Agg&#39;</span><span class="p">)</span>
+<span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">'Agg'</span><span class="p">)</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 </pre></div>
 </div>
@@ -694,8 +705,8 @@ weights. See the <a class="reference internal" href="performance.html"><span cla
 <li><p><strong>Check data availability</strong>:</p></li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Verify feature exists</span>
-<span class="k">if</span> <span class="s2">&quot;ms_OXPHOS&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Feature not found!&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="s2">"ms_OXPHOS"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Feature not found!"</span><span class="p">)</span>
 </pre></div>
 </div>
 <ol class="arabic simple" start="2">
@@ -703,7 +714,7 @@ weights. See the <a class="reference internal" href="performance.html"><span cla
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Ensure visits are present</span>
 <span class="n">subset</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cells after filtering: </span><span class="si">{</span><span class="n">subset</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Cells after filtering: </span><span class="si">{</span><span class="n">subset</span><span class="o">.</span><span class="n">n_obs</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -717,14 +728,14 @@ weights. See the <a class="reference internal" href="performance.html"><span cla
 <span class="n">diagnostics</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">diagnose_trial_data</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="c1"># Check warnings</span>
-<span class="k">if</span> <span class="n">diagnostics</span><span class="p">[</span><span class="s1">&#39;warnings&#39;</span><span class="p">]:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Issues found:&quot;</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">diagnostics</span><span class="p">[</span><span class="s1">&#39;warnings&#39;</span><span class="p">]:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">w</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">diagnostics</span><span class="p">[</span><span class="s1">'warnings'</span><span class="p">]:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Issues found:"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">diagnostics</span><span class="p">[</span><span class="s1">'warnings'</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  - </span><span class="si">{</span><span class="n">w</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="c1"># Check recommendations</span>
-<span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">diagnostics</span><span class="p">[</span><span class="s1">&#39;recommendations&#39;</span><span class="p">]:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  💡 </span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">diagnostics</span><span class="p">[</span><span class="s1">'recommendations'</span><span class="p">]:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  💡 </span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -734,11 +745,11 @@ weights. See the <a class="reference internal" href="performance.html"><span cla
 <span class="n">issues</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">validate_adata</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">issues</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Validation issues:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Validation issues:"</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">issue</span> <span class="ow">in</span> <span class="n">issues</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ⚠️  </span><span class="si">{</span><span class="n">issue</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  ⚠️  </span><span class="si">{</span><span class="n">issue</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Data validated successfully!&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"✓ Data validated successfully!"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -769,9 +780,9 @@ weights. See the <a class="reference internal" href="performance.html"><span cla
 <li><p><strong>Report a bug</strong>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Include this information</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sctrial version: </span><span class="si">{</span><span class="n">st</span><span class="o">.</span><span class="n">__version__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;AnnData shape: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Design: </span><span class="si">{</span><span class="n">design</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"sctrial version: </span><span class="si">{</span><span class="n">st</span><span class="o">.</span><span class="n">__version__</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"AnnData shape: </span><span class="si">{</span><span class="n">adata</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Design: </span><span class="si">{</span><span class="n">design</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="c1"># Copy the full error traceback</span>
 </pre></div>
@@ -902,8 +913,8 @@ weights. See the <a class="reference internal" href="performance.html"><span cla
     </div>
   </div>
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">

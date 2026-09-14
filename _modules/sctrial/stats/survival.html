@@ -26,8 +26,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="../../../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
@@ -35,10 +35,10 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=44e57e90" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
     <script src="../../../_static/documentation_options.js?v=d198571b"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
@@ -148,11 +148,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -165,8 +172,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -177,8 +183,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -220,11 +225,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -237,8 +249,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -249,8 +260,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -274,6 +284,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
 </ul>
@@ -371,7 +382,7 @@
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;hazard_regression_with_features&quot;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"hazard_regression_with_features"</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="hazard_regression_with_features">
@@ -385,12 +396,12 @@
     <span class="o">*</span><span class="p">,</span>
     <span class="n">visit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">agg</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+    <span class="n">agg</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"mean"</span><span class="p">,</span>
     <span class="n">covariates</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">standardize</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">fdr</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cox proportional hazards regression using single-cell features.</span>
+<span class="w">    </span><span class="sd">"""Cox proportional hazards regression using single-cell features.</span>
 
 <span class="sd">    This function aggregates features to the participant level and fits a Cox model</span>
 <span class="sd">    for each feature, optionally adjusting for covariates.</span>
@@ -412,7 +423,7 @@
 <span class="sd">    layer</span>
 <span class="sd">        Expression layer to use for gene features.</span>
 <span class="sd">    agg</span>
-<span class="sd">        Aggregation function for features (&quot;mean&quot;, &quot;median&quot;, or &quot;pct_pos&quot;).</span>
+<span class="sd">        Aggregation function for features ("mean", "median", or "pct_pos").</span>
 <span class="sd">    covariates</span>
 <span class="sd">        Optional covariate columns to include in the Cox model.</span>
 <span class="sd">    standardize</span>
@@ -424,12 +435,12 @@
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame</span>
 <span class="sd">        One row per feature with hazard ratio (HR), confidence interval, and p-value.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">lifelines</span><span class="w"> </span><span class="kn">import</span> <span class="n">CoxPHFitter</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">lifelines.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConvergenceError</span> <span class="k">as</span> <span class="n">_ConvergenceError</span>
     <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
-        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;lifelines is required for survival analysis&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">"lifelines is required for survival analysis"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
 
     <span class="n">obs</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">visit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -440,7 +451,7 @@
         <span class="n">base_cols</span> <span class="o">+=</span> <span class="nb">list</span><span class="p">(</span><span class="n">covariates</span><span class="p">)</span>
     <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">base_cols</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required columns in adata.obs: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Missing required columns in adata.obs: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="c1"># Validate survival times are positive before building df</span>
     <span class="n">valid_mask</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">time_col</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span>
@@ -449,7 +460,7 @@
         <span class="n">obs</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">obs</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;All </span><span class="si">{</span><span class="n">n_bad</span><span class="si">}</span><span class="s2"> observations have non-positive survival times in &#39;</span><span class="si">{</span><span class="n">time_col</span><span class="si">}</span><span class="s2">&#39;.&quot;</span>
+                <span class="sa">f</span><span class="s2">"All </span><span class="si">{</span><span class="n">n_bad</span><span class="si">}</span><span class="s2"> observations have non-positive survival times in '</span><span class="si">{</span><span class="n">time_col</span><span class="si">}</span><span class="s2">'."</span>
             <span class="p">)</span>
 
     <span class="n">df</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">base_cols</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -470,13 +481,13 @@
     <span class="c1"># Enforce constant time/event/covariates within participant</span>
     <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">base_cols</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
         <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">grp</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; varies within participant; cannot aggregate.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Column '</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">' varies within participant; cannot aggregate."</span><span class="p">)</span>
 
     <span class="c1"># Aggregate features to participant level</span>
     <span class="n">feat_cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">obs_feats</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">gene_feats</span><span class="p">)</span>
     <span class="n">df_feats</span> <span class="o">=</span> <span class="n">aggregate_features</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="p">[</span><span class="n">grp</span><span class="p">],</span> <span class="n">feat_cols</span><span class="p">,</span> <span class="n">agg</span><span class="p">)</span>
     <span class="n">df_meta</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">grp</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">base_cols</span><span class="p">[</span><span class="mi">1</span><span class="p">:]]</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
-    <span class="n">df_part</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df_meta</span><span class="p">,</span> <span class="n">df_feats</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="n">grp</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;inner&quot;</span><span class="p">)</span>
+    <span class="n">df_part</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df_meta</span><span class="p">,</span> <span class="n">df_feats</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="n">grp</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">"inner"</span><span class="p">)</span>
     <span class="c1"># Ensure survival columns are retained after merge</span>
     <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">base_cols</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
         <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df_part</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
@@ -488,12 +499,12 @@
             <span class="p">[</span><span class="n">time_col</span><span class="p">,</span> <span class="n">event_col</span><span class="p">,</span> <span class="n">feat</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">covariates</span><span class="p">)</span> <span class="k">if</span> <span class="n">covariates</span> <span class="k">else</span> <span class="p">[])</span>
         <span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">df_model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
-            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">&quot;HR&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;p&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;n&quot;</span><span class="p">:</span> <span class="n">df_model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]})</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">"HR"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"p"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"n"</span><span class="p">:</span> <span class="n">df_model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]})</span>
             <span class="k">continue</span>
         <span class="k">if</span> <span class="n">standardize</span><span class="p">:</span>
             <span class="n">std</span> <span class="o">=</span> <span class="n">df_model</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">std</span><span class="p">)</span> <span class="ow">or</span> <span class="n">std</span> <span class="o">&lt;</span> <span class="mf">1e-12</span><span class="p">:</span>
-                <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">&quot;HR&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;p&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;n&quot;</span><span class="p">:</span> <span class="n">df_model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]})</span>
+                <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">"HR"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"p"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"n"</span><span class="p">:</span> <span class="n">df_model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]})</span>
                 <span class="k">continue</span>
             <span class="n">df_model</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df_model</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">-</span> <span class="n">df_model</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">std</span>
 
@@ -505,12 +516,12 @@
             <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">,</span>
         <span class="p">):</span>
             <span class="c1"># Expected: convergence failure or singular matrix from separation</span>
-            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">&quot;HR&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;p&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;n&quot;</span><span class="p">:</span> <span class="n">df_model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]})</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">"HR"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"p"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"n"</span><span class="p">:</span> <span class="n">df_model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]})</span>
             <span class="k">continue</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="c1"># Unexpected error — log and propagate so data/config bugs</span>
             <span class="c1"># are not silently swallowed as NaN results.</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Unexpected error fitting Cox model for feature &#39;</span><span class="si">%s</span><span class="s2">&#39;&quot;</span><span class="p">,</span> <span class="n">feat</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">"Unexpected error fitting Cox model for feature '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span> <span class="n">feat</span><span class="p">)</span>
             <span class="k">raise</span>
 
         <span class="n">coef</span> <span class="o">=</span> <span class="n">cph</span><span class="o">.</span><span class="n">params_</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span>
@@ -518,27 +529,27 @@
         <span class="n">ci</span> <span class="o">=</span> <span class="n">cph</span><span class="o">.</span><span class="n">confidence_intervals_</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span>
         <span class="n">hr_low</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">ci</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
         <span class="n">hr_high</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">ci</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
-        <span class="n">p_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">cph</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">feat</span><span class="p">,</span> <span class="s2">&quot;p&quot;</span><span class="p">])</span>
+        <span class="n">p_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">cph</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">feat</span><span class="p">,</span> <span class="s2">"p"</span><span class="p">])</span>
 
         <span class="c1"># Detect unstable estimates from separation (infinite CI bounds)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">hr_low</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">hr_high</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">hr</span><span class="p">)):</span>
-            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">&quot;HR&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;p&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">&quot;n&quot;</span><span class="p">:</span> <span class="n">df_model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]})</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">"HR"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"p"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"n"</span><span class="p">:</span> <span class="n">df_model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]})</span>
             <span class="k">continue</span>
 
         <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
             <span class="p">{</span>
-                <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
-                <span class="s2">&quot;HR&quot;</span><span class="p">:</span> <span class="n">hr</span><span class="p">,</span>
-                <span class="s2">&quot;HR_low&quot;</span><span class="p">:</span> <span class="n">hr_low</span><span class="p">,</span>
-                <span class="s2">&quot;HR_high&quot;</span><span class="p">:</span> <span class="n">hr_high</span><span class="p">,</span>
-                <span class="s2">&quot;p&quot;</span><span class="p">:</span> <span class="n">p_val</span><span class="p">,</span>
-                <span class="s2">&quot;n&quot;</span><span class="p">:</span> <span class="n">df_model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                <span class="s2">"HR"</span><span class="p">:</span> <span class="n">hr</span><span class="p">,</span>
+                <span class="s2">"HR_low"</span><span class="p">:</span> <span class="n">hr_low</span><span class="p">,</span>
+                <span class="s2">"HR_high"</span><span class="p">:</span> <span class="n">hr_high</span><span class="p">,</span>
+                <span class="s2">"p"</span><span class="p">:</span> <span class="n">p_val</span><span class="p">,</span>
+                <span class="s2">"n"</span><span class="p">:</span> <span class="n">df_model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
             <span class="p">}</span>
         <span class="p">)</span>
 
-    <span class="n">out</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;p&quot;</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">"p"</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">fdr</span><span class="p">:</span>
-        <span class="n">out</span> <span class="o">=</span> <span class="n">apply_fdr</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">&quot;p&quot;</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">&quot;FDR&quot;</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">apply_fdr</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">"p"</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">"FDR"</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">out</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 </pre></div>
@@ -566,8 +577,8 @@
     </div>
   </div>
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">

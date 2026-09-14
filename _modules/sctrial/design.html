@@ -26,8 +26,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
@@ -35,10 +35,10 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=44e57e90" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
     <script src="../../_static/documentation_options.js?v=d198571b"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
@@ -148,11 +148,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -165,8 +172,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -177,8 +183,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -220,11 +225,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -237,8 +249,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -249,8 +260,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -274,6 +284,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
 </ul>
@@ -356,7 +367,7 @@
                 <article class="bd-article">
                   
   <h1>Source code for sctrial.design</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Trial design specification: TrialDesign dataclass and design detection.&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""Trial design specification: TrialDesign dataclass and design detection."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -369,49 +380,49 @@
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;TrialDesign&quot;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"TrialDesign"</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="TrialDesign">
 <a class="viewcode-back" href="../../api/design.html#sctrial.design.TrialDesign">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">TrialDesign</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Describe the trial-design columns and metadata labels in `adata.obs`.</span>
+<span class="w">    </span><span class="sd">"""Describe the trial-design columns and metadata labels in `adata.obs`.</span>
 
 <span class="sd">    The `TrialDesign` object centralizes the mapping of your study design to</span>
 <span class="sd">    the AnnData object. It is used by almost all statistical and plotting</span>
 <span class="sd">    functions in `sctrial`.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
-    <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;participant_id&quot;</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Name of the column containing unique participant identifiers.&quot;&quot;&quot;</span>
+    <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"participant_id"</span>
+<span class="w">    </span><span class="sd">"""Name of the column containing unique participant identifiers."""</span>
 
-    <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;visit&quot;</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Name of the column containing visit or timepoint labels.&quot;&quot;&quot;</span>
+    <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"visit"</span>
+<span class="w">    </span><span class="sd">"""Name of the column containing visit or timepoint labels."""</span>
 
-    <span class="n">arm_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;arm&quot;</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Name of the column containing treatment arm assignments.</span>
+    <span class="n">arm_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">"arm"</span>
+<span class="w">    </span><span class="sd">"""Name of the column containing treatment arm assignments.</span>
 
 <span class="sd">    Set to ``None`` for single-arm studies that lack an arm column.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
-    <span class="n">arm_treated</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Treated&quot;</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;The label in `arm_col` representing the treatment/experimental group.&quot;&quot;&quot;</span>
+    <span class="n">arm_treated</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"Treated"</span>
+<span class="w">    </span><span class="sd">"""The label in `arm_col` representing the treatment/experimental group."""</span>
 
-    <span class="n">arm_control</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Control&quot;</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;The label in `arm_col` representing the control/placebo group.&quot;&quot;&quot;</span>
+    <span class="n">arm_control</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"Control"</span>
+<span class="w">    </span><span class="sd">"""The label in `arm_col` representing the control/placebo group."""</span>
 
-    <span class="n">celltype_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;celltype&quot;</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optional name of the column containing cell-type annotations.&quot;&quot;&quot;</span>
+    <span class="n">celltype_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">"celltype"</span>
+<span class="w">    </span><span class="sd">"""Optional name of the column containing cell-type annotations."""</span>
 
     <span class="n">crossover_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optional name of the column containing boolean-like indicators for crossover cells.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Optional name of the column containing boolean-like indicators for crossover cells."""</span>
 
     <span class="n">baseline_visit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optional default baseline visit label (e.g., &#39;Baseline&#39;, &#39;V1&#39;).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Optional default baseline visit label (e.g., 'Baseline', 'V1')."""</span>
 
     <span class="n">followup_visit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optional default follow-up visit label (e.g., &#39;Follow-up&#39;, &#39;V2&#39;).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Optional default follow-up visit label (e.g., 'Follow-up', 'V2')."""</span>
 
 <div class="viewcode-block" id="TrialDesign.primary_visits">
 <a class="viewcode-back" href="../../api/design.html#sctrial.design.TrialDesign.primary_visits">[docs]</a>
@@ -420,7 +431,7 @@
         <span class="n">baseline</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">followup</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return (baseline, followup) visit labels.</span>
+<span class="w">        </span><span class="sd">"""Return (baseline, followup) visit labels.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -435,13 +446,13 @@
 <span class="sd">        -------</span>
 <span class="sd">        tuple[str, str]</span>
 <span class="sd">            Tuple of (baseline, followup) visit labels.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">b</span> <span class="o">=</span> <span class="n">baseline</span> <span class="k">if</span> <span class="n">baseline</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">baseline_visit</span>
         <span class="n">f</span> <span class="o">=</span> <span class="n">followup</span> <span class="k">if</span> <span class="n">followup</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">followup_visit</span>
         <span class="k">if</span> <span class="n">b</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">f</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;Primary visits not specified. Provide baseline/followup or set &quot;</span>
-                <span class="s2">&quot;TrialDesign(baseline_visit=..., followup_visit=...).&quot;</span>
+                <span class="s2">"Primary visits not specified. Provide baseline/followup or set "</span>
+                <span class="s2">"TrialDesign(baseline_visit=..., followup_visit=...)."</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span></div>
 
@@ -454,7 +465,7 @@
         <span class="n">include_celltype</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">include_crossover</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return required obs columns for this design.</span>
+<span class="w">        </span><span class="sd">"""Return required obs columns for this design.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -467,7 +478,7 @@
 <span class="sd">        -------</span>
 <span class="sd">        list[str]</span>
 <span class="sd">            List of required columns.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">include_celltype</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">)</span>
@@ -486,7 +497,7 @@
         <span class="n">include_crossover</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">check_arm_labels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate that `adata.obs` contains required columns and labels.</span>
+<span class="w">        </span><span class="sd">"""Validate that `adata.obs` contains required columns and labels.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -508,7 +519,7 @@
 <span class="sd">            If required columns are missing.</span>
 <span class="sd">        ValueError</span>
 <span class="sd">            If arm labels are not found in ``adata.obs[self.arm_col]``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">obs</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
         <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">c</span>
@@ -520,32 +531,32 @@
         <span class="p">]</span>
         <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Missing required obs columns: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">. Available: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">"Missing required obs columns: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">. Available: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">check_arm_labels</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;arm_treated and arm_control must be distinct for &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;between-arm analyses, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">!r}</span><span class="s2"> for both. &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;For single-arm studies, use check_arm_labels=False.&quot;</span>
+                    <span class="sa">f</span><span class="s2">"arm_treated and arm_control must be distinct for "</span>
+                    <span class="sa">f</span><span class="s2">"between-arm analyses, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">!r}</span><span class="s2"> for both. "</span>
+                    <span class="sa">f</span><span class="s2">"For single-arm studies, use check_arm_labels=False."</span>
                 <span class="p">)</span>
             <span class="n">arms</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="p">])</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
             <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">arms</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">arms</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Arm labels not found in obs[&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39;]. &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;Expected treated=&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">}</span><span class="s2">&#39;, control=&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;Observed arms: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">arms</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">"Arm labels not found in obs['</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">']. "</span>
+                    <span class="sa">f</span><span class="s2">"Expected treated='</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">}</span><span class="s2">', control='</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="si">}</span><span class="s2">'. "</span>
+                    <span class="sa">f</span><span class="s2">"Observed arms: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">arms</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
                 <span class="p">)</span>
             <span class="n">extra</span> <span class="o">=</span> <span class="n">arms</span> <span class="o">-</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="p">}</span>
             <span class="k">if</span> <span class="n">extra</span><span class="p">:</span>
                 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 
                 <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;obs[&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39;] contains arms beyond treated/control: &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">extra</span><span class="p">)</span><span class="si">}</span><span class="s2">. These participants will be treated as &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;control in arm_bin(). Consider subsetting your data to &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;only the two arms of interest.&quot;</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"obs['</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">'] contains arms beyond treated/control: "</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">extra</span><span class="p">)</span><span class="si">}</span><span class="s2">. These participants will be treated as "</span>
+                    <span class="sa">f</span><span class="s2">"control in arm_bin(). Consider subsetting your data to "</span>
+                    <span class="sa">f</span><span class="s2">"only the two arms of interest."</span><span class="p">,</span>
                     <span class="ne">UserWarning</span><span class="p">,</span>
                     <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
                 <span class="p">)</span></div>
@@ -554,7 +565,7 @@
 <div class="viewcode-block" id="TrialDesign.arm_bin">
 <a class="viewcode-back" href="../../api/design.html#sctrial.design.TrialDesign.arm_bin">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">arm_bin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return 0/1 treated indicator aligned to obs.index.</span>
+<span class="w">        </span><span class="sd">"""Return 0/1 treated indicator aligned to obs.index.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -571,19 +582,19 @@
 <span class="sd">            If arm_treated and arm_control are the same.</span>
 <span class="sd">        KeyError</span>
 <span class="sd">            If arm_col is not in obs.columns.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;arm_bin() requires arm_col to be set. &quot;</span>
-                <span class="s2">&quot;Single-arm designs (arm_col=None) do not have arm indicators.&quot;</span>
+                <span class="s2">"arm_bin() requires arm_col to be set. "</span>
+                <span class="s2">"Single-arm designs (arm_col=None) do not have arm indicators."</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;arm_bin() requires distinct arm labels, but &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;arm_treated == arm_control == </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">!r}</span><span class="s2">.&quot;</span>
+                <span class="sa">f</span><span class="s2">"arm_bin() requires distinct arm labels, but "</span>
+                <span class="sa">f</span><span class="s2">"arm_treated == arm_control == </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">!r}</span><span class="s2">."</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;arm_col &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">&#39; not in obs.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"arm_col '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">' not in obs."</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span></div>
 </div>
 
@@ -612,8 +623,8 @@
     </div>
   </div>
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">

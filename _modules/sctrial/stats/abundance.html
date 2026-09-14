@@ -26,8 +26,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="../../../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
@@ -35,10 +35,10 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=44e57e90" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
     <script src="../../../_static/documentation_options.js?v=d198571b"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
@@ -148,11 +148,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -165,8 +172,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -177,8 +183,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -220,11 +225,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -237,8 +249,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -249,8 +260,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -274,6 +284,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
 </ul>
@@ -379,14 +390,14 @@
     <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
     <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
     <span class="n">exclude_crossovers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="n">transform</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;arcsin_sqrt&quot;</span><span class="p">,</span>
+    <span class="n">transform</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"arcsin_sqrt"</span><span class="p">,</span>
     <span class="n">min_units</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
     <span class="n">covariates</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">use_bootstrap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">n_boot</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">999</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test treatment-induced cell-type abundance changes via DiD on proportions.</span>
+<span class="w">    </span><span class="sd">"""Test treatment-induced cell-type abundance changes via DiD on proportions.</span>
 
 <span class="sd">    This function calculates cell-type proportions per participant-visit and</span>
 <span class="sd">    fits a DiD model to test for treatment-induced compositional shifts.</span>
@@ -414,9 +425,9 @@
 <span class="sd">    transform</span>
 <span class="sd">        Mathematical transformation for proportions:</span>
 
-<span class="sd">        - &#39;arcsin_sqrt&#39;: arcsin(sqrt(p)), variance-stabilizing for proportions.</span>
-<span class="sd">        - &#39;logit&#39;: log(p / (1-p)), useful for extreme proportions.</span>
-<span class="sd">        - &#39;none&#39;: use raw proportions (not recommended).</span>
+<span class="sd">        - 'arcsin_sqrt': arcsin(sqrt(p)), variance-stabilizing for proportions.</span>
+<span class="sd">        - 'logit': log(p / (1-p)), useful for extreme proportions.</span>
+<span class="sd">        - 'none': use raw proportions (not recommended).</span>
 <span class="sd">    min_units</span>
 <span class="sd">        Minimum number of paired participants required for a cell type to be</span>
 <span class="sd">        tested. Cell types with fewer paired participants are skipped.</span>
@@ -452,11 +463,11 @@
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
-<span class="sd">    &gt;&gt;&gt; ab_res = abundance_did(adata, design, visits=(&quot;V1&quot;, &quot;V2&quot;))</span>
+<span class="sd">    &gt;&gt;&gt; ab_res = abundance_did(adata, design, visits=("V1", "V2"))</span>
 <span class="sd">    &gt;&gt;&gt; print(ab_res)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;celltype_col is required for abundance_did&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"celltype_col is required for abundance_did"</span><span class="p">)</span>
 
     <span class="n">ad</span> <span class="o">=</span> <span class="n">subset_primary</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">)</span>
     <span class="n">obs</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -466,49 +477,49 @@
 
     <span class="c1"># We need to preserve covariates. Covariates are usually participant-level or participant-visit level.</span>
     <span class="c1"># If they are participant-level, they are constant for all cells of a participant.</span>
-    <span class="n">counts</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">grp_cols</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;n_cells&quot;</span><span class="p">)</span>
+    <span class="n">counts</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">grp_cols</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"n_cells"</span><span class="p">)</span>
     <span class="n">totals</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">counts</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span>
-            <span class="s2">&quot;n_cells&quot;</span>
+            <span class="s2">"n_cells"</span>
         <span class="p">]</span>
         <span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-        <span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;total_cells&quot;</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"total_cells"</span><span class="p">)</span>
     <span class="p">)</span>
     <span class="c1"># Expand to include zero counts for missing celltype/participant/visit</span>
     <span class="n">celltypes</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">counts</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
     <span class="n">base_df</span> <span class="o">=</span> <span class="n">totals</span><span class="p">[[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]]</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span>
-    <span class="n">base_df</span><span class="p">[</span><span class="s2">&quot;_key&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">cell_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">:</span> <span class="n">celltypes</span><span class="p">,</span> <span class="s2">&quot;_key&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">})</span>
-    <span class="n">full_df</span> <span class="o">=</span> <span class="n">base_df</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">cell_df</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s2">&quot;_key&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;_key&quot;</span><span class="p">])</span>
+    <span class="n">base_df</span><span class="p">[</span><span class="s2">"_key"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">cell_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">:</span> <span class="n">celltypes</span><span class="p">,</span> <span class="s2">"_key"</span><span class="p">:</span> <span class="mi">1</span><span class="p">})</span>
+    <span class="n">full_df</span> <span class="o">=</span> <span class="n">base_df</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">cell_df</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s2">"_key"</span><span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">"_key"</span><span class="p">])</span>
     <span class="n">counts</span> <span class="o">=</span> <span class="n">counts</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
         <span class="n">full_df</span><span class="p">,</span>
         <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">celltype_col</span><span class="p">],</span>
-        <span class="n">how</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">,</span>
+        <span class="n">how</span><span class="o">=</span><span class="s2">"right"</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;n_cells&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;n_cells&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">counts</span><span class="p">[</span><span class="s2">"n_cells"</span><span class="p">]</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="s2">"n_cells"</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
     <span class="n">counts</span> <span class="o">=</span> <span class="n">counts</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
-        <span class="n">totals</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">],</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span>
+        <span class="n">totals</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">],</span> <span class="n">how</span><span class="o">=</span><span class="s2">"left"</span>
     <span class="p">)</span>
-    <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;total_cells&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;total_cells&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;prop&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;n_cells&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;total_cells&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">lower</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">counts</span><span class="p">[</span><span class="s2">"total_cells"</span><span class="p">]</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="s2">"total_cells"</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">counts</span><span class="p">[</span><span class="s2">"prop"</span><span class="p">]</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="s2">"n_cells"</span><span class="p">]</span> <span class="o">/</span> <span class="n">counts</span><span class="p">[</span><span class="s2">"total_cells"</span><span class="p">]</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">lower</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>
         <span class="c1"># Merge covariates back into counts.</span>
         <span class="c1"># Assume covariates are constant per (participant, visit).</span>
         <span class="n">cov_df</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span> <span class="o">+</span> <span class="n">covariates</span><span class="p">]</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span>
-        <span class="n">counts</span> <span class="o">=</span> <span class="n">counts</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">cov_df</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">],</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
+        <span class="n">counts</span> <span class="o">=</span> <span class="n">counts</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">cov_df</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">],</span> <span class="n">how</span><span class="o">=</span><span class="s2">"left"</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">transform</span> <span class="o">==</span> <span class="s2">&quot;arcsin_sqrt&quot;</span><span class="p">:</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arcsin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">counts</span><span class="p">[</span><span class="s2">&quot;prop&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)))</span>
-        <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span>
-    <span class="k">elif</span> <span class="n">transform</span> <span class="o">==</span> <span class="s2">&quot;logit&quot;</span><span class="p">:</span>
-        <span class="n">p</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;prop&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">1e-6</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="mf">1e-6</span><span class="p">)</span>
-        <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">p</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">transform</span> <span class="o">==</span> <span class="s2">"arcsin_sqrt"</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arcsin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">counts</span><span class="p">[</span><span class="s2">"prop"</span><span class="p">]</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)))</span>
+        <span class="n">counts</span><span class="p">[</span><span class="s2">"y"</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span>
+    <span class="k">elif</span> <span class="n">transform</span> <span class="o">==</span> <span class="s2">"logit"</span><span class="p">:</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="s2">"prop"</span><span class="p">]</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">1e-6</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="mf">1e-6</span><span class="p">)</span>
+        <span class="n">counts</span><span class="p">[</span><span class="s2">"y"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">p</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p</span><span class="p">))</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;prop&quot;</span><span class="p">]</span>
+        <span class="n">counts</span><span class="p">[</span><span class="s2">"y"</span><span class="p">]</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="s2">"prop"</span><span class="p">]</span>
 
     <span class="n">counts</span> <span class="o">=</span> <span class="n">encode_visit</span><span class="p">(</span><span class="n">counts</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">visits</span><span class="p">)</span>
-    <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;arm_bin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_bin</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
+    <span class="n">counts</span><span class="p">[</span><span class="s2">"arm_bin"</span><span class="p">]</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_bin</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
 
     <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="c1"># Paired participants: must have cells in both visits (overall, not per-celltype).</span>
@@ -517,8 +528,8 @@
     <span class="n">wide_tot</span> <span class="o">=</span> <span class="n">totals</span><span class="o">.</span><span class="n">pivot_table</span><span class="p">(</span>
         <span class="n">index</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span>
         <span class="n">columns</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span>
-        <span class="n">values</span><span class="o">=</span><span class="s2">&quot;total_cells&quot;</span><span class="p">,</span>
-        <span class="n">aggfunc</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+        <span class="n">values</span><span class="o">=</span><span class="s2">"total_cells"</span><span class="p">,</span>
+        <span class="n">aggfunc</span><span class="o">=</span><span class="s2">"mean"</span><span class="p">,</span>
         <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">paired_units</span> <span class="o">=</span> <span class="n">wide_tot</span><span class="p">[</span><span class="n">wide_tot</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">wide_tot</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">notna</span><span class="p">()]</span><span class="o">.</span><span class="n">index</span>
@@ -532,12 +543,12 @@
         <span class="k">if</span> <span class="n">n_units</span> <span class="o">&lt;</span> <span class="n">min_units</span><span class="p">:</span>
             <span class="k">continue</span>
         <span class="c1"># must have both arms among units</span>
-        <span class="n">arm_counts</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;arm_bin&quot;</span><span class="p">)[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+        <span class="n">arm_counts</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">"arm_bin"</span><span class="p">)[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">arm_counts</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
             <span class="k">continue</span>
 
         <span class="c1"># Ensure there is at least some variation in the outcome</span>
-        <span class="k">if</span> <span class="n">tmp</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">tmp</span><span class="p">[</span><span class="s2">"y"</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
             <span class="k">continue</span>
 
         <span class="c1"># If covariates are constant within participant, use differenced model</span>
@@ -553,8 +564,8 @@
             <span class="n">wide</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">pivot_table</span><span class="p">(</span>
                 <span class="n">index</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span>
                 <span class="n">columns</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span>
-                <span class="n">values</span><span class="o">=</span><span class="s2">&quot;y&quot;</span><span class="p">,</span>
-                <span class="n">aggfunc</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+                <span class="n">values</span><span class="o">=</span><span class="s2">"y"</span><span class="p">,</span>
+                <span class="n">aggfunc</span><span class="o">=</span><span class="s2">"mean"</span><span class="p">,</span>
                 <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
@@ -562,9 +573,9 @@
             <span class="n">delta</span> <span class="o">=</span> <span class="p">(</span><span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">-</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">delta</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
                 <span class="k">continue</span>
-            <span class="n">df_delta</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;delta&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span>
-            <span class="n">df_delta</span><span class="p">[</span><span class="s2">&quot;arm_bin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">tmp</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s2">&quot;arm_bin&quot;</span><span class="p">]</span>
+            <span class="n">df_delta</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">"delta"</span><span class="p">)</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span>
+            <span class="n">df_delta</span><span class="p">[</span><span class="s2">"arm_bin"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">tmp</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s2">"arm_bin"</span><span class="p">]</span>
                 <span class="o">.</span><span class="n">first</span><span class="p">()</span>
                 <span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">df_delta</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
             <span class="p">)</span>
@@ -581,44 +592,44 @@
             <span class="c1"># Preserve participant IDs before resetting index for safe .loc</span>
             <span class="n">diff_pids</span> <span class="o">=</span> <span class="n">df_delta</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
             <span class="n">df_delta</span> <span class="o">=</span> <span class="n">df_delta</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="n">formula</span> <span class="o">=</span> <span class="s2">&quot;delta ~ arm_bin&quot;</span>
+            <span class="n">formula</span> <span class="o">=</span> <span class="s2">"delta ~ arm_bin"</span>
             <span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>
-                <span class="n">formula</span> <span class="o">+=</span> <span class="s2">&quot; + &quot;</span> <span class="o">+</span> <span class="s2">&quot; + &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">covariates</span><span class="p">)</span>
+                <span class="n">formula</span> <span class="o">+=</span> <span class="s2">" + "</span> <span class="o">+</span> <span class="s2">" + "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">covariates</span><span class="p">)</span>
             <span class="n">model</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="n">formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df_delta</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">tmp</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># unique int index for .loc</span>
-            <span class="n">formula</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;y ~ visit_num + visit_num:arm_bin + C(</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="n">formula</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"y ~ visit_num + visit_num:arm_bin + C(</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="si">}</span><span class="s2">)"</span>
             <span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>
-                <span class="n">formula</span> <span class="o">+=</span> <span class="s2">&quot; + &quot;</span> <span class="o">+</span> <span class="s2">&quot; + &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">covariates</span><span class="p">)</span>
+                <span class="n">formula</span> <span class="o">+=</span> <span class="s2">" + "</span> <span class="o">+</span> <span class="s2">" + "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">covariates</span><span class="p">)</span>
             <span class="n">model</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="n">formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">tmp</span><span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># Warn if using cluster-robust SE with few clusters</span>
             <span class="k">if</span> <span class="n">n_units</span> <span class="o">&lt;</span> <span class="n">MIN_CLUSTERS_FOR_ROBUST_SE</span><span class="p">:</span>
                 <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Only </span><span class="si">{</span><span class="n">n_units</span><span class="si">}</span><span class="s2"> clusters (participants) available for celltype &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">ct</span><span class="si">}</span><span class="s2">&#39;. Cluster-robust standard errors are unreliable with fewer &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;than </span><span class="si">{</span><span class="n">MIN_CLUSTERS_FOR_ROBUST_SE</span><span class="si">}</span><span class="s2"> clusters. Consider using &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;use_bootstrap=True for more reliable p-values.&quot;</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"Only </span><span class="si">{</span><span class="n">n_units</span><span class="si">}</span><span class="s2"> clusters (participants) available for celltype "</span>
+                    <span class="sa">f</span><span class="s2">"'</span><span class="si">{</span><span class="n">ct</span><span class="si">}</span><span class="s2">'. Cluster-robust standard errors are unreliable with fewer "</span>
+                    <span class="sa">f</span><span class="s2">"than </span><span class="si">{</span><span class="n">MIN_CLUSTERS_FOR_ROBUST_SE</span><span class="si">}</span><span class="s2"> clusters. Consider using "</span>
+                    <span class="sa">f</span><span class="s2">"use_bootstrap=True for more reliable p-values."</span><span class="p">,</span>
                     <span class="ne">UserWarning</span><span class="p">,</span>
                     <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="c1"># Use cluster-robust standard errors for consistency with did_fit</span>
             <span class="k">if</span> <span class="n">use_diff</span><span class="p">:</span>
                 <span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
-                <span class="n">term</span> <span class="o">=</span> <span class="s2">&quot;arm_bin&quot;</span>
+                <span class="n">term</span> <span class="o">=</span> <span class="s2">"arm_bin"</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
-                    <span class="n">cov_type</span><span class="o">=</span><span class="s2">&quot;cluster&quot;</span><span class="p">,</span> <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="n">tmp</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]}</span>
+                    <span class="n">cov_type</span><span class="o">=</span><span class="s2">"cluster"</span><span class="p">,</span> <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">"groups"</span><span class="p">:</span> <span class="n">tmp</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]}</span>
                 <span class="p">)</span>
-                <span class="n">term</span> <span class="o">=</span> <span class="s2">&quot;visit_num:arm_bin&quot;</span>
+                <span class="n">term</span> <span class="o">=</span> <span class="s2">"visit_num:arm_bin"</span>
 
             <span class="c1"># Check if interaction term was estimable</span>
             <span class="k">if</span> <span class="n">term</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">term</span><span class="p">]):</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;DiD term not estimable&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"DiD term not estimable"</span><span class="p">)</span>
 
             <span class="c1"># Align clusters with actual model rows (statsmodels may drop rows).</span>
-            <span class="c1"># DataFrames have been reset_index&#39;d so row_labels are integer positions.</span>
+            <span class="c1"># DataFrames have been reset_index'd so row_labels are integer positions.</span>
             <span class="n">model_row_idx</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">row_labels</span>
             <span class="k">if</span> <span class="n">use_diff</span><span class="p">:</span>
                 <span class="n">clusters_aligned</span> <span class="o">=</span> <span class="n">diff_pids</span><span class="p">[</span><span class="n">model_row_idx</span><span class="p">]</span>
@@ -645,19 +656,19 @@
                 <span class="n">ci_hi_boot</span> <span class="o">=</span> <span class="n">boot_res</span><span class="o">.</span><span class="n">ci_hi</span>
 
             <span class="n">row_dict</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;celltype&quot;</span><span class="p">:</span> <span class="n">ct</span><span class="p">,</span>
-                <span class="s2">&quot;n_participants&quot;</span><span class="p">:</span> <span class="n">n_units_eff</span><span class="p">,</span>
-                <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">term</span><span class="p">]),</span>
-                <span class="s2">&quot;se_DiD&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">bse</span><span class="p">[</span><span class="n">term</span><span class="p">]),</span>
-                <span class="s2">&quot;p_DiD&quot;</span><span class="p">:</span> <span class="n">p_val</span><span class="p">,</span>
-                <span class="s2">&quot;beta_time&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
-                <span class="s2">&quot;p_time&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;visit_num&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
+                <span class="s2">"celltype"</span><span class="p">:</span> <span class="n">ct</span><span class="p">,</span>
+                <span class="s2">"n_participants"</span><span class="p">:</span> <span class="n">n_units_eff</span><span class="p">,</span>
+                <span class="s2">"beta_DiD"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">term</span><span class="p">]),</span>
+                <span class="s2">"se_DiD"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">bse</span><span class="p">[</span><span class="n">term</span><span class="p">]),</span>
+                <span class="s2">"p_DiD"</span><span class="p">:</span> <span class="n">p_val</span><span class="p">,</span>
+                <span class="s2">"beta_time"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"visit_num"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
+                <span class="s2">"p_time"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"visit_num"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
             <span class="p">}</span>
             <span class="k">if</span> <span class="n">use_bootstrap</span><span class="p">:</span>
-                <span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;p_DiD_boot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_val</span>
-                <span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;se_DiD_boot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">se_boot</span>
-                <span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;ci_lo_boot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ci_lo_boot</span>
-                <span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;ci_hi_boot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ci_hi_boot</span>
+                <span class="n">row_dict</span><span class="p">[</span><span class="s2">"p_DiD_boot"</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_val</span>
+                <span class="n">row_dict</span><span class="p">[</span><span class="s2">"se_DiD_boot"</span><span class="p">]</span> <span class="o">=</span> <span class="n">se_boot</span>
+                <span class="n">row_dict</span><span class="p">[</span><span class="s2">"ci_lo_boot"</span><span class="p">]</span> <span class="o">=</span> <span class="n">ci_lo_boot</span>
+                <span class="n">row_dict</span><span class="p">[</span><span class="s2">"ci_hi_boot"</span><span class="p">]</span> <span class="o">=</span> <span class="n">ci_hi_boot</span>
             <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row_dict</span><span class="p">)</span>
         <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
             <span class="c1"># Fallback: delta model without fixed effects</span>
@@ -665,8 +676,8 @@
                 <span class="n">wide</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">pivot_table</span><span class="p">(</span>
                     <span class="n">index</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span>
                     <span class="n">columns</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span>
-                    <span class="n">values</span><span class="o">=</span><span class="s2">&quot;y&quot;</span><span class="p">,</span>
-                    <span class="n">aggfunc</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+                    <span class="n">values</span><span class="o">=</span><span class="s2">"y"</span><span class="p">,</span>
+                    <span class="n">aggfunc</span><span class="o">=</span><span class="s2">"mean"</span><span class="p">,</span>
                     <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="k">if</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wide</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
@@ -674,9 +685,9 @@
                 <span class="n">delta</span> <span class="o">=</span> <span class="p">(</span><span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">-</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
                 <span class="k">if</span> <span class="n">delta</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
                     <span class="k">continue</span>
-                <span class="n">df_delta</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;delta&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span>
-                <span class="n">df_delta</span><span class="p">[</span><span class="s2">&quot;arm_bin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="n">tmp</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s2">&quot;arm_bin&quot;</span><span class="p">]</span>
+                <span class="n">df_delta</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">"delta"</span><span class="p">)</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span>
+                <span class="n">df_delta</span><span class="p">[</span><span class="s2">"arm_bin"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">tmp</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s2">"arm_bin"</span><span class="p">]</span>
                     <span class="o">.</span><span class="n">first</span><span class="p">()</span>
                     <span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">df_delta</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
                 <span class="p">)</span>
@@ -693,28 +704,28 @@
                 <span class="n">df_delta</span> <span class="o">=</span> <span class="n">df_delta</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
                 <span class="k">if</span> <span class="n">df_delta</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">min_units</span><span class="p">:</span>
                     <span class="k">continue</span>
-                <span class="n">fallback_formula</span> <span class="o">=</span> <span class="s2">&quot;delta ~ arm_bin&quot;</span>
+                <span class="n">fallback_formula</span> <span class="o">=</span> <span class="s2">"delta ~ arm_bin"</span>
                 <span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>
-                    <span class="n">fallback_formula</span> <span class="o">+=</span> <span class="s2">&quot; + &quot;</span> <span class="o">+</span> <span class="s2">&quot; + &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">covariates</span><span class="p">)</span>
+                    <span class="n">fallback_formula</span> <span class="o">+=</span> <span class="s2">" + "</span> <span class="o">+</span> <span class="s2">" + "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">covariates</span><span class="p">)</span>
                 <span class="n">model</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="n">fallback_formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df_delta</span><span class="p">)</span>
                 <span class="n">fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
-                <span class="n">term</span> <span class="o">=</span> <span class="s2">&quot;arm_bin&quot;</span>
+                <span class="n">term</span> <span class="o">=</span> <span class="s2">"arm_bin"</span>
                 <span class="k">if</span> <span class="n">term</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">term</span><span class="p">]):</span>
                     <span class="k">continue</span>
                 <span class="n">fallback_row</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span>
-                    <span class="s2">&quot;celltype&quot;</span><span class="p">:</span> <span class="n">ct</span><span class="p">,</span>
-                    <span class="s2">&quot;n_participants&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df_delta</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
-                    <span class="s2">&quot;beta_DiD&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">term</span><span class="p">]),</span>
-                    <span class="s2">&quot;se_DiD&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">bse</span><span class="p">[</span><span class="n">term</span><span class="p">]),</span>
-                    <span class="s2">&quot;p_DiD&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="p">[</span><span class="n">term</span><span class="p">]),</span>
-                    <span class="s2">&quot;beta_time&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
-                    <span class="s2">&quot;p_time&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">"celltype"</span><span class="p">:</span> <span class="n">ct</span><span class="p">,</span>
+                    <span class="s2">"n_participants"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df_delta</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                    <span class="s2">"beta_DiD"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">term</span><span class="p">]),</span>
+                    <span class="s2">"se_DiD"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">bse</span><span class="p">[</span><span class="n">term</span><span class="p">]),</span>
+                    <span class="s2">"p_DiD"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="p">[</span><span class="n">term</span><span class="p">]),</span>
+                    <span class="s2">"beta_time"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">"p_time"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
                 <span class="p">}</span>
                 <span class="k">if</span> <span class="n">use_bootstrap</span><span class="p">:</span>
-                    <span class="n">fallback_row</span><span class="p">[</span><span class="s2">&quot;p_DiD_boot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-                    <span class="n">fallback_row</span><span class="p">[</span><span class="s2">&quot;se_DiD_boot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-                    <span class="n">fallback_row</span><span class="p">[</span><span class="s2">&quot;ci_lo_boot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-                    <span class="n">fallback_row</span><span class="p">[</span><span class="s2">&quot;ci_hi_boot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                    <span class="n">fallback_row</span><span class="p">[</span><span class="s2">"p_DiD_boot"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                    <span class="n">fallback_row</span><span class="p">[</span><span class="s2">"se_DiD_boot"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                    <span class="n">fallback_row</span><span class="p">[</span><span class="s2">"ci_lo_boot"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                    <span class="n">fallback_row</span><span class="p">[</span><span class="s2">"ci_hi_boot"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
                 <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fallback_row</span><span class="p">)</span>
             <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
                 <span class="k">continue</span>
@@ -722,19 +733,19 @@
     <span class="k">if</span> <span class="ow">not</span> <span class="n">rows</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
             <span class="n">columns</span><span class="o">=</span><span class="p">[</span>
-                <span class="s2">&quot;celltype&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;n_participants&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;se_DiD&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;p_DiD&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;beta_time&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;p_time&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;FDR_DiD&quot;</span><span class="p">,</span>
+                <span class="s2">"celltype"</span><span class="p">,</span>
+                <span class="s2">"n_participants"</span><span class="p">,</span>
+                <span class="s2">"beta_DiD"</span><span class="p">,</span>
+                <span class="s2">"se_DiD"</span><span class="p">,</span>
+                <span class="s2">"p_DiD"</span><span class="p">,</span>
+                <span class="s2">"beta_time"</span><span class="p">,</span>
+                <span class="s2">"p_time"</span><span class="p">,</span>
+                <span class="s2">"FDR_DiD"</span><span class="p">,</span>
             <span class="p">]</span>
         <span class="p">)</span>
 
-    <span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">)</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">apply_fdr</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">&quot;p_DiD&quot;</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">"p_DiD"</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">apply_fdr</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">p_col</span><span class="o">=</span><span class="s2">"p_DiD"</span><span class="p">,</span> <span class="n">fdr_col</span><span class="o">=</span><span class="s2">"FDR_DiD"</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 </pre></div>
@@ -762,8 +773,8 @@
     </div>
   </div>
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">

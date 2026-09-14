@@ -27,8 +27,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -36,10 +36,10 @@
     <link rel="stylesheet" type="text/css" href="_static/custom.css?v=44e57e90" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
     <script src="_static/documentation_options.js?v=d198571b"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
@@ -153,11 +153,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -170,8 +177,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -182,8 +188,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -229,11 +234,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -246,8 +258,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -258,8 +269,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -283,6 +293,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
 </ul>
@@ -388,13 +399,13 @@
 <span class="nf">library</span><span class="p">(</span><span class="n">SeuratDisk</span><span class="p">)</span>
 
 <span class="c1"># Save as h5Seurat</span>
-<span class="nf">SaveH5Seurat</span><span class="p">(</span><span class="n">seurat_obj</span><span class="p">,</span><span class="w"> </span><span class="n">filename</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;data.h5Seurat&quot;</span><span class="p">)</span>
-<span class="nf">Convert</span><span class="p">(</span><span class="s">&quot;data.h5Seurat&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">dest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;h5ad&quot;</span><span class="p">)</span>
+<span class="nf">SaveH5Seurat</span><span class="p">(</span><span class="n">seurat_obj</span><span class="p">,</span><span class="w"> </span><span class="n">filename</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"data.h5Seurat"</span><span class="p">)</span>
+<span class="nf">Convert</span><span class="p">(</span><span class="s">"data.h5Seurat"</span><span class="p">,</span><span class="w"> </span><span class="n">dest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"h5ad"</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># In Python</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s2">&quot;data.h5ad&quot;</span><span class="p">)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s2">"data.h5ad"</span><span class="p">)</span>
 
 <span class="c1"># Continue with sctrial</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
@@ -473,7 +484,7 @@ Install the <code class="docutils literal notranslate"><span class="pre">plots</
 <p>No, DiD requires longitudinal (paired) data. For cross-sectional comparisons, use:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">between_arm_comparison</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
-    <span class="n">visit</span><span class="o">=</span><span class="s2">&quot;endpoint&quot;</span><span class="p">,</span>
+    <span class="n">visit</span><span class="o">=</span><span class="s2">"endpoint"</span><span class="p">,</span>
     <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span>
 <span class="p">)</span>
@@ -575,24 +586,24 @@ variance structure, and the degree of within-participant correlation.</p>
 
 <span class="c1"># How many participants for 80% power to detect d=0.5?</span>
 <span class="n">n_needed</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">sample_size_did</span><span class="p">(</span><span class="n">effect_size</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Need </span><span class="si">{</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> per arm (</span><span class="si">{</span><span class="mi">2</span><span class="o">*</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> total)&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Need </span><span class="si">{</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> per arm (</span><span class="si">{</span><span class="mi">2</span><span class="o">*</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> total)"</span><span class="p">)</span>
 
 <span class="c1"># What power do I have with 15 per arm?</span>
 <span class="n">power</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">power_did</span><span class="p">(</span><span class="n">n_per_group</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">effect_size</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Power with 15/arm: </span><span class="si">{</span><span class="n">power</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Power with 15/arm: </span><span class="si">{</span><span class="n">power</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="c1"># Generate power curve</span>
 <span class="n">ns</span><span class="p">,</span> <span class="n">powers</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">power_curve</span><span class="p">(</span><span class="n">n_range</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span> <span class="n">effect_size</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
 
 <span class="c1"># For single-arm paired designs (e.g. vaccination studies):</span>
 <span class="n">n_paired</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">sample_size_paired</span><span class="p">(</span><span class="n">effect_size</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Need </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2"> paired participants&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Need </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2"> paired participants"</span><span class="p">)</span>
 
 <span class="n">power</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">power_paired</span><span class="p">(</span><span class="n">n_participants</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">effect_size</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Power with 6 participants: </span><span class="si">{</span><span class="n">power</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Power with 6 participants: </span><span class="si">{</span><span class="n">power</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="n">mde</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">sensitivity_paired</span><span class="p">(</span><span class="n">n_participants</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Min detectable effect: </span><span class="si">{</span><span class="n">mde</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> SD&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Min detectable effect: </span><span class="si">{</span><span class="n">mde</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> SD"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><strong>Practical considerations</strong>:</p>
@@ -614,8 +625,8 @@ variance structure, and the degree of within-participant correlation.</p>
 <p><strong>For missing visits (most critical)</strong>:</p>
 <p>DiD requires data at BOTH visits. Participants with missing visits are dropped:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check pairing before analysis</span>
-<span class="n">n_paired</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Paired participants: </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">n_paired</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="s2">"visit"</span><span class="p">,</span> <span class="p">[</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Paired participants: </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="c1"># Diagnose issues</span>
 <span class="n">diag</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">diagnose_trial_data</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -643,10 +654,10 @@ variance structure, and the degree of within-participant correlation.</p>
 </ol>
 <p><strong>For missing cell-type annotations</strong>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Option 1: Exclude unassigned cells</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;celltype&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"celltype"</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">"Unknown"</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
 <span class="c1"># Option 2: Include as separate category</span>
-<span class="c1"># (if &quot;Unknown&quot; cells are biologically meaningful)</span>
+<span class="c1"># (if "Unknown" cells are biologically meaningful)</span>
 </pre></div>
 </div>
 <p><strong>Diagnosing missingness patterns</strong>:</p>
@@ -655,14 +666,14 @@ variance structure, and the degree of within-participant correlation.</p>
 
 <span class="n">missing</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
-    <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;arm&quot;</span><span class="p">,</span> <span class="s2">&quot;visit&quot;</span><span class="p">])[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span>
+    <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">"arm"</span><span class="p">,</span> <span class="s2">"visit"</span><span class="p">])[</span><span class="s2">"participant_id"</span><span class="p">]</span>
     <span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
 <span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Participants per arm × visit:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Participants per arm × visit:"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">missing</span><span class="o">.</span><span class="n">unstack</span><span class="p">())</span>
 
 <span class="c1"># Check if dropout differs by arm (potential bias!)</span>
-<span class="n">dropout_by_arm</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;arm&quot;</span><span class="p">)[</span><span class="s2">&quot;participant_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+<span class="n">dropout_by_arm</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">"arm"</span><span class="p">)[</span><span class="s2">"participant_id"</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
 </pre></div>
 </div>
 </section>
@@ -709,12 +720,12 @@ bootstrap <em>t</em>-distribution to the observed point estimate and standard er
 </ul>
 <p>Positive beta_DiD = feature increased more (or decreased less) in treated vs. control.</p>
 <p>For standardized effect sizes (Cohen’s d or Hedge’s g), use <code class="docutils literal notranslate"><span class="pre">add_effect_sizes_to_did()</span></code>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">))</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_effect_sizes_to_did</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
 
 <span class="c1"># Columns added: effect_size, effect_size_lower, effect_size_upper,</span>
 <span class="c1">#                effect_size_interpretation</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">res</span><span class="p">[[</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;beta_DiD&quot;</span><span class="p">,</span> <span class="s2">&quot;effect_size&quot;</span><span class="p">,</span> <span class="s2">&quot;effect_size_interpretation&quot;</span><span class="p">]])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">res</span><span class="p">[[</span><span class="s2">"feature"</span><span class="p">,</span> <span class="s2">"beta_DiD"</span><span class="p">,</span> <span class="s2">"effect_size"</span><span class="p">,</span> <span class="s2">"effect_size_interpretation"</span><span class="p">]])</span>
 </pre></div>
 </div>
 </section>
@@ -733,7 +744,7 @@ bootstrap <em>t</em>-distribution to the observed point estimate and standard er
 Requires PyMC (<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">sctrial[bayes]</span></code>):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_bayes</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
     <span class="n">prior_scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>    <span class="c1"># Scale for coefficient priors</span>
     <span class="n">sigma_scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>    <span class="c1"># Scale for residual SD prior</span>
     <span class="n">draws</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span>
@@ -744,9 +755,9 @@ Requires PyMC (<code class="docutils literal notranslate"><span class="pre">pip<
 <p>Run a prior predictive check first to ensure priors are reasonable:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">check</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">prior_predictive_check</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
 <span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Priors cover data: </span><span class="si">{</span><span class="n">check</span><span class="p">[</span><span class="s1">&#39;prior_covers_data&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Priors cover data: </span><span class="si">{</span><span class="n">check</span><span class="p">[</span><span class="s1">'prior_covers_data'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -760,13 +771,13 @@ exploratory analysis but does not control the overall false discovery rate.</p><
 properly controlled inference.</p></li>
 </ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">module_score_did_by_pool</span><span class="p">(</span>
-    <span class="n">pb</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
-    <span class="n">fdr_within</span><span class="o">=</span><span class="s2">&quot;module&quot;</span><span class="p">,</span>
+    <span class="n">pb</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
+    <span class="n">fdr_within</span><span class="o">=</span><span class="s2">"module"</span><span class="p">,</span>
     <span class="n">fdr_global</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># default</span>
 <span class="p">)</span>
 
 <span class="c1"># For publication: use global FDR</span>
-<span class="n">sig</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;FDR_DiD_global&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">]</span>
+<span class="n">sig</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s2">"FDR_DiD_global"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">]</span>
 </pre></div>
 </div>
 </section>
@@ -837,8 +848,8 @@ appropriate causal framework.</p></li>
 dropped to avoid multicollinearity with the intercept. You can pass
 categorical columns directly in the <code class="docutils literal notranslate"><span class="pre">covariates</span></code> parameter:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_bayes</span><span class="p">(</span>
-    <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
-    <span class="n">covariates</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;sex&quot;</span><span class="p">,</span> <span class="s2">&quot;site&quot;</span><span class="p">],</span>  <span class="c1"># categorical columns are auto-encoded</span>
+    <span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
+    <span class="n">covariates</span><span class="o">=</span><span class="p">[</span><span class="s2">"sex"</span><span class="p">,</span> <span class="s2">"site"</span><span class="p">],</span>  <span class="c1"># categorical columns are auto-encoded</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -855,14 +866,14 @@ in linear models (Gelman &amp; Hill, 2006).</p>
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
-    <span class="n">covariates</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;batch&quot;</span><span class="p">]</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
+    <span class="n">covariates</span><span class="o">=</span><span class="p">[</span><span class="s2">"batch"</span><span class="p">]</span>
 <span class="p">)</span>
 </pre></div>
 </div>
 <p>Or use ComBat for batch correction before analysis:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
-<span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">combat</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;batch&#39;</span><span class="p">)</span>
+<span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">combat</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">'batch'</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -872,17 +883,17 @@ in linear models (Gelman &amp; Hill, 2006).</p>
 <ol class="arabic simple">
 <li><p><strong>Primary analysis</strong>: Compare baseline to primary endpoint</p></li>
 </ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Day_0&quot;</span><span class="p">,</span> <span class="s2">&quot;Week_12&quot;</span><span class="p">))</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"Day_0"</span><span class="p">,</span> <span class="s2">"Week_12"</span><span class="p">))</span>
 </pre></div>
 </div>
 <ol class="arabic simple" start="2">
 <li><p><strong>Secondary analyses</strong>: Test other visit pairs</p></li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Early response</span>
-<span class="n">res_early</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Day_0&quot;</span><span class="p">,</span> <span class="s2">&quot;Week_2&quot;</span><span class="p">))</span>
+<span class="n">res_early</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"Day_0"</span><span class="p">,</span> <span class="s2">"Week_2"</span><span class="p">))</span>
 
 <span class="c1"># Late response</span>
-<span class="n">res_late</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Week_2&quot;</span><span class="p">,</span> <span class="s2">&quot;Week_12&quot;</span><span class="p">))</span>
+<span class="n">res_late</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"Week_2"</span><span class="p">,</span> <span class="s2">"Week_12"</span><span class="p">))</span>
 </pre></div>
 </div>
 </section>
@@ -899,12 +910,12 @@ in linear models (Gelman &amp; Hill, 2006).</p>
 <h3>What if I have crossover design?<a class="headerlink" href="#what-if-i-have-crossover-design" title="Link to this heading">#</a></h3>
 <p>Specify the crossover column in <code class="docutils literal notranslate"><span class="pre">TrialDesign</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
-    <span class="n">participant_col</span><span class="o">=</span><span class="s2">&quot;participant_id&quot;</span><span class="p">,</span>
-    <span class="n">visit_col</span><span class="o">=</span><span class="s2">&quot;visit&quot;</span><span class="p">,</span>
-    <span class="n">arm_col</span><span class="o">=</span><span class="s2">&quot;arm&quot;</span><span class="p">,</span>
-    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">&quot;Treatment&quot;</span><span class="p">,</span>
-    <span class="n">arm_control</span><span class="o">=</span><span class="s2">&quot;Control&quot;</span><span class="p">,</span>
-    <span class="n">crossover_col</span><span class="o">=</span><span class="s2">&quot;crossed_over&quot;</span>  <span class="c1"># Boolean column</span>
+    <span class="n">participant_col</span><span class="o">=</span><span class="s2">"participant_id"</span><span class="p">,</span>
+    <span class="n">visit_col</span><span class="o">=</span><span class="s2">"visit"</span><span class="p">,</span>
+    <span class="n">arm_col</span><span class="o">=</span><span class="s2">"arm"</span><span class="p">,</span>
+    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">"Treatment"</span><span class="p">,</span>
+    <span class="n">arm_control</span><span class="o">=</span><span class="s2">"Control"</span><span class="p">,</span>
+    <span class="n">crossover_col</span><span class="o">=</span><span class="s2">"crossed_over"</span>  <span class="c1"># Boolean column</span>
 <span class="p">)</span>
 
 <span class="c1"># Exclude crossovers from primary analysis</span>
@@ -912,7 +923,7 @@ in linear models (Gelman &amp; Hill, 2006).</p>
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
     <span class="n">exclude_crossovers</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># Recommended</span>
 <span class="p">)</span>
 </pre></div>
@@ -924,11 +935,11 @@ in linear models (Gelman &amp; Hill, 2006).</p>
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">)</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">)</span>
 <span class="p">)</span>
 
 <span class="c1"># Results stratified by cell type</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;celltype&quot;</span><span class="p">)[</span><span class="s2">&quot;FDR_DiD&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">"celltype"</span><span class="p">)[</span><span class="s2">"FDR_DiD"</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
 </pre></div>
 </div>
 </section>
@@ -938,8 +949,8 @@ in linear models (Gelman &amp; Hill, 2006).</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 
 <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">harmonize_response</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
-<span class="c1"># Maps R/NR, Responder/Non-responder, etc. → &quot;Responder&quot;/&quot;Non-responder&quot;</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">&quot;response_harmonized&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">())</span>
+<span class="c1"># Maps R/NR, Responder/Non-responder, etc. → "Responder"/"Non-responder"</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"response_harmonized"</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">())</span>
 </pre></div>
 </div>
 </section>
@@ -950,13 +961,13 @@ in linear models (Gelman &amp; Hill, 2006).</p>
 <h3>Can I test individual genes or do I need gene sets?<a class="headerlink" href="#can-i-test-individual-genes-or-do-i-need-gene-sets" title="Link to this heading">#</a></h3>
 <p>Both work:</p>
 <p><strong>Gene sets</strong> (recommended for robustness):</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;OXPHOS&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;COX7A1&quot;</span><span class="p">,</span> <span class="s2">&quot;ATP5F1A&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">]}</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ms_&quot;</span><span class="p">)</span>
-<span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;ms_OXPHOS&quot;</span><span class="p">]</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"OXPHOS"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"COX7A1"</span><span class="p">,</span> <span class="s2">"ATP5F1A"</span><span class="p">,</span> <span class="o">...</span><span class="p">]}</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"ms_"</span><span class="p">)</span>
+<span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"ms_OXPHOS"</span><span class="p">]</span>
 </pre></div>
 </div>
 <p><strong>Individual genes</strong>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;CD3D&quot;</span><span class="p">,</span> <span class="s2">&quot;CD8A&quot;</span><span class="p">,</span> <span class="s2">&quot;IL2RA&quot;</span><span class="p">]</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"CD3D"</span><span class="p">,</span> <span class="s2">"CD8A"</span><span class="p">,</span> <span class="s2">"IL2RA"</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>For genome-wide tests, use stringent FDR thresholds (e.g., 0.01).</p>
@@ -973,7 +984,7 @@ the overlap falls below <code class="docutils literal notranslate"><span class="
 score.  If fewer are found, the score is set to <code class="docutils literal notranslate"><span class="pre">NaN</span></code>.</p></li>
 <li><p>Duplicate gene names within a set are automatically removed.</p></li>
 </ul>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;MySet&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;GENE1&quot;</span><span class="p">,</span> <span class="s2">&quot;GENE2_MISSING&quot;</span><span class="p">,</span> <span class="s2">&quot;GENE3&quot;</span><span class="p">]}</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"MySet"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"GENE1"</span><span class="p">,</span> <span class="s2">"GENE2_MISSING"</span><span class="p">,</span> <span class="s2">"GENE3"</span><span class="p">]}</span>
 <span class="c1"># Will score using GENE1 and GENE3, skip GENE2_MISSING</span>
 <span class="c1"># (provided min_genes &lt;= 2; default min_genes=3 would yield NaN here)</span>
 </pre></div>
@@ -993,7 +1004,7 @@ score.  If fewer are found, the score is set to <code class="docutils literal no
 <li><p>Use when all genes have similar dynamic range</p></li>
 </ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Recommended</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;zmean&quot;</span><span class="p">)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">"zmean"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -1003,10 +1014,10 @@ score.  If fewer are found, the score is set to <code class="docutils literal no
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run DiD-aware GSEA</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">run_gsea_did</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
-    <span class="n">gene_sets</span><span class="o">=</span><span class="s2">&quot;KEGG_2021_Human&quot;</span><span class="p">,</span>  <span class="c1"># Or MSigDB, GO, etc.</span>
+    <span class="n">gene_sets</span><span class="o">=</span><span class="s2">"KEGG_2021_Human"</span><span class="p">,</span>  <span class="c1"># Or MSigDB, GO, etc.</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
-    <span class="n">rank_by</span><span class="o">=</span><span class="s2">&quot;signed_confidence&quot;</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
+    <span class="n">rank_by</span><span class="o">=</span><span class="s2">"signed_confidence"</span>
 <span class="p">)</span>
 
 <span class="c1"># Or custom gene sets</span>
@@ -1039,7 +1050,7 @@ score.  If fewer are found, the score is set to <code class="docutils literal no
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">features</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">),</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">),</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
     <span class="n">n_jobs</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>  <span class="c1"># Number of parallel workers</span>
 <span class="p">)</span>
 </pre></div>
@@ -1054,7 +1065,7 @@ You can also process in batches manually:</p>
 <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">),</span> <span class="n">batch_size</span><span class="p">):</span>
     <span class="n">batch</span> <span class="o">=</span> <span class="n">features</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">batch_size</span><span class="p">]</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">batch</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">batch</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">))</span>
     <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
 
 <span class="n">full_res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
@@ -1064,15 +1075,15 @@ You can also process in batches manually:</p>
 <section id="how-do-i-save-and-reload-results">
 <h3>How do I save and reload results?<a class="headerlink" href="#how-do-i-save-and-reload-results" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Save results</span>
-<span class="n">res</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;did_results.csv&quot;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<span class="n">adata</span><span class="o">.</span><span class="n">write_h5ad</span><span class="p">(</span><span class="s2">&quot;processed_adata.h5ad&quot;</span><span class="p">)</span>
+<span class="n">res</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">"did_results.csv"</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">adata</span><span class="o">.</span><span class="n">write_h5ad</span><span class="p">(</span><span class="s2">"processed_adata.h5ad"</span><span class="p">)</span>
 
 <span class="c1"># Reload</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
 
-<span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;did_results.csv&quot;</span><span class="p">)</span>
-<span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s2">&quot;processed_adata.h5ad&quot;</span><span class="p">)</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">"did_results.csv"</span><span class="p">)</span>
+<span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s2">"processed_adata.h5ad"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -1102,7 +1113,7 @@ For proteomics: Use protein abundance as features</p>
 
 <span class="c1"># sctrial workflow</span>
 <span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
-<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=...</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">))</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=...</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">))</span>
 </pre></div>
 </div>
 </section>
@@ -1116,9 +1127,9 @@ For proteomics: Use protein abundance as features</p>
 <span class="c1"># Visualize by trial design</span>
 <span class="n">st</span><span class="o">.</span><span class="n">plot_trial_umap_panel</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
-    <span class="n">feature</span><span class="o">=</span><span class="s2">&quot;ms_OXPHOS&quot;</span><span class="p">,</span>
+    <span class="n">feature</span><span class="o">=</span><span class="s2">"ms_OXPHOS"</span><span class="p">,</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
-    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;V1&quot;</span><span class="p">,</span> <span class="s2">&quot;V2&quot;</span><span class="p">)</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">)</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -1272,8 +1283,8 @@ For proteomics: Use protein abundance as features</p>
     </div>
   </div>
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">

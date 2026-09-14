@@ -26,8 +26,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="../../../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
@@ -35,10 +35,10 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=44e57e90" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../../../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
     <script src="../../../_static/documentation_options.js?v=d198571b"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
@@ -148,11 +148,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -165,8 +172,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -177,8 +183,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -220,11 +225,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -237,8 +249,7 @@
           
           
           
-          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/TheOmarLab/sctrial" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -249,8 +260,7 @@
           
           
           
-          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/sctrial/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-box fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -274,6 +284,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_covid19_stephenson.html">Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_immunotherapy_sade_feldman.html">Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_tnbc_zhang.html">Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/example_vaccine_immport.html">Vaccine Response Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/stress_test_real_scale.html">Scalability Analysis</a></li>
 </ul>
@@ -356,7 +367,7 @@
                 <article class="bd-article">
                   
   <h1>Source code for sctrial.stats.power</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Power analysis utilities for trial planning.</span>
+<span></span><span class="sd">"""Power analysis utilities for trial planning.</span>
 
 <span class="sd">This module provides sample size and power calculations for both</span>
 <span class="sd">**two-arm DiD** and **single-arm paired** (pre/post) designs in</span>
@@ -401,7 +412,7 @@
 
 <span class="sd">4. **Effect size uncertainty**: Use pilot data or published studies to estimate</span>
 <span class="sd">   expected effect sizes. Be conservative.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -409,14 +420,14 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s2">&quot;power_did&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;sample_size_did&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;power_curve&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;power_paired&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;sample_size_paired&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;sensitivity_paired&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;design_effect&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;effective_sample_size&quot;</span><span class="p">,</span>
+    <span class="s2">"power_did"</span><span class="p">,</span>
+    <span class="s2">"sample_size_did"</span><span class="p">,</span>
+    <span class="s2">"power_curve"</span><span class="p">,</span>
+    <span class="s2">"power_paired"</span><span class="p">,</span>
+    <span class="s2">"sample_size_paired"</span><span class="p">,</span>
+    <span class="s2">"sensitivity_paired"</span><span class="p">,</span>
+    <span class="s2">"design_effect"</span><span class="p">,</span>
+    <span class="s2">"effective_sample_size"</span><span class="p">,</span>
 <span class="p">]</span>
 
 
@@ -426,7 +437,7 @@
     <span class="n">cluster_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">icc</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the design effect for clustered data.</span>
+<span class="w">    </span><span class="sd">"""Calculate the design effect for clustered data.</span>
 
 <span class="sd">    The design effect (DEFF) quantifies how much clustering inflates</span>
 <span class="sd">    variance compared to simple random sampling:</span>
@@ -454,13 +465,13 @@
 <span class="sd">    --------</span>
 <span class="sd">    &gt;&gt;&gt; # 100 cells per participant, ICC=0.05</span>
 <span class="sd">    &gt;&gt;&gt; deff = design_effect(100, 0.05)</span>
-<span class="sd">    &gt;&gt;&gt; print(f&quot;Design effect: {deff:.1f}&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; print(f"Design effect: {deff:.1f}")</span>
 <span class="sd">    Design effect: 5.95</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">icc</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;icc must be between 0 and 1.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"icc must be between 0 and 1."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">cluster_size</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cluster_size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cluster_size must be &gt; 0.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"cluster_size must be &gt; 0."</span><span class="p">)</span>
     <span class="k">return</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="n">cluster_size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">icc</span></div>
 
 
@@ -472,7 +483,7 @@
     <span class="n">cluster_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">icc</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the effective sample size accounting for clustering.</span>
+<span class="w">    </span><span class="sd">"""Calculate the effective sample size accounting for clustering.</span>
 
 <span class="sd">    The effective sample size is the equivalent number of independent</span>
 <span class="sd">    observations after accounting for within-cluster correlation:</span>
@@ -498,9 +509,9 @@
 <span class="sd">    For single-cell studies, the effective sample size is typically</span>
 <span class="sd">    close to the number of participants, not the number of cells,</span>
 <span class="sd">    when aggregating to participant level.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">n_clusters</span><span class="p">)</span> <span class="ow">or</span> <span class="n">n_clusters</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_clusters must be &gt; 0.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"n_clusters must be &gt; 0."</span><span class="p">)</span>
     <span class="n">deff</span> <span class="o">=</span> <span class="n">design_effect</span><span class="p">(</span><span class="n">cluster_size</span><span class="p">,</span> <span class="n">icc</span><span class="p">)</span>
     <span class="n">n_total</span> <span class="o">=</span> <span class="n">n_clusters</span> <span class="o">*</span> <span class="n">cluster_size</span>
     <span class="k">return</span> <span class="n">n_total</span> <span class="o">/</span> <span class="n">deff</span></div>
@@ -518,7 +529,7 @@
     <span class="n">icc</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
     <span class="n">cluster_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate statistical power for a DiD analysis.</span>
+<span class="w">    </span><span class="sd">"""Calculate statistical power for a DiD analysis.</span>
 
 <span class="sd">    This function computes the power to detect a given DiD effect</span>
 <span class="sd">    (treatment × time interaction) with the specified sample size.</span>
@@ -536,7 +547,7 @@
 <span class="sd">        Total participants = 2 × n_per_group.</span>
 <span class="sd">    effect_size</span>
 <span class="sd">        Expected DiD effect size (β₃) in original units.</span>
-<span class="sd">        Can also be Cohen&#39;s d if sigma=1.</span>
+<span class="sd">        Can also be Cohen's d if sigma=1.</span>
 <span class="sd">    sigma</span>
 <span class="sd">        Within-group standard deviation of the outcome.</span>
 <span class="sd">    alpha</span>
@@ -557,12 +568,12 @@
 <span class="sd">    --------</span>
 <span class="sd">    &gt;&gt;&gt; # 20 participants per arm, effect = 0.5 SD</span>
 <span class="sd">    &gt;&gt;&gt; pwr = power_did(n_per_group=20, effect_size=0.5, sigma=1.0)</span>
-<span class="sd">    &gt;&gt;&gt; print(f&quot;Power: {pwr:.1%}&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; print(f"Power: {pwr:.1%}")</span>
 <span class="sd">    Power: 69.8%</span>
 
 <span class="sd">    &gt;&gt;&gt; # With clustering (100 cells/participant, ICC=0.05)</span>
 <span class="sd">    &gt;&gt;&gt; pwr = power_did(20, 0.5, icc=0.05, cluster_size=100)</span>
-<span class="sd">    &gt;&gt;&gt; print(f&quot;Power with clustering: {pwr:.1%}&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; print(f"Power with clustering: {pwr:.1%}")</span>
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
@@ -571,21 +582,21 @@
 <span class="sd">        Var(β₃) = 4σ² / n</span>
 
 <span class="sd">    where n is the total number of participants (not cells).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">n_per_group</span><span class="p">)</span> <span class="ow">or</span> <span class="n">n_per_group</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_per_group must be a finite integer &gt;= 1.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"n_per_group must be a finite integer &gt;= 1."</span><span class="p">)</span>
     <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_per_group</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_per_group</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_per_group must be an integer.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"n_per_group must be an integer."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">effect_size</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;effect_size must be finite.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"effect_size must be finite."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span> <span class="ow">or</span> <span class="n">sigma</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;sigma must be a finite value &gt; 0.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"sigma must be a finite value &gt; 0."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">alpha</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;alpha must be between 0 and 1.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"alpha must be between 0 and 1."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">icc</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;icc must be between 0 and 1.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"icc must be between 0 and 1."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">cluster_size</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cluster_size</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cluster_size must be &gt;= 1.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"cluster_size must be &gt;= 1."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">n_per_group</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">return</span> <span class="mf">0.0</span>
 
@@ -634,7 +645,7 @@
     <span class="n">icc</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
     <span class="n">cluster_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate required sample size for a DiD analysis.</span>
+<span class="w">    </span><span class="sd">"""Calculate required sample size for a DiD analysis.</span>
 
 <span class="sd">    Determines the number of participants per arm needed to achieve</span>
 <span class="sd">    the desired power for detecting a given effect size.</span>
@@ -665,26 +676,26 @@
 <span class="sd">    --------</span>
 <span class="sd">    &gt;&gt;&gt; # Sample size to detect d=0.5 with 80% power</span>
 <span class="sd">    &gt;&gt;&gt; n = sample_size_did(effect_size=0.5, sigma=1.0, power=0.80)</span>
-<span class="sd">    &gt;&gt;&gt; print(f&quot;Need {n} participants per arm ({2*n} total)&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; print(f"Need {n} participants per arm ({2*n} total)")</span>
 
 <span class="sd">    &gt;&gt;&gt; # With multiple testing correction (Bonferroni for 10 tests)</span>
 <span class="sd">    &gt;&gt;&gt; n = sample_size_did(effect_size=0.5, alpha=0.05/10, power=0.80)</span>
-<span class="sd">    &gt;&gt;&gt; print(f&quot;With Bonferroni: {n} per arm&quot;)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    &gt;&gt;&gt; print(f"With Bonferroni: {n} per arm")</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">effect_size</span><span class="p">)</span> <span class="ow">or</span> <span class="n">effect_size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;effect_size must be non-zero for sample size calculation.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"effect_size must be non-zero for sample size calculation."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">effect_size</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;effect_size must be &gt; 0.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"effect_size must be &gt; 0."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span> <span class="ow">or</span> <span class="n">sigma</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;sigma must be a finite value &gt; 0.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"sigma must be a finite value &gt; 0."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">power</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;power must be between 0 and 1.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"power must be between 0 and 1."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">alpha</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;alpha must be between 0 and 1.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"alpha must be between 0 and 1."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">icc</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;icc must be between 0 and 1.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"icc must be between 0 and 1."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">cluster_size</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cluster_size</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cluster_size must be &gt;= 1.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"cluster_size must be &gt;= 1."</span><span class="p">)</span>
 
     <span class="c1"># Critical values</span>
     <span class="k">if</span> <span class="n">two_sided</span><span class="p">:</span>
@@ -722,7 +733,7 @@
     <span class="n">cluster_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
     <span class="n">n_points</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a power curve across sample sizes.</span>
+<span class="w">    </span><span class="sd">"""Generate a power curve across sample sizes.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -751,11 +762,11 @@
 <span class="sd">    &gt;&gt;&gt; ns, powers = power_curve(n_range=(10, 100), effect_size=0.3)</span>
 <span class="sd">    &gt;&gt;&gt; import matplotlib.pyplot as plt</span>
 <span class="sd">    &gt;&gt;&gt; plt.plot(ns, powers)</span>
-<span class="sd">    &gt;&gt;&gt; plt.axhline(0.8, linestyle=&#39;--&#39;, label=&#39;80% power&#39;)</span>
-<span class="sd">    &gt;&gt;&gt; plt.xlabel(&#39;Participants per arm&#39;)</span>
-<span class="sd">    &gt;&gt;&gt; plt.ylabel(&#39;Power&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; plt.axhline(0.8, linestyle='--', label='80% power')</span>
+<span class="sd">    &gt;&gt;&gt; plt.xlabel('Participants per arm')</span>
+<span class="sd">    &gt;&gt;&gt; plt.ylabel('Power')</span>
 <span class="sd">    &gt;&gt;&gt; plt.show()</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">ns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">n_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">n_range</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">n_points</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
     <span class="n">powers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
         <span class="p">[</span><span class="n">power_did</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">effect_size</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">icc</span><span class="o">=</span><span class="n">icc</span><span class="p">,</span> <span class="n">cluster_size</span><span class="o">=</span><span class="n">cluster_size</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">ns</span><span class="p">]</span>
@@ -771,7 +782,7 @@
     <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
     <span class="n">two_sided</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the minimum detectable effect size for given power.</span>
+<span class="w">    </span><span class="sd">"""Calculate the minimum detectable effect size for given power.</span>
 
 <span class="sd">    This is the inverse of sample_size_did: given a fixed sample size,</span>
 <span class="sd">    what is the smallest effect that can be detected?</span>
@@ -798,8 +809,8 @@
 <span class="sd">    --------</span>
 <span class="sd">    &gt;&gt;&gt; # What effect can we detect with 15 per arm?</span>
 <span class="sd">    &gt;&gt;&gt; mde = sensitivity_analysis(n_per_group=15, power=0.80)</span>
-<span class="sd">    &gt;&gt;&gt; print(f&quot;Minimum detectable effect: {mde:.2f} SD&quot;)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    &gt;&gt;&gt; print(f"Minimum detectable effect: {mde:.2f} SD")</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">n_per_group</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
 
@@ -832,7 +843,7 @@
     <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
     <span class="n">two_sided</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate statistical power for a paired pre/post comparison.</span>
+<span class="w">    </span><span class="sd">"""Calculate statistical power for a paired pre/post comparison.</span>
 
 <span class="sd">    This function computes the power to detect a given within-arm</span>
 <span class="sd">    longitudinal effect (post − pre) with the specified sample size.</span>
@@ -849,7 +860,7 @@
 <span class="sd">        Number of participants with paired measurements.</span>
 <span class="sd">    effect_size</span>
 <span class="sd">        Expected pre-to-post effect size (δ) in original units.</span>
-<span class="sd">        Can also be Cohen&#39;s d if sigma=1.</span>
+<span class="sd">        Can also be Cohen's d if sigma=1.</span>
 <span class="sd">    sigma</span>
 <span class="sd">        Within-group standard deviation of the outcome (not the</span>
 <span class="sd">        paired difference SD; the paired difference variance is 2σ²).</span>
@@ -867,7 +878,7 @@
 <span class="sd">    --------</span>
 <span class="sd">    &gt;&gt;&gt; # 6 participants, effect = 0.8 SD</span>
 <span class="sd">    &gt;&gt;&gt; pwr = power_paired(n_participants=6, effect_size=0.8, sigma=1.0)</span>
-<span class="sd">    &gt;&gt;&gt; print(f&quot;Power: {pwr:.1%}&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; print(f"Power: {pwr:.1%}")</span>
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
@@ -878,17 +889,17 @@
 <span class="sd">    where n is the number of paired participants.  This is half the</span>
 <span class="sd">    variance of a DiD coefficient (4σ²/n) because there is only one</span>
 <span class="sd">    arm instead of two.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">n_participants</span><span class="p">)</span> <span class="ow">or</span> <span class="n">n_participants</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_participants must be a finite integer &gt;= 1.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"n_participants must be a finite integer &gt;= 1."</span><span class="p">)</span>
     <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_participants</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_participants</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_participants must be an integer.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"n_participants must be an integer."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">effect_size</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;effect_size must be finite.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"effect_size must be finite."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span> <span class="ow">or</span> <span class="n">sigma</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;sigma must be a finite value &gt; 0.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"sigma must be a finite value &gt; 0."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">alpha</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;alpha must be between 0 and 1.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"alpha must be between 0 and 1."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">n_participants</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">return</span> <span class="mf">0.0</span>
 
@@ -923,7 +934,7 @@
     <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
     <span class="n">two_sided</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate required sample size for a paired pre/post comparison.</span>
+<span class="w">    </span><span class="sd">"""Calculate required sample size for a paired pre/post comparison.</span>
 
 <span class="sd">    Determines the number of participants with paired measurements</span>
 <span class="sd">    needed to achieve the desired power.</span>
@@ -949,16 +960,16 @@
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
 <span class="sd">    &gt;&gt;&gt; n = sample_size_paired(effect_size=0.5, sigma=1.0, power=0.80)</span>
-<span class="sd">    &gt;&gt;&gt; print(f&quot;Need {n} paired participants&quot;)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    &gt;&gt;&gt; print(f"Need {n} paired participants")</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">effect_size</span><span class="p">)</span> <span class="ow">or</span> <span class="n">effect_size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;effect_size must be a finite value &gt; 0.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"effect_size must be a finite value &gt; 0."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span> <span class="ow">or</span> <span class="n">sigma</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;sigma must be a finite value &gt; 0.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"sigma must be a finite value &gt; 0."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">power</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;power must be between 0 and 1.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"power must be between 0 and 1."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">alpha</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;alpha must be between 0 and 1.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"alpha must be between 0 and 1."</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">two_sided</span><span class="p">:</span>
         <span class="n">z_alpha</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
@@ -982,7 +993,7 @@
     <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
     <span class="n">two_sided</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the minimum detectable effect for a paired comparison.</span>
+<span class="w">    </span><span class="sd">"""Calculate the minimum detectable effect for a paired comparison.</span>
 
 <span class="sd">    Given a fixed sample size, what is the smallest effect that can</span>
 <span class="sd">    be detected with the desired power?</span>
@@ -1008,8 +1019,8 @@
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
 <span class="sd">    &gt;&gt;&gt; mde = sensitivity_paired(n_participants=6, power=0.80)</span>
-<span class="sd">    &gt;&gt;&gt; print(f&quot;Minimum detectable effect: {mde:.2f} SD&quot;)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    &gt;&gt;&gt; print(f"Minimum detectable effect: {mde:.2f} SD")</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">n_participants</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
 
@@ -1048,8 +1059,8 @@
     </div>
   </div>
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">
