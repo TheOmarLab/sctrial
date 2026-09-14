@@ -1,4 +1,4 @@
-"""Power analysis utilities for trial planning.
+r"""Power analysis utilities for trial planning.
 
 This module provides sample size and power calculations for both
 **two-arm DiD** and **single-arm paired** (pre/post) designs in
