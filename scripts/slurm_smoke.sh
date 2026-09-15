@@ -11,12 +11,12 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=200G
 #SBATCH --time=8:00:00
-#SBATCH --output=/common/omarmlab/members/omar/projects/sctrial/logs/smoke_%j.out
-#SBATCH --error=/common/omarmlab/members/omar/projects/sctrial/logs/smoke_%j.err
+#SBATCH --output=/common/vasanthakup/projects/sctrial/logs/smoke_%j.out
+#SBATCH --error=/common/vasanthakup/projects/sctrial/logs/smoke_%j.err
 
 source ~/.bashrc
 set -eo pipefail
-PROJECT=/common/omarmlab/members/omar/projects/sctrial
+PROJECT=/common/vasanthakup/projects/sctrial
 cd "$PROJECT"
 mkdir -p logs
 export SCTRIAL_MANUSCRIPT_DIR="$PROJECT/manuscript"
@@ -30,5 +30,5 @@ export R_LIBS_USER="$HOME/R/library"
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
 
 echo "=== smoke ($(date)) ==="
-micromamba run -n sctrial python scripts/smoke_benchmark.py "$@"
+conda run -n sctrial_benchmark python scripts/smoke_benchmark.py "$@"
 echo "=== done ($(date)) ==="

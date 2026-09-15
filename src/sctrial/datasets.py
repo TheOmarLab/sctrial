@@ -10,7 +10,7 @@ import tarfile
 import urllib.error
 import urllib.request
 import warnings
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from io import StringIO
 from pathlib import Path
 
@@ -357,7 +357,7 @@ def _sf_cell_base(name: str) -> str:
 
 def _join_published_labels(
     target_names: Sequence[str],
-    label_map: dict[str, object],
+    label_map: Mapping[str, object],
     *,
     normalise: Callable[[str], str] | None = None,
     label_desc: str = "published labels",
@@ -466,7 +466,7 @@ def _load_sade_feldman_published_labels(
     if mmc1.exists():
         df = pd.read_excel(mmc1, sheet_name="Cluster annotation-Fig1B-C")
         df.columns = [str(c).strip() for c in df.columns]
-        cmap = {
+        cmap: dict[str, object] = {
             str(n).strip(): int(c)
             for n, c in zip(df["Cell Name"], df["Cluster number"])
             if pd.notna(c)
@@ -479,7 +479,8 @@ def _load_sade_feldman_published_labels(
             f"G{c}" if c is not None else None for c in clusters
         ]
         out["cell_type_published"] = [
-            _SF_CLUSTER_NAMES.get(c) if c is not None else None for c in clusters
+            _SF_CLUSTER_NAMES.get(c) if c is not None else None  # type: ignore[call-overload]
+            for c in clusters
         ]
 
     for fname, sheet, key in (
@@ -764,8 +765,8 @@ def _looks_log1p(X, sample: int = 10000, seed: int = 0) -> bool:
     )
 
 
-def _download_file(url: str, dest: Path, label: str = "file") -> None:
-    """Download a single file with error handling and partial-file cleanup.
+def _download_file(url: str, dest: Path, label: str = "file", retries: int = 5) -> None:
+    """Download a single file with retry logic and partial-file cleanup.
 
     Parameters
     ----------
@@ -776,17 +777,30 @@ def _download_file(url: str, dest: Path, label: str = "file") -> None:
     label : str
         Human-readable label for log messages (e.g. "TPM file").
     """
+    import time
+
     logger.info(f"Downloading {label} from {url}...")
-    try:
-        urllib.request.urlretrieve(url, str(dest))
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
-        if dest.exists():
-            dest.unlink()
-        raise RuntimeError(
-            f"Failed to download {label} from {url}: {e}. "
-            f"Please download manually and place it in {dest.parent}"
-        ) from e
-    logger.info(f"Successfully downloaded {label}: {dest}")
+    last_exc: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            urllib.request.urlretrieve(url, str(dest))
+            logger.info(f"Successfully downloaded {label}: {dest}")
+            return
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+            last_exc = e
+            if dest.exists():
+                dest.unlink()
+            if attempt < retries:
+                wait = 2**attempt
+                logger.warning(
+                    f"Download attempt {attempt}/{retries} failed for {label}: {e}. "
+                    f"Retrying in {wait}s..."
+                )
+                time.sleep(wait)
+    raise RuntimeError(
+        f"Failed to download {label} from {url} after {retries} attempts: {last_exc}. "
+        f"Please download manually and place it in {dest.parent}"
+    ) from last_exc
 
 
 def _get_counts_matrix(adata: ad.AnnData) -> tuple[np.ndarray | None, str | None]:

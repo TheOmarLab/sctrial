@@ -1500,6 +1500,7 @@ def generate():
         _leg_b.remove()
     ax_b.legend(
         fontsize=3.0, ncol=3, loc="upper right",
+        bbox_to_anchor=(1.0, 1.05),
         frameon=True, framealpha=0.85,
         markerscale=0.6, handlelength=1.0,
         columnspacing=0.6, handletextpad=0.3,
@@ -1517,10 +1518,10 @@ def generate():
     for _line in ax_c.lines:
         _line.set_linewidth(max(0.15, _line.get_linewidth() * 0.25))
     for _patch in ax_c.patches:
-        _patch.set_linewidth(0.2)
+        _patch.set_linewidth(0.08)
     for _coll in ax_c.collections:
         if hasattr(_coll, 'set_sizes'):
-            _coll.set_sizes([0.5])
+            _coll.set_sizes([0.3])
         if hasattr(_coll, 'set_linewidths'):
             _coll.set_linewidths([0.0])
 
@@ -1548,6 +1549,7 @@ def generate():
         "LAG3": (0.0, -0.05),
         "PDCD1": (-0.10, 0.0),
         "IL2": (0.0, 0.06),
+        "IFNG": (0.0, -0.14),
     }
     for _ann in list(axes_d[0].texts):
         _gene = _ann.get_text()
@@ -1558,12 +1560,13 @@ def generate():
 
     # Melanoma (axes_d[1])
     _mel_nudge = {
-        "IL2": (-0.22, 0.0),
+        "IL2": (-0.10, 0.0),
         "CD4": (0.0, 0.05),
         "CD8A": (0.0, 0.05),
         "NKG7": (0.08, 0.0),
         "FOXP3": (0.08, 0.0),
         "CD19": (0.08, 0.0),
+        "IFNG": (0.0, -0.14),
     }
     _mel_ha = {"IL2": "right"}
     for _ann in list(axes_d[1].texts):
@@ -1577,11 +1580,12 @@ def generate():
 
     # AML (axes_d[2])
     _aml_nudge = {
-        "LAG3": (-0.10, 0.05),
+        "LAG3": (0.06, 0.05),
         "CD14": (-0.18, 0.05),
-        "CD8A": (-0.10, 0.0),
+        "CD8A": (0.06, -0.06),
         "GZMB": (0.0, -0.06),
         "CTLA4": (0.0, -0.02),
+        "IL7R": (0.08, 0.0),
     }
     _aml_ha = {"CD14": "right"}
     for _ann in list(axes_d[2].texts):
@@ -1600,9 +1604,10 @@ def generate():
         "CD3D": (0.0, -0.06),
         "LAG3": (0.0, 0.06),
         "CTLA4": (-0.05, 0.0),
-        "CD19": (-0.10, 0.0),
+        "CD19": (0.06, 0.0),
         "IL2": (0.0, 0.08),
         "CD4": (0.0, -0.06),
+        "TNF": (0.0, -0.14),
     }
     for _ann in list(axes_d[3].texts):
         _gene = _ann.get_text()
@@ -1618,6 +1623,7 @@ def generate():
         "IFNG": (0.10, 0.0),
         "HAVCR2": (0.10, 0.06),
         "CD4": (0.0, -0.05),
+        "GZMB": (0.18, 0.0),
     }
     for _ann in list(axes_d[4].texts):
         _gene = _ann.get_text()
@@ -1659,6 +1665,7 @@ def generate():
         _leg_e.remove()
     ax_e.legend(
         fontsize=3.0, ncol=3, loc="upper left",
+        bbox_to_anchor=(0.0, 1.05),
         frameon=True, framealpha=0.85,
         markerscale=0.4, handlelength=1.0,
         columnspacing=0.6, handletextpad=0.3,
@@ -1712,7 +1719,7 @@ def generate():
     if _leg_g:
         _leg_g.remove()
     ax_g.legend(
-        fontsize=3.0, ncol=2, loc="upper left",
+        fontsize=3.0, ncol=2, loc="lower right",
         frameon=True, framealpha=0.85,
         markerscale=0.8, handlelength=1.0,
         columnspacing=0.6, handletextpad=0.3,
@@ -1770,6 +1777,18 @@ def generate():
             handletextpad=0.3,
         )
     despine(ax_i)
+    # Rename abbreviated dataset labels in I's y-tick labels.
+    # Labels have the format "SF (12,345)" so use substring replacement.
+    # canvas.draw() is needed to populate tick label text before rendering.
+    fig_c.canvas.draw()
+    _i_renames = [("SF", "Melanoma"), ("VAX", "Vaccine"), ("COVID", "COVID-19")]
+    _new_i_ytlabels = []
+    for _tl in ax_i.get_yticklabels():
+        _txt = _tl.get_text()
+        for _old, _new in _i_renames:
+            _txt = _txt.replace(_old, _new)
+        _new_i_ytlabels.append(_txt)
+    ax_i.set_yticklabels(_new_i_ytlabels, fontsize=3)
 
     # ── Rows 10–14: J (pseudorep) ─────────────────────────────────────
     pseudo_names = list(all_pseudo.keys())

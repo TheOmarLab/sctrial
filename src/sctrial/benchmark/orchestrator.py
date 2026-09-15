@@ -375,7 +375,7 @@ def build_sensitivity_grid(design: str = "two_arm", panels=None) -> list[dict]:
     effect is separable from a gene-identity effect.
 
     SIGNAL IS AN INTEGER COUNT, and the fractions are chosen to be EXACTLY
-    realisable at every panel size, so the grid is a complete factorial:
+    realisable at every panel size, so the grid is a complete factorial::
 
         fraction     50   200   500  2000
             2%        1     4    10    40
