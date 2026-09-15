@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>sctrial — Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial — Design-Aware Participant-Level Inference for Longitudinal Single-Cell Studies &#8212; sctrial 0.3.3 documentation</title>
   
   
   
@@ -347,8 +347,8 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="sctrial-participant-level-differential-analysis-for-longitudinal-single-cell-experiments">
-<h1>sctrial — Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments<a class="headerlink" href="#sctrial-participant-level-differential-analysis-for-longitudinal-single-cell-experiments" title="Link to this heading">#</a></h1>
+  <section id="sctrial-design-aware-participant-level-inference-for-longitudinal-single-cell-studies">
+<h1>sctrial — Design-Aware Participant-Level Inference for Longitudinal Single-Cell Studies<a class="headerlink" href="#sctrial-design-aware-participant-level-inference-for-longitudinal-single-cell-studies" title="Link to this heading">#</a></h1>
 <a class="reference external image-reference" href="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml"><img alt="Tests" src="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml/badge.svg?branch=main" />
 </a>
 <img alt="Python" src="https://img.shields.io/badge/python-3.9%2B-blue" />
@@ -360,23 +360,24 @@ aggregates cell-level measurements to participant-level replicates and applies
 design-specific statistical methods — difference-in-differences, paired contrasts, and
 cross-sectional comparisons — so that inference reflects the actual number of independent
 biological units in the study.</p>
-<a class="reference internal image-reference" href="_images/overview_figure.png"><img alt="sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs" class="align-center" src="_images/overview_figure.png" style="width: 100%;" />
+<a class="reference internal image-reference" href="_images/overview_figurev2.png"><img alt="sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs" class="align-center" src="_images/overview_figurev2.png" style="width: 100%;" />
 </a>
 <section id="key-applications">
 <h2>Key Applications<a class="headerlink" href="#key-applications" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><strong>Difference-in-Differences (DiD)</strong> — Participant fixed-effects regression with wild cluster
 bootstrap inference for treatment effect estimation across arms and timepoints.</p></li>
-<li><p><strong>Paired Contrasts</strong> — Within-arm pre→post comparisons with paired statistical tests (Wilcoxon,
-t-test) and effect sizes (Cohen’s d, Hedges’ g, log₂ fold-change).</p></li>
-<li><p><strong>Between-Arm Tests</strong> — Cross-sectional comparisons between treatment and control arms at
-fixed timepoints with proper pseudobulk replication.</p></li>
-<li><p><strong>Abundance Analysis</strong> — Cell-type composition changes across conditions using proportion-based
+<li><p><strong>Paired within-arm contrasts</strong> — Pre→post comparisons with paired statistical tests and
+effect sizes (Cohen’s d, Hedges’ g, log₂ fold-change).</p></li>
+<li><p><strong>Between-arm comparisons</strong> — Cross-sectional tests between treatment and control arms at
+fixed timepoints with pseudobulk replication.</p></li>
+<li><p><strong>Cell-type abundance</strong> — Composition changes across conditions using proportion-based
 statistics and participant-level aggregation.</p></li>
 <li><p><strong>Gene Set Enrichment Analysis</strong> — GSEA on DiD-ranked gene lists with support for Hallmark,
 KEGG, Reactome, and custom gene set collections.</p></li>
-<li><p><strong>Power Analysis</strong> — Sample size calculations, power curves, and minimum detectable effect
-sizes for planning single-cell clinical studies.</p></li>
+<li><p><strong>Power analysis</strong> — Sample size calculations, power curves, and minimum detectable effect
+sizes for two-arm DiD and single-arm paired designs.</p></li>
+<li><p><strong>Effect size estimation</strong> — Confidence intervals on all key estimands.</p></li>
 </ul>
 </section>
 <section id="getting-started">
