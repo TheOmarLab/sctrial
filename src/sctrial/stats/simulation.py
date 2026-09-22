@@ -70,12 +70,18 @@ def simulate_did_data(
 
     Returns
     -------
-    dict with keys:
-        "adata" : AnnData  — cell-level expression matrix with obs columns
-            ``participant``, ``visit``, ``arm``
-        "pseudobulk" : DataFrame  — participant-visit means with ``n_cells``
-        "truth" : dict mapping gene_name -> true_beta_DiD
-        "params" : dict of simulation parameters
+    dict
+        A dictionary with the following keys:
+
+        ``adata``
+            AnnData with cell-level expression matrix; obs has
+            ``participant``, ``visit``, ``arm`` columns.
+        ``pseudobulk``
+            DataFrame of participant-visit means with ``n_cells``.
+        ``truth``
+            Mapping of gene_name -> true_beta_DiD.
+        ``params``
+            Dict of simulation parameters.
     """
     import anndata as ad
 

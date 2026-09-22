@@ -249,7 +249,7 @@ def run_gates(
     seed0: int = 100_000,
     out_dir: str | Path | None = None,
     verbose: bool = True,
-    bootstrap: dict | None = None,
+    bootstrap: list[dict] | None = None,
 ) -> pd.DataFrame:
     """Run every envelope gate.
 
@@ -533,7 +533,8 @@ def _did_log1p_cpm(pv, meta, sig_idx, panel_idx, scope):
     """Participant-level DiD of log(1+CPM) under a given normalisation scope."""
     keys = sorted(pv)
     participants = sorted({k[0] for k in keys})
-    deltas, treated = [], []
+    delta_list: list = []
+    treated_list: list = []
     for p in participants:
         vals = {}
         for visit in ("Pre", "Post"):
@@ -545,10 +546,10 @@ def _did_log1p_cpm(pv, meta, sig_idx, panel_idx, scope):
             vals[visit] = np.log1p(v[sig_idx] / denom * 1e6)
         if len(vals) != 2:
             continue
-        deltas.append(vals["Post"] - vals["Pre"])
-        treated.append(meta[(p, "Pre")] == "Treated")
-    deltas = np.array(deltas)
-    treated = np.array(treated)
+        delta_list.append(vals["Post"] - vals["Pre"])
+        treated_list.append(meta[(p, "Pre")] == "Treated")
+    deltas = np.array(delta_list)
+    treated = np.array(treated_list)
     if (~treated).any():
         return deltas[treated].mean(axis=0) - deltas[~treated].mean(axis=0)
     return deltas.mean(axis=0)

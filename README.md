@@ -1,7 +1,7 @@
 <p align="center">
   <img src="docs/source/_static/logo.svg" alt="sctrial" width="280">
 </p>
-<p align="center"><strong>Participant-Level Differential Analysis for Longitudinal Single-Cell Experiments</strong></p>
+<p align="center"><strong>Design-Aware Participant-Level Inference for Longitudinal Single-Cell Studies</strong></p>
 
 <p align="center">
   <a href="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml">
@@ -37,7 +37,7 @@
 - **Effect size** estimation with confidence intervals
 
 <p align="center">
-  <img src="docs/source/_static/overview_figure.png" alt="sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs" width="100%">
+  <img src="docs/source/_static/overview_figurev2.png" alt="sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs" width="100%">
 </p>
 
 ## Key Features

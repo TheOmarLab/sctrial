@@ -842,19 +842,30 @@ def simulate_trial_v2(cfg: TranscriptomeSimConfig) -> dict:
 
     Returns
     -------
-    dict with
-        ``adata``                cell-level raw counts (sparse), obs has
-                                 participant/visit/arm and the OBSERVED library total
-        ``pseudobulk_counts``    participant x visit summed counts, full transcriptome
-        ``pseudobulk_means``     participant x visit mean counts, full transcriptome
-        ``gene_names``           transcriptome gene names
-        ``panels``               nested panel -> gene names
-        ``truth``                beta_g by gene (the injected effect)
-        ``oracle``               per-gene truth on each method class's own estimand
-                                 scale (see :func:`oracle_estimands`)
-        ``latent``               VALIDATION ONLY: b_ig, u_igt, alpha_g, phi_g.
-                                 Never use as an analysis input.
-        ``config``               the config used
+    dict
+        A dictionary with the following keys:
+
+        ``adata``
+            Cell-level raw counts (sparse); obs has participant/visit/arm and
+            the OBSERVED library total.
+        ``pseudobulk_counts``
+            Participant x visit summed counts, full transcriptome.
+        ``pseudobulk_means``
+            Participant x visit mean counts, full transcriptome.
+        ``gene_names``
+            Transcriptome gene names.
+        ``panels``
+            Nested panel -> gene names.
+        ``truth``
+            Beta_g by gene (the injected effect).
+        ``oracle``
+            Per-gene truth on each method class's own estimand scale
+            (see :func:`oracle_estimands`).
+        ``latent``
+            VALIDATION ONLY: b_ig, u_igt, alpha_g, phi_g.
+            Never use as an analysis input.
+        ``config``
+            The config used.
     """
     params = build_params(cfg)
     gene_names = params["gene_names"]

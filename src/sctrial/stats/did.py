@@ -678,6 +678,7 @@ def get_did_aggregated_df(
     Returns (df_use, unit, time, arm_bin) where df_use has one row per
     participant-visit with feature values and arm_bin. Permute arm_bin
     at participant level and call did_fit for each permutation.
+
     Parameters
     ----------
     adata

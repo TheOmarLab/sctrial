@@ -900,22 +900,44 @@ def _build_composite(loaded: dict):
         if _leg:
             _handles = list(_leg.legend_handles)
             _labels = [t.get_text() for t in _leg.get_texts()]
-            # Two columns of short labels: truncate names hard and cap the entry
-            # count so the two narrow columns still fit inside the (narrow) UMAP
-            # cell rather than overprinting the neighbouring dataset's legend.
-            _labels = [s if len(s) <= 9 else s[:8] + "…" for s in _labels]
-            _keep = 8
-            if len(_labels) > _keep:
-                _handles, _labels = _handles[:_keep], _labels[:_keep]
             _leg.remove()
-            _ax.legend(
+            # Estimate max chars that fit in one legend column without overlap.
+            # Each column is roughly half the axis width in display points.
+            # Render a temporary legend to measure, then truncate if needed.
+            _test_leg = _ax.legend(
                 handles=_handles, labels=_labels,
                 fontsize=3.5, loc="upper center",
                 bbox_to_anchor=(0.5, -0.02), ncol=2,
                 frameon=False, handlelength=0.6, handleheight=0.5,
-                borderpad=0.1, labelspacing=0.12, columnspacing=0.3,
+                borderpad=0.1, labelspacing=0.12, columnspacing=0.8,
                 markerscale=0.35,
             )
+            try:
+                _renderer = fig_c.canvas.get_renderer()
+                _ax_width_pt = _ax.get_window_extent(_renderer).width
+                # Each of 2 columns gets roughly half minus handle/padding space
+                _col_width_pt = _ax_width_pt / 2 - 10
+                # Measure width of a single character at fontsize 3.5
+                import matplotlib.text as _mtext
+                _probe = _mtext.Text(0, 0, "W", fontsize=3.5)
+                _probe.figure = fig_c
+                _char_w = _probe.get_window_extent(_renderer).width
+                _max_chars = max(4, int(_col_width_pt / _char_w) + 4)
+                _labels_trunc = [
+                    s if len(s) <= _max_chars else s[:_max_chars - 1] + "…"
+                    for s in _labels
+                ]
+                _test_leg.remove()
+                _ax.legend(
+                    handles=_handles, labels=_labels_trunc,
+                    fontsize=3.5, loc="upper center",
+                    bbox_to_anchor=(0.5, -0.02), ncol=2,
+                    frameon=False, handlelength=0.6, handleheight=0.5,
+                    borderpad=0.1, labelspacing=0.12, columnspacing=0.8,
+                    markerscale=0.35,
+                )
+            except Exception:
+                pass  # keep the temporary legend as-is if renderer unavailable
 
     # ── Row 2: B — UMAPs coloured by grouping variable ─────────────
     gs_b = outer[2].subgridspec(1, n_ds, wspace=0.30)
@@ -928,11 +950,25 @@ def _build_composite(loaded: dict):
                 _coll.set_sizes([0.15])
         _leg_b = _ax.get_legend()
         if _leg_b:
-            for _txt in _leg_b.get_texts():
-                _txt.set_fontsize(3.5)
             _bname = _ds_names_b[_i] if _i < len(_ds_names_b) else ""
-            _bloc = "upper left" if _bname == "TNBC" else "upper right" if _bname == "COVID-19" else "lower left"
-            _leg_b.set_loc(_bloc)
+            _bloc = ("upper right" if _bname in ("TNBC", "AML", "COVID-19")
+                     else "lower right" if _bname == "Melanoma" else "lower left")
+            if _bname == "CAR-T":
+                # Rebuild with 2 columns
+                _bh = list(_leg_b.legend_handles)
+                _bl = [t.get_text() for t in _leg_b.get_texts()]
+                _leg_b.remove()
+                _leg_b = _ax.legend(
+                    handles=_bh, labels=_bl,
+                    fontsize=3.5, loc="lower right", frameon=True,
+                    framealpha=0.8, handlelength=0.6, handleheight=0.5,
+                    borderpad=0.2, labelspacing=0.1, handletextpad=0.3,
+                    ncol=2, columnspacing=0.5,
+                )
+            else:
+                for _txt in _leg_b.get_texts():
+                    _txt.set_fontsize(3.5)
+                _leg_b.set_loc(_bloc)
 
     # ── Row 4: C (marker dot plot, left) | D (sil + purity, right) ─
     gs_cd = outer[4].subgridspec(1, 2, width_ratios=[0.55, 0.45],
@@ -950,20 +986,19 @@ def _build_composite(loaded: dict):
             if hasattr(_lh, "set_sizes"):
                 _lh.set_sizes([s * 0.1 for s in _lh.get_sizes()])
         for _txt in _leg_c.get_texts():
-            _txt.set_fontsize(3.5)
+            _txt.set_fontsize(4.5)
         _t_c = _leg_c.get_title()
         if _t_c:
-            _t_c.set_fontsize(3.5)
-        _leg_c.set_bbox_to_anchor((1.02, 1.05))
-        _leg_c._loc = 1  # top right, above colorbar
+            _t_c.set_fontsize(4.5)
+        _leg_c.set_loc("lower right")
 
     gs_d = gs_cd[1].subgridspec(2, 1, hspace=0.80)
     ax_d1 = fig_c.add_subplot(gs_d[0])
     ax_d2 = fig_c.add_subplot(gs_d[1])
     _panel_silhouette(ax_d1, loaded)
     _panel_knn_purity(ax_d2, loaded)
-    ax_d1.set_ylabel("Centroid-silhouette\nscore", fontsize=3.5)
-    ax_d2.set_ylabel("Graph label purity\n(connectivities)", fontsize=3.5)
+    ax_d1.set_ylabel("Centroid-silhouette\nscore", fontsize=4.5)
+    ax_d2.set_ylabel("Graph label purity\n(connectivities)", fontsize=4.5)
 
     # ── Row 6: E (ct × ds heatmap, left) | F (arm mixing, right) ──
     gs_ef = outer[6].subgridspec(1, 2, width_ratios=[0.55, 0.45],

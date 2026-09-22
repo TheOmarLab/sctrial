@@ -99,7 +99,7 @@ def _requested(scenario: dict) -> dict:
     return dict(scenario.get("config_kwargs") or {})
 
 
-def _expected_arms(scenario: dict, cfg: Any) -> tuple[int | None, int | None]:
+def _expected_arms(scenario: dict, cfg: Any) -> tuple[int, int]:
     """Participants per arm implied by the REQUEST.
 
     `arm_ratio` is a scenario-owned field. When a scenario sets it (the
