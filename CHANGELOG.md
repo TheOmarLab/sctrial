@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4] - 2026-09-22
+
+### Added
+- `simulate_trial_v2()` and `TranscriptomeSimConfig`: transcriptome-scale hierarchical gamma-Poisson simulator calibrated from real single-cell data, superseding the original `SimulationConfig` API
+- TNBC (triple-negative breast cancer) dataset support and accompanying tutorial
+- Second-order DiD analysis demonstrated in tutorials
+- Signal-fraction sensitivity benchmark (gene panel × signal percentage grid)
+
+
+### Fixed
+- Double log bug in benchmark orchestrator and permutation modules (`orchestrator.py`, `permutation.py`)
+- GSEA ranking coerced to finite, unique values before `gseapy.prerank` — infinite betas from degenerate OLS and duplicate gene symbols caused "float division by zero" across all five AML gene-set libraries
+- Cluster-robust fit falls back to non-robust fit when within-arm degrees of freedom are exhausted, fixing silent failure of AML GSEA
+- NEBULA runner: filter zero-count cells before computing log library-size offset; set `ncore=1` to prevent PSOCK port conflicts; robust R error capture and crash detection
+- COVID loader: CITE-seq antibody-capture features (~49% of aggregate counts) were sitting in the gene matrix, confounding library-size normalisation; split to `obsm["protein"]`
+- Melanoma: sample filter silently dropped 19% of QC-passing cells (3,108 of 16,291) and 7 of 32 patients; per-cell annotations now sourced from the published labels; RECIST arm normalised to leading code
+- Vaccine and AML loaders: data-integrity fixes from 4-team audit
+- Benchmark: signal-count truncation, frozen design leaking into scenarios, split jobs overwriting combined results
+
+### Improved
+- QC: ambient and housekeeping gene classes excluded upstream in all loaders, so GSEA rankings inherit a clean gene set
+- Vaccine loader (GSE171964): raw UMI counts now normalized with 10x QC, matching other loaders
+- Benchmark simulator calibrated from real TNBC data: within-cell-type coherent, mean-dependent dispersion, arm-stratified bootstrap gate
+- 27 mypy type errors fixed across benchmark and dataset modules
+- Tutorials re-executed against `v0.3.4`
+
 ## [0.3.3] - 2026-04-05
 
 ### Added
