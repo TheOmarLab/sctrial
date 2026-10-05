@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sctrial"
-version = "0.3.4"
+version = "1.0.0"
 description = "Participant-level differential analysis for longitudinal single-cell experiments: DiD, paired comparisons, module scoring, pseudobulk, and power analysis."
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9"
@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["single-cell", "anndata", "clinical-trial", "longitudinal", "difference-in-differences", "pseudobulk", "scRNA-seq"]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
