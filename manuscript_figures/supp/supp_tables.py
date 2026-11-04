@@ -15,15 +15,13 @@ Table 8  Dataset metadata summary.
 from __future__ import annotations
 
 import gc
-
-import numpy as np
-import pandas as pd
 import pickle as pkl
 import warnings
 
+import numpy as np
+import pandas as pd
 from joblib import Parallel, delayed
 from statsmodels.stats.multitest import multipletests
-
 
 from .._shared import (
     CLINICAL_SIGNATURES,
@@ -34,7 +32,6 @@ from .._shared import (
     TrialDesign,
     add_log1p_cpm_layer,
     apply_style,
-    between_arm_comparison,
     clear_cache,
     did_fit,
     did_table,
@@ -259,22 +256,6 @@ def table2_all_results() -> pd.DataFrame:
                         break
         ad_visit = adata_st[adata_st.obs["dfo_bin"] == target_visit].copy()
 
-        covid_design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="dfo_bin",
-            arm_col="severity",
-            arm_treated="Severe",
-            arm_control="Mild",
-        )
-        res_st = between_arm_comparison(
-            ad_visit,
-            visit=target_visit,
-            features=sig_cols,
-            design=covid_design,
-            layer="log1p_cpm",
-            standardize=True,
-        )
-
         # Compute Hedges' g on participant-level means (matching Figure 5)
         df_agg = (
             ad_visit.obs
@@ -366,7 +347,7 @@ def table2_all_results() -> pd.DataFrame:
 # ======================================================================
 
 
-def _stephenson_ranking() -> "pd.Series":
+def _stephenson_ranking() -> pd.Series:
     """Compute per-gene Welch t-stat ranking (severe vs mild) for Stephenson."""
     from scipy import stats as sp_stats
 
@@ -956,8 +937,12 @@ def table5_power_analysis() -> pd.DataFrame:
         return pd.DataFrame()
 
     from sctrial.stats.power import (
-        power_did, sample_size_did, sensitivity_analysis,
-        power_paired, sample_size_paired, sensitivity_paired,
+        power_did,
+        power_paired,
+        sample_size_did,
+        sample_size_paired,
+        sensitivity_analysis,
+        sensitivity_paired,
     )
 
     # Read observed results from Table 2

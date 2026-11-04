@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- `did_fit()` now fits ordinary least squares by default. It previously switched silently to weighted least squares whenever the input carried an `n_cells` column, so every participant-level DiD from `did_table(aggregate="participant_visit")` and `did_table_parallel()` was weighted by cell count. Cell-count weights assume that all variance in a participant-visit mean is cell-sampling noise; in clinical cohorts between-participant variation dominates and cell counts span two orders of magnitude, so a few participants determined each estimate. With two visits the default estimate equals the difference in mean within-participant change between arms, which is the estimator the simulation benchmark validates. Weighted fitting is still available through the new `weight_col` argument of `did_fit()`, `did_table()`, `did_table_parallel()` and `DiDConfig`. Participant-level DiD estimates change; cell-level estimates do not.
+
+### Fixed
+- The wild cluster bootstrap refit OLS models with WLS. It detected weighting from the presence of `model.weights`, which statsmodels also sets, to ones, on OLS models; it now checks whether the weights are uniform.
+- Two type errors reported by mypy in the benchmark gate verdict and the orchestrator command-line entry point.
+
 ## [1.0.0] - 2026-10-05
 
 Version bump to stable release. No functional changes from 0.3.4.

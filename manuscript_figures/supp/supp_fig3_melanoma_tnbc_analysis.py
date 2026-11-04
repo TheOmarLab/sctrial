@@ -31,11 +31,11 @@ import warnings
 from contextlib import contextmanager
 
 import matplotlib.gridspec as gridspec
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
-import matplotlib.patches as mpatches
 from scipy import stats
 
 from .._shared import (
@@ -443,8 +443,6 @@ def _within_arm_response_forest_tnbc(
 
     mask_R  = (delta[TNBC_DESIGN.arm_col] == arm_label) & (delta[_TNBC_RESP_COL] == _TNBC_R_VAL)
     mask_NR = (delta[TNBC_DESIGN.arm_col] == arm_label) & (delta[_TNBC_RESP_COL] == _TNBC_NR_VAL)
-    n_R  = int(mask_R.sum())
-    n_NR = int(mask_NR.sum())
 
     rng = np.random.default_rng(42)
     records = []
@@ -1328,8 +1326,8 @@ def generate() -> None:
             txt.set_position((x, y - 2))
 
     # Panel I (heatmap): replace below-legend with y-axis group labels
-    from matplotlib.transforms import blended_transform_factory
     from matplotlib.colors import to_rgba
+    from matplotlib.transforms import blended_transform_factory
     leg_i = ax_i.get_legend()
     if leg_i:
         leg_i.remove()
