@@ -345,12 +345,14 @@ DATASET_DISPLAY_NAMES: dict[str, str] = {
 
 
 def plot_cell_vs_participant_beta(ax, res_cell, res_part, *, title: str,
-                                  composite: bool = False) -> None:
+                                  composite: bool = False,
+                                  label_fs: float | None = None) -> None:
     """Scatter of cell-level against participant-level beta_DiD, one point per signature.
 
     Shared by Figure 2B (TNBC) and Supp Figure 3B (melanoma). ``res_cell`` and
     ``res_part`` are ``did_table`` outputs; ``composite`` sizes everything for the
-    small multi-panel artboard.
+    small multi-panel artboard. ``label_fs`` overrides the signature-label size of
+    the standalone panel (by default the active tick-label size).
     """
     import matplotlib.patches as mpatches
     from adjustText import adjust_text
@@ -397,9 +399,12 @@ def plot_cell_vs_participant_beta(ax, res_cell, res_part, *, title: str,
     # Final text sizes, fixed BEFORE label layout: the standalone export raises
     # text to a minimum size afterwards and the composite shrinks it, and any
     # resize after adjust_text has run makes the labels collide.
-    label_fs = 4.0 if composite else max(
-        5.0, FontProperties(size=plt.rcParams["xtick.labelsize"]).get_size_in_points()
-    )
+    if composite:
+        label_fs = 4.0
+    elif label_fs is None:
+        label_fs = max(
+            5.0, FontProperties(size=plt.rcParams["xtick.labelsize"]).get_size_in_points()
+        )
 
     # Spearman rho, not Pearson r. The key and the rho statistic sit in one row
     # below the axes, so nothing inside the plot competes with the labels

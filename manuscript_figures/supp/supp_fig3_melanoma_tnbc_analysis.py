@@ -320,9 +320,11 @@ def _panel_a_paired_verification(ax: plt.Axes, data: dict) -> None:
 
 def _panel_b_beta_comparison(ax: plt.Axes, data: dict, *, composite: bool = False) -> None:
     """Scatter of cell-level vs participant-level beta_DiD (the Figure 2B panel, melanoma)."""
+    # Labels at this figure's 11 pt floor: its 14 pt tick size crowds the cluster.
     plot_cell_vs_participant_beta(
         ax, data["res_cell"], data["did_res"],
         title="Effect Size: Cell vs Participant Aggregation (Melanoma)", composite=composite,
+        label_fs=_MIN_FONT,
     )
 
 
@@ -1144,7 +1146,7 @@ def generate() -> None:
     #   Row 8 (content): K (centred)
     outer = fig_c.add_gridspec(
         9, 1,
-        height_ratios=[1.0, 1.05, 1.8, 1.05, 3.8, 0.75, 1.8, 1.05, 1.8],
+        height_ratios=[1.0, 1.2, 1.8, 1.05, 3.8, 0.75, 1.8, 1.05, 1.8],
         hspace=0,
         left=0.10, right=0.95, top=0.97, bottom=0.05,
     )

@@ -1204,12 +1204,17 @@ def generate() -> None:
     #   Row 2: E | F     (Melanoma/SF heterogeneity)
     #   Row 3: G | H     (temporal lines)
     #   Row 4: I | J     (heatmap + bar)
-    outer = fig_c.add_gridspec(
-        5, 1,
-        height_ratios=[1.35, 1, 1, 0.85, 1.6],
-        hspace=0.70,
+    # Row 0 sits over its own wider gap: the A/B keys hang below their axes and
+    # would otherwise run into Row 1's two-line titles. Rows 1-4 keep the 0.70
+    # spacing (their gaps and heights move by about 1 mm).
+    top = fig_c.add_gridspec(
+        2, 1,
+        height_ratios=[1.35, 6.8],
+        hspace=0.26,
         left=0.10, right=0.95, top=0.97, bottom=0.05,
     )
+    rest = top[1].subgridspec(4, 1, height_ratios=[1, 1, 0.85, 1.6], hspace=0.70)
+    outer = [top[0]] + [rest[i] for i in range(4)]
 
     gs0 = outer[0].subgridspec(1, 2, wspace=0.45)
     ax_a = fig_c.add_subplot(gs0[0])
