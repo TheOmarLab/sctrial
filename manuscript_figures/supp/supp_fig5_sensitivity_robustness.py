@@ -121,12 +121,6 @@ _FEATURES = [
 _PAL = {"cell": COLORS.get("highlight", "#5B9BD5"),
         "participant": COLORS.get("treated", "#E07B54")}
 
-# Try to import adjustText; fall back to manual offsets if unavailable
-try:
-    from adjustText import adjust_text as _adjust_text
-    _HAS_ADJUSTTEXT = True
-except ImportError:
-    _HAS_ADJUSTTEXT = False
 
 
 # ======================================================================
@@ -162,39 +156,208 @@ def _save_cache(tag: str, obj):
     print(f"    [cached]    {tag}")
 
 
-def _add_gene_labels(ax, features, x_series, y_series, *, fontsize=7):
-    """Add non-overlapping gene labels to a scatter plot.
+def _pad_limits(ax, x, y, *, frac: float = 0.15) -> None:
+    """Fix both axis limits around the data so labels have room inside the frame."""
+    for set_lim, v in ((ax.set_xlim, np.asarray(x)), (ax.set_ylim, np.asarray(y))):
+        pad = frac * (v.max() - v.min())
+        set_lim(v.min() - pad, v.max() + pad)
 
-    Uses adjustText when available; otherwise falls back to manual offsets.
+
+# adjustText settings, gentlest first. Every candidate is laid out and scored on
+# its defects (labels touching a label or a marker, leader lines crossing), with
+# mean leader length breaking ties; the lowest score wins. Several candidates are
+# needed because convergence depends on the font metrics of the rendering
+# machine. Crossing removal is off in the stronger settings: it swaps label pairs
+# every step and the layout oscillates instead of converging.
+_LABEL_LAYOUTS = (
+    dict(expand=(1.2, 1.4), force_text=(0.3, 0.5), force_static=(0.5, 0.7)),
+    dict(expand=(1.2, 1.4), force_text=(0.6, 0.9), force_static=(0.8, 1.0),
+         prevent_crossings=False, max_move=(20, 20)),
+    dict(expand=(1.2, 1.4), force_text=(0.6, 0.9), force_static=(1.0, 1.2),
+         force_pull=(0.0, 0.0), prevent_crossings=False, max_move=(20, 20)),
+    dict(expand=(1.1, 1.3), force_text=(0.8, 1.0), force_static=(1.0, 1.2),
+         prevent_crossings=False, max_move=(40, 40)),
+)
+
+
+def _segments_cross(p1, p2, q1, q2) -> bool:
+    """True when segments p1-p2 and q1-q2 properly intersect."""
+    def orient(a, b, c):
+        return np.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]))
+    return (orient(p1, p2, q1) * orient(p1, p2, q2) < 0
+            and orient(q1, q2, p1) * orient(q1, q2, p2) < 0)
+
+
+def _clearance_px(ax, markers) -> float:
+    """Marker radius plus 1 pt (edge line and anti-aliasing), in display pixels."""
+    return (np.sqrt(markers.get_sizes()[0]) / 2 + 1.0) * ax.figure.dpi / 72
+
+
+def _leaders(boxes, xy_disp, radius_px):
+    """Leader segment (label centre to marker) per label, None when attached."""
+    out = []
+    for bb, (mx, my) in zip(boxes, xy_disp):
+        gap = np.hypot(np.clip(mx, bb.x0, bb.x1) - mx, np.clip(my, bb.y0, bb.y1) - my)
+        out.append(((bb.x0 + bb.x1) / 2, (bb.y0 + bb.y1) / 2, mx, my, gap)
+                   if gap > radius_px + 2 else (None, None, mx, my, gap))
+    return out
+
+
+def _crossing_pairs(leaders):
+    return [(i, j) for i, a in enumerate(leaders) for j, b in enumerate(leaders)
+            if i < j and a[0] is not None and b[0] is not None
+            and _segments_cross(a[:2], a[2:4], b[:2], b[2:4])]
+
+
+def _layout_score(ax, texts, xy_disp, radius_px) -> tuple[int, float]:
+    """(defects, mean leader length in px) for a finished label layout.
+
+    Defects are label-label overlaps, labels touching any marker disc, and
+    crossing leader lines (label centre to its marker, drawn when detached).
     """
-    if _HAS_ADJUSTTEXT:
-        texts = []
-        for feat in features:
-            # White bounding box: masks any residual overlap so every gene name
-            # stays legible, and gives adjustText a box to repel from / clip the
-            # leader line at (dense clouds overprinted labels without it).
-            texts.append(
-                ax.text(x_series[feat], y_series[feat], feat,
-                        fontsize=fontsize, fontweight="bold", ha="left", zorder=6,
-                        bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="none",
-                                  alpha=0.72))
-            )
-        _adjust_text(
-            texts, ax=ax,
-            force_text=(1.7, 1.9), force_static=(0.4, 0.4),
-            force_explode=(0.5, 0.5),
-            expand=(1.6, 1.9),
-            max_move=(60, 60),
-            time_lim=8,
-            arrowprops=dict(arrowstyle="-", color="gray", lw=0.6),
-        )
-    else:
-        for feat in features:
-            ax.annotate(
-                feat, (x_series[feat], y_series[feat]),
-                fontsize=fontsize, fontweight="bold", alpha=0.85, ha="left",
-                xytext=(5, 3), textcoords="offset points",
-            )
+    renderer = ax.figure.canvas.get_renderer()
+    boxes = [t.get_window_extent(renderer) for t in texts]
+    defects = sum(boxes[i].overlaps(boxes[j])
+                  for i in range(len(boxes)) for j in range(i + 1, len(boxes)))
+    for bb in boxes:
+        cx = np.clip(xy_disp[:, 0], bb.x0, bb.x1)
+        cy = np.clip(xy_disp[:, 1], bb.y0, bb.y1)
+        defects += int(np.any((cx - xy_disp[:, 0]) ** 2
+                              + (cy - xy_disp[:, 1]) ** 2 < radius_px ** 2))
+    leaders = _leaders(boxes, xy_disp, radius_px)
+    defects += len(_crossing_pairs(leaders))
+    return defects, float(np.mean([seg[4] for seg in leaders]))
+
+
+def _uncross(ax, texts, xy_disp, radius_px, score):
+    """Swap the positions of labels whose leaders cross while that lowers the score."""
+    renderer = ax.figure.canvas.get_renderer()
+    for _ in range(len(texts)):
+        boxes = [t.get_window_extent(renderer) for t in texts]
+        improved = False
+        for i, j in _crossing_pairs(_leaders(boxes, xy_disp, radius_px)):
+            pi, pj = texts[i].get_position(), texts[j].get_position()
+            texts[i].set_position(pj)
+            texts[j].set_position(pi)
+            new = _layout_score(ax, texts, xy_disp, radius_px)
+            if new < score:
+                score, improved = new, True
+                break
+            texts[i].set_position(pi)
+            texts[j].set_position(pj)
+        if not improved:
+            return score
+    return score
+
+
+def _place_labels(ax, feats, xs, ys, markers, fontsize):
+    """Lay out labels for *feats* with each candidate setting; keep the best.
+
+    Returns ``(score, texts)``. Each candidate runs a fixed number of iterations
+    with numpy's global RNG seeded (adjustText jitters coincident labels with it),
+    so the result is reproducible on a given machine.
+    """
+    from adjustText import adjust_text
+
+    xy_disp = ax.transData.transform(np.column_stack([xs, ys]))
+    radius_px = _clearance_px(ax, markers)
+    best = None
+    for settings in _LABEL_LAYOUTS:
+        texts = [ax.text(xv, yv, f, fontsize=fontsize, fontweight="bold", zorder=6)
+                 for f, xv, yv in zip(feats, xs, ys)]
+        rng_state = np.random.get_state()
+        np.random.seed(0)
+        try:
+            adjust_text(texts, objects=markers, ax=ax, iter_lim=3000,
+                        ensure_inside_axes=True, **settings)
+        finally:
+            np.random.set_state(rng_state)
+        score = _uncross(ax, texts, xy_disp, radius_px,
+                         _layout_score(ax, texts, xy_disp, radius_px))
+        if best is None or score < best[0]:
+            if best is not None:
+                for t in best[1]:
+                    t.remove()
+            best = (score, texts)
+        else:
+            for t in texts:
+                t.remove()
+    return best
+
+
+def _add_gene_labels(ax, features, x_series, y_series, markers, *, fontsize=7,
+                     composite=False):
+    """Label genes clear of other labels and markers, with leader lines.
+
+    Standalone panels label every gene. A composite cell is too small for that, so
+    it labels the genes that depart most from the linear trend (largest absolute
+    least-squares residual), as many as fit without a defect: the genes a
+    concordance panel needs to name.
+
+    ``markers`` is the scatter's PathCollection: adjustText repels labels from each
+    marker's full extent (bare x/y obstacles are zero-size points, so labels slid
+    onto marker edges). Axis limits and the axes position must be final first.
+    """
+    from matplotlib.patches import FancyArrowPatch
+
+    feats = list(features)
+    xs = np.array([x_series[f] for f in feats], dtype=float)
+    ys = np.array([y_series[f] for f in feats], dtype=float)
+    # A scatter scales its marker sizes to the figure dpi only when drawn; before
+    # that adjustText measures the markers at 72 dpi, i.e. too small.
+    ax.figure.canvas.draw()
+
+    order = np.arange(len(feats))
+    counts = [len(feats)]
+    if composite:
+        slope, intercept = np.polyfit(xs, ys, 1)
+        order = np.argsort(-np.abs(ys - (slope * xs + intercept)), kind="stable")
+        counts += [n for n in (24, 16, 12, 8) if n < len(feats)]
+    for n in counts:
+        keep = np.sort(order[:n])
+        (defects, _), texts = _place_labels(
+            ax, [feats[i] for i in keep], xs[keep], ys[keep], markers, fontsize)
+        if defects == 0 or n == counts[-1]:
+            break
+        for t in texts:
+            t.remove()
+
+    renderer = ax.figure.canvas.get_renderer()
+    radius_pt = np.sqrt(markers.get_sizes()[0]) / 2
+    radius_px = _clearance_px(ax, markers)
+    for txt, i in zip(texts, keep):
+        mx, my = ax.transData.transform((xs[i], ys[i]))
+        bb = txt.get_window_extent(renderer)
+        gap = np.hypot(np.clip(mx, bb.x0, bb.x1) - mx, np.clip(my, bb.y0, bb.y1) - my)
+        if gap > radius_px + 2:
+            ax.add_patch(FancyArrowPatch(
+                posA=txt.get_position(), posB=(xs[i], ys[i]), patchA=txt,
+                arrowstyle="-", color="gray", lw=0.4, alpha=0.7, shrinkA=0.5,
+                shrinkB=radius_pt, zorder=2, transform=ax.transData))
+
+
+def _finish_scatter(ax, features, x_series, y_series, markers, *, fontsize, composite):
+    """Fix the panel geometry, then label genes against the final axes size.
+
+    adjustText works in display space, so any later change to the axes size
+    (a standalone figure's ``tight_layout``) would move markers under labels.
+    The composite's gridspec is already final.
+    """
+    despine(ax)
+    if not composite:
+        ax.figure.tight_layout()
+    _add_gene_labels(ax, features, x_series, y_series, markers, fontsize=fontsize,
+                     composite=composite)
+
+
+def _corr_key(ax, r: float, *, composite: bool) -> None:
+    """Pearson r in a key row below the axes, clear of the labelled scatter."""
+    from matplotlib.lines import Line2D
+
+    ax.legend(handles=[Line2D([], [], linestyle="none", label=f"r = {r:.2f}")],
+              loc="upper center", bbox_to_anchor=(0.5, -0.2 if composite else -0.13),
+              fontsize=5.5 if composite else 9, frameon=True, framealpha=0.9,
+              edgecolor="#cccccc", handlelength=0, handletextpad=0, borderpad=0.3)
 
 
 # ======================================================================
@@ -449,17 +612,10 @@ def _panel_bootstrap_multi(fig, boot_data: dict, *, composite: bool = False):
         ax.set_yticklabels(df["feature"], fontsize=_ytick_fs)
         ax.set_title(name, fontweight="bold", fontsize=_title_fs)
         ax.set_xlabel("")
-        # Wide right margin: the forests fill the plot at every row (effects near 0
-        # with wide ±CI whiskers), so the ONLY reliably data-free region is a band
-        # to the right of every whisker cap. get_xlim() already includes the whisker
-        # extent, so adding 0.75x the range guarantees an empty right band for the
-        # legend that no row's whisker reaches.
-        _xlo, _xhi = ax.get_xlim()
-        ax.set_xlim(_xlo, _xhi + 0.75 * (_xhi - _xlo))
         despine(ax)
 
-    # ONE shared Analytical/Bootstrap key for the whole row, in the top-right
-    # margin created above, so it never overlaps a data marker in any subpanel.
+    # ONE shared Analytical/Bootstrap key for the whole row, right-aligned on the
+    # row's x-label line below the axes, so it never sits on a forest.
     from matplotlib.lines import Line2D
     _key = [
         Line2D([0], [0], marker="s", linestyle="", color=_PAL["cell"],
@@ -467,12 +623,10 @@ def _panel_bootstrap_multi(fig, boot_data: dict, *, composite: bool = False):
         Line2D([0], [0], marker="o", linestyle="", color=_PAL["participant"],
                markersize=_ms + 1, label="Bootstrap"),
     ]
-    # CENTER-RIGHT of the last panel, inside the wide empty right band. Center
-    # height (not a corner) keeps it clear of the top row's larger-effect whisker
-    # and the bottom row's; every corner touched data in earlier attempts.
-    axes[-1].legend(handles=_key, fontsize=(4 if composite else 6), loc="center right",
-                    frameon=True, framealpha=0.96, edgecolor="#cccccc",
-                    handletextpad=0.3, borderpad=0.3, labelspacing=0.2)
+    _key_kw = dict(handles=_key, fontsize=(4 if composite else 8), ncol=2,
+                   loc="upper right", frameon=True, framealpha=0.96,
+                   edgecolor="#cccccc", handletextpad=0.3, borderpad=0.3,
+                   columnspacing=1.0)
 
     # Centered x-axis label under the full row, rather than anchored to one
     # subplot — robust to dataset count/order changes (e.g. adding TNBC),
@@ -502,18 +656,24 @@ def _panel_bootstrap_multi(fig, boot_data: dict, *, composite: bool = False):
         # on the parent figure (not the subfigure) so the transform behaves.
         _sf_pos = _subfig_bbox_in_figure_coords(_parent_fig, fig)
         _xc_parent = _sf_pos.x0 + _xc * _sf_pos.width
+        _x1_parent = _sf_pos.x0 + max(_ax_xs) * _sf_pos.width
         _y0_parent = _sf_pos.y0 + _y0 * _sf_pos.height
         _parent_fig.text(
             _xc_parent, _y0_parent - 0.072, "β with 95% CI",
             ha="center", va="top", fontsize=_xlbl_fs,
             transform=_parent_fig.transFigure,
         )
+        _parent_fig.legend(**_key_kw, bbox_to_anchor=(_x1_parent, _y0_parent - 0.066),
+                           bbox_transform=_parent_fig.transFigure)
     else:
+        _y_lbl = _y0 - (0.06 if composite else 0.09)
         fig.text(
-            _xc, _y0 - (0.06 if composite else 0.09), "β with 95% CI",
+            _xc, _y_lbl, "β with 95% CI",
             ha="center", va="top", fontsize=_xlbl_fs,
             transform=fig.transFigure,
         )
+        fig.legend(**_key_kw, bbox_to_anchor=(max(_ax_xs), _y_lbl + 0.012),
+                   bbox_transform=fig.transFigure)
 
     if not composite:
         fig.suptitle("Analytical vs bootstrap SE", fontweight="bold",
@@ -529,31 +689,25 @@ def _panel_std_vs_unstd(ax, data: dict, *, composite: bool = False):
     std = data["part"].set_index("feature")["beta_DiD"]
     unstd = data["unstd"].set_index("feature")["beta_DiD"]
     common = std.index.intersection(unstd.index)
+    common = common[np.isfinite(std[common]) & np.isfinite(unstd[common])]
     if len(common) < 2:
         ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
                 transform=ax.transAxes)
         return
 
-    _s = 18 if composite else 50
+    _s = 12 if composite else 50
     _lbl_fs = 3.8 if composite else 7
-    _r_fs = 5.5 if composite else 7
 
     x, y = std[common].values, unstd[common].values
-    ax.scatter(x, y, s=_s, alpha=0.85, color=COLORS.get("treated", "#E07B54"),
-               edgecolors="grey", linewidth=0.3)
-
-    _add_gene_labels(ax, common, std, unstd, fontsize=_lbl_fs)
-
-    r, _ = sp_stats.pearsonr(x, y)
-    ax.text(0.95, 0.05, f"r = {r:.2f}", transform=ax.transAxes,
-            fontsize=_r_fs, va="bottom", ha="right",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                      edgecolor="#ccc", alpha=0.8))
+    sc = ax.scatter(x, y, s=_s, alpha=0.85, color=COLORS.get("treated", "#E07B54"),
+                    edgecolors="grey", linewidth=0.3)
+    _pad_limits(ax, x, y)
+    _corr_key(ax, sp_stats.pearsonr(x, y)[0], composite=composite)
     ax.set_xlabel("β (standardized)")
     ax.set_ylabel("β (unstandardized)")
     ax.set_title("Standardized vs unstandardized (TNBC)",
                  fontweight="bold")
-    despine(ax)
+    _finish_scatter(ax, common, std, unstd, sc, fontsize=_lbl_fs, composite=composite)
 
 
 # ── Panel C: Mean vs Median aggregation ───────────────────────────
@@ -583,36 +737,21 @@ def _panel_mean_vs_median(ax, data: dict, *, composite: bool = False):
         despine(ax)
         return
 
-    _s = 18 if composite else 50
+    _s = 12 if composite else 50
     _lbl_fs = 3.8 if composite else 7
-    _r_fs = 5.5 if composite else 7
 
     x, y = mean_df[common].values, med_df[common].values
-    ax.scatter(x, y, s=_s, alpha=0.85, color="#7B68EE",
-               edgecolors="grey", linewidth=0.3)
-
-    _add_gene_labels(ax, common, mean_df, med_df, fontsize=_lbl_fs)
-
-    lims = [min(min(x), min(y)) - 0.1, max(max(x), max(y)) + 0.1]
-    ax.plot(lims, lims, "k--", linewidth=0.5, alpha=0.3)
-    r, _ = sp_stats.pearsonr(x, y)
-
-    if composite:
-        ax.text(0.95, 0.05, f"r = {r:.2f}", transform=ax.transAxes,
-                fontsize=_r_fs, va="bottom", ha="right",
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                          edgecolor="#ccc", alpha=0.8))
-    else:
-        ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes,
-                fontsize=_r_fs, va="top",
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                          edgecolor="#ccc", alpha=0.8))
-
+    sc = ax.scatter(x, y, s=_s, alpha=0.85, color="#7B68EE",
+                    edgecolors="grey", linewidth=0.3)
+    _pad_limits(ax, x, y)
+    lims = [min(x.min(), y.min()), max(x.max(), y.max())]
+    ax.plot(lims, lims, "k--", linewidth=0.5, alpha=0.3, zorder=1)
+    _corr_key(ax, sp_stats.pearsonr(x, y)[0], composite=composite)
     ax.set_xlabel("β (mean aggregation)")
     ax.set_ylabel("β (median aggregation)")
     ax.set_title("Mean vs median aggregation (TNBC)",
                  fontweight="bold")
-    despine(ax)
+    _finish_scatter(ax, common, mean_df, med_df, sc, fontsize=_lbl_fs, composite=composite)
 
 
 # ── Panel D: Log-transform sensitivity ────────────────────────────
@@ -631,31 +770,25 @@ def _panel_log_sensitivity(ax, data: dict, *, composite: bool = False):
 
     raw_df = raw_res.set_index("feature")["beta_DiD"]
     common = log_df.index.intersection(raw_df.index)
+    common = common[np.isfinite(log_df[common]) & np.isfinite(raw_df[common])]
     if len(common) < 2:
         ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
                 transform=ax.transAxes)
         return
 
-    _s = 18 if composite else 50
+    _s = 12 if composite else 50
     _lbl_fs = 3.8 if composite else 7
-    _r_fs = 5.5 if composite else 7
 
     x, y = log_df[common].values, raw_df[common].values
-    ax.scatter(x, y, s=_s, alpha=0.85, color="#2ECC71",
-               edgecolors="grey", linewidth=0.3)
-
-    _add_gene_labels(ax, common, log_df, raw_df, fontsize=_lbl_fs)
-
-    r, _ = sp_stats.pearsonr(x, y)
-    ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes,
-            fontsize=_r_fs, va="top",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                      edgecolor="#ccc", alpha=0.8))
+    sc = ax.scatter(x, y, s=_s, alpha=0.85, color="#2ECC71",
+                    edgecolors="grey", linewidth=0.3)
+    _pad_limits(ax, x, y)
+    _corr_key(ax, sp_stats.pearsonr(x, y)[0], composite=composite)
     ax.set_xlabel("β (log1p norm)")
     ax.set_ylabel("β (raw counts)")
     ax.set_title("Log-transform sensitivity (TNBC)",
                  fontweight="bold")
-    despine(ax)
+    _finish_scatter(ax, common, log_df, raw_df, sc, fontsize=_lbl_fs, composite=composite)
 
 
 # ── Panel E: Cell-type stratified heatmap ─────────────────────────
@@ -696,7 +829,10 @@ def _panel_ct_heatmap(ax, data: dict, *, composite: bool = False):
         ax.tick_params(axis="y", labelsize=4.5)
         for _tl in ax.get_xticklabels():
             _tl.set_ha("right")
-        #ax.set_xlabel("Cell type", labelpad=-3)
+        # Colour-bar label on top of the bar: on its right it abuts panel F's ticks.
+        _cbar = ax.collections[0].colorbar
+        _cbar.set_label("")
+        _cbar.ax.set_title("β", fontsize=_COMPOSITE_E_AXIS_LABEL_FS, pad=2)
     else:
         ax.tick_params(axis="x", labelsize=5.5, rotation=55, pad=1.5)
         ax.tick_params(axis="y", labelsize=7)
@@ -1744,96 +1880,9 @@ def _figure_title_above_subfig(
 # Panel H — Mixed-signal null-gene FPR vs signal fraction (expanded from Figure 3 panel D)
 # ======================================================================
 
-def generate():
-    """Create and save Supplementary Figure 5 panels (A–H) + composite.
-
-    Layout (same order as the composite artboard):
-      A  Analytical vs bootstrap SE (all datasets, faceted forest plot)
-      B  Standardized vs unstandardized effect sizes (TNBC)
-      C  Mean vs median aggregation comparison (TNBC)
-      D  Log-transform sensitivity (TNBC)
-      E  Cell-type-stratified DiD heatmap (TNBC)
-      F  Rank-order concordance across choices (TNBC)
-      G  Leave-one-out stability matrix (all datasets)
-      H  Empirical power curves (participant subsampling; 3+3 facet grid)
-
-    The NatMeth simulation-benchmark panels live in Supp Fig 8 (drawn from the
-    shared manuscript_figures._benchmark toolkit); this figure is the empirical
-    sensitivity/robustness supplement only.
-
-    Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D | row3 E|F|G | row4 H.
-    """
-    print("Supplementary Figure 5: Sensitivity to Modeling and Preprocessing")
-
-    # ── Sensitivity (panels B–F) — cache minus large adata ────────────
-    data = _load_cache("sensitivity_tnbc")
-    if data is None:
-        data = _run_sensitivity()
-        cacheable = {k: v for k, v in data.items() if k != "adata"}
-        _save_cache("sensitivity_tnbc", cacheable)
-        if "adata" in data:
-            del data["adata"]
-
-    # ── Bootstrap (panel A) ───────────────────────────────────────────
-    boot_data = _load_cache("bootstrap")
-    if boot_data is None:
-        print("  Computing multi-dataset bootstrap ...")
-        boot_data = _run_multi_bootstrap()
-        _save_cache("bootstrap", boot_data)
-    boot_ok = {k: v for k, v in boot_data.items() if v.get("part") is not None}
-    if boot_ok:
-        ncols_a = len(boot_ok)
-        fig = plt.figure(figsize=(4.5 * ncols_a, 6.5))
-        _panel_bootstrap_multi(fig, boot_ok)
-        fig.tight_layout(rect=[0, 0, 1, 0.93])
-        save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panels B–F: single-dataset sensitivity (TNBC)
-    panels_bf = [
-        ("panel_B", _panel_std_vs_unstd, (7.0, 6.0)),
-        ("panel_C", _panel_mean_vs_median, (7.0, 6.0)),
-        ("panel_D", _panel_log_sensitivity, (7.0, 6.0)),
-        ("panel_E", _panel_ct_heatmap, (8.8, 5.8)),
-        ("panel_F", _panel_rank_concordance, (7.2, 5.8)),
-    ]
-    for panel_name, fn, size in panels_bf:
-        fig, ax = plt.subplots(figsize=size)
-        fn(ax, data)
-        fig.tight_layout()
-        save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
-
-    # ── LOO stability (panel G) ───────────────────────────────────────
-    loo_mat = _load_cache("loo")
-    if loo_mat is None:
-        print("  Computing LOO stability ...")
-        loo_mat = _compute_loo_data()
-        _save_cache("loo", loo_mat)
-    if loo_mat is not None:
-        loo_mat = loo_mat.drop_duplicates()
-        if len(loo_mat) > 15:
-            loo_mat = loo_mat.loc[loo_mat.mean(axis=1).nlargest(15).index]
-    fig, ax = plt.subplots(figsize=(9, 6))
-    if loo_mat is not None:
-        _draw_loo_heatmap(ax, loo_mat)
-    else:
-        ax.text(0.5, 0.5, "No LOO data", ha="center", va="center",
-                transform=ax.transAxes)
-    fig.tight_layout()
-    save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
-
-    # ── Empirical power curves on real datasets (panel J) ─────────────
-    print("  Computing empirical power curves (panel J) ...")
-    try:
-        power_data = _prepare_power_data()
-    except Exception as exc:
-        print(f"  Warning: Could not compute power curves: {exc}")
-        power_data = None
-    composite_data = {**data, "power_data": power_data}
-
-    fig_j = _panel_power_curves(composite_data)
-    if fig_j is not None:
-        save_panel(fig_j, "panel_H_power_curves", FIGURE_NAME, SUPP_OUTPUT)
-
+def _build_composite(data: dict, boot_ok: dict, loo_mat, composite_data: dict):
+    """Lay out the 180 mm composite artboard from already-computed panel data."""
+    power_data = composite_data.get("power_data")
     # ==================================================================
     # Composite artboard  (180 mm × 215 mm)
     # ==================================================================
@@ -2064,6 +2113,100 @@ def generate():
         )
 
     plt.rcParams.update(_prev_rc)
+    return fig_c
+
+
+def generate():
+    """Create and save Supplementary Figure 5 panels (A–H) + composite.
+
+    Layout (same order as the composite artboard):
+      A  Analytical vs bootstrap SE (all datasets, faceted forest plot)
+      B  Standardized vs unstandardized effect sizes (TNBC)
+      C  Mean vs median aggregation comparison (TNBC)
+      D  Log-transform sensitivity (TNBC)
+      E  Cell-type-stratified DiD heatmap (TNBC)
+      F  Rank-order concordance across choices (TNBC)
+      G  Leave-one-out stability matrix (all datasets)
+      H  Empirical power curves (participant subsampling; 3+3 facet grid)
+
+    The NatMeth simulation-benchmark panels live in Supp Fig 8 (drawn from the
+    shared manuscript_figures._benchmark toolkit); this figure is the empirical
+    sensitivity/robustness supplement only.
+
+    Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D | row3 E|F|G | row4 H.
+    """
+    print("Supplementary Figure 5: Sensitivity to Modeling and Preprocessing")
+
+    # ── Sensitivity (panels B–F) — cache minus large adata ────────────
+    data = _load_cache("sensitivity_tnbc")
+    if data is None:
+        data = _run_sensitivity()
+        cacheable = {k: v for k, v in data.items() if k != "adata"}
+        _save_cache("sensitivity_tnbc", cacheable)
+        if "adata" in data:
+            del data["adata"]
+
+    # ── Bootstrap (panel A) ───────────────────────────────────────────
+    boot_data = _load_cache("bootstrap")
+    if boot_data is None:
+        print("  Computing multi-dataset bootstrap ...")
+        boot_data = _run_multi_bootstrap()
+        _save_cache("bootstrap", boot_data)
+    boot_ok = {k: v for k, v in boot_data.items() if v.get("part") is not None}
+    if boot_ok:
+        ncols_a = len(boot_ok)
+        fig = plt.figure(figsize=(4.5 * ncols_a, 6.5))
+        _panel_bootstrap_multi(fig, boot_ok)
+        fig.tight_layout(rect=[0, 0, 1, 0.93])
+        save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panels B–F: single-dataset sensitivity (TNBC)
+    panels_bf = [
+        ("panel_B", _panel_std_vs_unstd, (7.0, 6.0)),
+        ("panel_C", _panel_mean_vs_median, (7.0, 6.0)),
+        ("panel_D", _panel_log_sensitivity, (7.0, 6.0)),
+        ("panel_E", _panel_ct_heatmap, (8.8, 5.8)),
+        ("panel_F", _panel_rank_concordance, (7.2, 5.8)),
+    ]
+    for panel_name, fn, size in panels_bf:
+        fig, ax = plt.subplots(figsize=size)
+        fn(ax, data)
+        fig.tight_layout()
+        save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
+
+    # ── LOO stability (panel G) ───────────────────────────────────────
+    loo_mat = _load_cache("loo")
+    if loo_mat is None:
+        print("  Computing LOO stability ...")
+        loo_mat = _compute_loo_data()
+        _save_cache("loo", loo_mat)
+    if loo_mat is not None:
+        loo_mat = loo_mat.drop_duplicates()
+        if len(loo_mat) > 15:
+            loo_mat = loo_mat.loc[loo_mat.mean(axis=1).nlargest(15).index]
+    fig, ax = plt.subplots(figsize=(9, 6))
+    if loo_mat is not None:
+        _draw_loo_heatmap(ax, loo_mat)
+    else:
+        ax.text(0.5, 0.5, "No LOO data", ha="center", va="center",
+                transform=ax.transAxes)
+    fig.tight_layout()
+    save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
+
+    # ── Empirical power curves on real datasets (panel J) ─────────────
+    print("  Computing empirical power curves (panel J) ...")
+    try:
+        power_data = _prepare_power_data()
+    except Exception as exc:
+        print(f"  Warning: Could not compute power curves: {exc}")
+        power_data = None
+    composite_data = {**data, "power_data": power_data}
+
+    fig_j = _panel_power_curves(composite_data)
+    if fig_j is not None:
+        save_panel(fig_j, "panel_H_power_curves", FIGURE_NAME, SUPP_OUTPUT)
+
+    fig_c = _build_composite(data, boot_ok, loo_mat, composite_data)
 
     save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
     pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
