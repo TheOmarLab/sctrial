@@ -491,7 +491,7 @@ def _prepare_stephenson_data() -> dict:
 
 # ── Panel A: Permutation null distributions ──────────────────────────────
 
-def _panel_a(ax, data: dict) -> None:
+def _panel_a(ax, data: dict, *, composite: bool = False) -> None:
     """Permutation null distributions overlaid for top 3 signatures."""
     df_part = data["df_part"]
     df_perm = data["df_perm_all"]
@@ -526,39 +526,37 @@ def _panel_a(ax, data: dict) -> None:
         null_betas = df_perm.loc[df_perm["feature"] == feat, "beta_DiD"].dropna()
         color = hist_colors[idx % len(hist_colors)]
 
+        # The permutation p rides in the key: text placed next to each observed
+        # line collided with the neighbouring lines whenever observed betas were close.
         ax.hist(
             null_betas, bins=25, color=color, alpha=0.35,
             edgecolor="none", density=True, zorder=2,
-            label=f"{sig_display(feat)} null",
+            label=f"{sig_display(feat)} null (p = {perm_pvals[feat]:.3f})",
         )
         ax.axvline(obs_beta, color=color, lw=2, ls="-", zorder=4)
-
-    ylim = ax.get_ylim()
-    y_top = ylim[1]
-    for idx, feat in enumerate(top_feats):
-        perm_p = perm_pvals[feat]
-        obs_beta = df_part.loc[df_part["feature"] == feat, "beta_DiD"].values[0]
-        color = hist_colors[idx % len(hist_colors)]
-        y_label = y_top * (0.93 - idx * 0.28)
-        if "apoptosis" in sig_display(feat).lower():
-            y_label -= y_top * 0.12
-        if "oxidative" in sig_display(feat).lower():
-            y_label -= y_top * 0.30
-        ax.text(
-            obs_beta, y_label, f"    p = {perm_p:.3f}",
-            fontsize=7, color=color, ha="left", fontweight="bold",
-        )
 
     ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (null distribution)")
     ax.set_ylabel("Density")
     ax.set_title("Permutation Null Distributions – TNBC (Top 3)", fontsize=10, fontweight="bold")
-    ax.legend(fontsize=9, loc="upper right", frameon=True, framealpha=0.9)
+    _legend_below(ax, composite=composite, ncol=1 if not composite else 3)
     despine(ax)
+
+
+def _legend_below(ax, *, composite: bool, ncol: int, handles=None) -> None:
+    """Key below the axes, clear of the data; offsets differ for the small artboard."""
+    kw = {"handles": handles} if handles is not None else {}
+    ax.legend(
+        **kw, ncol=ncol, loc="upper center",
+        bbox_to_anchor=(0.5, -0.32 if composite else -0.14),
+        fontsize=4.5 if composite else 9, frameon=True, framealpha=0.9,
+        edgecolor="#CCCCCC", borderpad=0.3, handlelength=1, handletextpad=0.3,
+        labelspacing=0.2, columnspacing=0.8,
+    )
 
 
 # ── Panel B: Observed effects vs null range ──────────────────────────────
 
-def _panel_b(ax, data: dict) -> None:
+def _panel_b(ax, data: dict, *, composite: bool = False) -> None:
     """Observed β_DiD with 95 % null interval for every signature."""
     df_part = data["df_part"]
     df_perm = data["df_perm_all"]
@@ -623,8 +621,7 @@ def _panel_b(ax, data: dict) -> None:
         plt.Rectangle((0, 0), 1, 1, fc=COLORS["gray"], alpha=0.25,
                        label="95% null range"),
     ]
-    ax.legend(handles=handles, fontsize=9, loc="lower right",
-              frameon=True, framealpha=0.9)
+    _legend_below(ax, composite=composite, ncol=3, handles=handles)
     despine(ax)
 
 
@@ -1235,8 +1232,8 @@ def generate() -> None:
     ax_j = fig_c.add_subplot(gs4[1])
 
     # Panels A–B: TNBC permutation validation
-    _panel_a(ax_a, tnbc_perm_data)
-    _panel_b(ax_b, tnbc_perm_data)
+    _panel_a(ax_a, tnbc_perm_data, composite=True)
+    _panel_b(ax_b, tnbc_perm_data, composite=True)
 
     # Panels C–D: TNBC heterogeneity
     _panel_e(ax_cc, tnbc_perm_data)
@@ -1261,7 +1258,6 @@ def generate() -> None:
 
     # Move legends inside plots for the composite
     _inside = {
-        ax_a: "upper right", ax_b: "lower right",
         ax_e: "upper right", ax_f: "upper right",
         ax_g: "lower right",
         ax_j: "lower right",

@@ -207,3 +207,25 @@ def test_permute_arms_ignores_unused_participant_levels():
         out = _permute_arms(adata, "participant_id", "arm", np.random.default_rng(seed))
         per = out.obs.groupby("participant_id", observed=True)["arm"].first()
         assert sorted(per.astype(str)) == ["C", "C", "T", "T"], seed
+
+
+def test_cell_vs_participant_panel_reports_spearman_below_the_axes(load_figure_module):
+    """Figure 2B and Supp Figure 3B share one panel: Spearman rho, key outside the data."""
+    from scipy import stats
+
+    shared = load_figure_module("main/figure2_tnbc_analysis")  # loads _shared as well
+    plot = shared.plot_cell_vs_participant_beta
+    feats = [f"sig_S{i}" for i in range(8)]
+    rng = np.random.default_rng(3)
+    cell = pd.DataFrame({"feature": feats, "beta_DiD": rng.normal(size=8)})
+    part = pd.DataFrame({"feature": feats, "beta_DiD": rng.normal(size=8)})
+    for composite in (False, True):
+        fig, ax = plt.subplots()
+        plot(ax, cell, part, title="t", composite=composite)
+        fig.canvas.draw()
+        legend = ax.get_legend()
+        rho, p = stats.spearmanr(cell["beta_DiD"], part["beta_DiD"])
+        assert f"ρ = {rho:.2f}, p = {p:.1e}" in [t.get_text() for t in legend.get_texts()]
+        legend_box = legend.get_window_extent()
+        assert legend_box.y1 < ax.get_window_extent().y0
+        plt.close(fig)

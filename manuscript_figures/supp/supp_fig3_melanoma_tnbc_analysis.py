@@ -36,7 +36,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
-from scipy import stats
 
 from .._shared import (
     COLORS,
@@ -48,6 +47,7 @@ from .._shared import (
     get_sade_feldman,
     get_tnbc_zhang,
     harmonize_response,
+    plot_cell_vs_participant_beta,
     save_panel,
     score_signatures,
     sig_display,
@@ -318,71 +318,12 @@ def _panel_a_paired_verification(ax: plt.Axes, data: dict) -> None:
 
 # ── Panel B: Coefficient comparison (from Figure 1C) ────────────────────
 
-def _panel_b_beta_comparison(ax: plt.Axes, data: dict) -> None:
-    """Scatter of cell-level vs participant-level beta_DiD with identity line."""
-    res_cell = data["res_cell"].set_index("feature")
-    res_part = data["did_res"].set_index("feature")
-    common = res_cell.index.intersection(res_part.index)
-
-    beta_cell = res_cell.loc[common, "beta_DiD"].values
-    beta_part = res_part.loc[common, "beta_DiD"].values
-
-    colors = [COLORS["treated"] if b > 0 else COLORS["control"] for b in beta_part]
-
-    ax.scatter(beta_cell, beta_part, c=colors, s=20, edgecolors="white",
-               linewidths=0.5, zorder=3)
-
-    lim_lo = min(beta_cell.min(), beta_part.min(), -1.0) * 1.15
-    lim_hi = max(beta_cell.max(), beta_part.max()) * 1.15
-    ax.plot([lim_lo, lim_hi], [lim_lo, lim_hi], "--", color=COLORS["gray"],
-            lw=1, zorder=1, label="Identity")
-    ax.set_xlim(lim_lo, lim_hi)
-    ax.set_ylim(lim_lo, lim_hi)
-    ax.axhline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
-    ax.axvline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
-
-    # adjustText with leader lines resolves the dense near-origin label cluster
-    # (Memory/Regulatory T Cells previously overprinted each other).
-    from adjustText import adjust_text
-    texts = [ax.text(xv, yv, sig_display(feat), fontsize=8, alpha=0.9)
-             for feat, xv, yv in zip(common, beta_cell, beta_part)]
-    adjust_text(
-        texts, ax=ax, expand=(0.92, 0.95),
-        arrowprops=dict(arrowstyle="-", color=COLORS["gray"], lw=0.4, alpha=0.6),
-        ensure_inside_axes=True,
+def _panel_b_beta_comparison(ax: plt.Axes, data: dict, *, composite: bool = False) -> None:
+    """Scatter of cell-level vs participant-level beta_DiD (the Figure 2B panel, melanoma)."""
+    plot_cell_vs_participant_beta(
+        ax, data["res_cell"], data["did_res"],
+        title="Effect Size: Cell vs Participant Aggregation (Melanoma)", composite=composite,
     )
-    # Manual nudges for specific labels after auto-placement
-    _axis_range = ax.get_ylim()[1] - ax.get_ylim()[0]
-    for txt in texts:
-        s = txt.get_text()
-        x, y = txt.get_position()
-        if "NK" in s and "activit" in s.lower():
-            txt.set_position((x, y - 0.06 * _axis_range))
-        elif "Proliferat" in s:
-            txt.set_position((x, y + 0.06 * _axis_range))
-
-    r, p = stats.pearsonr(beta_cell, beta_part)
-    ax.text(
-        0.05, 0.95,
-        f"r = {r:.2f}, p = {p:.1e}",
-        transform=ax.transAxes, fontsize=9, va="top",
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                  edgecolor=COLORS["gray"], alpha=0.8),
-    )
-
-    ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (cell-level)", fontsize=12)
-    ax.set_ylabel(r"$\beta_{\mathrm{DiD}}$ (participant-level)", fontsize=12)
-    ax.set_title("Effect Size: Cell vs Participant Aggregation (Melanoma)", fontsize=11,
-                 fontweight="bold")
-
-    legend_handles = [
-        mpatches.Patch(facecolor=COLORS["treated"], label="Positive effect"),
-        mpatches.Patch(facecolor=COLORS["control"], label="Negative effect"),
-    ]
-    ax.legend(handles=legend_handles, fontsize=16,
-              loc="lower left",
-              frameon=True, framealpha=0.9)
-    despine(ax)
 
 
 # ── Panel C: P-value inflation (from Figure 1D) ─────────────────────────
@@ -1236,7 +1177,7 @@ def generate() -> None:
 
     # ── Draw all panels ────────────────────────────────────────────────────
     _panel_a_paired_verification(ax_a, data)
-    _panel_b_beta_comparison(ax_b, data)
+    _panel_b_beta_comparison(ax_b, data, composite=True)
     _panel_c_pvalue_inflation(ax_c, data)
     _panel_d_tnbc_mean_delta_by_arm(ax_d, tnbc_data)
     _panel_e_tnbc_response_did_chemo(ax_e, tnbc_data)
@@ -1255,7 +1196,6 @@ def generate() -> None:
 
     # Move below-figure legends inside the plot area for space
     _inside = {
-        ax_b:      "lower left",
         ax_c:      "lower right",    # Melanoma p-value inflation
         ax_d:      "center right",   # TNBC mean delta by arm
         ax_e:      "lower right",    # TNBC Chemo DID
@@ -1316,10 +1256,6 @@ def generate() -> None:
             loc="upper center", bbox_to_anchor=(0.5, -0.28),
             ncol=3, frameon=True, framealpha=0.95, edgecolor="#CCCCCC",
         )
-
-    # Panel B: shrink annotation text in composite
-    for txt in ax_b.texts:
-        txt.set_fontsize(max(txt.get_fontsize() * 0.55, 3.0))
 
     # Panel C: nudge "p = 0.05" annotation down
     for txt in ax_c.texts:

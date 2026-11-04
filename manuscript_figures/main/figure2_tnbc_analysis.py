@@ -32,122 +32,30 @@ from __future__ import annotations
 import gc
 import warnings
 from contextlib import contextmanager
-from pathlib import Path
 
 import matplotlib.gridspec as gridspec
-import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.font_manager import FontProperties
 from matplotlib.lines import Line2D
-from scipy import stats
 
-import sctrial as st
 from sctrial import TrialDesign, did_table
 from sctrial.stats.effect_size import cohens_d_from_did
 
+from .._shared import (
+    COLORS,
+    MAIN_OUTPUT,
+    apply_style,
+    despine,
+    get_tnbc_zhang,
+    plot_cell_vs_participant_beta,
+    save_panel,
+    score_signatures,
+    sig_display,
+    verify_paired_participants,
+)
+
 warnings.filterwarnings("ignore")
-
-# ── Try to import from _shared; fall back to local definitions ────────────
-# Once _shared.py has been updated with TNBC helpers, replace the
-# try/except block below with a direct import like the melanoma script uses:
-#
-#   from .._shared import (
-#       COLORS, MAIN_OUTPUT, apply_style, despine, save_panel,
-#       score_signatures, sig_display, verify_paired_participants,
-#       get_tnbc_zhang, TNBC_DESIGN, TNBC_GENE_SIGNATURES,
-#   )
-
-try:
-    from .._shared import (  # type: ignore[import]
-        COLORS,
-        MAIN_OUTPUT,
-        apply_style,
-        despine,
-        get_tnbc_zhang,
-        save_panel,
-        score_signatures,
-        sig_display,
-        verify_paired_participants,
-    )
-    _SHARED_AVAILABLE = True
-except ImportError:
-    _SHARED_AVAILABLE = False
-
-    # ── Local fallbacks (remove once _shared.py is updated) ──────────────
-
-    COLORS = {
-        "treated":   "#4878CF",   # blue  -- anti-PDL1+Chemo
-        "control":   "#D65F5F",   # red   -- Chemo only
-        "gray":      "#888888",
-        "highlight": "#E8A838",
-    }
-
-
-    def apply_style() -> None:
-        """Minimal publication style — replace with _shared version."""
-        plt.rcParams.update({
-            "figure.facecolor": "white",
-            "axes.facecolor":   "white",
-            "font.family":      "sans-serif",
-        })
-
-    def despine(ax: plt.Axes) -> None:
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-
-    def save_panel(
-        fig: plt.Figure,
-        name: str,
-        figure_name: str,
-        output_dir: Path,
-        *,
-        close: bool = True,
-    ) -> None:
-        panel_dir = output_dir / f"{figure_name}_panels"
-        panel_dir.mkdir(parents=True, exist_ok=True)
-        path = panel_dir / f"{name}.png"
-        fig.savefig(path, dpi=200, bbox_inches="tight", facecolor="white")
-        if close:
-            plt.close(fig)
-        print(f"  Saved {path.name}")
-
-    def sig_display(col: str) -> str:
-        return col.replace("sig_", "")
-
-    def verify_paired_participants(
-        obs: pd.DataFrame,
-        visit_col: str,
-        visits: tuple[str, str],
-        participant_col: str,
-    ) -> dict:
-        counts = obs.groupby(participant_col)[visit_col].nunique()
-        n_paired = int((counts == 2).sum())
-        n_total  = int(len(counts))
-        return {"n_paired": n_paired, "n_total": n_total}
-
-    def score_signatures(
-        adata,
-        gene_sets: dict,
-        layer: str | None = None,
-        min_genes: int = 3,
-        prefix: str = "sig_",
-    ) -> tuple:
-        """Score gene sets using st.score_gene_sets (zmean method)."""
-        st.score_gene_sets(
-            adata,
-            gene_sets=gene_sets,
-            method="zmean",
-            layer=layer,
-            min_genes=min_genes,
-            prefix=prefix,
-            overwrite=True,
-        )
-        sig_cols = [f"{prefix}{name}" for name in gene_sets
-                    if f"{prefix}{name}" in adata.obs.columns]
-        return adata, sig_cols
-
 
 FIGURE_NAME = "Figure2_tnbc_analysis"
 
@@ -399,86 +307,10 @@ def _panel_a(ax: plt.Axes, data: dict) -> None:
 # ── Panel B: Beta comparison ──────────────────────────────────────────────
 
 def _panel_b(ax: plt.Axes, data: dict, *, composite: bool = False) -> None:
-    rc = data["res_cell"].set_index("feature")
-    rp = data["res_part"].set_index("feature")
-    common = rc.index.intersection(rp.index)
-
-    beta_cell = rc.loc[common, "beta_DiD"].values
-    beta_part = rp.loc[common, "beta_DiD"].values
-    colors    = [COL_TREAT if b > 0 else COL_CTRL for b in beta_part]
-
-    ax.scatter(beta_cell, beta_part, c=colors, s=15 if composite else 30,
-               edgecolors="white", linewidths=0.5, zorder=3)
-
-    lim_lo = min(beta_cell.min(), beta_part.min()) * 1.2
-    lim_hi = max(beta_cell.max(), beta_part.max()) * 1.2
-    ax.plot([lim_lo, lim_hi], [lim_lo, lim_hi], "--",
-            color=COL_GRAY, lw=1, zorder=1)
-    ax.axhline(0, color=COL_GRAY, lw=0.5, ls=":", zorder=0)
-    ax.axvline(0, color=COL_GRAY, lw=0.5, ls=":", zorder=0)
-
-    # Explicit limits guarantee every marker is inside the view; an earlier version
-    # clipped a marker below the axis while its label floated in the corner. The
-    # standalone panel shares one range so the identity line runs at 45 degrees. The
-    # composite cell is a ~3.5:1 strip where shared limits squeeze the narrow
-    # cell-level spread into the middle third, so each axis spans its own data there.
-    if composite:
-        for set_lim, v in ((ax.set_xlim, beta_cell), (ax.set_ylim, beta_part)):
-            pad = 0.15 * (v.max() - v.min())
-            set_lim(v.min() - pad, v.max() + pad)
-    else:
-        ax.set_xlim(lim_lo, lim_hi)
-        ax.set_ylim(lim_lo, lim_hi)
-
-    ax.tick_params(axis="y", labelsize=5)
-    ax.set_xlabel(r'$\beta_{DID}$ (cell-level)', fontsize=9)
-    ax.set_ylabel(r'$\beta_{DID}$ (participant-level)', fontsize=9)
-    ax.set_title("Effect Size: Cell vs Participant Aggregation",
-                 fontsize=11, fontweight="bold")
-
-    # Final text sizes, fixed BEFORE label layout: the standalone export raises
-    # text to a 10 pt minimum afterwards and the composite shrinks it, and any
-    # resize after adjust_text has run makes the labels collide.
-    label_fs = 4.0 if composite else max(
-        5.0, FontProperties(size=plt.rcParams["xtick.labelsize"]).get_size_in_points()
+    plot_cell_vs_participant_beta(
+        ax, data["res_cell"], data["res_part"],
+        title="Effect Size: Cell vs Participant Aggregation", composite=composite,
     )
-
-    # FIX v1 Issue 6: Spearman rho not Pearson r. The key and the rho statistic sit
-    # in one row below the axes, so nothing inside the plot competes with the
-    # labels (adjustText 1.3.0 cannot avoid artists: its ``objects`` path maps
-    # display-space boxes through the data transform a second time).
-    rho, p = stats.spearmanr(beta_cell, beta_part)
-    handles = [
-        mpatches.Patch(facecolor=COL_TREAT, label="Positive effect"),
-        mpatches.Patch(facecolor=COL_CTRL,  label="Negative effect"),
-        Line2D([], [], linestyle="none", label=f"ρ = {rho:.2f}, p = {p:.1e}"),
-    ]
-    ax.legend(handles=handles, fontsize=5 if composite else label_fs, ncol=3,
-              loc="upper center", bbox_to_anchor=(0.5, -0.5 if composite else -0.12),
-              frameon=True, framealpha=0.9, handlelength=0.8, handletextpad=0.3,
-              columnspacing=1.2, borderpad=0.25)
-
-    # Label every signature and let adjustText resolve overlaps, drawing a thin
-    # leader line from each label back to its marker. The former hand-tuned offsets
-    # had no leader line, so a label pushed far from its point read as an orphaned
-    # marker.
-    from adjustText import adjust_text
-    texts = [ax.text(xv, yv, sig_display(feat), fontsize=label_fs, alpha=0.9)
-             for feat, xv, yv in zip(common, beta_cell, beta_part)]
-    # x/y are the markers as static obstacles (not label positions), so no label
-    # is left sitting on another signature's point. A fixed iteration budget keeps
-    # the layout reproducible; the default one-second time limit depends on the
-    # machine.
-    adjust_text(
-        texts, x=beta_cell, y=beta_part, ax=ax, expand=(1.5, 1.8),
-        force_text=(0.3, 0.5), iter_lim=1000,
-        ensure_inside_axes=True,
-    )
-    for txt, xv, yv in zip(texts, beta_cell, beta_part):
-        tx, ty = txt.get_position()
-        ax.annotate("", xy=(xv, yv), xytext=(tx, ty),
-                    arrowprops=dict(arrowstyle="-", color=COL_GRAY, lw=0.4, alpha=0.6))
-    despine(ax)
 
 
 # ── Panel C: P-value inflation ────────────────────────────────────────────

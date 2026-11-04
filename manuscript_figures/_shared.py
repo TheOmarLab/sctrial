@@ -344,6 +344,97 @@ DATASET_DISPLAY_NAMES: dict[str, str] = {
 }
 
 
+def plot_cell_vs_participant_beta(ax, res_cell, res_part, *, title: str,
+                                  composite: bool = False) -> None:
+    """Scatter of cell-level against participant-level beta_DiD, one point per signature.
+
+    Shared by Figure 2B (TNBC) and Supp Figure 3B (melanoma). ``res_cell`` and
+    ``res_part`` are ``did_table`` outputs; ``composite`` sizes everything for the
+    small multi-panel artboard.
+    """
+    import matplotlib.patches as mpatches
+    from adjustText import adjust_text
+    from matplotlib.font_manager import FontProperties
+    from matplotlib.lines import Line2D
+    from scipy import stats
+
+    rc = res_cell.set_index("feature")
+    rp = res_part.set_index("feature")
+    common = rc.index.intersection(rp.index)
+
+    beta_cell = rc.loc[common, "beta_DiD"].values
+    beta_part = rp.loc[common, "beta_DiD"].values
+    colors = [COLORS["treated"] if b > 0 else COLORS["control"] for b in beta_part]
+
+    ax.scatter(beta_cell, beta_part, c=colors, s=15 if composite else 30,
+               edgecolors="white", linewidths=0.5, zorder=3)
+
+    lim_lo = min(beta_cell.min(), beta_part.min()) * 1.2
+    lim_hi = max(beta_cell.max(), beta_part.max()) * 1.2
+    ax.plot([lim_lo, lim_hi], [lim_lo, lim_hi], "--",
+            color=COLORS["gray"], lw=1, zorder=1)
+    ax.axhline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
+    ax.axvline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
+
+    # Explicit limits guarantee every marker is inside the view; an earlier version
+    # clipped a marker below the axis while its label floated in the corner. The
+    # standalone panel shares one range so the identity line runs at 45 degrees. The
+    # composite cell is a ~3.5:1 strip where shared limits squeeze the narrow
+    # cell-level spread into the middle third, so each axis spans its own data there.
+    if composite:
+        for set_lim, v in ((ax.set_xlim, beta_cell), (ax.set_ylim, beta_part)):
+            pad = 0.15 * (v.max() - v.min())
+            set_lim(v.min() - pad, v.max() + pad)
+    else:
+        ax.set_xlim(lim_lo, lim_hi)
+        ax.set_ylim(lim_lo, lim_hi)
+
+    ax.tick_params(axis="y", labelsize=5)
+    ax.set_xlabel(r'$\beta_{DID}$ (cell-level)', fontsize=9)
+    ax.set_ylabel(r'$\beta_{DID}$ (participant-level)', fontsize=9)
+    ax.set_title(title, fontsize=11, fontweight="bold")
+
+    # Final text sizes, fixed BEFORE label layout: the standalone export raises
+    # text to a minimum size afterwards and the composite shrinks it, and any
+    # resize after adjust_text has run makes the labels collide.
+    label_fs = 4.0 if composite else max(
+        5.0, FontProperties(size=plt.rcParams["xtick.labelsize"]).get_size_in_points()
+    )
+
+    # Spearman rho, not Pearson r. The key and the rho statistic sit in one row
+    # below the axes, so nothing inside the plot competes with the labels
+    # (adjustText 1.3.0 cannot avoid artists: its ``objects`` path maps
+    # display-space boxes through the data transform a second time).
+    rho, p = stats.spearmanr(beta_cell, beta_part)
+    handles = [
+        mpatches.Patch(facecolor=COLORS["treated"], label="Positive effect"),
+        mpatches.Patch(facecolor=COLORS["control"], label="Negative effect"),
+        Line2D([], [], linestyle="none", label=f"ρ = {rho:.2f}, p = {p:.1e}"),
+    ]
+    ax.legend(handles=handles, fontsize=5 if composite else label_fs, ncol=3,
+              loc="upper center", bbox_to_anchor=(0.5, -0.5 if composite else -0.12),
+              frameon=True, framealpha=0.9, handlelength=0.8, handletextpad=0.3,
+              columnspacing=1.2, borderpad=0.25)
+
+    # Label every signature and let adjustText resolve overlaps, drawing a thin
+    # leader line from each label back to its marker. x/y are the markers as static
+    # obstacles (not label positions), so no label sits on another signature's
+    # point; a fixed iteration budget keeps the layout reproducible (the default
+    # one-second time limit depends on the machine).
+    texts = [ax.text(xv, yv, sig_display(feat), fontsize=label_fs, alpha=0.9)
+             for feat, xv, yv in zip(common, beta_cell, beta_part)]
+    adjust_text(
+        texts, x=beta_cell, y=beta_part, ax=ax, expand=(1.5, 1.8),
+        force_text=(0.3, 0.5), iter_lim=1000,
+        ensure_inside_axes=True,
+    )
+    for txt, xv, yv in zip(texts, beta_cell, beta_part):
+        tx, ty = txt.get_position()
+        ax.annotate("", xy=(xv, yv), xytext=(tx, ty),
+                    arrowprops=dict(arrowstyle="-", color=COLORS["gray"], lw=0.4, alpha=0.6))
+    despine(ax)
+
+
 def dataset_display(name: str) -> str:
     """Return the manuscript display name for a dataset."""
     return DATASET_DISPLAY_NAMES.get(name, name)
