@@ -17,6 +17,7 @@ from __future__ import annotations
 import gc
 import pickle as pkl
 import warnings
+from contextlib import contextmanager
 
 import numpy as np
 import pandas as pd
@@ -57,6 +58,15 @@ from .._shared import (
     within_arm_comparison,
     within_arm_fit_beta,
 )
+
+
+@contextmanager
+def _quiet():
+    """Silence warnings in a block; ``catch_warnings(action=...)`` needs Python 3.11."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        yield
+
 
 # ======================================================================
 # Table 1 — Gene signature definitions
@@ -654,7 +664,7 @@ def table4_permutation_results(
         )
         obs_betas = dict(zip(obs_res["feature"], obs_res["beta_DiD"]))
 
-        with warnings.catch_warnings(action="ignore"):
+        with _quiet():
             df_use, unit, time, arm_bin = get_did_aggregated_df(
                 adata_sf, sig_cols, design, ("Pre", "Post"),
                 layer="log1p_tpm", aggregate="participant_visit",
@@ -674,7 +684,7 @@ def table4_permutation_results(
                 (i, df_bytes, feat, unit, time, arm_bin, pid_arm_bytes, rng_seed)
                 for i in range(n_permutations)
             ]
-            with warnings.catch_warnings(action="ignore"):
+            with _quiet():
                 null_betas = Parallel(n_jobs=n_jobs, backend="loky")(
                     delayed(_run_one_did_permutation)(t) for t in tasks
                 )
@@ -718,7 +728,7 @@ def table4_permutation_results(
         )
         obs_betas_tnbc = dict(zip(obs_res_tnbc["feature"], obs_res_tnbc["beta_DiD"]))
 
-        with warnings.catch_warnings(action="ignore"):
+        with _quiet():
             df_use_tnbc, unit_tnbc, time_tnbc, arm_bin_tnbc = get_did_aggregated_df(
                 adata_tnbc, sig_cols_tnbc, tnbc_design, ("Pre", "Post"),
                 layer="log1p_norm", aggregate="participant_visit",
@@ -758,7 +768,7 @@ def table4_permutation_results(
                  pid_arm_tnbc_bytes, rng_seed)
                 for i in range(n_permutations)
             ]
-            with warnings.catch_warnings(action="ignore"):
+            with _quiet():
                 null_betas_tnbc = Parallel(n_jobs=n_jobs, backend="loky")(
                     delayed(_run_tnbc_perm)(t) for t in tasks
                 )
@@ -817,7 +827,7 @@ def table4_permutation_results(
                 (i, df_bytes_st, feat, design_st, rng_seed)
                 for i in range(n_permutations)
             ]
-            with warnings.catch_warnings(action="ignore"):
+            with _quiet():
                 null_betas_st = Parallel(n_jobs=n_jobs, backend="loky")(
                     delayed(_run_one_between_arm_permutation)(t) for t in tasks
                 )
@@ -862,7 +872,7 @@ def table4_permutation_results(
             )
             obs_betas = dict(zip(obs_res["feature"], obs_res["beta_time"]))
 
-            with warnings.catch_warnings(action="ignore"):
+            with _quiet():
                 df_use, unit = get_within_arm_aggregated_df(
                     adata, "All", sig_cols_imm, design, visits,
                     layer=None, aggregate="participant_visit",
@@ -874,7 +884,7 @@ def table4_permutation_results(
                 if not np.isfinite(obs_beta):
                     continue
                 tasks = [(i, df_bytes, feat, unit, rng_seed) for i in range(n_permutations)]
-                with warnings.catch_warnings(action="ignore"):
+                with _quiet():
                     null_betas = Parallel(n_jobs=n_jobs, backend="loky")(
                         delayed(_run_one_within_arm_permutation)(t) for t in tasks
                     )
