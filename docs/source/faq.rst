@@ -319,9 +319,14 @@ Should I use cell-level or participant-level aggregation?
 
 Why? Cells from the same participant are not independent, violating regression assumptions. Participant-level aggregation (pseudobulk) respects the experimental design.
 
-When aggregated, if an ``n_cells`` column is present, Weighted Least Squares (WLS) is
-used with inverse-variance weights proportional to the number of cells per group.
-This gives more weight to participant-visit groups with more cells (lower variance means).
+The participant-level model is fitted by ordinary least squares, so every participant
+contributes equally. With two visits this is exactly the difference of mean
+within-participant changes between arms. Weighting by the number of cells per group
+would assume that all variance in a participant-visit mean is cell-sampling noise; in
+clinical cohorts between-participant biological variation dominates, and cell counts can
+span two orders of magnitude, so a few participants would determine the estimate. To fit
+Weighted Least Squares (WLS) deliberately, pass ``weight_col="n_cells"`` (or any column of
+finite, positive weights) to ``did_table`` or ``DiDConfig``.
 
 What are Wild Cluster Bootstrap p-values?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

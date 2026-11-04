@@ -217,7 +217,7 @@ def test_did_table_nonrobust_fallback_on_nan_se():
     def _patched_wls(formula, data, **kw):
         return _FakeModel(_orig_wls(formula, data, **kw))
 
-    # Patch both ols and wls (aggregation adds n_cells → WLS path)
+    # Patch both ols and wls so the fallback is exercised whichever estimator is used
     with (
         patch.object(did_module.smf, "ols", new=_patched_ols),
         patch.object(did_module.smf, "wls", new=_patched_wls),
