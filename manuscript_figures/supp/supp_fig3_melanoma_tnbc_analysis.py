@@ -805,10 +805,12 @@ def _panel_i_heatmap(ax: plt.Axes, data: dict) -> None:
     )
     arms = pre.loc[common_pids, DESIGN.arm_col]
 
-    # Sort: Responders first, then by mean Δ
+    # Sort: Responders first, then by mean Δ. The order is an explicit integer:
+    # mapping a Categorical returns a Categorical that sorts by category code, not
+    # by the mapped value, and the separator below assumes Responders come first.
     mean_delta = delta.mean(axis=1)
     sort_df = pd.DataFrame({
-        "arm_order": arms.map({"Responder": 0, "Non-responder": 1}).values,
+        "arm_order": np.where(arms.astype(str) == "Responder", 0, 1),
         "mean_delta": -mean_delta.values,
     }, index=common_pids)
     ordered_pids = sort_df.sort_values(["arm_order", "mean_delta"]).index.tolist()

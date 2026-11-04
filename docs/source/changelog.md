@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `get_between_arm_aggregated_df()` and `between_arm_fit_beta()`: the frame and estimator of `between_arm_comparison()`, for permutation tests, mirroring `get_within_arm_aggregated_df()` and `within_arm_fit_beta()`.
+
 ### Changed
 - `did_fit()` now fits ordinary least squares by default. It previously switched silently to weighted least squares whenever the input carried an `n_cells` column, so every participant-level DiD from `did_table(aggregate="participant_visit")` and `did_table_parallel()` was weighted by cell count. Cell-count weights assume that all variance in a participant-visit mean is cell-sampling noise; in clinical cohorts between-participant variation dominates and cell counts span two orders of magnitude, so a few participants determined each estimate. With two visits the default estimate equals the difference in mean within-participant change between arms, which is the estimator the simulation benchmark validates. Weighted fitting is still available through the new `weight_col` argument of `did_fit()`, `did_table()`, `did_table_parallel()` and `DiDConfig`. Participant-level DiD estimates change; cell-level estimates do not.
 
 ### Fixed
 - The wild cluster bootstrap refit OLS models with WLS. It detected weighting from the presence of `model.weights`, which statsmodels also sets, to ones, on OLS models; it now checks whether the weights are uniform.
 - Two type errors reported by mypy in the benchmark gate verdict and the orchestrator command-line entry point.
+- Unused levels of Categorical columns no longer leak into results. `module_score_did_by_pool(allow_unpaired=True)` emitted a NaN row for an arm missing a visit instead of skipping it; `diagnose_trial_data()` counted cell types that were absent; the benchmark's real-data arm permutation could replace real arm labels with missing values.
 
 ## [1.0.0] - 2026-10-05
 

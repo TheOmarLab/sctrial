@@ -28,14 +28,17 @@ from .._shared import (
     GENE_SIGNATURES,
     SCTRIAL_AVAILABLE,
     SIGNATURE_DISPLAY_NAMES,
+    STATS_FINGERPRINT,
     SUPP_OUTPUT,
     TrialDesign,
     add_log1p_cpm_layer,
     apply_style,
+    between_arm_fit_beta,
     clear_cache,
     did_fit,
     did_table,
     get_aml,
+    get_between_arm_aggregated_df,
     get_cart,
     get_did_aggregated_df,
     get_sade_feldman,
@@ -245,15 +248,7 @@ def table2_all_results() -> pd.DataFrame:
         adata_st, sig_cols = score_signatures(adata_st, layer="log1p_cpm")
 
         # Filter to DFO_8-14 bin (matching Figure 5)
-        target_visit = "DFO_8-14"
-        if "dfo_bin" in adata_st.obs.columns:
-            available_bins = sorted(adata_st.obs["dfo_bin"].dropna().unique())
-            if target_visit not in available_bins:
-                for _bin in available_bins:
-                    _sub = adata_st[adata_st.obs["dfo_bin"] == _bin]
-                    if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
-                        target_visit = _bin
-                        break
+        target_visit = _covid_target_visit(adata_st)
         ad_visit = adata_st[adata_st.obs["dfo_bin"] == target_visit].copy()
 
         # Compute Hedges' g on participant-level means (matching Figure 5)
@@ -338,8 +333,14 @@ def table2_all_results() -> pd.DataFrame:
     df = pd.concat(all_results, ignore_index=True)
     path = SUPP_OUTPUT / "Supp_Table2_all_results.csv"
     df.to_csv(path, index=False)
+    _table2_fingerprint_path().write_text(STATS_FINGERPRINT)
     print(f"    Saved {path.name} ({len(df)} rows)")
     return df
+
+
+def _table2_fingerprint_path():
+    """Sidecar recording the estimator code that produced Supp Table 2."""
+    return SUPP_OUTPUT / "Supp_Table2_all_results.stats_fingerprint"
 
 
 # ======================================================================
@@ -451,16 +452,7 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
             )
         adata_st, _ = score_signatures(adata_st, layer="log1p_cpm")
         # Fixed DFO bin to match Figure 5 COVID analysis
-        target_visit = "DFO_8-14"
-        if "dfo_bin" in adata_st.obs.columns:
-            available_bins = sorted(adata_st.obs["dfo_bin"].dropna().unique())
-            if target_visit not in available_bins:
-                # Fallback: pick first bin (sorted) with both severity groups
-                for _bin in available_bins:
-                    _sub = adata_st[adata_st.obs["dfo_bin"] == _bin]
-                    if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
-                        target_visit = _bin
-                        break
+        target_visit = _covid_target_visit(adata_st)
         covid_design = TrialDesign(
             participant_col="participant_id",
             visit_col="dfo_bin",
@@ -559,6 +551,25 @@ def _run_one_did_permutation(args: tuple) -> float | None:
         return None
 
 
+def _run_one_between_arm_permutation(args: tuple) -> float | None:
+    """Worker for parallel between-arm permutation: returns beta_arm or None.
+
+    Shuffles the arm indicator across participants of a one-row-per-participant
+    frame and refits the same standardised OLS contrast as the observed statistic.
+    """
+    perm_idx, df_bytes, feat, design, rng_seed = args
+
+    df = pkl.loads(df_bytes)
+    rng = np.random.default_rng(rng_seed + perm_idx)
+    df_perm = df.copy()
+    df_perm["arm_bin"] = rng.permutation(df_perm["arm_bin"].values)
+    try:
+        b = between_arm_fit_beta(df_perm, feat, design)
+        return float(b) if np.isfinite(b) else None
+    except Exception:
+        return None
+
+
 def _run_one_within_arm_permutation(args: tuple) -> float | None:
     """Worker for parallel within-arm permutation: returns beta_time or None."""
     perm_idx, df_bytes, feat, unit, rng_seed = args
@@ -575,6 +586,23 @@ def _run_one_within_arm_permutation(args: tuple) -> float | None:
         return float(b) if np.isfinite(b) else None
     except Exception:
         return None
+
+
+def _covid_target_visit(adata_st) -> str:
+    """Days-from-onset bin used by every COVID-19 analysis (Figure 5, Supp Tables 2-4).
+
+    DFO_8-14 when present; otherwise the first bin, in sorted order, holding both
+    severity groups.
+    """
+    target_visit = "DFO_8-14"
+    if "dfo_bin" in adata_st.obs.columns:
+        available_bins = sorted(adata_st.obs["dfo_bin"].dropna().unique())
+        if target_visit not in available_bins:
+            for _bin in available_bins:
+                _sub = adata_st[adata_st.obs["dfo_bin"] == _bin]
+                if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
+                    return _bin
+    return target_visit
 
 
 def table4_permutation_results(
@@ -756,77 +784,42 @@ def table4_permutation_results(
         print(f"    TNBC permutation failed: {exc}")
 
     # ── Stephenson (cross-sectional: permute Severe/Mild labels) ────
+    # The observed statistic and every null replicate are the same estimand: the
+    # standardised between-arm OLS beta on participant-level means in the DFO_8-14
+    # bin (Figure 5, Supp Tables 2-3). Each replicate reshuffles severity across the
+    # participants sampled in that bin.
     try:
-        from sctrial import between_arm_comparison as _bac
         adata_st = get_stephenson()
         if "log1p_cpm" not in adata_st.layers:
-            from manuscript_figures._shared import add_log1p_cpm_layer
             adata_st = add_log1p_cpm_layer(
                 adata_st, counts_layer="counts", out_layer="log1p_cpm",
             )
         adata_st, sig_cols_st = score_signatures(adata_st, layer="log1p_cpm")
+        target_visit = _covid_target_visit(adata_st)
 
         design_st = TrialDesign(
             participant_col="participant_id",
-            visit_col="Collection_Day",
+            visit_col="dfo_bin",
             arm_col="severity",
             arm_treated="Severe",
             arm_control="Mild",
         )
-        obs_res_st = _bac(
-            adata_st, visit="D0", features=sig_cols_st,
-            design=design_st, aggregate="participant_visit",
-            standardize=True,
+        df_cs = get_between_arm_aggregated_df(
+            adata_st, sig_cols_st, design_st, target_visit, layer="log1p_cpm",
         )
-        beta_col_st = "beta_arm" if "beta_arm" in obs_res_st.columns else "beta_DiD"
-        obs_betas_st = dict(zip(obs_res_st["feature"], obs_res_st[beta_col_st]))
-
-        # Build participant-arm map for permutation
-        pid_sev = (
-            adata_st.obs[["participant_id", "severity"]]
-            .drop_duplicates("participant_id")
-        )
-
-        with warnings.catch_warnings(action="ignore"):
-            df_use_st, unit_st, time_st, arm_bin_st = get_did_aggregated_df(
-                adata_st, sig_cols_st, design_st, ("D0", "D28"),
-                layer="log1p_cpm", aggregate="participant_visit",
-            )
-        df_bytes_st = pkl.dumps(df_use_st)
-        pid_sev_bytes = pkl.dumps(pid_sev)
+        df_bytes_st = pkl.dumps(df_cs)
 
         for feat in sig_cols_st:
-            obs_beta = obs_betas_st.get(feat, np.nan)
+            obs_beta = between_arm_fit_beta(df_cs, feat, design_st)
             if not np.isfinite(obs_beta):
                 continue
             tasks = [
-                (i, df_bytes_st, feat, unit_st, time_st, arm_bin_st, pid_sev_bytes, rng_seed)
+                (i, df_bytes_st, feat, design_st, rng_seed)
                 for i in range(n_permutations)
             ]
-
-            # Reuse DiD permutation worker — it permutes the arm column
-            def _run_stephenson_perm(args: tuple) -> float | None:
-                perm_idx, db, ft, un, tm, ab, pa_bytes, rs = args
-                df = pkl.loads(db)
-                pa = pkl.loads(pa_bytes)
-                r = np.random.default_rng(rs + perm_idx)
-                shuf = pa.copy()
-                shuf["severity"] = r.permutation(shuf["severity"].values)
-                pid_to_arm = dict(zip(shuf["participant_id"], shuf["severity"]))
-                df_p = df.copy()
-                df_p["arm_bin"] = df_p["participant_id"].map(
-                    lambda x, m=pid_to_arm: 1 if m.get(x) == "Severe" else 0
-                )
-                try:
-                    out = did_fit(df_p, y=ft, unit=un, time=tm, arm_bin=ab, standardize=True)
-                    b = out.get("beta_DiD", np.nan)
-                    return float(b) if np.isfinite(b) else None
-                except Exception:
-                    return None
-
             with warnings.catch_warnings(action="ignore"):
                 null_betas_st = Parallel(n_jobs=n_jobs, backend="loky")(
-                    delayed(_run_stephenson_perm)(t) for t in tasks
+                    delayed(_run_one_between_arm_permutation)(t) for t in tasks
                 )
             null_arr = np.array([b for b in null_betas_st if b is not None], dtype=float)
             if len(null_arr) > 0:
@@ -843,8 +836,9 @@ def table4_permutation_results(
                     "null_95_lo": float(np.percentile(null_arr, 2.5)),
                     "null_95_hi": float(np.percentile(null_arr, 97.5)),
                 })
-        print(f"    COVID-19: {len([r for r in rows if r['dataset'] == 'COVID-19'])} features")
-        del adata_st, df_use_st, df_bytes_st, pid_sev_bytes
+        print(f"    COVID-19 ({target_visit}, n={df_cs['participant_id'].nunique()}): "
+              f"{len([r for r in rows if r['dataset'] == 'COVID-19'])} features")
+        del adata_st, df_cs, df_bytes_st
         gc.collect()
     except Exception as exc:
         print(f"    COVID-19 permutation failed: {exc}")
@@ -945,10 +939,14 @@ def table5_power_analysis() -> pd.DataFrame:
         sensitivity_paired,
     )
 
-    # Read observed results from Table 2
+    # Read observed results from Table 2, regenerating it unless it was written by
+    # the current estimator code (a WLS-era Table 2 would give stale DiD power rows).
     table2_path = SUPP_OUTPUT / "Supp_Table2_all_results.csv"
-    if not table2_path.exists():
-        print("    Table 2 not found, generating first...")
+    stamp = _table2_fingerprint_path()
+    fresh = (table2_path.exists() and stamp.exists()
+             and stamp.read_text().strip() == STATS_FINGERPRINT)
+    if not fresh:
+        print("    Table 2 missing or from other estimator code, generating first...")
         table2_all_results()
     t2 = pd.read_csv(table2_path)
 
@@ -1141,12 +1139,15 @@ def table8_dataset_metadata() -> pd.DataFrame:
             if visit_col and visit_col in obs.columns:
                 group_cols.append(visit_col)
 
-            grouped = obs.groupby(group_cols).size().reset_index(name="n_cells")
+            # observed=True: participant and visit are Categorical, and without it the
+            # groupby emits every participant x visit combination, including ones with
+            # no cells (n_cells=0 rows for samples that do not exist).
+            grouped = obs.groupby(group_cols, observed=True).size().reset_index(name="n_cells")
             grouped["dataset"] = ds_name
 
             # Add condition/response
             if condition_col and condition_col in obs.columns:
-                cond_map = obs.groupby(pid_col)[condition_col].first()
+                cond_map = obs.groupby(pid_col, observed=True)[condition_col].first()
                 grouped["condition"] = grouped[pid_col].map(cond_map)
             else:
                 grouped["condition"] = None
@@ -1168,7 +1169,10 @@ def table8_dataset_metadata() -> pd.DataFrame:
                 ct_col = None
 
             if ct_col:
-                n_celltypes = obs.groupby(group_cols)[ct_col].nunique().reset_index(name="n_cell_types")
+                n_celltypes = (
+                    obs.groupby(group_cols, observed=True)[ct_col]
+                    .nunique().reset_index(name="n_cell_types")
+                )
                 if visit_col and visit_col in n_celltypes.columns:
                     grouped = grouped.merge(n_celltypes, on=[pid_col if pid_col in n_celltypes.columns else "participant_id",
                                                               visit_col if visit_col in n_celltypes.columns else "visit"],

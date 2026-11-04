@@ -246,8 +246,10 @@ def module_score_did_by_pool(
             # Compute mean deltas from unpaired group means
             treated = df[df["arm_bin"] == 1]
             control = df[df["arm_bin"] == 0]
-            treated_means = treated.groupby(design.visit_col)["module_score"].mean()
-            control_means = control.groupby(design.visit_col)["module_score"].mean()
+            # observed=True: with a Categorical visit, an arm missing a visit would
+            # otherwise get a NaN row for it and slip past the guard below.
+            treated_means = treated.groupby(design.visit_col, observed=True)["module_score"].mean()
+            control_means = control.groupby(design.visit_col, observed=True)["module_score"].mean()
             if visits[0] not in treated_means or visits[1] not in treated_means:
                 continue
             if visits[0] not in control_means or visits[1] not in control_means:

@@ -717,8 +717,11 @@ def _panel_f(ax: plt.Axes, data: dict) -> None:
     )
     arms = pre.loc[common_pids, DESIGN.arm_col]
 
+    # Control (Chemo) block first, as published. The order is an explicit integer:
+    # mapping a Categorical arm column returns a Categorical that sorts by category
+    # code, not by the mapped value, which silently decided the order before.
     sort_df = pd.DataFrame({
-        "arm_order":  arms.map({DESIGN.arm_treated: 0, DESIGN.arm_control: 1}).values,
+        "arm_order":  np.where(arms.astype(str) == DESIGN.arm_control, 0, 1),
         "mean_delta": -delta_mat.mean(axis=1).values,
     }, index=common_pids)
     ordered = sort_df.sort_values(["arm_order", "mean_delta"]).index.tolist()
@@ -742,9 +745,9 @@ def _panel_f(ax: plt.Axes, data: dict) -> None:
             color=color, clip_on=False,
         ))
 
-    n_treated = sum(1 for p in ordered if arms.loc[p] == DESIGN.arm_treated)
-    if 0 < n_treated < len(ordered):
-        ax.axhline(n_treated - 0.5, color="white", linewidth=2.5, zorder=5)
+    n_control = sum(1 for p in ordered if arms.loc[p] == DESIGN.arm_control)
+    if 0 < n_control < len(ordered):
+        ax.axhline(n_control - 0.5, color="white", linewidth=2.5, zorder=5)
 
     # Build same P1-P12 mapping as panel A
     counts_a = (
@@ -819,13 +822,13 @@ def _panel_f(ax: plt.Axes, data: dict) -> None:
     cbar.set_label("Score Δ", fontsize=8)
     cbar.ax.tick_params(labelsize=7)
 
+    # Arm captions centred on their blocks: control rows 0..n_control-1, then treated.
     trans = blended_transform_factory(ax.transAxes, ax.transData)
-    n_treated = sum(1 for p in ordered if arms.loc[p] == DESIGN.arm_treated)
-    n_control = len(ordered) - n_treated
+    n_treated = len(ordered) - n_control
 
-    if n_treated > 0:
+    if n_control > 0:
         ax.text(
-            -0.22, (n_treated - 1) / 2,
+            -0.22, (n_control - 1) / 2,
             "Chemo",
             transform=trans,
             color=COL_CTRL,
@@ -834,9 +837,9 @@ def _panel_f(ax: plt.Axes, data: dict) -> None:
             rotation=90, clip_on=False,
         )
 
-    if n_control > 0:
+    if n_treated > 0:
         ax.text(
-            -0.22, n_treated + (n_control - 1) / 2,
+            -0.22, n_control + (n_treated - 1) / 2,
             "anti-PDL1+\nChemo",
             transform=trans,
             color=COL_TREAT,

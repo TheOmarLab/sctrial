@@ -303,6 +303,86 @@ def within_arm_fit_beta(
     return float(fit.params.get("visit_num", np.nan))
 
 
+def get_between_arm_aggregated_df(
+    adata: AnnData,
+    features: Sequence[str],
+    design: TrialDesign,
+    visit: str,
+    *,
+    layer: str | None = None,
+    aggregate: AggregateMode = "participant_visit",
+    agg: AggregateFunc = "mean",
+) -> pd.DataFrame:
+    """Build the frame :func:`between_arm_comparison` fits, for permutation tests.
+
+    With ``aggregate="participant_visit"`` the frame has one row per participant
+    at ``visit``, with feature values and ``arm_bin``. Permute ``arm_bin`` across
+    rows and refit with :func:`between_arm_fit_beta` to get null betas.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    features
+        List of genes or module scores.
+    design
+        A `TrialDesign` object.
+    visit
+        The visit label to analyze.
+    layer
+        Layer to use for gene expression.
+    aggregate
+        Aggregation mode (see `did_table`).
+    agg
+        Aggregation function.
+
+    Returns
+    -------
+    pd.DataFrame
+        The aggregated frame.
+    """
+    return _prepare_between_arm_df(
+        adata=adata,
+        features=features,
+        design=design,
+        visit=visit,
+        aggregate=aggregate,
+        layer=layer,
+        agg=agg,
+        covariates=None,
+    )
+
+
+def between_arm_fit_beta(
+    df: pd.DataFrame,
+    feat: str,
+    design: TrialDesign,
+    *,
+    standardize: bool = True,
+) -> float:
+    """Fit the between-arm model and return beta_arm. Used for permutation tests.
+
+    The same estimator as :func:`between_arm_comparison` with ``method="ols"``.
+
+    Parameters
+    ----------
+    df
+        DataFrame from :func:`get_between_arm_aggregated_df`.
+    feat
+        Name of the feature column to analyze.
+    design
+        A `TrialDesign` object.
+    standardize
+        Whether to z-score the outcome variable.
+
+    Returns
+    -------
+    float
+        The beta_arm.
+    """
+    return float(_ols_between_arm(df, feat, design, standardize, None)["beta_arm"])
+
+
 def within_arm_comparison(
     adata: AnnData,
     arm: str,
