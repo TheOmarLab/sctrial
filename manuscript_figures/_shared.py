@@ -8,6 +8,7 @@ style configuration, and I/O helpers used by all figure scripts.
 from __future__ import annotations
 
 import gc
+import hashlib
 import os
 import re
 import warnings
@@ -50,6 +51,27 @@ GSEA_OUTPUT = MANUSCRIPT_DIR / "GSEA"
 
 for _d in (MAIN_OUTPUT, SUPP_OUTPUT, GSEA_OUTPUT):
     _d.mkdir(parents=True, exist_ok=True)
+
+
+def _stats_fingerprint() -> str:
+    """Short hash of the package source that determines every DiD estimate.
+
+    Fold this into the key of any cache whose content comes from ``did_fit``,
+    ``did_table`` or DiD-ranked GSEA. A figure's own ``_CODE_VERSION`` or source
+    hash cannot see a change to the package estimator, so without this a cache
+    keeps serving results from the previous estimator, on every machine that
+    holds one.
+    """
+    import sctrial
+
+    pkg = Path(sctrial.__file__).resolve().parent
+    h = hashlib.md5()  # noqa: S324 - cache tag, not security
+    for rel in ("stats/did.py", "utils.py"):
+        h.update((pkg / rel).read_bytes())
+    return h.hexdigest()[:8]
+
+
+STATS_FINGERPRINT = _stats_fingerprint()
 
 # ---------------------------------------------------------------------------
 # Style
@@ -778,6 +800,25 @@ def _gsea_cache_path(
     return GSEA_OUTPUT / dataset / method / library_short / "results.csv"
 
 
+def _gsea_fingerprint_path(cache_csv: Path) -> Path:
+    return cache_csv.with_name("stats_fingerprint.txt")
+
+
+def _gsea_did_cache_fresh(cache_csv: Path) -> bool:
+    """A DiD-ranked GSEA cache is usable only if it was built by the current estimator.
+
+    The ranking comes from ``did_table``, so results built by a different estimator
+    are stale even though the file path is unchanged. A missing or mismatched
+    fingerprint is treated as a cache miss.
+    """
+    stamp = _gsea_fingerprint_path(cache_csv)
+    return (
+        cache_csv.exists()
+        and stamp.exists()
+        and stamp.read_text().strip() == STATS_FINGERPRINT
+    )
+
+
 def load_or_run_gsea_did(
     adata,
     design,
@@ -810,7 +851,7 @@ def load_or_run_gsea_did(
         cache_csv = _gsea_cache_path(dataset_name, short_name, method="did")
 
         # Try loading from cache
-        if not force and cache_csv.exists():
+        if not force and _gsea_did_cache_fresh(cache_csv):
             df = pd.read_csv(cache_csv)
             if len(df) > 0:
                 df["Library"] = short_name
@@ -831,6 +872,7 @@ def load_or_run_gsea_did(
             if isinstance(res, pd.DataFrame) and len(res) > 0:
                 res["Library"] = short_name
                 res.to_csv(cache_csv, index=False)
+                _gsea_fingerprint_path(cache_csv).write_text(STATS_FINGERPRINT)
                 frames.append(res)
                 print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
             else:

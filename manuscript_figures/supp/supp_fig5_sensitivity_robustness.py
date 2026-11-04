@@ -42,6 +42,7 @@ from scipy import stats as sp_stats
 
 from .._shared import (
     COLORS,
+    STATS_FINGERPRINT,
     SUPP_OUTPUT,
     TrialDesign,
     add_log1p_cpm_layer,
@@ -145,7 +146,7 @@ def _load_cache(tag: str):
     (e.g. the signature gene sets) invalidates the pickle instead of silently
     serving stale results.
     """
-    p = _cache_dir() / f"_cache_{_CODE_VERSION}_{tag}.pkl"
+    p = _cache_dir() / f"_cache_{_CODE_VERSION}_{STATS_FINGERPRINT}_{tag}.pkl"
     if not p.exists():
         return None
     print(f"    [cache hit] {tag}")
@@ -155,7 +156,7 @@ def _load_cache(tag: str):
 
 def _save_cache(tag: str, obj):
     """Persist *obj* under *tag*."""
-    p = _cache_dir() / f"_cache_{_CODE_VERSION}_{tag}.pkl"
+    p = _cache_dir() / f"_cache_{_CODE_VERSION}_{STATS_FINGERPRINT}_{tag}.pkl"
     with open(p, "wb") as f:
         pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
     print(f"    [cached]    {tag}")
@@ -1137,7 +1138,7 @@ _JSON_CACHE_DIR = Path(__file__).resolve().parent.parent / "_cache"
 
 
 def _cache_key_json(*args: str) -> str:
-    payload = "|".join([_CODE_VERSION] + list(args))
+    payload = "|".join([_CODE_VERSION, STATS_FINGERPRINT] + list(args))
     return hashlib.md5(payload.encode()).hexdigest()[:12]
 
 

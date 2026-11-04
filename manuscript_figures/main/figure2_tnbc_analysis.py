@@ -39,6 +39,7 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.font_manager import FontProperties
 from matplotlib.lines import Line2D
 from scipy import stats
 
@@ -397,7 +398,7 @@ def _panel_a(ax: plt.Axes, data: dict) -> None:
 
 # ── Panel B: Beta comparison ──────────────────────────────────────────────
 
-def _panel_b(ax: plt.Axes, data: dict) -> None:
+def _panel_b(ax: plt.Axes, data: dict, *, composite: bool = False) -> None:
     rc = data["res_cell"].set_index("feature")
     rp = data["res_part"].set_index("feature")
     common = rc.index.intersection(rp.index)
@@ -406,7 +407,7 @@ def _panel_b(ax: plt.Axes, data: dict) -> None:
     beta_part = rp.loc[common, "beta_DiD"].values
     colors    = [COL_TREAT if b > 0 else COL_CTRL for b in beta_part]
 
-    ax.scatter(beta_cell, beta_part, c=colors, s=30,
+    ax.scatter(beta_cell, beta_part, c=colors, s=15 if composite else 30,
                edgecolors="white", linewidths=0.5, zorder=3)
 
     lim_lo = min(beta_cell.min(), beta_part.min()) * 1.2
@@ -416,42 +417,18 @@ def _panel_b(ax: plt.Axes, data: dict) -> None:
     ax.axhline(0, color=COL_GRAY, lw=0.5, ls=":", zorder=0)
     ax.axvline(0, color=COL_GRAY, lw=0.5, ls=":", zorder=0)
 
-    # Explicit symmetric limits (with the identity-line margin) guarantee every
-    # marker is inside the view — no point can be clipped below the axis, which
-    # previously dropped a signature marker while its label floated in the corner.
-    ax.set_xlim(lim_lo, lim_hi)
-    ax.set_ylim(lim_lo, lim_hi)
-
-    # Label every signature and let adjustText resolve overlaps, drawing a thin
-    # leader line from each label back to its marker. The former hand-tuned offsets
-    # had no leader line, so a label pushed far from its point read as an orphaned
-    # marker.
-    from adjustText import adjust_text
-    texts = [ax.text(xv, yv, sig_display(feat), fontsize=5, alpha=0.9)
-             for feat, xv, yv in zip(common, beta_cell, beta_part)]
-    adjust_text(
-        texts, ax=ax, expand=(1.5, 1.8),
-        force_text=(0.3, 0.5),
-        ensure_inside_axes=True,
-    )
-    _pull_closer = {"regulatory", "cytotoxic"}
-    for txt, xv, yv in zip(texts, beta_cell, beta_part):
-        if any(k in txt.get_text().lower() for k in _pull_closer):
-            tx, ty = txt.get_position()
-            txt.set_position((xv + (tx - xv) * 0.4, yv + (ty - yv) * 0.4))
-    for txt, xv, yv in zip(texts, beta_cell, beta_part):
-        tx, ty = txt.get_position()
-        ax.annotate("", xy=(xv, yv), xytext=(tx, ty),
-                    arrowprops=dict(arrowstyle="-", color=COL_GRAY, lw=0.4, alpha=0.6))
-
-    # FIX v1 Issue 6: Spearman rho not Pearson r
-    rho, p = stats.spearmanr(beta_cell, beta_part)
-    ax.text(
-        0.05, 0.95, f"ρ = {rho:.2f}, p = {p:.1e}",
-        transform=ax.transAxes, fontsize=8, va="top",
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                  edgecolor=COL_GRAY, alpha=0.8),
-    )
+    # Explicit limits guarantee every marker is inside the view; an earlier version
+    # clipped a marker below the axis while its label floated in the corner. The
+    # standalone panel shares one range so the identity line runs at 45 degrees. The
+    # composite cell is a ~3.5:1 strip where shared limits squeeze the narrow
+    # cell-level spread into the middle third, so each axis spans its own data there.
+    if composite:
+        for set_lim, v in ((ax.set_xlim, beta_cell), (ax.set_ylim, beta_part)):
+            pad = 0.15 * (v.max() - v.min())
+            set_lim(v.min() - pad, v.max() + pad)
+    else:
+        ax.set_xlim(lim_lo, lim_hi)
+        ax.set_ylim(lim_lo, lim_hi)
 
     ax.tick_params(axis="y", labelsize=5)
     ax.set_xlabel(r'$\beta_{DID}$ (cell-level)', fontsize=9)
@@ -459,12 +436,48 @@ def _panel_b(ax: plt.Axes, data: dict) -> None:
     ax.set_title("Effect Size: Cell vs Participant Aggregation",
                  fontsize=11, fontweight="bold")
 
+    # Final text sizes, fixed BEFORE label layout: the standalone export raises
+    # text to a 10 pt minimum afterwards and the composite shrinks it, and any
+    # resize after adjust_text has run makes the labels collide.
+    label_fs = 4.0 if composite else max(
+        5.0, FontProperties(size=plt.rcParams["xtick.labelsize"]).get_size_in_points()
+    )
+
+    # FIX v1 Issue 6: Spearman rho not Pearson r. The key and the rho statistic sit
+    # in one row below the axes, so nothing inside the plot competes with the
+    # labels (adjustText 1.3.0 cannot avoid artists: its ``objects`` path maps
+    # display-space boxes through the data transform a second time).
+    rho, p = stats.spearmanr(beta_cell, beta_part)
     handles = [
         mpatches.Patch(facecolor=COL_TREAT, label="Positive effect"),
         mpatches.Patch(facecolor=COL_CTRL,  label="Negative effect"),
+        Line2D([], [], linestyle="none", label=f"ρ = {rho:.2f}, p = {p:.1e}"),
     ]
-    ax.legend(handles=handles, fontsize=5, loc="lower left",
-              frameon=True, framealpha=0.9)
+    ax.legend(handles=handles, fontsize=5 if composite else label_fs, ncol=3,
+              loc="upper center", bbox_to_anchor=(0.5, -0.5 if composite else -0.12),
+              frameon=True, framealpha=0.9, handlelength=0.8, handletextpad=0.3,
+              columnspacing=1.2, borderpad=0.25)
+
+    # Label every signature and let adjustText resolve overlaps, drawing a thin
+    # leader line from each label back to its marker. The former hand-tuned offsets
+    # had no leader line, so a label pushed far from its point read as an orphaned
+    # marker.
+    from adjustText import adjust_text
+    texts = [ax.text(xv, yv, sig_display(feat), fontsize=label_fs, alpha=0.9)
+             for feat, xv, yv in zip(common, beta_cell, beta_part)]
+    # x/y are the markers as static obstacles (not label positions), so no label
+    # is left sitting on another signature's point. A fixed iteration budget keeps
+    # the layout reproducible; the default one-second time limit depends on the
+    # machine.
+    adjust_text(
+        texts, x=beta_cell, y=beta_part, ax=ax, expand=(1.5, 1.8),
+        force_text=(0.3, 0.5), iter_lim=1000,
+        ensure_inside_axes=True,
+    )
+    for txt, xv, yv in zip(texts, beta_cell, beta_part):
+        tx, ty = txt.get_position()
+        ax.annotate("", xy=(xv, yv), xytext=(tx, ty),
+                    arrowprops=dict(arrowstyle="-", color=COL_GRAY, lw=0.4, alpha=0.6))
     despine(ax)
 
 
@@ -1397,7 +1410,7 @@ def generate() -> None:
 
     # ── Draw all panels first ──────────────────────────────────────────────
     _panel_a(ax_a, data)
-    _panel_b(ax_b, data)
+    _panel_b(ax_b, data, composite=True)
     _panel_c(ax_c, data)
     _panel_d(ax_d, data)
     # Wider inner hspace so the top-row Pre/Post tick labels clear the bottom-row
@@ -1411,12 +1424,10 @@ def generate() -> None:
 
     # ── Legend overrides (all must come AFTER panels are drawn) ───────────
 
-    # Panels B, C, G — move below-axis legends inside plot
-    _inside = {
-        ax_b: "lower left",
-        ax_c: "lower right",
-    }
-    for ax_target, loc in _inside.items():
+    # Panels C and D: move below-axis legends inside the plot, wherever the data
+    # leave room ("best"); a fixed corner covered bars and intervals once the
+    # participant-level estimates changed.
+    for ax_target in (ax_c, ax_d):
         leg = ax_target.get_legend()
         if leg:
             handles = leg.legend_handles
@@ -1424,7 +1435,7 @@ def generate() -> None:
             leg.remove()
             ax_target.legend(
                 handles=handles, labels=labels,
-                fontsize=5, loc=loc,
+                fontsize=5, loc="best",
                 frameon=True, framealpha=0.85,
                 handlelength=0.8, handletextpad=0.2,
                 borderpad=0.2, labelspacing=0.15,
@@ -1459,21 +1470,6 @@ def generate() -> None:
             loc="upper left",
             bbox_to_anchor=(0.04, 1.08),
             ncol=3,
-            frameon=True, framealpha=0.85,
-            handlelength=0.8, handletextpad=0.2,
-            borderpad=0.2, labelspacing=0.15,
-            columnspacing=0.5,
-        )
-
-    # Panel D legend — tighter sizing
-    leg_d = ax_d.get_legend()
-    if leg_d:
-        handles_d = leg_d.legend_handles
-        labels_d  = [t.get_text() for t in leg_d.get_texts()]
-        leg_d.remove()
-        ax_d.legend(
-            handles=handles_d, labels=labels_d,
-            fontsize=5, loc="lower right",
             frameon=True, framealpha=0.85,
             handlelength=0.8, handletextpad=0.2,
             borderpad=0.2, labelspacing=0.15,
@@ -1528,12 +1524,6 @@ def generate() -> None:
                    fontweight="bold", pad=12)
 
     # Panel C y-axis tick labels — kept at same size as D (5 pt)
-
-    # Panel B in composite: smaller markers + slightly larger labels
-    for coll in ax_b.collections:
-        coll.set_sizes([s * 0.5 for s in coll.get_sizes()])
-    for txt in ax_b.texts:
-        txt.set_fontsize(max(txt.get_fontsize() * 0.7, 4.0))
 
     _cap_fontsize(fig_c, _MAX)
 

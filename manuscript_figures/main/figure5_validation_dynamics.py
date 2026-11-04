@@ -43,6 +43,7 @@ from scipy.cluster.hierarchy import leaves_list, linkage
 from .._shared import (
     COLORS,
     MAIN_OUTPUT,
+    STATS_FINGERPRINT,
     TrialDesign,
     add_log1p_cpm_layer,
     apply_style,
@@ -213,7 +214,7 @@ def _prepare_sf_data(*, use_cache: bool = True) -> dict:
     _code_hash = hashlib.md5(  # noqa: S324 — cache tag, not security
         f"{N_PERM}|{DESIGN}|{VISITS}|{HETERO_FEATURES}".encode()
     ).hexdigest()[:8]
-    cache_key = f"figure6_sf_perm_v2_{_code_hash}"
+    cache_key = f"figure6_sf_perm_v2_{_code_hash}_{STATS_FINGERPRINT}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     # ── load adata fresh every time (too large to pickle) ────────────────
@@ -386,7 +387,7 @@ def _prepare_tnbc_perm_data(*, use_cache: bool = True) -> dict:
     _code_hash = hashlib.md5(
         f"{N_PERM}|{VISITS}|{HETERO_FEATURES}|arm".encode()
     ).hexdigest()[:8]
-    cache_key = f"figure5_tnbc_perm_v3_{_code_hash}"
+    cache_key = f"figure5_tnbc_perm_v3_{_code_hash}_{STATS_FINGERPRINT}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     adata = get_tnbc_zhang()

@@ -52,6 +52,7 @@ from .._shared import (
     COLORS,
     GSEA_OUTPUT,
     MAIN_OUTPUT,
+    STATS_FINGERPRINT,
     TrialDesign,
     add_log1p_cpm_layer,
     apply_style,
@@ -136,7 +137,7 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
     _code_hash = hashlib.md5(  # noqa: S324 — not security, just cache tag
         Path(__file__).read_bytes()
     ).hexdigest()[:8]
-    cache_key = f"figure5_sade_feldman_v4_{_code_hash}"
+    cache_key = f"figure5_sade_feldman_v4_{_code_hash}_{STATS_FINGERPRINT}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     if use_cache and cache_path.exists():
@@ -462,7 +463,7 @@ def _prepare_tnbc_bio_discovery_data(*, use_cache: bool = True) -> dict:
     _code_hash = hashlib.md5(
         Path(__file__).read_bytes()
     ).hexdigest()[:8]
-    cache_key = f"figure5_tnbc_did_v1_{_code_hash}"
+    cache_key = f"figure5_tnbc_did_v1_{_code_hash}_{STATS_FINGERPRINT}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     if use_cache and cache_path.exists():
