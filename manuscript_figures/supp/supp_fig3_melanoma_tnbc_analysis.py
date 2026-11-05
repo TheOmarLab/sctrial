@@ -21,7 +21,7 @@ G : Forest plot of DiD effects across all gene signatures [Melanoma].
 H : Small-multiple interaction plots for the top 6 signatures [Melanoma].
 I : Per-participant change heatmap across signatures [Melanoma].
 J : Bar plot of mean Δ score (post − pre) by response group [Melanoma].
-K : Cohen's d effect sizes (responder − non-responder) on Δ scores [Melanoma].
+K : Hedges' g effect sizes (responder − non-responder) on Δ scores [Melanoma].
 """
 
 from __future__ import annotations
@@ -36,6 +36,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
+
+from sctrial.stats.effect_size import hedges_g
 
 from .._shared import (
     COLORS,
@@ -233,22 +235,6 @@ def _pseudobulk_all(adata, sig_cols: list[str]) -> pd.DataFrame:
         .mean()
         .reset_index()
     )
-
-
-def _cohens_d(x: np.ndarray, y: np.ndarray) -> float:
-    """Hedges-corrected Cohen's d  (x − y)."""
-    nx, ny = len(x), len(y)
-    if nx < 2 or ny < 2:
-        return np.nan
-    pooled_sd = np.sqrt(
-        ((nx - 1) * np.var(x, ddof=1) + (ny - 1) * np.var(y, ddof=1))
-        / (nx + ny - 2)
-    )
-    if pooled_sd == 0:
-        return np.nan
-    d = (np.mean(x) - np.mean(y)) / pooled_sd
-    correction = 1 - 3 / (4 * (nx + ny) - 9)
-    return d * correction
 
 
 # ── Panel A: Paired-participant verification (from Figure 1B) ────────────
@@ -871,10 +857,10 @@ def _panel_j_delta_by_response(ax: plt.Axes, data: dict) -> None:
     despine(ax)
 
 
-# ── Panel H: Cohen's d ──────────────────────────────────────────────────
+# ── Panel K: Hedges' g ──────────────────────────────────────────────────
 
 def _panel_k_cohens_d(ax: plt.Axes, data: dict) -> None:
-    """Horizontal lollipop of Cohen's d (responder − non-responder) on Δ."""
+    """Horizontal lollipop of Hedges' g (responder − non-responder) on Δ."""
     delta = data["delta"]
     sig_cols = data["sig_cols"]
     arm = DESIGN.arm_col
@@ -883,7 +869,7 @@ def _panel_k_cohens_d(ax: plt.Axes, data: dict) -> None:
     for col in sig_cols:
         x = delta.loc[delta[arm] == "Responder", col].dropna().values
         y = delta.loc[delta[arm] == "Non-responder", col].dropna().values
-        d = _cohens_d(x, y)
+        d = hedges_g(x, y)
         records.append({"feature": col, "display": sig_display(col), "d": d})
 
     df = pd.DataFrame(records).dropna(subset=["d"]).sort_values("d")
@@ -898,7 +884,7 @@ def _panel_k_cohens_d(ax: plt.Axes, data: dict) -> None:
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["display"].values, fontsize=4.5)
-    ax.set_xlabel("Cohen's d (Responder − Non-responder)")
+    ax.set_xlabel("Hedges' g (Responder − Non-responder)")
     ax.set_title("Effect Size of Response Separation (Melanoma)", fontsize=10,
                  fontweight="bold")
 
@@ -1204,7 +1190,7 @@ def generate() -> None:
         ax_f:      "upper left",     # TNBC anti-PDL1 DID
         ax_g_comp: "upper left",     # Melanoma forest
         ax_j:      "lower right",    # Melanoma delta by response
-        ax_k:      "lower right",    # Melanoma Cohen's d
+        ax_k:      "lower right",    # Melanoma Hedges' g
     }
     for ax_target, loc in _inside.items():
         leg = ax_target.get_legend()

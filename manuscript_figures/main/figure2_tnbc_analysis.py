@@ -40,7 +40,7 @@ import pandas as pd
 from matplotlib.lines import Line2D
 
 from sctrial import TrialDesign, did_table
-from sctrial.stats.effect_size import cohens_d_from_did
+from sctrial.stats.effect_size import hedges_g
 
 from .._shared import (
     COLORS,
@@ -725,12 +725,11 @@ def _panel_h(ax: plt.Axes, data: dict) -> None:
     sig_cols = data["sig_cols"]
     arm      = DESIGN.arm_col
 
-    # FIX v1 Issue 7: use st.cohens_d_from_did (exact gamma correction)
     records = []
     for col in sig_cols:
         x = delta.loc[delta[arm] == DESIGN.arm_treated, col].dropna().values
         y = delta.loc[delta[arm] == DESIGN.arm_control, col].dropna().values
-        d = cohens_d_from_did(x, y)   # Hedges' g via exact gamma correction
+        d = hedges_g(x, y)  # exact small-sample correction of Cohen's d
         records.append({"feature": col, "display": sig_display(col), "d": d})
 
     df     = pd.DataFrame(records).dropna(subset=["d"]).sort_values("d")
