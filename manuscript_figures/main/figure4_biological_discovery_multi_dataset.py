@@ -38,6 +38,7 @@ import warnings
 from pathlib import Path
 from typing import Any
 
+import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
@@ -104,7 +105,7 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
     _code_hash = hashlib.md5(  # noqa: S324 — not security, just cache tag
         Path(__file__).read_bytes()
     ).hexdigest()[:8]
-    cache_key = f"figure5_sade_feldman_v4_{_code_hash}_{STATS_FINGERPRINT}"
+    cache_key = f"figure5_sade_feldman_v5_{_code_hash}_{STATS_FINGERPRINT}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     if use_cache and cache_path.exists():
@@ -155,171 +156,11 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
         seed=42,
     )
 
-    # GSEA on multiple gene-set libraries for comprehensive pathway analysis
-    # Uses shared helper that caches results under manuscript/GSEA/Melanoma/
+    # Each library's own GSEApy permutation FDR, as in Supplementary Table 3 and Figure 4C/4N.
     gsea_results = load_or_run_gsea_did(
         adata, design, visits, "log1p_tpm", "Melanoma",
     )
-
-    if gsea_results is not None and len(gsea_results) > 0:
-        # Detect the pathway-name column
-        term_col = None
-        for c in gsea_results.columns:
-            cl = c.lower().strip()
-            if cl == "term":
-                term_col = c
-                break
-        if term_col is None:
-            for c in gsea_results.columns:
-                if c.lower() in ("name", "pathway"):
-                    term_col = c
-                    break
-            if term_col is None:
-                term_col = gsea_results.columns[0]
-
-        # Global pathway selection: the top pathways by NES across all gene
-        # sets, with no thematic keyword filter.
-
-        # Handle duplicate pathways across libraries: average NES
-        nes_col_name = None
-        for c in gsea_results.columns:
-            if c.lower().strip() == "nes":
-                nes_col_name = c
-                break
-        if nes_col_name is None:
-            for c in gsea_results.columns:
-                if "nes" in c.lower():
-                    nes_col_name = c
-                    break
-
-        if nes_col_name is not None:
-            # Clean pathway names for dedup comparison
-            gsea_results["_clean_term"] = gsea_results[term_col].apply(
-                lambda s: _clean_pathway_name(s, max_len=200)
-            )
-            gsea_results[nes_col_name] = pd.to_numeric(
-                gsea_results[nes_col_name], errors="coerce"
-            )
-
-            # For pathways that appear in multiple libraries, average their
-            # numeric columns and concatenate leading-edge genes
-            nom_col = None
-            for c in gsea_results.columns:
-                cl = c.lower().strip()
-                if cl in ("nom p-val", "pval", "p-value", "nom_pval"):
-                    nom_col = c
-                    break
-
-            fdr_col_detect = None
-            for c in gsea_results.columns:
-                if c.lower().strip() in ("fdr q-val", "fdr"):
-                    fdr_col_detect = c
-                    break
-            if fdr_col_detect is None:
-                for c in gsea_results.columns:
-                    if "fdr" in c.lower():
-                        fdr_col_detect = c
-                        break
-
-            lead_col_detect = None
-            for c in gsea_results.columns:
-                cl = c.lower().strip()
-                if cl in ("lead_genes", "leading_edge"):
-                    lead_col_detect = c
-                    break
-            if lead_col_detect is None:
-                for c in gsea_results.columns:
-                    if "lead" in c.lower() and "gene" in c.lower():
-                        lead_col_detect = c
-                        break
-
-            # Check for duplicates
-            dup_mask = gsea_results.duplicated(subset=["_clean_term"], keep=False)
-            n_dup_pathways = gsea_results.loc[dup_mask, "_clean_term"].nunique()
-            if n_dup_pathways > 0:
-                print(f"  Averaging {n_dup_pathways} duplicate pathways "
-                      f"across libraries")
-
-                # For duplicates: group and average numeric cols, union lead genes
-                deduped_rows = []
-                for clean_name, group in gsea_results.groupby("_clean_term"):
-                    if len(group) == 1:
-                        deduped_rows.append(group.iloc[0].to_dict())
-                        continue
-                    row = group.iloc[0].to_dict()
-                    # Average NES
-                    row[nes_col_name] = group[nes_col_name].mean()
-                    # Average NOM p-val if available
-                    if nom_col is not None and nom_col in group.columns:
-                        row[nom_col] = pd.to_numeric(
-                            group[nom_col], errors="coerce"
-                        ).mean()
-                    # Average FDR
-                    if fdr_col_detect is not None and fdr_col_detect in group.columns:
-                        row[fdr_col_detect] = pd.to_numeric(
-                            group[fdr_col_detect], errors="coerce"
-                        ).mean()
-                    # Union leading-edge genes
-                    if lead_col_detect is not None and lead_col_detect in group.columns:
-                        all_genes = set()
-                        for _, r in group.iterrows():
-                            gs = str(r[lead_col_detect])
-                            all_genes.update(
-                                g.strip()
-                                for g in gs.replace(";", ",").split(",")
-                                if g.strip()
-                            )
-                        row[lead_col_detect] = ";".join(sorted(all_genes))
-                    # Mark as averaged
-                    row["library"] = "averaged"
-                    deduped_rows.append(row)
-
-                gsea_results = pd.DataFrame(deduped_rows)
-
-            gsea_results = gsea_results.drop(columns=["_clean_term"], errors="ignore")
-
-        # Recompute FDR across the *pooled* pathway universe to control
-        # multiplicity properly when combining libraries.
-        fdr_col_name = None
-        for c in gsea_results.columns:
-            if c.lower().strip() in ("fdr q-val", "fdr"):
-                fdr_col_name = c
-                break
-        if fdr_col_name is None:
-            for c in gsea_results.columns:
-                if "fdr" in c.lower():
-                    fdr_col_name = c
-                    break
-        if fdr_col_name is not None:
-            from statsmodels.stats.multitest import multipletests
-            # Preserve per-library FDR, add pooled FDR
-            gsea_results["FDR_per_library"] = gsea_results[fdr_col_name]
-            nom_col = None
-            for c in gsea_results.columns:
-                cl = c.lower().strip()
-                if cl in ("nom p-val", "pval", "p-value", "nom_pval"):
-                    nom_col = c
-                    break
-            if nom_col is not None:
-                pvals = pd.to_numeric(
-                    gsea_results[nom_col], errors="coerce"
-                ).fillna(1).values
-            else:
-                pvals = gsea_results[fdr_col_name].fillna(1).values
-            _, fdr_pooled, _, _ = multipletests(
-                pvals, method="fdr_bh",
-            )
-            gsea_results[fdr_col_name] = fdr_pooled
-            n_sig_pooled = (fdr_pooled < 0.25).sum()
-            print(
-                f"  GSEA total: {len(gsea_results)} pathways "
-                f"({n_sig_pooled} FDR<0.25 after pooled correction)"
-            )
-        else:
-            print(
-                f"  GSEA total: {len(gsea_results)} pathways"
-            )
-    else:
+    if gsea_results is not None and len(gsea_results) == 0:
         gsea_results = None
 
     # ------------------------------------------------------------------
@@ -899,6 +740,22 @@ def _clean_pathway_name(s: str, max_len: int = 55) -> str:
 # Panel A -- Gene waterfall plot (top genes by effect size)
 # ======================================================================
 
+
+def _direction_rgba(positive: bool, significant: bool, ns_alpha: float):
+    """Bar color: direction by hue, significance by opacity.
+
+    The opacity has to live in the RGBA tuple. A scalar ``alpha=`` passed to ``barh`` replaces
+    every bar's alpha, which draws non-significant bars exactly like significant ones.
+    """
+    base = COLORS["treated"] if positive else COLORS["control"]
+    return mcolors.to_rgba(base, 0.9 if significant else ns_alpha)
+
+
+def _numbered_label(label: str, seen: dict[str, int]) -> str:
+    """Make a display label unique by numbering repeats: X, X (2), X (3)."""
+    seen[label] = seen.get(label, 0) + 1
+    return label if seen[label] == 1 else f"{label} ({seen[label]})"
+
 def _tnbc_waterfall(ax, data: dict):
     """Top 30 protein-coding genes ranked by effect size (waterfall).
 
@@ -1040,28 +897,11 @@ def _tnbc_gsea_bars(ax, data: dict):
     # Fix #4: Clean pathway names AND disambiguate duplicates
     df_selected["pathway"] = df_selected[term_col].apply(_clean_pathway_name)
     # Disambiguate duplicate display names
-    _seen = {}
-    new_labels = []
-    for idx, row in df_selected.iterrows():
-        label = row["pathway"]
-        if label in _seen:
-            _seen[label] += 1
-            lib = str(row.get("library", ""))
-            if lib and lib != "averaged":
-                label = f"{label} [{lib[:8]}]"
-            else:
-                label = f"{label} ({_seen[label]})"
-        else:
-            _seen[label] = 1
-        new_labels.append(label)
-    df_selected["pathway"] = new_labels
+    _seen: dict[str, int] = {}
+    df_selected["pathway"] = [_numbered_label(lab, _seen) for lab in df_selected["pathway"]]
 
     # Color by direction and significance — use project palette
     # treated (blue) = anti-PDL1+Chemo ↑, control (orange) = Chemo ↑
-    clr_up_sig = COLORS["treated"]
-    clr_up_ns = COLORS["treated"] + "66"  # 40% alpha hex
-    clr_dn_sig = COLORS["control"]
-    clr_dn_ns = COLORS["control"] + "66"
     colors = []
     for _, row in df_selected.iterrows():
         sig = (
@@ -1069,13 +909,10 @@ def _tnbc_gsea_bars(ax, data: dict):
             and pd.notna(row.get(fdr_col))
             and row[fdr_col] < 0.25
         )
-        if row[nes_col] > 0:
-            colors.append(clr_up_sig if sig else clr_up_ns)
-        else:
-            colors.append(clr_dn_sig if sig else clr_dn_ns)
+        colors.append(_direction_rgba(row[nes_col] > 0, sig, 0.4))
 
     y_pos = np.arange(len(df_selected))
-    ax.barh(y_pos, df_selected[nes_col].values, color=colors, alpha=0.9,
+    ax.barh(y_pos, df_selected[nes_col].values, color=colors,
             edgecolor="white", linewidth=0.5, height=0.7)
 
     ax.axvline(0, color="black", lw=0.8)
@@ -1226,13 +1063,10 @@ def _tnbc_leading_edge(ax, data: dict, *, composite: bool = False):
     pathway_nes: dict[str, float] = {}
     pathway_fdr: dict[str, float] = {}
     all_genes: set[str] = set()
-    _seen_names: set[str] = set()
+    _seen_names: dict[str, int] = {}
     for _, row in selected.iterrows():
         pname = _clean_pathway_name(str(row[term_col]), max_len=32)
-        if pname in _seen_names:
-            lib = str(row.get("library", ""))
-            pname = f"{pname} [{lib[:8]}]" if lib else f"{pname} (2)"
-        _seen_names.add(pname)
+        pname = _numbered_label(pname, _seen_names)
         genes_str = str(row[lead_col])
         genes = [g.strip() for g in genes_str.replace(";", ",").split(",")
                  if g.strip()]
@@ -2623,38 +2457,18 @@ def _panel_tnbc_response_gsea_bars(ax, data_tnbc: dict, *, arm: str) -> None:
     df_selected = df_selected.copy()
     df_selected["pathway"] = df_selected[term_col].apply(_clean_pathway_name)
     _seen: dict[str, int] = {}
-    new_labels = []
-    for _, row in df_selected.iterrows():
-        label = row["pathway"]
-        if label in _seen:
-            _seen[label] += 1
-            lib = str(row.get("library", ""))
-            label = f"{label} [{lib[:8]}]" if lib and lib != "averaged" else f"{label} ({_seen[label]})"
-        else:
-            _seen[label] = 1
-        new_labels.append(label)
-    df_selected["pathway"] = new_labels
-
-    clr_up_sig = COLORS["treated"]
-    clr_up_ns = COLORS["treated"] + "66"
-    clr_dn_sig = COLORS["control"]
-    clr_dn_ns = COLORS["control"] + "66"
+    df_selected["pathway"] = [_numbered_label(lab, _seen) for lab in df_selected["pathway"]]
 
     def _is_sig(row):
         return (fdr_col is not None
                 and pd.notna(row.get(fdr_col))
                 and row[fdr_col] < 0.25)
 
-    colors = []
-    for _, row in df_selected.iterrows():
-        sig = _is_sig(row)
-        colors.append(
-            (clr_up_sig if sig else clr_up_ns) if row[nes_col] > 0
-            else (clr_dn_sig if sig else clr_dn_ns)
-        )
+    colors = [_direction_rgba(row[nes_col] > 0, _is_sig(row), 0.4)
+              for _, row in df_selected.iterrows()]
 
     y_pos = np.arange(len(df_selected))
-    ax.barh(y_pos, df_selected[nes_col].values, color=colors, alpha=0.9,
+    ax.barh(y_pos, df_selected[nes_col].values, color=colors,
             edgecolor="white", linewidth=0.5, height=0.7)
     ax.axvline(0, color="black", lw=0.8)
     ax.set_yticks(y_pos)

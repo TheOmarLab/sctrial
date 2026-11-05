@@ -56,6 +56,8 @@ from ..main.figure4_biological_discovery_multi_dataset import (
     _clean_pathway_name,
     _compact_legend,
     _detect_gsea_columns,
+    _direction_rgba,
+    _numbered_label,
     _prepare_bio_discovery_data,
     _shrink_colorbars,
     _swap_leading_edge_axes,
@@ -191,19 +193,10 @@ def panel_B(ax, data: dict):
     )
 
     y_pos = np.arange(len(selected))
-    colors = []
-    for _, row in selected.iterrows():
-        sig = row[p_col] < p_thresh
-        if row[beta_col] > 0:
-            colors.append(
-                COLORS["treated"] if sig else COLORS["treated"] + "55"
-            )
-        else:
-            colors.append(
-                COLORS["control"] if sig else COLORS["control"] + "55"
-            )
+    colors = [_direction_rgba(row[beta_col] > 0, row[p_col] < p_thresh, 0.35)
+              for _, row in selected.iterrows()]
 
-    ax.barh(y_pos, selected[beta_col].values, color=colors, alpha=0.9,
+    ax.barh(y_pos, selected[beta_col].values, color=colors,
             edgecolor="white", linewidth=0.3, height=0.7)
     ax.axvline(0, color="black", lw=0.8)
     ax.set_yticks(y_pos)
@@ -274,28 +267,11 @@ def panel_C(ax, data: dict):
     # Fix #4: Clean pathway names AND disambiguate duplicates
     df_selected["pathway"] = df_selected[term_col].apply(_clean_pathway_name)
     # Disambiguate duplicate display names
-    _seen = {}
-    new_labels = []
-    for idx, row in df_selected.iterrows():
-        label = row["pathway"]
-        if label in _seen:
-            _seen[label] += 1
-            lib = str(row.get("library", ""))
-            if lib and lib != "averaged":
-                label = f"{label} [{lib[:8]}]"
-            else:
-                label = f"{label} ({_seen[label]})"
-        else:
-            _seen[label] = 1
-        new_labels.append(label)
-    df_selected["pathway"] = new_labels
+    _seen: dict[str, int] = {}
+    df_selected["pathway"] = [_numbered_label(lab, _seen) for lab in df_selected["pathway"]]
 
     # Color by direction and significance — use project palette
     # treated (blue) = Responder ↑, control (orange) = Non-responder ↑
-    clr_up_sig = COLORS["treated"]
-    clr_up_ns = COLORS["treated"] + "66"  # 40% alpha hex
-    clr_dn_sig = COLORS["control"]
-    clr_dn_ns = COLORS["control"] + "66"
     colors = []
     for _, row in df_selected.iterrows():
         sig = (
@@ -303,13 +279,10 @@ def panel_C(ax, data: dict):
             and pd.notna(row.get(fdr_col))
             and row[fdr_col] < 0.25
         )
-        if row[nes_col] > 0:
-            colors.append(clr_up_sig if sig else clr_up_ns)
-        else:
-            colors.append(clr_dn_sig if sig else clr_dn_ns)
+        colors.append(_direction_rgba(row[nes_col] > 0, sig, 0.4))
 
     y_pos = np.arange(len(df_selected))
-    ax.barh(y_pos, df_selected[nes_col].values, color=colors, alpha=0.9,
+    ax.barh(y_pos, df_selected[nes_col].values, color=colors,
             edgecolor="white", linewidth=0.5, height=0.7)
 
     ax.axvline(0, color="black", lw=0.8)
@@ -437,13 +410,10 @@ def panel_D(ax, data: dict, *, composite: bool = False):
     pathway_nes: dict[str, float] = {}
     pathway_fdr: dict[str, float] = {}
     all_genes: set[str] = set()
-    _seen_names: set[str] = set()
+    _seen_names: dict[str, int] = {}
     for _, row in selected.iterrows():
         pname = _clean_pathway_name(str(row[term_col]), max_len=32)
-        if pname in _seen_names:
-            lib = str(row.get("library", ""))
-            pname = f"{pname} [{lib[:8]}]" if lib else f"{pname} (2)"
-        _seen_names.add(pname)
+        pname = _numbered_label(pname, _seen_names)
         genes_str = str(row[lead_col])
         genes = [g.strip() for g in genes_str.replace(";", ",").split(",")
                  if g.strip()]
