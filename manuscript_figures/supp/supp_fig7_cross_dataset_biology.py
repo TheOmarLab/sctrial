@@ -430,7 +430,10 @@ def panel_D(ax, data: dict, *, composite: bool = False):
     selected = selected.sort_values(nes_col, ascending=True)
 
     # Parse leading-edge genes
-    pathway_genes: dict[str, set[str]] = {}
+    # Leading-edge genes keep their ranked order (a set would make tie-breaking,
+    # and so the selected genes, depend on the per-process string hash seed).
+    pathway_genes: dict[str, list[str]] = {}
+    lead_rank: dict[str, int] = {}
     pathway_nes: dict[str, float] = {}
     pathway_fdr: dict[str, float] = {}
     all_genes: set[str] = set()
@@ -445,7 +448,9 @@ def panel_D(ax, data: dict, *, composite: bool = False):
         genes = [g.strip() for g in genes_str.replace(";", ",").split(",")
                  if g.strip()]
         genes = [g for g in genes if _is_likely_protein_coding(g)]
-        pathway_genes[pname] = set(genes)
+        pathway_genes[pname] = list(dict.fromkeys(genes))
+        for pos, g in enumerate(pathway_genes[pname]):
+            lead_rank[g] = min(lead_rank.get(g, pos), pos)
         pathway_nes[pname] = float(row[nes_col])
         if fdr_col is not None and pd.notna(row.get(fdr_col)):
             pathway_fdr[pname] = float(row[fdr_col])
@@ -467,7 +472,7 @@ def panel_D(ax, data: dict, *, composite: bool = False):
         """Count gene occurrences within a group of pathways."""
         counts: dict[str, int] = {}
         for pw in pw_list:
-            for g in pathway_genes.get(pw, set()):
+            for g in pathway_genes.get(pw, []):
                 counts[g] = counts.get(g, 0) + 1
         return counts
 
@@ -476,11 +481,12 @@ def panel_D(ax, data: dict, *, composite: bool = False):
     pos_counts = _count_genes_in_group(pos_pathways)
     neg_counts = _count_genes_in_group(neg_pathways)
 
-    # Take top genes from each direction
+    # Take top genes from each direction: most shared first, ties by best
+    # leading-edge rank, then name.
     pos_genes = sorted(pos_counts.keys(),
-                       key=lambda g: -pos_counts[g])[:half]
+                       key=lambda g: (-pos_counts[g], lead_rank[g], g))[:half]
     neg_genes = sorted(neg_counts.keys(),
-                       key=lambda g: -neg_counts[g])[:half]
+                       key=lambda g: (-neg_counts[g], lead_rank[g], g))[:half]
 
     # Merge, removing duplicates (keep order)
     seen: set[str] = set()
@@ -494,9 +500,9 @@ def panel_D(ax, data: dict, *, composite: bool = False):
     if len(shared_genes) < TOTAL_GENES:
         all_counts: dict[str, int] = {}
         for pw in pathways:
-            for g in pathway_genes.get(pw, set()):
+            for g in pathway_genes.get(pw, []):
                 all_counts[g] = all_counts.get(g, 0) + 1
-        for g in sorted(all_counts.keys(), key=lambda g: -all_counts[g]):
+        for g in sorted(all_counts.keys(), key=lambda g: (-all_counts[g], lead_rank[g], g)):
             if g not in seen:
                 shared_genes.append(g)
                 seen.add(g)
