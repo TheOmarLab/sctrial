@@ -1441,54 +1441,8 @@ def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
     group_axis_labels(ax, groups, fontsize=3.5)
 
 
-def generate():
-    """Create and save Supplementary Figure 7 panels (A–M) + composite."""
-    print("Supplementary Figure 7: Melanoma Discovery + Cross-Dataset Consistency")
-
-    # ── Load melanoma data (panels A–E) ──────────────────────────────
-    print("  Loading melanoma biological discovery data...")
-    data_mel = _prepare_bio_discovery_data()
-
-    # ── Load cross-dataset data (panels F–M) ─────────────────────────
-    data = _load_all()
-    if not data:
-        print("  No cross-dataset data available; skipping.")
-        return
-
-    # ── Individual panels ─────────────────────────────────────────────
-
-    # Panels A–E: melanoma biological discovery
-    mel_panels = [
-        ("panel_A", panel_A,      (8, 6),  dict(composite=False)),
-        ("panel_B", panel_B,    (8, 6),  {}),
-        ("panel_C", panel_C,    (8, 6),  {}),
-        ("panel_D", panel_D, (10, 7), {}),
-        ("panel_E", panel_E,  (8, 6),  {}),
-    ]
-    for panel_name, fn, size, kwargs in mel_panels:
-        fig, ax = plt.subplots(figsize=size)
-        fn(ax, data_mel, **kwargs)
-        if panel_name != "panel_D":
-            fig.tight_layout()
-        save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panels F–M: cross-dataset panels (previously A–H)
-    cross_panels = [
-        ("panel_F", _panel_gs_distributions,    (11.0, 5.8)),
-        ("panel_G", _panel_pairwise_corr,        (6.8, 6.0)),
-        ("panel_H", _panel_concordant_top_genes, (8.8, 5.8)),
-        ("panel_I", _panel_gene_dist,            (7.2, 5.8)),
-        ("panel_J", _panel_exhaustion_by_celltype,(7.8, 6.8)),
-        ("panel_K", _panel_effect_heatmap,       (8.8, 6.0)),
-        ("panel_L", _panel_paired_trajectories,  (12.0, 6.2)),
-        ("panel_M", _panel_enrichment_heatmap,   (12.0, 6.5)),
-    ]
-    for panel_name, fn, size in cross_panels:
-        fig, ax = plt.subplots(figsize=size)
-        fn(ax, data)
-        fig.tight_layout()
-        save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
-
+def _build_composite(data_mel: dict, data: dict[str, dict]) -> None:
+    """Build and save the combined A–M artboard from the prepared melanoma and cross-dataset data."""
     # ==================================================================
     # Composite artboard  (180 mm × 215 mm)
     # ==================================================================
@@ -1725,6 +1679,57 @@ def generate():
     print(f"    Saved panel: {FIGURE_NAME}")
     plt.close(fig_c)
     print("    Saved combined artboard (PNG + PDF)")
+
+
+def generate():
+    """Create and save Supplementary Figure 7 panels (A–M) + composite."""
+    print("Supplementary Figure 7: Melanoma Discovery + Cross-Dataset Consistency")
+
+    # ── Load melanoma data (panels A–E) ──────────────────────────────
+    print("  Loading melanoma biological discovery data...")
+    data_mel = _prepare_bio_discovery_data()
+
+    # ── Load cross-dataset data (panels F–M) ─────────────────────────
+    data = _load_all()
+    if not data:
+        print("  No cross-dataset data available; skipping.")
+        return
+
+    # ── Individual panels ─────────────────────────────────────────────
+
+    # Panels A–E: melanoma biological discovery
+    mel_panels = [
+        ("panel_A", panel_A,      (8, 6),  dict(composite=False)),
+        ("panel_B", panel_B,    (8, 6),  {}),
+        ("panel_C", panel_C,    (8, 6),  {}),
+        ("panel_D", panel_D, (10, 7), {}),
+        ("panel_E", panel_E,  (8, 6),  {}),
+    ]
+    for panel_name, fn, size, kwargs in mel_panels:
+        fig, ax = plt.subplots(figsize=size)
+        fn(ax, data_mel, **kwargs)
+        if panel_name != "panel_D":
+            fig.tight_layout()
+        save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panels F–M: cross-dataset panels (previously A–H)
+    cross_panels = [
+        ("panel_F", _panel_gs_distributions,    (11.0, 5.8)),
+        ("panel_G", _panel_pairwise_corr,        (6.8, 6.0)),
+        ("panel_H", _panel_concordant_top_genes, (8.8, 5.8)),
+        ("panel_I", _panel_gene_dist,            (7.2, 5.8)),
+        ("panel_J", _panel_exhaustion_by_celltype,(7.8, 6.8)),
+        ("panel_K", _panel_effect_heatmap,       (8.8, 6.0)),
+        ("panel_L", _panel_paired_trajectories,  (12.0, 6.2)),
+        ("panel_M", _panel_enrichment_heatmap,   (12.0, 6.5)),
+    ]
+    for panel_name, fn, size in cross_panels:
+        fig, ax = plt.subplots(figsize=size)
+        fn(ax, data)
+        fig.tight_layout()
+        save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
+
+    _build_composite(data_mel, data)
 
     # ── Cleanup ───────────────────────────────────────────────────────
     if "adata" in data_mel:
