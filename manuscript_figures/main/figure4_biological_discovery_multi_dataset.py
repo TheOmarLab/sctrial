@@ -3333,7 +3333,8 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
     """Panel Q (was F): Cross-dataset standardised effect-size heatmap."""
     import seaborn as sns
 
-    ax.set_title("Cross-Dataset Effect Sizes", fontsize=8, fontweight="bold", loc="center", pad=8)
+    # pad leaves room for the significance key drawn just above the cells
+    ax.set_title("Cross-Dataset Effect Sizes", fontsize=8, fontweight="bold", loc="center", pad=16)
     ax.text(-0.12, 1.05, "F", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
 

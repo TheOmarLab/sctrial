@@ -398,3 +398,17 @@ def test_layout_problems_skips_ticks_of_hidden_axes(shared):
                    for rows in problems.values() for row in rows)
     assert any("Spacer title" in row for row in problems["text overlaps"])  # titles still drawn
     plt.close(fig)
+
+
+def test_figure4_effect_heatmap_key_clears_the_title(load_figure_module, shared):
+    fig4 = load_figure_module("main/figure4_biological_discovery_multi_dataset")
+    rng = np.random.default_rng(3)
+    mat = pd.DataFrame(rng.normal(size=(6, 19)), index=[f"D{i}" for i in range(6)],
+                       columns=[f"Signature {j}" for j in range(19)])
+    stars = mat.map(lambda v: "*" if v > 1.2 else ("†" if v < -1.2 else ""))
+    fig, ax = plt.subplots(figsize=(12, 6))  # the standalone panel's size
+    fig4.panel_f_heatmap(ax, {"heatmap_matrix": mat, "heatmap_stars": stars})
+    fig.tight_layout()
+    overlaps = sys.modules["manuscript_figures._shared"].layout_problems(fig)["text overlaps"]
+    assert not [o for o in overlaps if "FDR" in o or "title" in o]
+    plt.close(fig)
