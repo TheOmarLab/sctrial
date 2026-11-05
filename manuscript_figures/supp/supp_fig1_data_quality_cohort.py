@@ -41,6 +41,7 @@ from .._shared import (
     get_stephenson,
     get_tnbc_zhang,
     get_vaccine,
+    group_axis_labels,
     harmonize_response,
     save_panel,
 )
@@ -830,7 +831,11 @@ def _panel_lorenz_gini(ax, loaded: dict):
 
 
 def _panel_completeness_detailed(ax, loaded: dict):
-    """Bar chart: fraction of participants with cells at each visit."""
+    """Bar chart: fraction of participants with cells at each visit.
+
+    Each bar is labelled with its visit; the dataset name is written once beside its group of
+    bars, and groups are separated by a small gap.
+    """
     rows = []
     for name, data in loaded.items():
         obs = data["adata"].obs
@@ -839,26 +844,17 @@ def _panel_completeness_detailed(ax, loaded: dict):
         if pid is None:
             continue
 
+        participants = sorted(obs[pid].dropna().unique())
+        n_total = len(participants)
         if vis and vis in obs.columns and obs[vis].nunique() > 1:
-            visits = _visit_sort_order(obs[vis].dropna().unique())
-            participants = sorted(obs[pid].dropna().unique())
-            for v in visits:
-                n_total = len(participants)
-                n_with = len(set(obs.loc[(obs[vis] == v) &
-                                         obs[pid].notna(), pid].unique()))
-                label = f"{name}\n{v}"
-                rows.append({
-                    "Label": label,
-                    "Fraction": n_with / n_total if n_total > 0 else 0,
-                    "Count": f"{n_with}/{n_total}",
-                })
+            for v in _visit_sort_order(obs[vis].dropna().unique()):
+                n_with = len(set(obs.loc[(obs[vis] == v) & obs[pid].notna(), pid].unique()))
+                rows.append({"Dataset": name, "Visit": str(v),
+                             "Fraction": n_with / n_total if n_total > 0 else 0,
+                             "Count": f"{n_with}/{n_total}"})
         else:
-            participants = sorted(obs[pid].dropna().unique())
-            rows.append({
-                "Label": f"{name}\nAll",
-                "Fraction": 1.0,
-                "Count": f"{len(participants)}/{len(participants)}",
-            })
+            rows.append({"Dataset": name, "Visit": "All", "Fraction": 1.0,
+                         "Count": f"{n_total}/{n_total}"})
 
     if not rows:
         ax.text(0.5, 0.5, "No data", ha="center", va="center",
@@ -866,24 +862,33 @@ def _panel_completeness_detailed(ax, loaded: dict):
         return
 
     df = pd.DataFrame(rows)
-
-    y_pos = np.arange(len(df))
+    group_gap = 0.6
+    y_pos, groups, y = [], [], 0.0
+    for name, block in df.groupby("Dataset", sort=False):
+        start = y
+        for _ in range(len(block)):
+            y_pos.append(y)
+            y += 1.0
+        groups.append((name, start, y - 1.0))
+        y += group_gap
+    y_pos = np.array(y_pos)
     colors = ["#27ae60" if f >= 0.9 else "#f39c12" if f >= 0.5 else "#e74c3c"
               for f in df["Fraction"]]
 
     ax.barh(y_pos, df["Fraction"], color=colors, height=0.6,
             edgecolor="white")
-    for i, row in df.iterrows():
-        ax.text(row["Fraction"] + 0.02, i, row["Count"],
+    for yy, (_, row) in zip(y_pos, df.iterrows()):
+        ax.text(row["Fraction"] + 0.02, yy, row["Count"],
                 va="center", ha="left", fontsize=6)
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["Label"], fontsize=4.5)
+    ax.set_yticklabels(df["Visit"])
     ax.set_xlim(0, 1.15)
+    ax.set_ylim(y_pos[-1] + 0.7, y_pos[0] - 0.7)  # first dataset on top
     ax.set_xlabel("Fraction of participants with cells")
     ax.set_title("Visit Completeness", fontweight="bold")
-    ax.invert_yaxis()
     despine(ax)
+    group_axis_labels(ax, groups, fontsize=plt.rcParams["font.size"], axis="y")
 
 
 # ======================================================================

@@ -1,8 +1,9 @@
-"""Keys sit below their axes and grouped tick labels do not collide (Figure 4, Supp Fig 7)."""
+"""Keys sit below their axes and grouped tick labels do not collide (Fig 4, Supp Figs 1 and 7)."""
 
 import importlib.util
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import matplotlib
 
@@ -79,6 +80,62 @@ def test_group_axis_labels_sit_below_the_tick_labels(shared):
         assert _extent(g, r).y1 <= tick_bottom + 0.5
     a, b = (_extent(g, r) for g in groups)
     assert a.x1 < b.x0  # the two group labels do not overlap
+    plt.close(fig)
+
+
+def test_group_axis_labels_on_the_y_axis_sit_left_of_the_tick_labels(shared):
+    fig, ax = plt.subplots(figsize=(3, 3))
+    ax.set_yticks([0, 1, 2.6, 3.6])
+    ax.set_yticklabels(["Pre", "Post", "Day 0", "Day 7"])
+    ax.set_ylim(4.3, -0.7)
+    shared.group_axis_labels(ax, [("Melanoma", 0, 1), ("Vaccine", 2.6, 3.6)], fontsize=6,
+                             axis="y")
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    tick_left = min(_extent(t, r).x0 for t in ax.get_yticklabels())
+    for g, mid in zip(ax.texts, [0.5, 3.1]):
+        assert _extent(g, r).x1 <= tick_left + 0.5
+        assert g.get_verticalalignment() == "center_baseline"  # as the tick labels are
+        anchor = g.get_transform().transform(g.get_position())[1]
+        assert anchor == pytest.approx(ax.transData.transform((0, mid))[1], abs=0.01)
+    with pytest.raises(ValueError, match="axis"):
+        shared.group_axis_labels(ax, [], fontsize=6, axis="z")
+    plt.close(fig)
+
+
+def _completeness_data():
+    visits = {"TNBC": ["Pre", "Post"], "Melanoma": ["Pre", "Post"],
+              "COVID-19": ["DFO_0-7", "DFO_8-14", "DFO_15+"], "Vaccine": ["Pre", "Post"],
+              "AML": ["Pre", "Post"], "CAR-T": ["Pre", "Post"]}
+    loaded = {}
+    for name, vs in visits.items():
+        obs = pd.DataFrame([{"pid": f"{name}-{i}", "visit": v} for i in range(4) for v in vs
+                            if not (i == 0 and v == vs[-1])])
+        loaded[name] = {"adata": SimpleNamespace(obs=obs), "pid_col": "pid", "visit_col": "visit"}
+    return loaded
+
+
+def test_supp_fig1_completeness_rows_do_not_overlap_at_composite_size(load_figure_module):
+    sf1 = load_figure_module("supp/supp_fig1_data_quality_cohort")
+    composite_rc = {"font.size": 5, "xtick.labelsize": 4.5, "ytick.labelsize": 4.5}
+    with plt.rc_context(composite_rc):
+        fig, ax = plt.subplots(figsize=(1.55, 1.55))  # panel H axes in the 180 mm composite
+        sf1._panel_completeness_detailed(ax, _completeness_data())
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    ticks = ax.get_yticklabels()
+    assert [t.get_text() for t in ticks] == ["Pre", "Post"] * 2 + ["DFO_0-7", "DFO_8-14",
+                                             "DFO_15+"] + ["Pre", "Post"] * 3
+    boxes = sorted((_extent(t, r) for t in ticks), key=lambda b: b.y0)
+    assert all(a.y1 <= b.y0 + 0.25 for a, b in zip(boxes, boxes[1:]))  # rows never overlap
+    groups = [t for t in ax.texts if "/" not in t.get_text()]
+    assert [g.get_text() for g in groups] == list(_completeness_data())
+    tick_left = min(b.x0 for b in boxes)
+    group_boxes = sorted((_extent(g, r) for g in groups), key=lambda b: b.y0)
+    assert all(b.x1 <= tick_left + 0.5 for b in group_boxes)
+    assert all(a.y1 <= b.y0 for a, b in zip(group_boxes, group_boxes[1:]))
+    counts = [t.get_text() for t in ax.texts if "/" in t.get_text()]
+    assert counts[:2] == ["4/4", "3/4"]
     plt.close(fig)
 
 

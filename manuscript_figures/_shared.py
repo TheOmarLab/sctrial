@@ -640,27 +640,41 @@ def letter_at_panel_corner(ax, letter: str, *, fontsize: float) -> None:
     fig.text(x, y, letter, fontsize=fontsize, fontweight="bold", va="top", ha="left")
 
 
-def group_axis_labels(ax, groups, *, fontsize: float, gap_pt: float = 1.5) -> None:
-    """Write one label under each group of x ticks, below the tick labels.
+def group_axis_labels(ax, groups, *, fontsize: float, gap_pt: float = 1.5,
+                      axis: str = "x") -> None:
+    """Write one label per group of ticks, outside the tick labels.
 
-    ``groups`` is a list of (label, x_start, x_end) in data coordinates. Used where each tick
-    carries only its own short label (e.g. Pre/Post) and the shared part (dataset, arm) would
-    otherwise repeat on every tick.
+    ``groups`` is a list of (label, start, end) in data coordinates along ``axis``. Used where
+    each tick carries only its own short label (Pre/Post, a visit) and the shared part (dataset,
+    arm) would otherwise repeat on every tick. On the x axis the label goes under the tick labels;
+    on the y axis it goes to their left, centred on the group.
     """
     import matplotlib.transforms as mtransforms
 
+    if axis not in ("x", "y"):
+        raise ValueError(f"axis must be 'x' or 'y', not {axis!r}")
     fig = ax.figure
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
-    axes_bottom = ax.get_window_extent(renderer).y0
-    tick_bottom = min([axes_bottom] + [t.get_window_extent(renderer).y0
-                                       for t in ax.get_xticklabels() if t.get_text()])
-    offset_pt = (axes_bottom - tick_bottom) * 72 / fig.dpi + gap_pt
-    trans = mtransforms.offset_copy(ax.get_xaxis_transform(), fig=fig, y=-offset_pt,
-                                    units="points")
-    for label, x0, x1 in groups:
-        ax.text((x0 + x1) / 2, 0.0, label, transform=trans, ha="center", va="top",
-                fontsize=fontsize, clip_on=False)
+    box = ax.get_window_extent(renderer)
+    if axis == "x":
+        edge = min([box.y0] + [t.get_window_extent(renderer).y0
+                               for t in ax.get_xticklabels() if t.get_text()])
+        offset_pt = (box.y0 - edge) * 72 / fig.dpi + gap_pt
+        trans = mtransforms.offset_copy(ax.get_xaxis_transform(), fig=fig, y=-offset_pt,
+                                        units="points")
+        for label, a, b in groups:
+            ax.text((a + b) / 2, 0.0, label, transform=trans, ha="center", va="top",
+                    fontsize=fontsize, clip_on=False)
+    else:
+        edge = min([box.x0] + [t.get_window_extent(renderer).x0
+                               for t in ax.get_yticklabels() if t.get_text()])
+        offset_pt = (box.x0 - edge) * 72 / fig.dpi + gap_pt
+        trans = mtransforms.offset_copy(ax.get_yaxis_transform(), fig=fig, x=-offset_pt,
+                                        units="points")
+        for label, a, b in groups:
+            ax.text(0.0, (a + b) / 2, label, transform=trans, ha="right", va="center_baseline",
+                    fontsize=fontsize, clip_on=False)
 
 
 def plot_cell_vs_participant_beta(ax, res_cell, res_part, *, title: str,
