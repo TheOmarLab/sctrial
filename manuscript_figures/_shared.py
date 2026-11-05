@@ -620,6 +620,26 @@ def key_below_axes(ax, *, ncol: int, fontsize: float | None = None, gap_pt: floa
     )
 
 
+def letter_at_panel_corner(ax, letter: str, *, fontsize: float) -> None:
+    """Put a bold panel letter at the left edge of the panel's own labels, level with its title.
+
+    For panels whose tick labels or title reach well left of the axes (heatmaps with long row
+    names, narrow panels with long titles), where a fixed axes-fraction offset lands on a label.
+    """
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    lefts = [t.get_window_extent(renderer).x0 for t in ax.get_yticklabels() if t.get_text()]
+    lefts += [ax.get_window_extent(renderer).x0]
+    if ax.get_title():
+        lefts.append(ax.title.get_window_extent(renderer).x0)
+        top = ax.title.get_window_extent(renderer).y1
+    else:
+        top = ax.get_window_extent(renderer).y1
+    x, y = fig.transFigure.inverted().transform((min(lefts), top))
+    fig.text(x, y, letter, fontsize=fontsize, fontweight="bold", va="top", ha="left")
+
+
 def group_axis_labels(ax, groups, *, fontsize: float, gap_pt: float = 1.5) -> None:
     """Write one label under each group of x ticks, below the tick labels.
 

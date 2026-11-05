@@ -51,6 +51,7 @@ from .._shared import (
     group_axis_labels,
     harmonize_response,
     key_below_axes,
+    letter_at_panel_corner,
     save_panel,
     sig_display,
 )
@@ -1674,7 +1675,7 @@ def generate():
 
     # Keys below their axes, measured now that the fonts are final.
     for ax_key, ncol in [(ax_b, 2), (ax_c, 2), (ax_d, 3), (ax_f, 6), (ax_h, 2), (ax_i, 3),
-                         (ax_j, 3)]:
+                         (ax_j, 6)]:
         key_below_axes(ax_key, ncol=ncol, fontsize=3.5)
 
     # Bold panel labels A–M
@@ -1688,8 +1689,7 @@ def generate():
     ax_c.text(-0.10, 1.10, "C", transform=ax_c.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     # Row 2: D E  (D left and up; E up)
-    ax_d.text(-0.30, 1.10, "D", transform=ax_d.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    letter_at_panel_corner(ax_d, "D", fontsize=_lbl_fs)
     ax_e.text(-0.24, 1.10, "E", transform=ax_e.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     # Row 4: F G  (unchanged)

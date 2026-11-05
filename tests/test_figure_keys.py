@@ -118,3 +118,20 @@ def test_supp_fig7_enrichment_heatmap_keeps_groups_contiguous(load_figure_module
     assert groups == ["Melanoma (DiD)\nNon-responder", "Melanoma (DiD)\nResponder",
                       "AML (Δ)\nTreatment"]
     plt.close(fig)
+
+
+def test_letter_at_panel_corner_clears_long_row_labels(shared):
+    fig, ax = plt.subplots(figsize=(4, 3))
+    ax.imshow(np.zeros((3, 3)))
+    ax.set_yticks(range(3))
+    ax.set_yticklabels(["A very long pathway name", "Short", "Another long pathway name"])
+    ax.set_title("Leading-Edge Gene Overlap")
+    shared.letter_at_panel_corner(ax, "D", fontsize=9)
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    letter = _extent(fig.texts[-1], r)
+    labels = [_extent(t, r) for t in ax.get_yticklabels()]
+    assert letter.x0 <= min(b.x0 for b in labels) + 0.5  # at the panel's left edge
+    assert letter.y1 == pytest.approx(_extent(ax.title, r).y1, abs=1.0)  # level with the title
+    assert all(letter.y0 >= b.y1 - 0.5 or letter.x1 <= b.x0 for b in labels)  # not on a label
+    plt.close(fig)

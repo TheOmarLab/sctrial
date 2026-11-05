@@ -72,6 +72,7 @@ from .._shared import (
     hedges_g,
     key_below_axes,
     label_points,
+    letter_at_panel_corner,
     load_or_run_gsea_cross_sectional,
     load_or_run_gsea_did,
     load_or_run_gsea_within_arm,
@@ -3766,15 +3767,8 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     # Row 8: M N
     ax_l.text(_x2, _y2, "M", transform=ax_l.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # N's pathway names and title reach far left of its narrow heatmap, so the letter is
-    # anchored to the leftmost of them, level with the top of the title.
-    fig_c.canvas.draw()
-    _r = fig_c.canvas.get_renderer()
-    _n_left = min([t.get_window_extent(_r).x0 for t in ax_m.get_yticklabels() if t.get_text()]
-                  + [ax_m.title.get_window_extent(_r).x0])
-    _n_top = ax_m.title.get_window_extent(_r).y1
-    _n_x, _n_y = fig_c.transFigure.inverted().transform((_n_left, _n_top))
-    fig_c.text(_n_x, _n_y, "N", fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # N's pathway names and title reach far left of its narrow heatmap.
+    letter_at_panel_corner(ax_m, "N", fontsize=_lbl_fs)
 
     plt.rcParams.update(_prev_rc)
 
