@@ -11,6 +11,7 @@ __all__ = [
     "add_log1p_cpm_layer",
     "flag_artifact_genes",
     "is_artifact_gene",
+    "is_ribosomal_gene",
     "drop_artifact_genes",
     "exclude_artifacts_from_hvg",
     "add_qc_class_metrics",
@@ -177,6 +178,14 @@ def is_artifact_gene(name: str) -> bool:
     genes are NOT artifacts. Anchored so prefix-sharing signaling genes are kept."""
     g = str(name)
     return bool(_HB_RE.match(g) or _RIBO_RE.match(g) or _HIST_RE.match(g))
+
+
+def is_ribosomal_gene(name: str) -> bool:
+    """True if *name* is a cytosolic ribosomal protein gene (RPS*, RPL*, RPLP*, RPSA, FAU,
+    UBA52). Anchored, so the ribosomal protein S6 kinases (RPS6KA1 and relatives), read-through
+    transcripts (RPS10-NUDT3), antisense RNAs (RPL34-AS1) and processed pseudogenes (RPL21P28)
+    are not ribosomal protein genes."""
+    return bool(_RIBO_RE.match(str(name)))
 
 
 def flag_artifact_genes(adata: AnnData, *, inplace: bool = True) -> AnnData:

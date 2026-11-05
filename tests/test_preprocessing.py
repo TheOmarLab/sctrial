@@ -351,3 +351,15 @@ class TestSparseFormats:
         libsize = X.sum(axis=1, keepdims=True)
         expected = np.log1p(X / libsize * 1e6)
         np.testing.assert_allclose(result, expected, rtol=1e-10)
+
+
+@pytest.mark.parametrize("name", ["RPL13A", "RPS4X", "RPS4Y1", "RPLP0", "RPSA", "FAU", "UBA52",
+                                  "RPL22L1", "rpl13a"])
+def test_is_ribosomal_gene_matches_ribosomal_proteins(name):
+    assert st.is_ribosomal_gene(name)
+
+
+@pytest.mark.parametrize("name", ["RPS6KA1", "RPS6KB2", "RPS6KL1", "RPS19BP1", "RPL34-AS1",
+                                  "RPS10-NUDT3", "RPL21P28", "RPL13AP17", "TP53"])
+def test_is_ribosomal_gene_rejects_prefix_sharing_genes(name):
+    assert not st.is_ribosomal_gene(name)

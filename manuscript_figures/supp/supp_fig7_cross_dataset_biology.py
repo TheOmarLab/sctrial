@@ -34,6 +34,7 @@ import pandas as pd
 import seaborn as sns
 from scipy import stats as sp_stats
 
+from .._gene_types import describe_resolution, is_display_gene
 from .._shared import (
     COLORS,
     SUPP_OUTPUT,
@@ -55,7 +56,6 @@ from ..main.figure4_biological_discovery_multi_dataset import (
     _clean_pathway_name,
     _compact_legend,
     _detect_gsea_columns,
-    _is_likely_protein_coding,
     _prepare_bio_discovery_data,
     _shrink_colorbars,
     _swap_leading_edge_axes,
@@ -176,8 +176,8 @@ def panel_B(ax, data: dict):
 
     df = df.dropna(subset=[beta_col, p_col])
 
-    # Filter to protein-coding genes
-    df = df[df["feature"].apply(_is_likely_protein_coding)]
+    print(describe_resolution(df["feature"], "Melanoma waterfall gene types"))
+    df = df[df["feature"].apply(is_display_gene)]
 
     p_thresh = 0.05
     n_per_side = 15
@@ -447,7 +447,7 @@ def panel_D(ax, data: dict, *, composite: bool = False):
         genes_str = str(row[lead_col])
         genes = [g.strip() for g in genes_str.replace(";", ",").split(",")
                  if g.strip()]
-        genes = [g for g in genes if _is_likely_protein_coding(g)]
+        genes = [g for g in genes if is_display_gene(g)]
         pathway_genes[pname] = list(dict.fromkeys(genes))
         for pos, g in enumerate(pathway_genes[pname]):
             lead_rank[g] = min(lead_rank.get(g, pos), pos)
@@ -687,8 +687,7 @@ def panel_E(ax, data: dict):
     beta_col = "beta_DiD"
     df = df.dropna(subset=[beta_col])
 
-    # Restrict to protein-coding genes (skip RNU*, RNA5SP*, lncRNAs, etc.)
-    df = df[df["feature"].apply(_is_likely_protein_coding)]
+    df = df[df["feature"].apply(is_display_gene)]
 
     # Select top 15 genes by |β_DiD| (balanced: top 8 pos + top 7 neg)
     n_per_dir = 8

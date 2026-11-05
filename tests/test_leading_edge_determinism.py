@@ -32,6 +32,7 @@ SCRIPT = textwrap.dedent("""
     pkg = rel.split("/")[0]
     load(f"manuscript_figures.{pkg}", f"manuscript_figures/{pkg}/__init__.py", f"manuscript_figures/{pkg}")
     mod = load("manuscript_figures." + rel.replace("/", "."), f"manuscript_figures/{rel}.py")
+    mod.is_display_gene = lambda gene: True  # synthetic gene names; this test is about ordering
     # Many genes shared by exactly the same number of pathways: the top-10 cut falls in a tie.
     genes_up = [f"UP{i:02d}" for i in range(30)]
     genes_dn = [f"DN{i:02d}" for i in range(30)]

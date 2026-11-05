@@ -49,6 +49,7 @@ from statsmodels.stats.multitest import multipletests
 
 from sctrial import abundance_did
 
+from .._gene_types import describe_resolution, is_display_gene
 from .._shared import (
     COLORS,
     GSEA_OUTPUT,
@@ -87,42 +88,6 @@ FIGURE_NAME = "Figure4_biological_discovery_multi_dataset"
 
 # ── Cache directory for expensive computations ─────────────────────────
 _CACHE_DIR = Path(__file__).resolve().parent.parent / "_cache"
-
-# Pseudogene / non-coding RNA / mitochondrial / ribosomal patterns to
-# EXCLUDE from volcano labels — only protein-coding genes get labelled.
-_NONCODING_PATTERN = re.compile(
-    r"^(RNU\d|RNA5SP|RNY\d|RN7S[LK]|SNOR[AD]|MIR\d|LINC\d|LOC\d|"
-    r"AC\d{6}|AL\d{6}|AP\d{6}|"
-    r"RP\d+-|RP[SL]\d+P|CT[ABCD]-|XXbac-|KB-|LA16c-|GS\d-|"
-    r"HIGD1AP|MTCO\d|RMVSL|BCRP|NAMA$|SLMO|"
-    r"IGH[VDJ]|IGKV|IGLV|IGKJ|IGLJ|"  # Ig V/D/J segments (NOT constant regions)
-    r"TRB[VDJ]|TRA[VDJ]|TRG[VDJ]|TRD[VDJ]|"  # TCR V/D/J segments
-    r"OR\d+[A-Z]|VN\d+R|"  # olfactory/vomeronasal receptors
-    r"MT-|"  # mitochondrial genes
-    r"RPS\d|RPL\d|"  # ribosomal protein genes
-    r"HCG\d|SPRR\d|"  # HLA complex group pseudogenes, small proline-rich
-    r"HLA-|"  # HLA genes (highly polymorphic, not discovery-informative)
-    r"[A-Z]{1,2}\d{2}NC\d|"  # contig-derived lncRNAs (e.g., LL22NC03-75A1.9)
-    r"[A-Z]\d{5}\.\d)",  # Ensembl-style identifiers (e.g., Z95704.4)
-    re.IGNORECASE,
-)
-# Suffix patterns for processed pseudogenes (e.g. PRPS1P1, RPS2P1, HCG17)
-_PSEUDOGENE_SUFFIX = re.compile(r"P\d+$", re.IGNORECASE)
-
-
-def _is_likely_protein_coding(gene: str) -> bool:
-    """Heuristic: return True if gene name looks protein-coding."""
-    if _NONCODING_PATTERN.match(gene) is not None:
-        return False
-    # Catch processed pseudogenes ending with P + digits (e.g., PRPS1P1, RPS2P1)
-    # but exclude genuine genes like TP53, APC, etc. (short suffix, common genes)
-    if _PSEUDOGENE_SUFFIX.search(gene) and len(gene) > 4:
-        # Only flag if the P-digit suffix is preceded by another digit
-        # (e.g., PRPS1P1 → "1P1", but not APC → no match)
-        base = _PSEUDOGENE_SUFFIX.sub("", gene)
-        if base and base[-1].isdigit():
-            return False
-    return True
 
 
 # ======================================================================
@@ -954,8 +919,8 @@ def _tnbc_waterfall(ax, data: dict):
 
     df = df.dropna(subset=[beta_col, p_col])
 
-    # Filter to protein-coding genes
-    df = df[df["feature"].apply(_is_likely_protein_coding)]
+    print(describe_resolution(df["feature"], "TNBC waterfall gene types"))
+    df = df[df["feature"].apply(is_display_gene)]
 
     p_thresh = 0.05
     n_per_side = 15
@@ -1271,7 +1236,7 @@ def _tnbc_leading_edge(ax, data: dict, *, composite: bool = False):
         genes_str = str(row[lead_col])
         genes = [g.strip() for g in genes_str.replace(";", ",").split(",")
                  if g.strip()]
-        genes = [g for g in genes if _is_likely_protein_coding(g)]
+        genes = [g for g in genes if is_display_gene(g)]
         pathway_genes[pname] = list(dict.fromkeys(genes))
         for pos, g in enumerate(pathway_genes[pname]):
             lead_rank[g] = min(lead_rank.get(g, pos), pos)
@@ -1656,7 +1621,7 @@ def gene_volcano(ax, gene_results, *, title: str, up_label: str, down_label: str
         if len(sub) == 0:
             continue
         # Restrict to protein-coding genes only
-        sub = sub[sub["feature"].apply(_is_likely_protein_coding)]
+        sub = sub[sub["feature"].apply(is_display_gene)]
         if len(sub) == 0:
             continue
 
@@ -2038,7 +2003,7 @@ def _panel_tnbc_celltype_hm(ax, data_tnbc: dict):
     df = gene_results.copy()
     beta_col = "beta_DiD"  # renamed from beta_time
     df = df.dropna(subset=[beta_col])
-    df = df[df["feature"].apply(_is_likely_protein_coding)]
+    df = df[df["feature"].apply(is_display_gene)]
 
     n_per_dir = 8
     df_pos = df[df[beta_col] > 0].nlargest(n_per_dir, beta_col)
@@ -2275,7 +2240,7 @@ def _panel_tnbc_response_celltype_hm(ax, data_tnbc: dict, *, arm: str) -> None:
     df = gene_results.copy()
     beta_col = "beta_DiD"
     df = df.dropna(subset=[beta_col])
-    df = df[df["feature"].apply(_is_likely_protein_coding)]
+    df = df[df["feature"].apply(is_display_gene)]
     n_per_dir = 8
     df_pos = df[df[beta_col] > 0].nlargest(n_per_dir, beta_col)
     df_neg = df[df[beta_col] < 0].nsmallest(n_per_dir - 1, beta_col)

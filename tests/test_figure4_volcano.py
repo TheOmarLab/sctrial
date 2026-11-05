@@ -33,8 +33,16 @@ def _genes():
     return pd.concat([df, extra], ignore_index=True)
 
 
-def test_most_significant_genes_are_labelled_and_near_twins_are_not(load_figure_module):
+def _volcano_module(load_figure_module, monkeypatch):
+    """Figure 4 module with gene typing switched off: these tests are about label layout."""
     f4 = load_figure_module("main/figure4_biological_discovery_multi_dataset")
+    monkeypatch.setattr(f4, "is_display_gene", lambda gene: True)
+    return f4
+
+
+def test_most_significant_genes_are_labelled_and_near_twins_are_not(load_figure_module,
+                                                                     monkeypatch):
+    f4 = _volcano_module(load_figure_module, monkeypatch)
     fig, ax = plt.subplots(figsize=(8, 6))
     f4._tnbc_volcano(ax, {"gene_results": _genes()}, composite=False)
     labels = {t.get_text() for t in ax.texts}
@@ -43,8 +51,9 @@ def test_most_significant_genes_are_labelled_and_near_twins_are_not(load_figure_
     plt.close(fig)
 
 
-def test_composite_volcano_keeps_significant_labels_inside_the_frame(load_figure_module):
-    f4 = load_figure_module("main/figure4_biological_discovery_multi_dataset")
+def test_composite_volcano_keeps_significant_labels_inside_the_frame(load_figure_module,
+                                                                     monkeypatch):
+    f4 = _volcano_module(load_figure_module, monkeypatch)
     fig, ax = plt.subplots(figsize=(2.2, 1.8))
     f4._tnbc_volcano(ax, {"gene_results": _genes()}, composite=True)
     fig.canvas.draw()
@@ -58,4 +67,21 @@ def test_composite_volcano_keeps_significant_labels_inside_the_frame(load_figure
         assert frame.y0 <= bb.y0 and bb.y1 <= frame.y1
     key = ax.get_legend().get_window_extent(renderer)
     assert key.y1 < frame.y0
+    plt.close(fig)
+
+
+def test_volcano_labels_only_protein_coding_genes(load_figure_module):
+    """With the real NCBI gene-type filter, pseudogenes and ncRNAs are never labelled."""
+    f4 = load_figure_module("main/figure4_biological_discovery_multi_dataset")
+    df = pd.DataFrame({
+        "feature": ["CDKN2AIPNLP3", "MIRLET7G", "DKFZP434A062", "KRT13", "SMIM22", "IGLC2",
+                    "RPL13A", "HLA-DRA"] + [f"FILLER{i}" for i in range(200)],
+        "beta_DiD": [2.1, -1.9, -2.0, 2.0, -2.0, 1.8, 1.7, 1.6] + [0.1] * 200,
+        "p_DiD": [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008] + [0.9] * 200,
+    })
+    fig, ax = plt.subplots(figsize=(8, 6))
+    f4._tnbc_volcano(ax, {"gene_results": df}, composite=False)
+    labels = {t.get_text() for t in ax.texts}
+    assert {"KRT13", "SMIM22", "IGLC2"} <= labels
+    assert not labels & {"CDKN2AIPNLP3", "MIRLET7G", "DKFZP434A062", "RPL13A", "HLA-DRA"}
     plt.close(fig)

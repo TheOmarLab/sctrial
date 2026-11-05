@@ -46,6 +46,7 @@ from .preprocessing import (
     exclude_artifacts_from_hvg,
     flag_artifact_genes,
     is_artifact_gene,
+    is_ribosomal_gene,
 )
 from .scoring import ScoreMethod, score_gene_sets, score_gene_sets_aucell
 from .stats._extract import extract_gene_vector
@@ -143,6 +144,7 @@ __all__ = [
     "exclude_artifacts_from_hvg",
     "flag_artifact_genes",
     "is_artifact_gene",
+    "is_ribosomal_gene",
     "score_gene_sets",
     "score_gene_sets_aucell",
     "ScoreMethod",
