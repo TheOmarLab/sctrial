@@ -43,6 +43,7 @@ from .._shared import (
     get_vaccine,
     group_axis_labels,
     harmonize_response,
+    report_layout_problems,
     save_panel,
 )
 
@@ -1329,6 +1330,7 @@ def generate():
 
     plt.rcParams.update(_prev_rc)
 
+    report_layout_problems(fig_c, FIGURE_NAME)
     save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
     pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
     fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",

@@ -587,12 +587,14 @@ def label_points(ax, names, x, y, s, *, fontsize: float, obstacles=None,
     return [names[i] for i in keep]
 
 
-def key_below_axes(ax, *, ncol: int, fontsize: float | None = None, gap_pt: float = 2.0):
+def key_below_axes(ax, *, ncol: int, fontsize: float | None = None, gap_pt: float = 2.0,
+                   clear_of=None):
     """Move the axis legend just below the axis' own text (x tick labels and x label).
 
     The offset is measured after a draw, in points, so the key clears the axis text at any
-    panel size and never sits on data. Call it once the panel's fonts are final. Returns the
-    new legend, or None when the axis has no legend.
+    panel size and never sits on data. ``clear_of`` (axes in the same row) puts the key below
+    the lowest x-axis text of all of them, so a row of keys shares one baseline. Call it once
+    the panel's fonts are final. Returns the new legend, or None when the axis has no legend.
     """
     import matplotlib.transforms as mtransforms
 
@@ -608,7 +610,8 @@ def key_below_axes(ax, *, ncol: int, fontsize: float | None = None, gap_pt: floa
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
     axes_bottom = ax.get_window_extent(renderer).y0
-    text_bottom = min(axes_bottom, ax.xaxis.get_tightbbox(renderer).y0)
+    text_bottom = min([axes_bottom] + [a.xaxis.get_tightbbox(renderer).y0
+                                       for a in (clear_of or [ax])])
     offset_pt = (axes_bottom - text_bottom) * 72 / fig.dpi + gap_pt
     return ax.legend(
         handles=handles, labels=labels, loc="upper center", bbox_to_anchor=(0.5, 0.0),
@@ -620,7 +623,7 @@ def key_below_axes(ax, *, ncol: int, fontsize: float | None = None, gap_pt: floa
     )
 
 
-def letter_at_panel_corner(ax, letter: str, *, fontsize: float) -> None:
+def letter_at_panel_corner(ax, letter: str, *, fontsize: float, top: float | None = None) -> None:
     """Put a bold panel letter at the left edge of the panel's own labels, level with its title.
 
     For panels whose tick labels or title reach well left of the axes (heatmaps with long row
@@ -629,13 +632,14 @@ def letter_at_panel_corner(ax, letter: str, *, fontsize: float) -> None:
     fig = ax.figure
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
-    lefts = [t.get_window_extent(renderer).x0 for t in ax.get_yticklabels() if t.get_text()]
+    own = ax.get_yticklabels() + [ax.yaxis.label] + list(ax.texts)  # row names, y label, groups
+    lefts = [t.get_window_extent(renderer).x0 for t in own if t.get_visible() and t.get_text()]
     lefts += [ax.get_window_extent(renderer).x0]
     if ax.get_title():
         lefts.append(ax.title.get_window_extent(renderer).x0)
-        top = ax.title.get_window_extent(renderer).y1
-    else:
-        top = ax.get_window_extent(renderer).y1
+    if top is None:  # display y of the letter's top; default level with the title
+        top = (ax.title.get_window_extent(renderer).y1 if ax.get_title()
+               else ax.get_window_extent(renderer).y1)
     x, y = fig.transFigure.inverted().transform((min(lefts), top))
     fig.text(x, y, letter, fontsize=fontsize, fontweight="bold", va="top", ha="left")
 
@@ -675,6 +679,167 @@ def group_axis_labels(ax, groups, *, fontsize: float, gap_pt: float = 1.5,
         for label, a, b in groups:
             ax.text(0.0, (a + b) / 2, label, transform=trans, ha="right", va="center_baseline",
                     fontsize=fontsize, clip_on=False)
+
+
+def _oriented_box(text, renderer):
+    """Centre, half-extents and angle (radians) of a text's rotated rectangle, in display px.
+
+    get_window_extent() gives the axis-aligned box of the rotated text, which for a 30 degree
+    label is far larger than the glyphs; the rotated rectangle has the unrotated size and the
+    same centre.
+    """
+    import numpy as np
+
+    box = text.get_window_extent(renderer)
+    angle = np.deg2rad(text.get_rotation() % 180)
+    if np.isclose(angle, 0) or np.isclose(angle, np.pi / 2):
+        w, h = box.width, box.height
+        angle = 0.0
+    else:
+        rotation = text.get_rotation()
+        text.set_rotation(0)
+        flat = text.get_window_extent(renderer)
+        text.set_rotation(rotation)
+        w, h = flat.width, flat.height
+    return np.array([(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2]), np.array([w, h]) / 2, angle
+
+
+def _box_corners(centre, half, angle):
+    import numpy as np
+
+    c, s = np.cos(angle), np.sin(angle)
+    axes = np.array([[c, s], [-s, c]])
+    signs = np.array([[1, 1], [1, -1], [-1, -1], [-1, 1]])
+    return centre + (signs * half) @ axes, axes
+
+
+def _penetration(a, b) -> float:
+    """Smallest overlap of two convex boxes over their separating axes (<= 0: apart)."""
+    import numpy as np
+
+    (ca, axes_a), (cb, axes_b) = a, b
+    depth = np.inf
+    for axis in np.vstack([axes_a, axes_b]):
+        pa, pb = ca @ axis, cb @ axis
+        depth = min(depth, min(pa.max(), pb.max()) - max(pa.min(), pb.min()))
+        if depth <= 0:
+            return depth
+    return depth
+
+
+def _layout_texts(fig, renderer):
+    """Every visible, non-empty text in the figure as (owner axes or None, description, text)."""
+    items = []
+
+    def add(owner, kind, text):
+        if text is not None and text.get_visible() and text.get_text().strip():
+            items.append((owner, kind, text))
+
+    for ax in fig.axes:
+        if not ax.get_visible():
+            continue
+        for title in (ax.title, ax._left_title, ax._right_title):
+            add(ax, "title", title)
+        add(ax, "x label", ax.xaxis.label)
+        add(ax, "y label", ax.yaxis.label)
+        for axis, name, bound in ((ax.xaxis, "x tick", ax.get_xbound()),
+                                  (ax.yaxis, "y tick", ax.get_ybound())):
+            lo, hi = min(bound), max(bound)
+            pad = 1e-9 * max(1.0, abs(hi - lo))
+            for tick in axis.get_major_ticks():
+                if lo - pad <= tick.get_loc() <= hi + pad:
+                    add(ax, name, tick.label1)
+                    add(ax, name, tick.label2)
+        for text in ax.texts:
+            add(ax, "text", text)
+    for text in fig.texts:
+        add(None, "figure text", text)
+    return items
+
+
+def layout_problems(fig, *, min_overlap_pt: float = 0.5) -> dict[str, list[str]]:
+    """Text that collides with other text, lands on another panel, or leaves the canvas.
+
+    Checks every visible title, axis label, in-view tick label, annotation, figure-level text
+    (panel letters) and legend. Rotated labels are tested as rotated rectangles. A legend counts
+    as one box. Returns {"text overlaps", "text on another axes", "outside canvas"}, each a list of
+    readable descriptions; overlaps smaller than ``min_overlap_pt`` are ignored.
+    """
+    import numpy as np
+
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    tol = min_overlap_pt * fig.dpi / 72
+    entries = []  # (owner axes, description, corners, aabb)
+
+    def panel_name(ax):
+        if ax is None:
+            return "figure"
+        name = ax.get_title() or ax.get_title(loc="left") or ax.yaxis.label.get_text() or "untitled"
+        return " ".join(name.split())
+
+    for owner, kind, text in _layout_texts(fig, renderer):
+        centre, half, angle = _oriented_box(text, renderer)
+        corners, axes = _box_corners(centre, half, angle)
+        label = f"[{panel_name(owner)[:40]}] {kind} {' '.join(text.get_text().split())[:40]!r}"
+        entries.append((owner, label, (corners, axes), text.get_window_extent(renderer)))
+    legends = [(None, lg) for lg in fig.legends] + [(ax, ax.get_legend()) for ax in fig.axes]
+    for ax, legend in legends:
+        if legend is not None and legend.get_visible():
+            box = legend.get_window_extent(renderer)
+            centre = np.array([(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2])
+            corners, axes = _box_corners(centre, np.array([box.width, box.height]) / 2, 0.0)
+            entries.append((ax, f"[{panel_name(ax)[:40]}] legend", (corners, axes), box))
+
+    problems: dict[str, list[str]] = {"text overlaps": [], "text on another axes": [],
+                                      "outside canvas": []}
+    aabbs = np.array([[b.x0, b.y0, b.x1, b.y1] for *_, b in entries])
+    for i in range(len(entries)):
+        near = np.nonzero((aabbs[i + 1:, 0] < aabbs[i, 2]) & (aabbs[i + 1:, 2] > aabbs[i, 0])
+                          & (aabbs[i + 1:, 1] < aabbs[i, 3]) & (aabbs[i + 1:, 3] > aabbs[i, 1]))[0]
+        for j in near + i + 1:
+            depth = _penetration(entries[i][2], entries[j][2])
+            if depth > tol:
+                problems["text overlaps"].append(
+                    f"{entries[i][1]} x {entries[j][1]} ({depth * 72 / fig.dpi:.1f} pt)")
+
+    canvas = fig.bbox
+    areas = []
+    for ax in fig.axes:
+        if ax.get_visible() and ax.axison:
+            a = ax.get_window_extent(renderer)
+            areas.append((ax, a, _box_corners(np.array([(a.x0 + a.x1) / 2, (a.y0 + a.y1) / 2]),
+                                              np.array([a.width, a.height]) / 2, 0.0)))
+    for owner, label, box, aabb in entries:
+        corners = box[0]
+        beyond = max(canvas.x0 - corners[:, 0].min(), corners[:, 0].max() - canvas.x1,
+                     canvas.y0 - corners[:, 1].min(), corners[:, 1].max() - canvas.y1)
+        if beyond > tol:
+            problems["outside canvas"].append(f"{label} ({beyond * 72 / fig.dpi:.1f} pt)")
+        own = owner.get_window_extent(renderer) if owner is not None else None
+        for ax, area, ax_box in areas:
+            if ax is owner or (own is not None and np.allclose(own.extents, area.extents, atol=1)):
+                continue  # its own axes, or a twin sharing the same area
+            if aabb.x1 <= area.x0 or aabb.x0 >= area.x1 or aabb.y1 <= area.y0 or aabb.y0 >= area.y1:
+                continue
+            depth = _penetration(box, ax_box)
+            if depth > tol:
+                problems["text on another axes"].append(
+                    f"{label} on [{panel_name(ax)[:40]}] ({depth * 72 / fig.dpi:.1f} pt)")
+    return problems
+
+
+def report_layout_problems(fig, name: str, *, limit: int = 40) -> int:
+    """Print layout_problems() for a finished figure; returns the number of problems."""
+    problems = layout_problems(fig)
+    total = sum(len(v) for v in problems.values())
+    print(f"    Layout check {name}: " + ", ".join(f"{len(v)} {k}" for k, v in problems.items()))
+    for kind, rows in problems.items():
+        for row in rows[:limit]:
+            print(f"      {kind}: {row}")
+        if len(rows) > limit:
+            print(f"      {kind}: ... {len(rows) - limit} more")
+    return total
 
 
 def plot_cell_vs_participant_beta(ax, res_cell, res_part, *, title: str,

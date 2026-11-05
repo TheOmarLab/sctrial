@@ -33,6 +33,7 @@ import gc
 import hashlib
 import pickle  # noqa: S403 — local dev cache of our own DataFrames
 import re
+import textwrap
 import traceback
 import warnings
 from pathlib import Path
@@ -76,6 +77,7 @@ from .._shared import (
     load_or_run_gsea_cross_sectional,
     load_or_run_gsea_did,
     load_or_run_gsea_within_arm,
+    report_layout_problems,
     save_panel,
     score_signatures,
     sig_display,
@@ -2576,29 +2578,46 @@ def _forest_plot(
     color_neg: str = COLORS["control"],
     legend_pos_label: str = "Positive",
     legend_neg_label: str = "Negative",
+    order: list[str] | None = None,
 ) -> None:
-    """Draw a horizontal forest plot on *ax*."""
-    df = df.sort_values(effect_col, ascending=True).reset_index(drop=True)
-    n_rows = len(df)
+    """Draw a horizontal forest plot on *ax*.
+
+    Rows are sorted by effect (largest at the top) unless ``order`` gives the row labels from
+    top to bottom; then every forest drawn with the same ``order`` has the same rows, so a row
+    of forests can share one set of row names. Labels in ``order`` absent from ``df`` stay empty.
+    """
+    if order is None:
+        df = df.sort_values(effect_col, ascending=True).reset_index(drop=True)
+        y_of = pd.Series(np.arange(len(df)), index=df.index)
+        tick_labels = list(df[label_col].values)
+    else:
+        rows = {label: len(order) - 1 - k for k, label in enumerate(order)}
+        df = df[df[label_col].isin(rows)].reset_index(drop=True)
+        y_of = df[label_col].map(rows)
+        tick_labels = list(reversed(order))
+    n_rows = len(tick_labels)
 
     for i, row in df.iterrows():
         es = row[effect_col]
         lo, hi = row[ci_lo_col], row[ci_hi_col]
         color = color_pos if es > 0 else color_neg
+        y = y_of[i]
 
         lw = 1.2
         ms = 2.2
 
-        ax.plot([lo, hi], [i, i], color=color, lw=lw, solid_capstyle="round")
+        ax.plot([lo, hi], [y, y], color=color, lw=lw, solid_capstyle="round")
         ax.plot(
-            es, i, "o", color=color, markersize=ms,
+            es, y, "o", color=color, markersize=ms,
             markeredgecolor="white", markeredgewidth=0.8,
         )
 
     # Set axis limits *before* placing stars so we know the data range
     ax.axvline(0, color="black", ls="-", lw=0.8, alpha=0.5)
     ax.set_yticks(np.arange(n_rows))
-    ax.set_yticklabels(df[label_col].values, fontsize=8)
+    ax.set_yticklabels(tick_labels, fontsize=8)
+    if order is not None:
+        ax.set_ylim(-0.6, n_rows - 0.4)
     ax.set_xlabel(xlabel, fontsize=9)
     ax.tick_params(axis="x", labelsize=7)
 
@@ -2616,7 +2635,7 @@ def _forest_plot(
                     hi = row[ci_hi_col]
                     es = row[effect_col]
                     x_txt = max(hi, es) + 0.03 * x_range
-                    ax.text(x_txt, i, star, fontsize=8, va="center",
+                    ax.text(x_txt, y_of[i], star, fontsize=8, va="center",
                             fontweight="bold", color=(
                                 color_pos if es > 0 else color_neg))
 
@@ -3141,7 +3160,7 @@ def _build_heatmap_data(
 
 # ── panel functions ───────────────────────────────────────────────────────
 
-def panel_a_covid(ax, data: dict[str, Any]) -> None:
+def panel_a_covid(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
     """Panel A: COVID-19 Stephenson cross-sectional (Severe vs Mild)."""
     ax.set_title("COVID-19", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "A", transform=ax.transAxes, fontsize=14,
@@ -3165,10 +3184,11 @@ def panel_a_covid(ax, data: dict[str, Any]) -> None:
         color_neg=COLORS["control"],
         legend_pos_label="Severe $\\uparrow$",
         legend_neg_label="Mild $\\uparrow$",
+        order=order,
     )
 
 
-def panel_b_vaccine(ax, data: dict[str, Any]) -> None:
+def panel_b_vaccine(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
     """Panel B: Vaccine within-arm paired Pre->Post."""
     ax.set_title("Vaccine (GSE171964)", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "B", transform=ax.transAxes, fontsize=14,
@@ -3192,10 +3212,11 @@ def panel_b_vaccine(ax, data: dict[str, Any]) -> None:
         color_neg=COLORS["control"],
         legend_pos_label="Post $\\uparrow$",
         legend_neg_label="Pre $\\uparrow$",
+        order=order,
     )
 
 
-def panel_c_aml(ax, data: dict[str, Any]) -> None:
+def panel_c_aml(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
     """Panel C: AML clinical dataset (within-arm Pre→Post)."""
     ax.set_title("AML (GSE116256)", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "C", transform=ax.transAxes, fontsize=14,
@@ -3219,10 +3240,11 @@ def panel_c_aml(ax, data: dict[str, Any]) -> None:
         color_neg=COLORS["control"],
         legend_pos_label="Post $\\uparrow$",
         legend_neg_label="Pre $\\uparrow$",
+        order=order,
     )
 
 
-def panel_d_cart(ax, data: dict[str, Any]) -> None:
+def panel_d_cart(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
     """Panel D: CAR-T clinical dataset (within-arm)."""
     ax.set_title("CAR-T (GSE290722)", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "D", transform=ax.transAxes, fontsize=14,
@@ -3246,10 +3268,11 @@ def panel_d_cart(ax, data: dict[str, Any]) -> None:
         color_neg=COLORS["control"],
         legend_pos_label="Post $\\uparrow$",
         legend_neg_label="Pre $\\uparrow$",
+        order=order,
     )
 
 
-def panel_e_melanoma(ax, data: dict[str, Any]) -> None:
+def panel_e_melanoma(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
     """Panel E: Melanoma (Sade-Feldman) DiD — Responder vs Non-responder."""
     ax.set_title("Melanoma", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "E", transform=ax.transAxes, fontsize=14,
@@ -3273,10 +3296,11 @@ def panel_e_melanoma(ax, data: dict[str, Any]) -> None:
         color_neg=COLORS["control"],
         legend_pos_label="Responder $\\uparrow$",
         legend_neg_label="Non-resp. $\\uparrow$",
+        order=order,
     )
 
 
-def panel_p_tnbc(ax, data: dict[str, Any]) -> None:
+def panel_p_tnbc(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
     """Panel P: TNBC within-arm (anti-PDL1+Chemo) Pre→Post forest plot."""
     ax.set_title("TNBC", fontsize=6, fontweight="bold",
                  loc="left", pad=8)
@@ -3301,6 +3325,7 @@ def panel_p_tnbc(ax, data: dict[str, Any]) -> None:
         color_neg=COLORS["control"],
         legend_pos_label="anti-PDL1+Chemo $\\uparrow$",
         legend_neg_label="Chemo $\\uparrow$",
+        order=order,
     )
 
 
@@ -3320,20 +3345,18 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
         ax.axis("off")
         return
 
-    # Build combined annotation: effect size + stars
-    annot_combined = mat.copy().astype(object)
+    # Each cell shows its effect size; a significance mark, when there is one, sits centred above
+    # the value rather than after it, so "-1.2†" never runs into the next cell.
+    annot_values = mat.copy().astype(object)
     for r in mat.index:
         for c in mat.columns:
             val = mat.loc[r, c]
-            star = star_mat.loc[r, c] if star_mat is not None else ""
-            if pd.isna(val):
-                annot_combined.loc[r, c] = ""
-            else:
-                annot_combined.loc[r, c] = f"{val:.1f}{star}"
+            annot_values.loc[r, c] = "" if pd.isna(val) else f"{val:.1f}"
 
     # Determine colour limits symmetrically
     vmax = max(abs(np.nanmin(mat.values)), abs(np.nanmax(mat.values)), 0.5)
 
+    texts_before = set(ax.texts)
     sns.heatmap(
         mat,
         ax=ax,
@@ -3344,11 +3367,26 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
         linewidths=0.8,
         linecolor="white",
         cbar_kws={"label": "Standardised effect", "shrink": 0.7, "aspect": 20},
-        annot=annot_combined.values,
+        annot=annot_values.values,
         fmt="",
         annot_kws={"fontsize": 7, "fontweight": "bold"},
         mask=mat.isna(),  # grey out missing cells
     )
+    marks = {}
+    if star_mat is not None:
+        for i, r in enumerate(mat.index):
+            for j, c in enumerate(mat.columns):
+                star = star_mat.loc[r, c] if r in star_mat.index and c in star_mat.columns else ""
+                if star and pd.notna(mat.loc[r, c]):
+                    marks[(i, j)] = star
+    for value in [t for t in ax.texts if t not in texts_before]:  # seaborn's cell values
+        x, y = value.get_position()
+        cell = (int(y), int(x))
+        value.set_y(y + 0.13)  # every value sits a little low, so marked and unmarked align
+        if cell in marks:
+            ax.text(x, y - 0.27, marks[cell], ha="center", va="center",
+                    fontsize=0.8 * value.get_fontsize(), fontweight="bold",
+                    color=value.get_color())
 
     ax.set_xlabel("")
     ax.set_ylabel("")
@@ -3356,8 +3394,10 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
                        fontsize=7.5)
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=8.5)
 
+    meaning = {"***": "FDR < 0.001", "**": "FDR < 0.01", "*": "FDR < 0.05", "†": "FDR 0.05–0.1"}
+    shown = [m for m in meaning if m in set(marks.values())] or ["*", "†"]
     ax.text(
-        0.5, 1.01, "* FDR < 0.05   † FDR 0.05–0.1",
+        0.5, 1.01, "   ".join(f"{m} {meaning[m]}" for m in shown),
         transform=ax.transAxes,
         fontsize=6, color="0.45", ha="center", va="bottom",
         style="italic",
@@ -3541,14 +3581,14 @@ def _shrink_colorbars(fig, axes_before: set, fs: float = 3.5) -> None:
 
 
 def _build_composite(data_tnbc: dict, data5: dict) -> None:
-    """Build and save the combined 14-panel artboard (180 × 195 mm).
+    """Build and save the combined 14-panel artboard (180 mm wide; height from ``rows_mm``).
 
-    Layout (9-row grid):
-      Row  0: A | B | C(wide)         TNBC: volcano | waterfall | GSEA bars
-      Row  2: D(wide) | E | F         TNBC: leading-edge | cell-type HM | abundance DiD
-      Row  4: G | H | I               COVID | Vaccine | AML forest plots
-      Row  6: J | K | L               CAR-T | Melanoma | TNBC forest plots
-      Row  8: M | N                   effect heatmap | GSEA cross-dataset
+    Layout (7-row grid, spacer rows between panel rows):
+      Row 0: A | B | C(wide)          TNBC: volcano | waterfall | GSEA bars
+      Row 2: D(wide) | E | F          TNBC: leading-edge | cell-type HM | abundance DiD
+      Row 4: G | H | I | J | K | L    COVID | Vaccine | AML | CAR-T | Melanoma | TNBC forests,
+                                      one alphabetical row order, names drawn once left of G
+      Row 6: M | N                    effect heatmap | GSEA cross-dataset
     """
     print("  Building composite artboard...")
 
@@ -3566,56 +3606,55 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
     plt.rcParams.update(_SMALL_RC)
 
-    fig_c = plt.figure(figsize=(180 * _mm, 220 * _mm))
-
-    # 9 rows; height sum ≈ 7.55  →  195 mm / 7.55 ≈ 25.8 mm per unit
+    # Row heights in mm. Each panel row is tall enough for its row labels at the composite font
+    # sizes (labels about 1.2 font heights apart); spacers hold tick labels, keys and titles.
+    rows_mm = [
+        32.8,  # 0: A | B | C   TNBC volcano | top genes | GSEA bars
+        19.4,  # 1: spacer (keys of A to C, titles of D to F)
+        28.0,  # 2: D | E | F   15 pathways | 15 genes | 12 cell types
+        24.5,  # 3: spacer (D gene names, E cell types, keys, forest titles)
+        38.0,  # 4: G to L      six forests sharing the 19 signature names
+        26.5,  # 5: spacer (x labels and keys of G to L, titles of M and N)
+        29.0,  # 6: M | N       effect sizes | 15 replicated pathways
+    ]
+    _top_mm, _bottom_mm = 4.4, 24.0  # bottom: M's vertical signature names
+    _height_mm = _top_mm + sum(rows_mm) + _bottom_mm
+    fig_c = plt.figure(figsize=(180 * _mm, _height_mm * _mm))
     outer = fig_c.add_gridspec(
-        9, 1,
-        height_ratios=[
-            1.50,  # 0:  A | B | C   — TNBC (taller panels)
-            1.00,  # 1:  spacer (keys of A to C, titles of D to F)
-            0.90,  # 2:  D | E       — TNBC
-            0.80,  # 3:  section spacer
-            1.15,  # 4:  F | G | H
-            0.85,  # 5:  spacer (forest keys, next titles)
-            1.15,  # 6:  I | J | K
-            0.95,  # 7:  spacer (forest keys, two-line N title)
-            1.25,  # 8:  L | M
-        ],
-        hspace=0.0,
-        left=0.07, right=0.97, top=0.98, bottom=0.03,
+        len(rows_mm), 1, height_ratios=rows_mm, hspace=0.0,
+        left=0.07, right=0.97, top=1 - _top_mm / _height_mm, bottom=_bottom_mm / _height_mm,
     )
 
     # ── Row 0: A(wide) | B(wider) | spacer | C(narrow) ──────────────
-    gs0 = outer[0].subgridspec(1, 4, wspace=0.40,
-                                width_ratios=[1.0, 0.85, 0.18, 0.7])
+    gs0 = outer[0].subgridspec(1, 4, wspace=0.40,  # the spacer holds C's pathway names
+                                width_ratios=[1.0, 0.76, 0.37, 0.7])
     ax_a = fig_c.add_subplot(gs0[0])
     ax_b = fig_c.add_subplot(gs0[1])
     ax_c = fig_c.add_subplot(gs0[3])
 
     # ── Row 2: left-spacer | D | mid-spacer | E | mid-spacer | F ───
-    gs2 = outer[2].subgridspec(1, 6, wspace=0.30,
-                                width_ratios=[0.10, 1.10, 0.15, 0.95, 0.40, 0.80])
+    gs2 = outer[2].subgridspec(1, 6, wspace=0.30,  # the first spacer holds D's pathway names
+                                width_ratios=[0.50, 1.10, 0.15, 0.95, 0.40, 0.80])
     ax_d = fig_c.add_subplot(gs2[1])
     ax_e = fig_c.add_subplot(gs2[3])
     ax_f_abund = fig_c.add_subplot(gs2[5])
 
-    # ── Row 4: F | G | H ─────────────────────────────────────────────
-    gs4 = outer[4].subgridspec(1, 3, wspace=1.05)
-    ax_f = fig_c.add_subplot(gs4[0])
-    ax_g = fig_c.add_subplot(gs4[1])
-    ax_h = fig_c.add_subplot(gs4[2])
+    # ── Row 4: G to L, one row of forests; names drawn once, left of G ──
+    _row = outer[4].get_position(fig_c)
+    _fp_left_mm, _fp_right_mm, _fp_gap_mm = 23.0, 176.0, 6.0
+    _fp_w_mm = (_fp_right_mm - _fp_left_mm - 5 * _fp_gap_mm) / 6
+    _forest_axes = [
+        fig_c.add_axes([(_fp_left_mm + k * (_fp_w_mm + _fp_gap_mm)) / 180, _row.y0,
+                        _fp_w_mm / 180, _row.height])
+        for k in range(6)
+    ]
+    ax_f, ax_g, ax_h, ax_i, ax_j, ax_k = _forest_axes
 
-    # ── Row 6: I | J | K ─────────────────────────────────────────────
-    gs6 = outer[6].subgridspec(1, 3, wspace=1.05)
-    ax_i = fig_c.add_subplot(gs6[0])
-    ax_j = fig_c.add_subplot(gs6[1])
-    ax_k = fig_c.add_subplot(gs6[2])
-
-    # ── Row 8: L | M ─────────────────────────────────────────────────
-    gs8 = outer[8].subgridspec(1, 2, wspace=0.85, width_ratios=[1.3, 0.32])
+    # ── Row 6: M | N ─────────────────────────────────────────────────
+    gs8 = outer[6].subgridspec(1, 2, wspace=0.85, width_ratios=[1.3, 0.32])
     ax_l = fig_c.add_subplot(gs8[0])
-    ax_m = fig_c.add_subplot(gs8[1])
+    _n = gs8[1].get_position(fig_c)  # 2.5 mm left, so N's colour-bar label stays on the canvas
+    ax_m = fig_c.add_axes([_n.x0 - 2.5 / 180, _n.y0, _n.width, _n.height])
 
     # ── Draw TNBC panels A, B, C, D, E ───────────────────────────────
     tnbc_volcano(ax_a, data_tnbc, composite=True)
@@ -3647,11 +3686,19 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     _swap_leading_edge_axes(ax_d)
     ax_d.tick_params(axis='y', labelsize=4.0)
     ax_d.tick_params(axis='x', labelsize=4.0)
+    for _t in ax_d.get_xticklabels():  # one gene per column: vertical names cannot collide
+        _t.set_rotation(90)
+        _t.set_rotation_mode("default")
+        _t.set_ha("center")
 
     _axes_before_e = set(fig_c.get_axes())
     tnbc_celltype_hm(ax_e, data_tnbc)
     _shrink_colorbars(fig_c, _axes_before_e, fs=4.5)
     ax_e.tick_params(axis='x', labelsize=4.0)
+    for _t in ax_e.get_xticklabels():  # 11 columns 8 pt apart: 50 degrees keeps names apart
+        _t.set_rotation(50)
+        _t.set_rotation_mode("anchor")
+        _t.set_ha("right")
     ax_e.tick_params(axis='y', labelsize=4.5)
 
     tnbc_abundance_did(ax_f_abund, data_tnbc)
@@ -3661,23 +3708,35 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
         ax_f_abund.xaxis.label.set_fontsize(4.5)
 
     # ── Draw forest plots G–L ────────────────────────────────────────
+    # One alphabetical row order for all six (the order of panel M's columns), so the
+    # signature names are written once, left of G.
     _fp_tick = 4.5
-    panel_a_covid(ax_f, data5)
-    panel_b_vaccine(ax_g, data5)
-    panel_c_aml(ax_h, data5)
-    panel_d_cart(ax_i, data5)
-    panel_e_melanoma(ax_j, data5)
-    panel_p_tnbc(ax_k, data5)
-    for _ax_fp in [ax_f, ax_g, ax_h, ax_i, ax_j, ax_k]:
+    _order = sorted(set().union(*(
+        set(data5[k]["label"]) for k in ("covid_effects", "vax_effects", "aml_effects",
+                                         "cart_effects", "mel_effects", "tnbc_effects")
+        if data5.get(k) is not None and len(data5[k]))))
+    for _fn, _ax_fp in zip((panel_a_covid, panel_b_vaccine, panel_c_aml, panel_d_cart,
+                            panel_e_melanoma, panel_p_tnbc), _forest_axes):
+        _fn(_ax_fp, data5, order=_order)
+    for _ax_fp in _forest_axes:
         _ax_fp.tick_params(axis='both', labelsize=_fp_tick)
-        if _ax_fp.get_xlabel():
-            _ax_fp.xaxis.label.set_fontsize(4.5)
+        _ax_fp.xaxis.set_major_locator(plt.MaxNLocator(nbins=4))
+        if _ax_fp.get_xlabel():  # "Standardised Δ" over "(Post − Pre)", wrapped to the axes
+            _head, _, _tail = _ax_fp.get_xlabel().partition(" (")
+            _lines = [_head] + (textwrap.wrap("(" + _tail, 20) if _tail else [])
+            _ax_fp.set_xlabel("\n".join(_lines), fontsize=4.5)
+    for _ax_fp in _forest_axes[1:]:
+        _ax_fp.tick_params(axis="y", labelleft=False)
 
     # ── L — effect-size heatmap ───────────────────────────────────────
     _axes_before_l = set(fig_c.get_axes())
     panel_f_heatmap(ax_l, data5)
     _shrink_colorbars(fig_c, _axes_before_l, fs=5.0)
     ax_l.tick_params(axis='both', labelsize=5.0)
+    for _t in ax_l.get_xticklabels():  # 19 narrow columns: vertical names cannot collide
+        _t.set_rotation(90)
+        _t.set_rotation_mode("default")
+        _t.set_ha("center")
 
     # ── M — cross-dataset GSEA heatmap ───────────────────────────────
     _axes_before_m = set(fig_c.get_axes())
@@ -3687,11 +3746,17 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     ax_m.set_ylabel("")
     ax_m.tick_params(axis='x', labelsize=5.0)
     ax_m.tick_params(axis='y', labelsize=4.5)
+    for _t in ax_m.get_xticklabels():  # one dataset per column: vertical names cannot collide
+        _t.set_rotation(90)
+        _t.set_rotation_mode("default")
+        _t.set_ha("center")
+    for _cb_ax in set(fig_c.get_axes()) - _axes_before_m - {ax_m}:
+        if _cb_ax.get_ylabel():  # the NES label beside its bar, not a bar's width away
+            _cb_ax.set_ylabel(_cb_ax.get_ylabel(), rotation=90, labelpad=1.5, fontsize=4.0)
 
     # ── Post-processing ───────────────────────────────────────────────
 
     # Strip auto-added single-letter labels from panel functions
-    _forest_axes = [ax_f, ax_g, ax_h, ax_i, ax_j, ax_k]
     for _ax in _forest_axes + [ax_f_abund, ax_l, ax_m]:
         for t in [tt for tt in _ax.texts
                   if len(tt.get_text()) == 1 and tt.get_text().isupper()]:
@@ -3718,28 +3783,24 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
         _left_txt = _ax_fp.get_title(loc='left')
         if _left_txt:
             _ax_fp.set_title("", loc='left')
-            _ax_fp.set_title(_left_txt, fontsize=_title_fs, fontweight="bold",
+            _ax_fp.set_title(_left_txt.replace(" (", "\n("), fontsize=_title_fs,
+                             fontweight="bold",
                              loc="center")
 
     _cap_fontsize(fig_c, _MAX_FONT)
 
     # Keys below their axes, measured now that the fonts are final.
-    for ax_key, ncol in ([(ax_b, 2), (ax_c, 2), (ax_d, 3), (ax_f_abund, 2)]
-                         + [(ax_fp, 2) for ax_fp in _forest_axes]):
+    for ax_key, ncol in [(ax_b, 2), (ax_c, 1), (ax_d, 3), (ax_f_abund, 2)]:
         key_below_axes(ax_key, ncol=ncol, fontsize=4.5)
+    for ax_fp in _forest_axes:  # one baseline for the six forest keys
+        key_below_axes(ax_fp, ncol=1, fontsize=4.5, clear_of=_forest_axes)
 
     # ── Bold panel labels A–N ─────────────────────────────────────────
     _lbl_fs = 7.5
-    # Row 0 — 3-panel (A/B narrow, C wide)
+    # Row 0 — A, B narrow; C wide (rows 2, 4 and 6 are placed from measured text below)
     _x3a, _y3a = -0.26, 1.08   # narrow panels (A, B)
-    _x3c, _y3c = -0.10, 1.06   # wide panel (C)
-    # Row 2 — 2-panel (D wide, E narrow)
-    _xw,  _yw  = -0.18, 1.14   # wide leading-edge (D)
-    _xn,  _yn  = -0.18, 1.16   # narrow cell-type HM (E)
-    # 3-panel rows (F–K)
-    _x3, _y3   = -0.22, 1.16
-    # 2-panel rows (L, M)
-    _x2, _y2   = -0.12, 1.14
+    _x3c, _y3c = -0.10, 1.08   # wide panel (C), level with A and B
+    _x3 = -0.22                # A
 
     # Row 0: A B C
     for _ax, lbl, _x, _y in [
@@ -3750,28 +3811,33 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
         _ax.text(_x, _y, lbl, transform=_ax.transAxes,
                  fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     # Row 2: D E F
-    ax_d.text(_x3, _yw, "D", transform=ax_d.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_e.text(_xn, _yn, "E", transform=ax_e.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_f_abund.text(_xn, _yn, "F", transform=ax_f_abund.transAxes,
-                   fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 4: G H I
-    for _ax, lbl in [(ax_f, "G"), (ax_g, "H"), (ax_h, "I")]:
-        _ax.text(_x3, _y3, lbl, transform=_ax.transAxes,
-                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 6: J K L
-    for _ax, lbl in [(ax_i, "J"), (ax_j, "K"), (ax_k, "L")]:
-        _ax.text(_x3, _y3, lbl, transform=_ax.transAxes,
-                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 2: each letter at the left edge of its panel's row names, level with its title
+    for _ax, lbl in [(ax_d, "D"), (ax_e, "E"), (ax_f_abund, "F")]:
+        letter_at_panel_corner(_ax, lbl, fontsize=_lbl_fs)
+    # Row 4: G to L. G's letter starts at the shared signature names; H to L sit in the gap
+    # left of their forest, level with the top of the titles.
+    fig_c.canvas.draw()
+    _r = fig_c.canvas.get_renderer()
+    _y_px = max(_ax.title.get_window_extent(_r).y1 for _ax in _forest_axes)
+    _g_px = min(t.get_window_extent(_r).x0 for t in ax_f.get_yticklabels() if t.get_text())
+    for _ax, lbl in zip(_forest_axes, "GHIJKL"):
+        if _ax is ax_f:
+            _x_px, _ha = _g_px, "left"
+        else:
+            _x_px, _ha = _ax.get_window_extent(_r).x0 - 0.8 / 25.4 * fig_c.dpi, "right"
+        _x, _y = fig_c.transFigure.inverted().transform((_x_px, _y_px))
+        fig_c.text(_x, _y, lbl, fontsize=_lbl_fs, fontweight="bold", va="top", ha=_ha)
     # Row 8: M N
-    ax_l.text(_x2, _y2, "M", transform=ax_l.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # N's pathway names and title reach far left of its narrow heatmap.
-    letter_at_panel_corner(ax_m, "N", fontsize=_lbl_fs)
+    # M and N letters at the left edge of their row names, level with N's two-line title
+    fig_c.canvas.draw()
+    _r = fig_c.canvas.get_renderer()
+    _mn_top = max(_ax.title.get_window_extent(_r).y1 for _ax in (ax_l, ax_m))
+    letter_at_panel_corner(ax_l, "M", fontsize=_lbl_fs, top=_mn_top)
+    letter_at_panel_corner(ax_m, "N", fontsize=_lbl_fs, top=_mn_top)
 
     plt.rcParams.update(_prev_rc)
 
+    report_layout_problems(fig_c, FIGURE_NAME)
     save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, MAIN_OUTPUT, close=False)
     pdf_path = MAIN_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
     fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",

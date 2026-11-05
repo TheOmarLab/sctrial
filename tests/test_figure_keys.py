@@ -192,3 +192,177 @@ def test_letter_at_panel_corner_clears_long_row_labels(shared):
     assert letter.y1 == pytest.approx(_extent(ax.title, r).y1, abs=1.0)  # level with the title
     assert all(letter.y0 >= b.y1 - 0.5 or letter.x1 <= b.x0 for b in labels)  # not on a label
     plt.close(fig)
+
+
+def _problems(shared, fig):
+    return shared.layout_problems(fig)
+
+
+def test_layout_problems_finds_colliding_text_and_ignores_separated_text(shared):
+    fig, ax = plt.subplots(figsize=(3, 2))
+    ax.text(0.2, 0.5, "Alpha", fontsize=8, transform=ax.transAxes)
+    ax.text(0.22, 0.51, "Beta", fontsize=8, transform=ax.transAxes)
+    ax.text(0.7, 0.2, "Gamma", fontsize=8, transform=ax.transAxes)
+    found = _problems(shared, fig)["text overlaps"]
+    assert len(found) == 1 and "'Alpha'" in found[0] and "'Beta'" in found[0]
+    plt.close(fig)
+
+
+@pytest.mark.parametrize("pitch, expect", [(1.0, False), (0.03, True)])
+def test_layout_problems_tests_rotated_labels_as_rotated_boxes(shared, pitch, expect):
+    fig, ax = plt.subplots(figsize=(4, 2))
+    ticks = np.arange(6) * pitch
+    ax.set_xticks(ticks)
+    ax.set_xticklabels([f"Category label {i}" for i in range(6)], rotation=45, ha="right",
+                       fontsize=6)
+    ax.set_xlim(-0.5, ticks[-1] + 0.5)
+    fig.subplots_adjust(bottom=0.5)
+    overlaps = _problems(shared, fig)["text overlaps"]
+    assert bool(overlaps) is expect  # axis-aligned boxes of 45 degree labels always overlap
+    plt.close(fig)
+
+
+def test_layout_problems_flags_text_past_the_canvas_and_ignores_out_of_view_ticks(shared):
+    fig, ax = plt.subplots(figsize=(3, 2))
+    ax.set_xticks([0, 1, 50])
+    ax.set_xticklabels(["in", "view", "hidden far away label"])
+    ax.set_xlim(-0.5, 1.5)
+    fig.subplots_adjust(left=0.2, bottom=0.3)
+    ax.text(1.4, 0.5, "runs off the right edge", transform=ax.transAxes)
+    problems = _problems(shared, fig)
+    assert len(problems["outside canvas"]) == 1
+    assert problems["outside canvas"][0].startswith("[untitled] text 'runs off the right edge' (")
+    assert not problems["text overlaps"]
+    plt.close(fig)
+
+
+def test_layout_problems_flags_text_on_another_panel_but_not_on_a_twin(shared):
+    fig, (left, right) = plt.subplots(1, 2, figsize=(6, 2))
+    fig.subplots_adjust(wspace=1.0, bottom=0.2)
+    left.set_title("Left")
+    right.set_title("Right")
+    left.text(2.3, 0.5, "intrudes", transform=left.transAxes)
+    twin = left.twinx()
+    twin.set_ylabel("twin label")
+    on_other = _problems(shared, fig)["text on another axes"]
+    assert len(on_other) == 1 and "'intrudes'" in on_other[0] and "[Right]" in on_other[0]
+    plt.close(fig)
+
+
+def test_layout_problems_treats_a_legend_as_one_box(shared):
+    fig, ax = plt.subplots(figsize=(3, 2))
+    ax.plot([0, 1], [0, 1], label="series one")
+    ax.plot([0, 1], [1, 0], label="series two")
+    ax.legend(loc="upper left")
+    ax.text(0.03, 0.9, "under the key", transform=ax.transAxes)
+    found = _problems(shared, fig)["text overlaps"]
+    assert len(found) == 1 and "legend" in found[0]
+    plt.close(fig)
+
+
+def test_figure4_forests_share_one_row_order(load_figure_module):
+    fig4 = load_figure_module("main/figure4_biological_discovery_multi_dataset")
+    order = ["Apoptosis", "Hypoxia", "NK Cell Activity", "Type I IFN"]
+    df = pd.DataFrame({"label": ["Type I IFN", "Apoptosis", "NK Cell Activity"],
+                       "g": [0.5, -1.0, 2.0], "lo": [0.1, -1.5, 1.0], "hi": [0.9, -0.5, 3.0]})
+    fig, ax = plt.subplots()
+    fig4._forest_plot(ax, df, effect_col="g", ci_lo_col="lo", ci_hi_col="hi", label_col="label",
+                      order=order)
+    assert [t.get_text() for t in ax.get_yticklabels()] == order[::-1]  # first name on top
+    rows = {round(float(np.mean(line.get_ydata())), 6): float(np.mean(line.get_xdata()))
+            for line in ax.lines if len(line.get_xdata()) == 2 and line.get_ydata()[0] ==
+            line.get_ydata()[1] and line.get_xdata()[0] != line.get_xdata()[1]}
+    assert rows == {3.0: -1.0, 1.0: 2.0, 0.0: 0.5}  # Hypoxia (y = 2) is absent, so its row is empty
+    assert ax.get_ylim() == pytest.approx((-0.6, 3.6))
+    plt.close(fig)
+
+
+def test_figure4_forests_keep_effect_order_by_default(load_figure_module):
+    fig4 = load_figure_module("main/figure4_biological_discovery_multi_dataset")
+    df = pd.DataFrame({"label": ["b", "a", "c"], "g": [0.5, -1.0, 2.0],
+                       "lo": [0.1, -1.5, 1.0], "hi": [0.9, -0.5, 3.0]})
+    fig, ax = plt.subplots()
+    fig4._forest_plot(ax, df, effect_col="g", ci_lo_col="lo", ci_hi_col="hi", label_col="label")
+    assert [t.get_text() for t in ax.get_yticklabels()] == ["a", "b", "c"]  # largest effect on top
+    plt.close(fig)
+
+
+def test_supp_fig7_exhaustion_rows_name_cell_types_and_datasets_once(load_figure_module):
+    anndata = pytest.importorskip("anndata")
+    sf7 = load_figure_module("supp/supp_fig7_cross_dataset_biology")
+    rng = np.random.default_rng(0)
+    genes = ["PDCD1", "HAVCR2", "LAG3", "CTLA4", "TOX"]
+    data = {}
+    for name in ("AML", "CAR-T"):
+        cfg = {"design": "single_arm", "participant_col": "participant_id", "visit_col": "visit",
+               "arm_col": None, "visits": ("Pre", "Post"), "layer": "x"}
+        obs = pd.DataFrame([{"participant_id": f"p{p}", "visit": v, "cell_type": ct}
+                            for p in range(4) for v in ("Pre", "Post")
+                            for ct in ("T cells", "NK cells") for _ in range(30)])
+        obs.index = obs.index.astype(str)
+        ad = anndata.AnnData(X=rng.normal(size=(len(obs), len(genes))).astype("float32"), obs=obs,
+                             var=pd.DataFrame(index=genes))
+        ad.layers["x"] = ad.X.copy()
+        data[name] = {"adata": ad, "cfg": cfg}
+    with plt.rc_context({"font.size": 4.5, "ytick.labelsize": 3}):
+        fig, ax = plt.subplots(figsize=(2.5, 1.6))
+        sf7._panel_exhaustion_by_celltype(ax, data, label_fontsize=3.0)
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    assert sorted(t.get_text() for t in ax.get_yticklabels()) == ["NK cells", "NK cells",
+                                                                  "T cells", "T cells"]
+    groups = [t for t in ax.texts]
+    assert sorted(g.get_text() for g in groups) == ["AML (Δ)", "CAR-T (Δ)"]
+    tick_left = min(t.get_window_extent(r).x0 for t in ax.get_yticklabels())
+    assert all(g.get_window_extent(r).x1 < tick_left for g in groups)
+    ticks = sorted(ax.get_yticks())
+    assert ticks[2] - ticks[1] > ticks[1] - ticks[0]  # a gap between the two dataset blocks
+    plt.close(fig)
+
+
+def test_figure4_effect_heatmap_puts_marks_above_values(load_figure_module):
+    fig4 = load_figure_module("main/figure4_biological_discovery_multi_dataset")
+    mat = pd.DataFrame([[-1.2, 0.3], [0.8, np.nan]], index=["A", "B"], columns=["x", "y"])
+    stars = pd.DataFrame([["†", ""], ["*", ""]], index=mat.index, columns=mat.columns)
+    fig, ax = plt.subplots()
+    fig4.panel_f_heatmap(ax, {"heatmap_matrix": mat, "heatmap_stars": stars})
+    cells = {t.get_text(): t.get_position() for t in ax.texts
+             if t.get_text() not in ("F",) and "FDR" not in t.get_text()}
+    assert set(cells) == {"-1.2", "0.3", "0.8", "†", "*"}  # marks are their own texts
+    assert cells["†"][0] == cells["-1.2"][0] and cells["†"][1] < cells["-1.2"][1]  # above
+    assert cells["*"][0] == cells["0.8"][0] and cells["*"][1] < cells["0.8"][1]
+    key = next(t.get_text() for t in ax.texts if "FDR" in t.get_text())
+    assert key == "* FDR < 0.05   † FDR 0.05–0.1"
+    plt.close(fig)
+
+
+def test_keys_in_a_row_share_one_baseline(shared):
+    fig, axes = plt.subplots(1, 2, figsize=(4, 2.5))
+    fig.subplots_adjust(bottom=0.45)
+    for ax, xlabel in zip(axes, ["one line", "three\nline\nlabel"]):
+        ax.plot([0, 1], [0, 1], label="up")
+        ax.plot([0, 1], [1, 0], label="down")
+        ax.legend()
+        ax.set_xlabel(xlabel)
+    keys = [shared.key_below_axes(ax, ncol=1, fontsize=6, clear_of=list(axes)) for ax in axes]
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    tops = [k.get_window_extent(r).y1 for k in keys]
+    assert tops[0] == pytest.approx(tops[1], abs=0.5)
+    assert tops[1] <= axes[1].xaxis.get_tightbbox(r).y0 + 0.5  # below the deepest label
+    plt.close(fig)
+
+
+def test_letter_at_panel_corner_takes_a_shared_top(shared):
+    fig, (a, b) = plt.subplots(1, 2, figsize=(4, 2))
+    a.set_title("One line")
+    b.set_title("Two\nlines")
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    top = max(ax.title.get_window_extent(r).y1 for ax in (a, b))
+    shared.letter_at_panel_corner(a, "M", fontsize=8, top=top)
+    shared.letter_at_panel_corner(b, "N", fontsize=8, top=top)
+    fig.canvas.draw()
+    m, n = (t.get_window_extent(r) for t in fig.texts[-2:])
+    assert m.y1 == pytest.approx(n.y1, abs=0.5) == pytest.approx(top, abs=1.0)
+    plt.close(fig)

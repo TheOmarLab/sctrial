@@ -52,6 +52,7 @@ from .._shared import (
     harmonize_response,
     key_below_axes,
     letter_at_panel_corner,
+    report_layout_problems,
     save_panel,
     sig_display,
 )
@@ -1245,7 +1246,7 @@ def _panel_gene_dist(ax, data: dict[str, dict]):
     despine(ax)
 
 
-def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
+def _panel_exhaustion_by_celltype(ax, data: dict[str, dict], *, label_fontsize: float = 4.0):
     """E: Exhaustion effects by cell type across datasets.
 
     Two-arm: effect = mean(treated Δ) − mean(control Δ),
@@ -1307,8 +1308,18 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
         return
 
     df = pd.DataFrame(rows)
-    # Color by dataset
-    y = np.arange(len(df))
+    # Rows are grouped by dataset, with a small gap between groups; each row names its cell
+    # type and each dataset is named once, beside its group.
+    group_gap = 0.6
+    positions, groups, y_next = [], [], 0.0
+    for name, block in df.groupby("Dataset", sort=False):
+        start = y_next
+        for _ in range(len(block)):
+            positions.append(y_next)
+            y_next += 1.0
+        groups.append((_ds_label(name), start, y_next - 1.0))
+        y_next += group_gap
+    y = np.array(positions)
     colors = [_DS_PALETTE.get(d, "grey") for d in df["Dataset"]]
     ax.errorbar(df["Effect"], y, xerr=1.96 * df["SE"], fmt="none",
                 ecolor="grey", capsize=2, lw=0.8, zorder=1)
@@ -1316,8 +1327,8 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
                linewidth=0.3, zorder=3)
     ax.axvline(0, color="black", lw=0.8, ls="--")
     ax.set_yticks(y)
-    ax.set_yticklabels([f"{r['Cell type']} [{r['Dataset']}]" for _, r in df.iterrows()],
-                       fontsize=4)
+    ax.set_yticklabels(df["Cell type"], fontsize=label_fontsize)
+    ax.set_ylim(y[0] - 0.7, y[-1] + 0.7)
     ax.set_xlabel("Exhaustion effect (treatment)")
     ax.set_title("T cell exhaustion effects by cell type", fontweight="bold")
 
@@ -1328,6 +1339,8 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
     ax.legend(handles=handles, fontsize=4)
     key_below_axes(ax, ncol=3)
     despine(ax)
+    group_axis_labels(ax, groups, fontsize=label_fontsize + 0.5, gap_pt=0.8 * label_fontsize,
+                      axis="y")
 
 
 def _panel_effect_heatmap(ax, data: dict[str, dict]):
@@ -1344,6 +1357,7 @@ def _panel_effect_heatmap(ax, data: dict[str, dict]):
                 cbar_kws={"label": "Effect"})
     ax.set_title("Effect heatmap across datasets", fontweight="bold")
     ax.tick_params(axis="x", rotation=0)
+    ax.set_xticklabels([t.get_text().replace(" (", "\n(") for t in ax.get_xticklabels()])
     ax.tick_params(axis="y", labelsize=4)
 
 
@@ -1444,7 +1458,7 @@ def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
 def _build_composite(data_mel: dict, data: dict[str, dict]) -> None:
     """Build and save the combined A–M artboard from the prepared melanoma and cross-dataset data."""
     # ==================================================================
-    # Composite artboard  (180 mm × 215 mm)
+    # Composite artboard  (180 mm wide; height from rows_mm below)
     # ==================================================================
     #   Row  0: A | B | C  (melanoma: volcano | waterfall | GSEA)
     #   Row  2: D | E      (melanoma: leading-edge | cell-type HM)
@@ -1487,33 +1501,35 @@ def _build_composite(data_mel: dict, data: dict[str, dict]) -> None:
     plt.rcParams.update(_SMALL_RC)
 
     _mm = 1.0 / 25.4
-    fig_c = plt.figure(figsize=(180 * _mm, 232 * _mm))
+    # Row heights in mm. Each panel row is tall enough for its row labels at the composite font
+    # sizes (labels about 1.2 font heights apart); spacers hold tick labels, keys and titles.
+    rows_mm = [
+        32.5,  # row  0: A | B | C  melanoma; B lists 30 genes at 2.5 pt
+        18.7,  # spacer (keys of A to C, titles of D and E)
+        25.0,  # row  2: D | E      melanoma; E lists 15 genes at 4 pt
+        19.2,  # section spacer
+        17.0,  # row  4: F | G
+        19.2,  # spacer (key of F, titles of H and I)
+        21.5,  # row  6: H | I      H lists 12 genes at 4 pt
+        15.0,  # spacer (keys of H and I, titles of J and K)
+        42.0,  # row  8: J | K      J lists 30 cell types at 3 pt, in six dataset blocks
+        16.3,  # spacer (key of J, title of L)
+        10.2,  # row 10: L (full width)
+        12.4,  # spacer
+        10.2,  # row 12: M (full width)
+    ]
+    _top_mm, _bottom_mm = 5.0, 9.6
+    _height_mm = _top_mm + sum(rows_mm) + _bottom_mm
+    fig_c = plt.figure(figsize=(180 * _mm, _height_mm * _mm))
 
-    # 13 rows: 7 content rows interleaved with 6 spacer rows
     outer = fig_c.add_gridspec(
-        13, 1,
-        height_ratios=[
-            0.65,   # row  0: A | B | C  — melanoma
-            0.55,   # spacer (keys of A to C, titles of D and E)
-            0.50,   # row  2: D | E      — melanoma
-            0.55,   # section spacer
-            0.50,   # row  4: F | G
-            0.55,   # spacer (key of F, titles of H and I)
-            0.43,   # row  6: H | I
-            0.42,   # spacer (keys of H and I, titles of J and K)
-            0.75,   # row  8: J | K (taller)
-            0.42,   # spacer (key of J, title of L)
-            0.30,   # row 10: L (full width)
-            0.35,   # spacer
-            0.30,   # row 12: M (full width)
-        ],
-        hspace=0.0,
-        left=0.06, right=0.99, top=0.97, bottom=0.05,
+        len(rows_mm), 1, height_ratios=rows_mm, hspace=0.0,
+        left=0.06, right=0.99, top=1 - _top_mm / _height_mm, bottom=_bottom_mm / _height_mm,
     )
 
     # ── Row 0: A | B | C  (melanoma) ─────────────────────────────────
-    gs0 = outer[0].subgridspec(1, 4, wspace=0.40,
-                                width_ratios=[1.0, 0.85, 0.18, 0.7])
+    gs0 = outer[0].subgridspec(1, 4, wspace=0.40,  # the spacer holds C's pathway names
+                                width_ratios=[1.0, 0.80, 0.33, 0.7])
     ax_a = fig_c.add_subplot(gs0[0])
     ax_b = fig_c.add_subplot(gs0[1])
     ax_c = fig_c.add_subplot(gs0[3])
@@ -1534,16 +1550,21 @@ def _build_composite(data_mel: dict, data: dict[str, dict]) -> None:
     ax_c.set_xticks([-2, 0, 2])
 
     # ── Row 2: D | E  (melanoma) ──────────────────────────────────────
-    gs2 = outer[2].subgridspec(1, 4, wspace=0.30,
-                                width_ratios=[0.10, 0.95, 0.25, 0.95])
+    gs2 = outer[2].subgridspec(1, 4, wspace=0.30,  # the first spacer holds D's pathway names
+                                width_ratios=[0.16, 0.95, 0.25, 0.95])
     ax_d = fig_c.add_subplot(gs2[1])
-    ax_e = fig_c.add_subplot(gs2[3])
+    _e = gs2[3].get_position(fig_c)  # 6 mm left, so E's colour bar and its label stay on the canvas
+    ax_e = fig_c.add_axes([_e.x0 - 6.0 / 180, _e.y0, _e.width, _e.height])
 
     panel_D(ax_d, data_mel, composite=True)
     _swap_leading_edge_axes(ax_d)
     ax_d.set_title(ax_d.get_title().replace("Melanoma", "").strip(" —–-") +
                    " — Melanoma", fontsize=5.0, fontweight="bold")
     ax_d.tick_params(axis='y', labelsize=4)
+    for _t in ax_d.get_xticklabels():  # one gene per column: vertical names cannot collide
+        _t.set_rotation(90)
+        _t.set_rotation_mode("default")
+        _t.set_ha("center")
 
     _axes_before_e = set(fig_c.get_axes())
     panel_E(ax_e, data_mel)
@@ -1559,7 +1580,8 @@ def _build_composite(data_mel: dict, data: dict[str, dict]) -> None:
     # ── Row 4: F | G ──────────────────────────────────────────────────
     gs4 = outer[4].subgridspec(1, 2, width_ratios=[1.8, 1.0], wspace=0.50)
     ax_f = fig_c.add_subplot(gs4[0])
-    ax_g = fig_c.add_subplot(gs4[1])
+    _g = gs4[1].get_position(fig_c)  # 2.5 mm left, so G's colour-bar label stays on the canvas
+    ax_g = fig_c.add_axes([_g.x0 - 2.5 / 180, _g.y0, _g.width, _g.height])
 
     _panel_gs_distributions(ax_f, data)
     ax_f.tick_params(axis='y', labelsize=4)
@@ -1586,8 +1608,7 @@ def _build_composite(data_mel: dict, data: dict[str, dict]) -> None:
     ax_j = fig_c.add_subplot(gs8[1])
     ax_k = fig_c.add_subplot(gs8[2])
 
-    _panel_exhaustion_by_celltype(ax_j, data)
-    ax_j.tick_params(axis='y', labelsize=3)
+    _panel_exhaustion_by_celltype(ax_j, data, label_fontsize=3.0)
     _axes_before_k = set(fig_c.get_axes())
     _panel_effect_heatmap(ax_k, data)
     for _cb_ax in set(fig_c.get_axes()) - _axes_before_k - {ax_k}:
@@ -1599,13 +1620,18 @@ def _build_composite(data_mel: dict, data: dict[str, dict]) -> None:
     _panel_paired_trajectories(ax_l, data)
     ax_l.tick_params(axis='y', labelsize=4)
     ax_l.yaxis.label.set_fontsize(4.5)
+    ax_l.set_ylabel(ax_l.get_ylabel().replace(" ", "\n", 1), labelpad=1.5)  # fits the 10 mm row
+    _p = ax_l.get_position()  # 1 mm in from the left, so the two-line label stays on the canvas
+    ax_l.set_position([_p.x0 + 1.0 / 180, _p.y0, _p.width - 1.0 / 180, _p.height])
 
     # ── Row 12: M (shifted right with wider left margin) ──────────────
-    gs12 = outer[12].subgridspec(1, 3, width_ratios=[0.14, 1.0, 0.0], wspace=0.0)
+    # M's gene-set names on one line each need about 36 mm left of the heatmap
+    gs12 = outer[12].subgridspec(1, 3, width_ratios=[0.19, 1.0, 0.0], wspace=0.0)
     ax_m = fig_c.add_subplot(gs12[1])
     _panel_enrichment_heatmap(ax_m, data)
     ax_m.xaxis.label.set_fontsize(4.5)
     ax_m.yaxis.label.set_fontsize(4.5)
+    ax_m.set_yticklabels([t.get_text().replace("\n", " ") for t in ax_m.get_yticklabels()])
 
     # ── Post-processing ───────────────────────────────────────────────
     for ax_pp in fig_c.get_axes():
@@ -1628,7 +1654,7 @@ def _build_composite(data_mel: dict, data: dict[str, dict]) -> None:
             _ax.title.set_fontsize(5.0)
 
     # Keys below their axes, measured now that the fonts are final.
-    for ax_key, ncol in [(ax_b, 2), (ax_c, 2), (ax_d, 3), (ax_f, 6), (ax_h, 2), (ax_i, 3),
+    for ax_key, ncol in [(ax_b, 2), (ax_c, 1), (ax_d, 3), (ax_f, 6), (ax_h, 2), (ax_i, 3),
                          (ax_j, 6)]:
         key_below_axes(ax_key, ncol=ncol, fontsize=3.5)
 
@@ -1656,19 +1682,19 @@ def _build_composite(data_mel: dict, data: dict[str, dict]) -> None:
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     ax_i.text(-0.10, 1.16, "I", transform=ax_i.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 8: J K  (unchanged)
-    ax_j.text(-0.16, 1.10, "J", transform=ax_j.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_k.text(-0.10, 1.10, "K", transform=ax_k.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 10: L  (further up)
-    ax_l.text(-0.05, 1.38, "L", transform=ax_l.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 12: M  (left)
-    ax_m.text(-0.16, 1.16, "M", transform=ax_m.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Rows 8 to 12: letters at the left edge of each panel's own labels (J's dataset names,
+    # L's and M's y labels), J and K level with each other
+    fig_c.canvas.draw()
+    _r = fig_c.canvas.get_renderer()
+    _jk_top = max(_ax.title.get_window_extent(_r).y1 for _ax in (ax_j, ax_k))
+    letter_at_panel_corner(ax_j, "J", fontsize=_lbl_fs, top=_jk_top)
+    letter_at_panel_corner(ax_k, "K", fontsize=_lbl_fs, top=_jk_top)
+    letter_at_panel_corner(ax_l, "L", fontsize=_lbl_fs)
+    letter_at_panel_corner(ax_m, "M", fontsize=_lbl_fs)
 
     plt.rcParams.update(_prev_rc)
+
+    report_layout_problems(fig_c, FIGURE_NAME)
 
     panel_dir = SUPP_OUTPUT / f"{FIGURE_NAME}_panels"
     panel_dir.mkdir(exist_ok=True)
