@@ -17,6 +17,7 @@ from __future__ import annotations
 import gc
 import pickle as pkl
 import warnings
+from collections.abc import Collection
 from contextlib import contextmanager
 
 import numpy as np
@@ -71,6 +72,15 @@ def _quiet():
 # ======================================================================
 # Table 1 — Gene signature definitions
 # ======================================================================
+
+
+def _selected(name: str, datasets: Collection[str] | None) -> bool:
+    """True when *name* is among the requested datasets (every dataset when None).
+
+    Table builders raise when a selected dataset fails, so a table is never
+    written with a dataset silently missing.
+    """
+    return datasets is None or name in datasets
 
 
 def table1_gene_signatures() -> pd.DataFrame:
@@ -174,7 +184,7 @@ def _detect_visits(adata) -> tuple[str, str]:
     return (visits_avail[0], visits_avail[-1])
 
 
-def table2_all_results() -> pd.DataFrame:
+def table2_all_results(datasets: Collection[str] | None = None) -> pd.DataFrame:
     """Complete results across all 5 datasets (immune + clinical sigs)."""
     print("  Table 2: Complete results across datasets")
 
@@ -185,124 +195,127 @@ def table2_all_results() -> pd.DataFrame:
     all_results: list[pd.DataFrame] = []
 
     # ── Sade-Feldman (two-arm DiD) ────────────────────────────────────
-    try:
-        adata_sf = get_sade_feldman()
-        if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
-            adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
-        adata_sf, sig_cols = score_signatures(adata_sf, layer="log1p_tpm")
-        adata_sf = harmonize_response(adata_sf)
+    if _selected("Melanoma", datasets):
+        try:
+            adata_sf = get_sade_feldman()
+            if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
+                adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
+            adata_sf, sig_cols = score_signatures(adata_sf, layer="log1p_tpm")
+            adata_sf = harmonize_response(adata_sf)
 
-        design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="visit",
-            arm_col="response_harmonized",
-            arm_treated="Responder",
-            arm_control="Non-responder",
-        )
-        res = did_table(
-            adata_sf, features=sig_cols, design=design,
-            visits=("Pre", "Post"), layer="log1p_tpm",
-            standardize=True, aggregate="participant_visit",
-            use_bootstrap=True, n_boot=999, seed=42,
-        )
-        res["label"] = res["feature"].apply(sig_display)
-        all_results.append(_harmonise(res, "Melanoma", "DiD"))
-        print(f"    Melanoma: {len(res)} features (DiD)")
-        del adata_sf
-        gc.collect()
-    except Exception as exc:
-        print(f"    Melanoma failed: {exc}")
+            design = TrialDesign(
+                participant_col="participant_id",
+                visit_col="visit",
+                arm_col="response_harmonized",
+                arm_treated="Responder",
+                arm_control="Non-responder",
+            )
+            res = did_table(
+                adata_sf, features=sig_cols, design=design,
+                visits=("Pre", "Post"), layer="log1p_tpm",
+                standardize=True, aggregate="participant_visit",
+                use_bootstrap=True, n_boot=999, seed=42,
+            )
+            res["label"] = res["feature"].apply(sig_display)
+            all_results.append(_harmonise(res, "Melanoma", "DiD"))
+            print(f"    Melanoma: {len(res)} features (DiD)")
+            del adata_sf
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 2: Melanoma failed") from exc
 
     # ── TNBC / Zhang (two-arm DiD: anti-PDL1+Chemo vs Chemo) ─────────
-    try:
-        adata_tnbc = get_tnbc_zhang()
-        adata_tnbc, sig_cols_tnbc = score_signatures(adata_tnbc, layer="log1p_norm")
+    if _selected("TNBC", datasets):
         try:
-            adata_tnbc, sig_cols_clin = score_clinical_signatures(adata_tnbc, layer="log1p_norm")
-            all_sig_cols_tnbc = list(dict.fromkeys(sig_cols_tnbc + sig_cols_clin))
-        except Exception:
-            all_sig_cols_tnbc = sig_cols_tnbc
-        tnbc_design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="visit",
-            arm_col="arm",
-            arm_treated="anti-PDL1+Chemo",
-            arm_control="Chemo",
-        )
-        res = did_table(
-            adata_tnbc, features=all_sig_cols_tnbc, design=tnbc_design,
-            visits=("Pre", "Post"), layer="log1p_norm",
-            standardize=True, aggregate="participant_visit",
-            use_bootstrap=True, n_boot=999, seed=42,
-        )
-        res["label"] = res["feature"].apply(sig_display)
-        all_results.append(_harmonise(res, "TNBC", "DiD"))
-        print(f"    TNBC: {len(res)} features (DiD)")
-        del adata_tnbc
-        gc.collect()
-    except Exception as exc:
-        print(f"    TNBC failed: {exc}")
+            adata_tnbc = get_tnbc_zhang()
+            adata_tnbc, sig_cols_tnbc = score_signatures(adata_tnbc, layer="log1p_norm")
+            try:
+                adata_tnbc, sig_cols_clin = score_clinical_signatures(adata_tnbc, layer="log1p_norm")
+                all_sig_cols_tnbc = list(dict.fromkeys(sig_cols_tnbc + sig_cols_clin))
+            except Exception:
+                all_sig_cols_tnbc = sig_cols_tnbc
+            tnbc_design = TrialDesign(
+                participant_col="participant_id",
+                visit_col="visit",
+                arm_col="arm",
+                arm_treated="anti-PDL1+Chemo",
+                arm_control="Chemo",
+            )
+            res = did_table(
+                adata_tnbc, features=all_sig_cols_tnbc, design=tnbc_design,
+                visits=("Pre", "Post"), layer="log1p_norm",
+                standardize=True, aggregate="participant_visit",
+                use_bootstrap=True, n_boot=999, seed=42,
+            )
+            res["label"] = res["feature"].apply(sig_display)
+            all_results.append(_harmonise(res, "TNBC", "DiD"))
+            print(f"    TNBC: {len(res)} features (DiD)")
+            del adata_tnbc
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 2: TNBC failed") from exc
 
     # ── Stephenson / COVID-19 (cross-sectional Hedges' g at DFO_8-14)
     # Must match Figure 5 exactly: DFO_8-14 bin, log1p_cpm layer,
     # between_arm_comparison + hedges_g on participant-level means.
-    try:
-        from scipy import stats as sp_stats
+    if _selected("COVID-19", datasets):
+        try:
+            from scipy import stats as sp_stats
 
-        adata_st = get_stephenson()
-        # Add log1p_cpm layer (matching Figure 5 and Supp Table 3)
-        if "log1p_cpm" not in adata_st.layers:
-            adata_st = add_log1p_cpm_layer(
-                adata_st, counts_layer="counts", out_layer="log1p_cpm",
+            adata_st = get_stephenson()
+            # Add log1p_cpm layer (matching Figure 5 and Supp Table 3)
+            if "log1p_cpm" not in adata_st.layers:
+                adata_st = add_log1p_cpm_layer(
+                    adata_st, counts_layer="counts", out_layer="log1p_cpm",
+                )
+            adata_st, sig_cols = score_signatures(adata_st, layer="log1p_cpm")
+
+            # Filter to DFO_8-14 bin (matching Figure 5)
+            target_visit = _covid_target_visit(adata_st)
+            ad_visit = adata_st[adata_st.obs["dfo_bin"] == target_visit].copy()
+
+            # Compute Hedges' g on participant-level means (matching Figure 5)
+            df_agg = (
+                ad_visit.obs
+                .groupby(["participant_id", "severity"], observed=True)[sig_cols]
+                .mean()
+                .reset_index()
             )
-        adata_st, sig_cols = score_signatures(adata_st, layer="log1p_cpm")
-
-        # Filter to DFO_8-14 bin (matching Figure 5)
-        target_visit = _covid_target_visit(adata_st)
-        ad_visit = adata_st[adata_st.obs["dfo_bin"] == target_visit].copy()
-
-        # Compute Hedges' g on participant-level means (matching Figure 5)
-        df_agg = (
-            ad_visit.obs
-            .groupby(["participant_id", "severity"], observed=True)[sig_cols]
-            .mean()
-            .reset_index()
-        )
-        g_rows: list[dict] = []
-        for feat in sig_cols:
-            x_mild = df_agg.loc[df_agg["severity"] == "Mild", feat].dropna().values
-            x_sev = df_agg.loc[df_agg["severity"] == "Severe", feat].dropna().values
-            if len(x_mild) < 3 or len(x_sev) < 3:
-                continue
-            g = hedges_g(x_sev, x_mild)
-            n1, n2 = len(x_sev), len(x_mild)
-            se_g = np.sqrt((n1 + n2) / (n1 * n2) + g**2 / (2 * (n1 + n2)))
-            _, p = sp_stats.ttest_ind(x_sev, x_mild, equal_var=False)
-            g_rows.append({
-                "feature": feat, "effect": g, "se": se_g, "pvalue": p,
-                "ci_lower": g - 1.96 * se_g, "ci_upper": g + 1.96 * se_g,
-                "n_units": n1 + n2, "cov_type_used": "hedges_g",
-            })
-        if g_rows:
-            res_covid = pd.DataFrame(g_rows)
-            # Drop NaN p-values before BH correction (degenerate signatures
-            # with zero variance cause NaN from ttest_ind; a single NaN
-            # propagates to all FDR values in multipletests).
-            valid_p = res_covid["pvalue"].dropna()
-            res_covid["FDR"] = np.nan
-            if len(valid_p) > 0:
-                _, fdr, _, _ = multipletests(valid_p, method="fdr_bh")
-                res_covid.loc[valid_p.index, "FDR"] = fdr
-            res_covid["label"] = res_covid["feature"].apply(sig_display)
-            all_results.append(
-                _harmonise(res_covid, "COVID-19", f"Hedges' g ({target_visit})")
-            )
-            print(f"    COVID-19: {len(res_covid)} features "
-                  f"(Hedges' g, {target_visit})")
-        del adata_st, ad_visit
-        gc.collect()
-    except Exception as exc:
-        print(f"    COVID-19 failed: {exc}")
+            g_rows: list[dict] = []
+            for feat in sig_cols:
+                x_mild = df_agg.loc[df_agg["severity"] == "Mild", feat].dropna().values
+                x_sev = df_agg.loc[df_agg["severity"] == "Severe", feat].dropna().values
+                if len(x_mild) < 3 or len(x_sev) < 3:
+                    continue
+                g = hedges_g(x_sev, x_mild)
+                n1, n2 = len(x_sev), len(x_mild)
+                se_g = np.sqrt((n1 + n2) / (n1 * n2) + g**2 / (2 * (n1 + n2)))
+                _, p = sp_stats.ttest_ind(x_sev, x_mild, equal_var=False)
+                g_rows.append({
+                    "feature": feat, "effect": g, "se": se_g, "pvalue": p,
+                    "ci_lower": g - 1.96 * se_g, "ci_upper": g + 1.96 * se_g,
+                    "n_units": n1 + n2, "cov_type_used": "hedges_g",
+                })
+            if g_rows:
+                res_covid = pd.DataFrame(g_rows)
+                # Drop NaN p-values before BH correction (degenerate signatures
+                # with zero variance cause NaN from ttest_ind; a single NaN
+                # propagates to all FDR values in multipletests).
+                valid_p = res_covid["pvalue"].dropna()
+                res_covid["FDR"] = np.nan
+                if len(valid_p) > 0:
+                    _, fdr, _, _ = multipletests(valid_p, method="fdr_bh")
+                    res_covid.loc[valid_p.index, "FDR"] = fdr
+                res_covid["label"] = res_covid["feature"].apply(sig_display)
+                all_results.append(
+                    _harmonise(res_covid, "COVID-19", f"Hedges' g ({target_visit})")
+                )
+                print(f"    COVID-19: {len(res_covid)} features "
+                      f"(Hedges' g, {target_visit})")
+            del adata_st, ad_visit
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 2: COVID-19 failed") from exc
 
     # ── Single-arm datasets: Vaccine, AML, CAR-T ─────────────────────
     single_arm = [
@@ -311,6 +324,8 @@ def table2_all_results() -> pd.DataFrame:
         ("CAR-T", get_cart, None),
     ]
     for ds_name, loader, visits_override in single_arm:
+        if not _selected(ds_name, datasets):
+            continue
         try:
             adata = loader()
             # Score both immune and clinical signatures
@@ -334,7 +349,7 @@ def table2_all_results() -> pd.DataFrame:
             del adata
             gc.collect()
         except Exception as exc:
-            print(f"    {ds_name} failed: {exc}")
+            raise RuntimeError(f"Supplementary Table 2: {ds_name} failed") from exc
 
     if not all_results:
         print("    No results generated")
@@ -398,7 +413,7 @@ def _stephenson_ranking() -> pd.Series:
     return pd.Series(ranking).sort_values(ascending=False)
 
 
-def table3_gsea_results() -> dict[str, pd.DataFrame]:
+def table3_gsea_results(datasets: Collection[str] | None = None) -> dict[str, pd.DataFrame]:
     """Run GSEA pre-ranked analysis for all 5 datasets, save as multi-sheet Excel.
 
     Uses shared ``load_or_run_gsea_did`` / ``load_or_run_gsea_within_arm``
@@ -411,75 +426,78 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
     sheets: dict[str, pd.DataFrame] = {}
 
     # ── Sade-Feldman (two-arm DiD) ────────────────────────────────────
-    try:
-        adata_sf = get_sade_feldman()
-        if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
-            adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
-        adata_sf = harmonize_response(adata_sf)
-        design_sf = TrialDesign(
-            participant_col="participant_id", visit_col="visit",
-            arm_col="response_harmonized",
-            arm_treated="Responder", arm_control="Non-responder",
-        )
-        res = load_or_run_gsea_did(
-            adata_sf, design_sf, ("Pre", "Post"), "log1p_tpm", "Melanoma",
-        )
-        if res is not None:
-            sheets["Melanoma"] = res
-        del adata_sf
-        gc.collect()
-    except Exception as exc:
-        print(f"    Melanoma GSEA failed: {exc}")
+    if _selected("Melanoma", datasets):
+        try:
+            adata_sf = get_sade_feldman()
+            if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
+                adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
+            adata_sf = harmonize_response(adata_sf)
+            design_sf = TrialDesign(
+                participant_col="participant_id", visit_col="visit",
+                arm_col="response_harmonized",
+                arm_treated="Responder", arm_control="Non-responder",
+            )
+            res = load_or_run_gsea_did(
+                adata_sf, design_sf, ("Pre", "Post"), "log1p_tpm", "Melanoma",
+            )
+            if res is not None:
+                sheets["Melanoma"] = res
+            del adata_sf
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 3: Melanoma GSEA failed") from exc
 
     # ── TNBC / Zhang (two-arm DiD: anti-PDL1+Chemo vs Chemo) ─────────
-    try:
-        adata_tnbc = get_tnbc_zhang()
-        tnbc_design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="visit",
-            arm_col="arm",
-            arm_treated="anti-PDL1+Chemo",
-            arm_control="Chemo",
-        )
-        res = load_or_run_gsea_did(
-            adata_tnbc, tnbc_design, ("Pre", "Post"), "log1p_norm", "TNBC",
-        )
-        if res is not None:
-            sheets["TNBC"] = res
-        del adata_tnbc
-        gc.collect()
-    except Exception as exc:
-        print(f"    TNBC GSEA failed: {exc}")
+    if _selected("TNBC", datasets):
+        try:
+            adata_tnbc = get_tnbc_zhang()
+            tnbc_design = TrialDesign(
+                participant_col="participant_id",
+                visit_col="visit",
+                arm_col="arm",
+                arm_treated="anti-PDL1+Chemo",
+                arm_control="Chemo",
+            )
+            res = load_or_run_gsea_did(
+                adata_tnbc, tnbc_design, ("Pre", "Post"), "log1p_norm", "TNBC",
+            )
+            if res is not None:
+                sheets["TNBC"] = res
+            del adata_tnbc
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 3: TNBC GSEA failed") from exc
 
     # ── COVID-19 (cross-sectional: severe vs mild) ───────────────────
     # Must match Figure 5: DFO_8-14 bin, log1p_cpm layer
-    try:
-        adata_st = get_stephenson()
-        if "log1p_cpm" not in adata_st.layers:
-            from .._shared import add_log1p_cpm_layer
-            adata_st = add_log1p_cpm_layer(
-                adata_st, counts_layer="counts", out_layer="log1p_cpm",
+    if _selected("COVID-19", datasets):
+        try:
+            adata_st = get_stephenson()
+            if "log1p_cpm" not in adata_st.layers:
+                from .._shared import add_log1p_cpm_layer
+                adata_st = add_log1p_cpm_layer(
+                    adata_st, counts_layer="counts", out_layer="log1p_cpm",
+                )
+            adata_st, _ = score_signatures(adata_st, layer="log1p_cpm")
+            # Fixed DFO bin to match Figure 5 COVID analysis
+            target_visit = _covid_target_visit(adata_st)
+            covid_design = TrialDesign(
+                participant_col="participant_id",
+                visit_col="dfo_bin",
+                arm_col="severity",
+                arm_treated="Severe",
+                arm_control="Mild",
             )
-        adata_st, _ = score_signatures(adata_st, layer="log1p_cpm")
-        # Fixed DFO bin to match Figure 5 COVID analysis
-        target_visit = _covid_target_visit(adata_st)
-        covid_design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="dfo_bin",
-            arm_col="severity",
-            arm_treated="Severe",
-            arm_control="Mild",
-        )
-        res = load_or_run_gsea_cross_sectional(
-            adata_st, covid_design, visit=target_visit,
-            layer="log1p_cpm", dataset_name="COVID-19",
-        )
-        if res is not None:
-            sheets["COVID-19"] = res
-        del adata_st
-        gc.collect()
-    except Exception as exc:
-        print(f"    COVID-19 GSEA failed: {exc}")
+            res = load_or_run_gsea_cross_sectional(
+                adata_st, covid_design, visit=target_visit,
+                layer="log1p_cpm", dataset_name="COVID-19",
+            )
+            if res is not None:
+                sheets["COVID-19"] = res
+            del adata_st
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 3: COVID-19 GSEA failed") from exc
 
     # ── Single-arm datasets (within-arm Pre→Post) ──────────────────
     single_arm_gsea = [
@@ -488,6 +506,8 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
         ("CAR-T", get_cart, None, None, "CAR-T"),
     ]
     for ds_name, loader, visits_override, _layer_hint, arm_label in single_arm_gsea:
+        if not _selected(ds_name, datasets):
+            continue
         try:
             adata = loader()
             # Pick best available normalized layer
@@ -519,7 +539,7 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
             del adata
             gc.collect()
         except Exception as exc:
-            print(f"    {ds_name} GSEA failed: {exc}")
+            raise RuntimeError(f"Supplementary Table 3: {ds_name} GSEA failed") from exc
 
     # Save as multi-sheet Excel
     if sheets:
@@ -618,6 +638,7 @@ def _covid_target_visit(adata_st) -> str:
 def table4_permutation_results(
     n_permutations: int = 1000,
     n_jobs: int = -1,
+    datasets: Collection[str] | None = None,
 ) -> pd.DataFrame:
     """Permutation test results for all signatures across all datasets.
 
@@ -631,6 +652,8 @@ def table4_permutation_results(
         Number of label shuffles (default 1000).
     n_jobs : int
         Parallel jobs for permutation loop (-1 = all cores).
+    datasets : collection of str, optional
+        Datasets to include (default all). A selected dataset that fails raises.
     """
     print("  Table 4: Permutation test results")
 
@@ -643,215 +666,218 @@ def table4_permutation_results(
     rows: list[dict] = []
 
     # ── Sade-Feldman (two-arm DiD: shuffle response labels) ──────────
-    try:
-        adata_sf = get_sade_feldman()
-        if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
-            adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
-        adata_sf, sig_cols = score_signatures(adata_sf, layer="log1p_tpm")
-        adata_sf = harmonize_response(adata_sf)
+    if _selected("Melanoma", datasets):
+        try:
+            adata_sf = get_sade_feldman()
+            if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
+                adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
+            adata_sf, sig_cols = score_signatures(adata_sf, layer="log1p_tpm")
+            adata_sf = harmonize_response(adata_sf)
 
-        design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="visit",
-            arm_col="response_harmonized",
-            arm_treated="Responder",
-            arm_control="Non-responder",
-        )
-        obs_res = did_table(
-            adata_sf, features=sig_cols, design=design,
-            visits=("Pre", "Post"), layer="log1p_tpm",
-            standardize=True, aggregate="participant_visit",
-        )
-        obs_betas = dict(zip(obs_res["feature"], obs_res["beta_DiD"]))
-
-        with _quiet():
-            df_use, unit, time, arm_bin = get_did_aggregated_df(
-                adata_sf, sig_cols, design, ("Pre", "Post"),
-                layer="log1p_tpm", aggregate="participant_visit",
+            design = TrialDesign(
+                participant_col="participant_id",
+                visit_col="visit",
+                arm_col="response_harmonized",
+                arm_treated="Responder",
+                arm_control="Non-responder",
             )
-        pid_arm = (
-            adata_sf.obs[["participant_id", "response_harmonized"]]
-            .drop_duplicates("participant_id")
-        )
-        df_bytes = pkl.dumps(df_use)
-        pid_arm_bytes = pkl.dumps(pid_arm)
+            obs_res = did_table(
+                adata_sf, features=sig_cols, design=design,
+                visits=("Pre", "Post"), layer="log1p_tpm",
+                standardize=True, aggregate="participant_visit",
+            )
+            obs_betas = dict(zip(obs_res["feature"], obs_res["beta_DiD"]))
 
-        for feat in sig_cols:
-            obs_beta = obs_betas.get(feat, np.nan)
-            if not np.isfinite(obs_beta):
-                continue
-            tasks = [
-                (i, df_bytes, feat, unit, time, arm_bin, pid_arm_bytes, rng_seed)
-                for i in range(n_permutations)
-            ]
             with _quiet():
-                null_betas = Parallel(n_jobs=n_jobs, backend="loky")(
-                    delayed(_run_one_did_permutation)(t) for t in tasks
+                df_use, unit, time, arm_bin = get_did_aggregated_df(
+                    adata_sf, sig_cols, design, ("Pre", "Post"),
+                    layer="log1p_tpm", aggregate="participant_visit",
                 )
-            null_arr = np.array([b for b in null_betas if b is not None], dtype=float)
-            if len(null_arr) > 0:
-                perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
-                rows.append({
-                    "dataset": "Melanoma",
-                    "feature": feat,
-                    "label": sig_display(feat),
-                    "observed_beta": obs_beta,
-                    "permutation_p": perm_p,
-                    "n_permutations": len(null_arr),
-                    "null_mean": float(np.mean(null_arr)),
-                    "null_sd": float(np.std(null_arr)),
-                    "null_95_lo": float(np.percentile(null_arr, 2.5)),
-                    "null_95_hi": float(np.percentile(null_arr, 97.5)),
-                })
-        print(f"    Melanoma: {len([r for r in rows if r['dataset'] == 'Melanoma'])} features")
-        del adata_sf, df_use, df_bytes, pid_arm_bytes
-        gc.collect()
-    except Exception as exc:
-        print(f"    Melanoma permutation failed: {exc}")
+            pid_arm = (
+                adata_sf.obs[["participant_id", "response_harmonized"]]
+                .drop_duplicates("participant_id")
+            )
+            df_bytes = pkl.dumps(df_use)
+            pid_arm_bytes = pkl.dumps(pid_arm)
+
+            for feat in sig_cols:
+                obs_beta = obs_betas.get(feat, np.nan)
+                if not np.isfinite(obs_beta):
+                    continue
+                tasks = [
+                    (i, df_bytes, feat, unit, time, arm_bin, pid_arm_bytes, rng_seed)
+                    for i in range(n_permutations)
+                ]
+                with _quiet():
+                    null_betas = Parallel(n_jobs=n_jobs, backend="loky")(
+                        delayed(_run_one_did_permutation)(t) for t in tasks
+                    )
+                null_arr = np.array([b for b in null_betas if b is not None], dtype=float)
+                if len(null_arr) > 0:
+                    perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
+                    rows.append({
+                        "dataset": "Melanoma",
+                        "feature": feat,
+                        "label": sig_display(feat),
+                        "observed_beta": obs_beta,
+                        "permutation_p": perm_p,
+                        "n_permutations": len(null_arr),
+                        "null_mean": float(np.mean(null_arr)),
+                        "null_sd": float(np.std(null_arr)),
+                        "null_95_lo": float(np.percentile(null_arr, 2.5)),
+                        "null_95_hi": float(np.percentile(null_arr, 97.5)),
+                    })
+            print(f"    Melanoma: {len([r for r in rows if r['dataset'] == 'Melanoma'])} features")
+            del adata_sf, df_use, df_bytes, pid_arm_bytes
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 4: Melanoma permutation failed") from exc
 
     # ── TNBC (two-arm DiD: permute arm labels) ───────────────────────
-    try:
-        adata_tnbc = get_tnbc_zhang()
-        adata_tnbc, sig_cols_tnbc = score_signatures(adata_tnbc, layer="log1p_norm")
+    if _selected("TNBC", datasets):
+        try:
+            adata_tnbc = get_tnbc_zhang()
+            adata_tnbc, sig_cols_tnbc = score_signatures(adata_tnbc, layer="log1p_norm")
 
-        tnbc_design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="visit",
-            arm_col="arm",
-            arm_treated="anti-PDL1+Chemo",
-            arm_control="Chemo",
-        )
-        obs_res_tnbc = did_table(
-            adata_tnbc, features=sig_cols_tnbc, design=tnbc_design,
-            visits=("Pre", "Post"), layer="log1p_norm",
-            standardize=True, aggregate="participant_visit",
-        )
-        obs_betas_tnbc = dict(zip(obs_res_tnbc["feature"], obs_res_tnbc["beta_DiD"]))
-
-        with _quiet():
-            df_use_tnbc, unit_tnbc, time_tnbc, arm_bin_tnbc = get_did_aggregated_df(
-                adata_tnbc, sig_cols_tnbc, tnbc_design, ("Pre", "Post"),
-                layer="log1p_norm", aggregate="participant_visit",
+            tnbc_design = TrialDesign(
+                participant_col="participant_id",
+                visit_col="visit",
+                arm_col="arm",
+                arm_treated="anti-PDL1+Chemo",
+                arm_control="Chemo",
             )
-        pid_arm_tnbc = (
-            adata_tnbc.obs[["participant_id", "arm"]]
-            .drop_duplicates("participant_id")
-        )
-        df_bytes_tnbc = pkl.dumps(df_use_tnbc)
-        pid_arm_tnbc_bytes = pkl.dumps(pid_arm_tnbc)
-
-        def _run_tnbc_perm(args: tuple) -> float | None:
-            perm_idx, db, ft, un, tm, ab, pa_bytes, rs = args
-            df = pkl.loads(db)
-            pa = pkl.loads(pa_bytes)
-            r = np.random.default_rng(rs + perm_idx)
-            shuf = pa.copy()
-            shuf["arm"] = r.permutation(shuf["arm"].values)
-            pid_to_arm = dict(zip(shuf["participant_id"], shuf["arm"]))
-            df_p = df.copy()
-            df_p["arm_bin"] = df_p["participant_id"].map(
-                lambda x, m=pid_to_arm: 1 if m.get(x) == "anti-PDL1+Chemo" else 0
+            obs_res_tnbc = did_table(
+                adata_tnbc, features=sig_cols_tnbc, design=tnbc_design,
+                visits=("Pre", "Post"), layer="log1p_norm",
+                standardize=True, aggregate="participant_visit",
             )
-            try:
-                out = did_fit(df_p, y=ft, unit=un, time=tm, arm_bin=ab, standardize=True)
-                b = out.get("beta_DiD", np.nan)
-                return float(b) if np.isfinite(b) else None
-            except Exception:
-                return None
+            obs_betas_tnbc = dict(zip(obs_res_tnbc["feature"], obs_res_tnbc["beta_DiD"]))
 
-        for feat in sig_cols_tnbc:
-            obs_beta = obs_betas_tnbc.get(feat, np.nan)
-            if not np.isfinite(obs_beta):
-                continue
-            tasks = [
-                (i, df_bytes_tnbc, feat, unit_tnbc, time_tnbc, arm_bin_tnbc,
-                 pid_arm_tnbc_bytes, rng_seed)
-                for i in range(n_permutations)
-            ]
             with _quiet():
-                null_betas_tnbc = Parallel(n_jobs=n_jobs, backend="loky")(
-                    delayed(_run_tnbc_perm)(t) for t in tasks
+                df_use_tnbc, unit_tnbc, time_tnbc, arm_bin_tnbc = get_did_aggregated_df(
+                    adata_tnbc, sig_cols_tnbc, tnbc_design, ("Pre", "Post"),
+                    layer="log1p_norm", aggregate="participant_visit",
                 )
-            null_arr = np.array([b for b in null_betas_tnbc if b is not None], dtype=float)
-            if len(null_arr) > 0:
-                perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
-                rows.append({
-                    "dataset": "TNBC",
-                    "feature": feat,
-                    "label": sig_display(feat),
-                    "observed_beta": obs_beta,
-                    "permutation_p": perm_p,
-                    "n_permutations": len(null_arr),
-                    "null_mean": float(np.mean(null_arr)),
-                    "null_sd": float(np.std(null_arr)),
-                    "null_95_lo": float(np.percentile(null_arr, 2.5)),
-                    "null_95_hi": float(np.percentile(null_arr, 97.5)),
-                })
-        print(f"    TNBC: {len([r for r in rows if r['dataset'] == 'TNBC'])} features")
-        del adata_tnbc, df_use_tnbc, df_bytes_tnbc, pid_arm_tnbc_bytes
-        gc.collect()
-    except Exception as exc:
-        print(f"    TNBC permutation failed: {exc}")
+            pid_arm_tnbc = (
+                adata_tnbc.obs[["participant_id", "arm"]]
+                .drop_duplicates("participant_id")
+            )
+            df_bytes_tnbc = pkl.dumps(df_use_tnbc)
+            pid_arm_tnbc_bytes = pkl.dumps(pid_arm_tnbc)
+
+            def _run_tnbc_perm(args: tuple) -> float | None:
+                perm_idx, db, ft, un, tm, ab, pa_bytes, rs = args
+                df = pkl.loads(db)
+                pa = pkl.loads(pa_bytes)
+                r = np.random.default_rng(rs + perm_idx)
+                shuf = pa.copy()
+                shuf["arm"] = r.permutation(shuf["arm"].values)
+                pid_to_arm = dict(zip(shuf["participant_id"], shuf["arm"]))
+                df_p = df.copy()
+                df_p["arm_bin"] = df_p["participant_id"].map(
+                    lambda x, m=pid_to_arm: 1 if m.get(x) == "anti-PDL1+Chemo" else 0
+                )
+                try:
+                    out = did_fit(df_p, y=ft, unit=un, time=tm, arm_bin=ab, standardize=True)
+                    b = out.get("beta_DiD", np.nan)
+                    return float(b) if np.isfinite(b) else None
+                except Exception:
+                    return None
+
+            for feat in sig_cols_tnbc:
+                obs_beta = obs_betas_tnbc.get(feat, np.nan)
+                if not np.isfinite(obs_beta):
+                    continue
+                tasks = [
+                    (i, df_bytes_tnbc, feat, unit_tnbc, time_tnbc, arm_bin_tnbc,
+                     pid_arm_tnbc_bytes, rng_seed)
+                    for i in range(n_permutations)
+                ]
+                with _quiet():
+                    null_betas_tnbc = Parallel(n_jobs=n_jobs, backend="loky")(
+                        delayed(_run_tnbc_perm)(t) for t in tasks
+                    )
+                null_arr = np.array([b for b in null_betas_tnbc if b is not None], dtype=float)
+                if len(null_arr) > 0:
+                    perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
+                    rows.append({
+                        "dataset": "TNBC",
+                        "feature": feat,
+                        "label": sig_display(feat),
+                        "observed_beta": obs_beta,
+                        "permutation_p": perm_p,
+                        "n_permutations": len(null_arr),
+                        "null_mean": float(np.mean(null_arr)),
+                        "null_sd": float(np.std(null_arr)),
+                        "null_95_lo": float(np.percentile(null_arr, 2.5)),
+                        "null_95_hi": float(np.percentile(null_arr, 97.5)),
+                    })
+            print(f"    TNBC: {len([r for r in rows if r['dataset'] == 'TNBC'])} features")
+            del adata_tnbc, df_use_tnbc, df_bytes_tnbc, pid_arm_tnbc_bytes
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 4: TNBC permutation failed") from exc
 
     # ── Stephenson (cross-sectional: permute Severe/Mild labels) ────
     # The observed statistic and every null replicate are the same estimand: the
     # standardised between-arm OLS beta on participant-level means in the DFO_8-14
     # bin (Figure 5, Supp Tables 2-3). Each replicate reshuffles severity across the
     # participants sampled in that bin.
-    try:
-        adata_st = get_stephenson()
-        if "log1p_cpm" not in adata_st.layers:
-            adata_st = add_log1p_cpm_layer(
-                adata_st, counts_layer="counts", out_layer="log1p_cpm",
-            )
-        adata_st, sig_cols_st = score_signatures(adata_st, layer="log1p_cpm")
-        target_visit = _covid_target_visit(adata_st)
-
-        design_st = TrialDesign(
-            participant_col="participant_id",
-            visit_col="dfo_bin",
-            arm_col="severity",
-            arm_treated="Severe",
-            arm_control="Mild",
-        )
-        df_cs = get_between_arm_aggregated_df(
-            adata_st, sig_cols_st, design_st, target_visit, layer="log1p_cpm",
-        )
-        df_bytes_st = pkl.dumps(df_cs)
-
-        for feat in sig_cols_st:
-            obs_beta = between_arm_fit_beta(df_cs, feat, design_st)
-            if not np.isfinite(obs_beta):
-                continue
-            tasks = [
-                (i, df_bytes_st, feat, design_st, rng_seed)
-                for i in range(n_permutations)
-            ]
-            with _quiet():
-                null_betas_st = Parallel(n_jobs=n_jobs, backend="loky")(
-                    delayed(_run_one_between_arm_permutation)(t) for t in tasks
+    if _selected("COVID-19", datasets):
+        try:
+            adata_st = get_stephenson()
+            if "log1p_cpm" not in adata_st.layers:
+                adata_st = add_log1p_cpm_layer(
+                    adata_st, counts_layer="counts", out_layer="log1p_cpm",
                 )
-            null_arr = np.array([b for b in null_betas_st if b is not None], dtype=float)
-            if len(null_arr) > 0:
-                perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
-                rows.append({
-                    "dataset": "COVID-19",
-                    "feature": feat,
-                    "label": sig_display(feat),
-                    "observed_beta": obs_beta,
-                    "permutation_p": perm_p,
-                    "n_permutations": len(null_arr),
-                    "null_mean": float(np.mean(null_arr)),
-                    "null_sd": float(np.std(null_arr)),
-                    "null_95_lo": float(np.percentile(null_arr, 2.5)),
-                    "null_95_hi": float(np.percentile(null_arr, 97.5)),
-                })
-        print(f"    COVID-19 ({target_visit}, n={df_cs['participant_id'].nunique()}): "
-              f"{len([r for r in rows if r['dataset'] == 'COVID-19'])} features")
-        del adata_st, df_cs, df_bytes_st
-        gc.collect()
-    except Exception as exc:
-        print(f"    COVID-19 permutation failed: {exc}")
+            adata_st, sig_cols_st = score_signatures(adata_st, layer="log1p_cpm")
+            target_visit = _covid_target_visit(adata_st)
+
+            design_st = TrialDesign(
+                participant_col="participant_id",
+                visit_col="dfo_bin",
+                arm_col="severity",
+                arm_treated="Severe",
+                arm_control="Mild",
+            )
+            df_cs = get_between_arm_aggregated_df(
+                adata_st, sig_cols_st, design_st, target_visit, layer="log1p_cpm",
+            )
+            df_bytes_st = pkl.dumps(df_cs)
+
+            for feat in sig_cols_st:
+                obs_beta = between_arm_fit_beta(df_cs, feat, design_st)
+                if not np.isfinite(obs_beta):
+                    continue
+                tasks = [
+                    (i, df_bytes_st, feat, design_st, rng_seed)
+                    for i in range(n_permutations)
+                ]
+                with _quiet():
+                    null_betas_st = Parallel(n_jobs=n_jobs, backend="loky")(
+                        delayed(_run_one_between_arm_permutation)(t) for t in tasks
+                    )
+                null_arr = np.array([b for b in null_betas_st if b is not None], dtype=float)
+                if len(null_arr) > 0:
+                    perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
+                    rows.append({
+                        "dataset": "COVID-19",
+                        "feature": feat,
+                        "label": sig_display(feat),
+                        "observed_beta": obs_beta,
+                        "permutation_p": perm_p,
+                        "n_permutations": len(null_arr),
+                        "null_mean": float(np.mean(null_arr)),
+                        "null_sd": float(np.std(null_arr)),
+                        "null_95_lo": float(np.percentile(null_arr, 2.5)),
+                        "null_95_hi": float(np.percentile(null_arr, 97.5)),
+                    })
+            print(f"    COVID-19 ({target_visit}, n={df_cs['participant_id'].nunique()}): "
+                  f"{len([r for r in rows if r['dataset'] == 'COVID-19'])} features")
+            del adata_st, df_cs, df_bytes_st
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 4: COVID-19 permutation failed") from exc
 
     # ── Single-arm datasets: permute visit labels ────────────────────
     single_arm = [
@@ -860,6 +886,8 @@ def table4_permutation_results(
         ("CAR-T", get_cart, None),
     ]
     for ds_name, loader, visits_override in single_arm:
+        if not _selected(ds_name, datasets):
+            continue
         try:
             adata = loader()
             adata, sig_cols_imm = score_signatures(adata)
@@ -907,7 +935,7 @@ def table4_permutation_results(
             del adata, df_use, df_bytes
             gc.collect()
         except Exception as exc:
-            print(f"    {ds_name} permutation failed: {exc}")
+            raise RuntimeError(f"Supplementary Table 4: {ds_name} permutation failed") from exc
 
     if not rows:
         print("    No permutation results generated")
@@ -1106,8 +1134,7 @@ def table7_gene_level_results() -> pd.DataFrame:
         gc.collect()
         return res
     except Exception as exc:
-        print(f"    Gene-level DiD failed: {exc}")
-        return pd.DataFrame()
+        raise RuntimeError("Supplementary Table 7: melanoma gene-level DiD failed") from exc
 
 
 # ======================================================================
@@ -1115,7 +1142,7 @@ def table7_gene_level_results() -> pd.DataFrame:
 # ======================================================================
 
 
-def table8_dataset_metadata() -> pd.DataFrame:
+def table8_dataset_metadata(datasets: Collection[str] | None = None) -> pd.DataFrame:
     """Per-participant metadata across all datasets.
 
     Columns: dataset, participant_id, arm/condition, visit, n_cells,
@@ -1135,6 +1162,8 @@ def table8_dataset_metadata() -> pd.DataFrame:
     ]
 
     for ds_name, loader, pid_col, visit_col, condition_col in datasets_info:
+        if not _selected(ds_name, datasets):
+            continue
         try:
             adata = loader()
 
@@ -1203,7 +1232,7 @@ def table8_dataset_metadata() -> pd.DataFrame:
             del adata
             gc.collect()
         except Exception as exc:
-            print(f"    {ds_name} metadata failed: {exc}")
+            raise RuntimeError(f"Supplementary Table 8: {ds_name} metadata failed") from exc
 
     if not rows:
         print("    No metadata generated")
@@ -1273,8 +1302,7 @@ def table6_gene_level_tnbc() -> pd.DataFrame:
         gc.collect()
         return res
     except Exception as exc:
-        print(f"    Gene-level DiD (TNBC) failed: {exc}")
-        return pd.DataFrame()
+        raise RuntimeError("Supplementary Table 6: TNBC gene-level DiD failed") from exc
 
 
 # ======================================================================
@@ -1282,7 +1310,7 @@ def table6_gene_level_tnbc() -> pd.DataFrame:
 # ======================================================================
 
 
-def patch_table1_genes_present() -> pd.DataFrame:
+def patch_table1_genes_present(datasets: Collection[str] | None = None) -> pd.DataFrame:
     """Add a 'Genes Present' column to Supp Table 1 showing how many
     genes from each signature are actually found in each dataset."""
     print("  Patching Table 1: Adding Genes Present per dataset")
@@ -1303,6 +1331,8 @@ def patch_table1_genes_present() -> pd.DataFrame:
     ]
 
     for ds_name, loader in datasets_loaders:
+        if not _selected(ds_name, datasets):
+            continue
         try:
             adata = loader()
             var_names_set = set(adata.var_names)
@@ -1317,7 +1347,7 @@ def patch_table1_genes_present() -> pd.DataFrame:
             del adata
             gc.collect()
         except Exception as exc:
-            print(f"    {ds_name} genes present failed: {exc}")
+            raise RuntimeError(f"Supplementary Table 1: {ds_name} genes present failed") from exc
 
     t1.to_csv(t1_path, index=False)
 

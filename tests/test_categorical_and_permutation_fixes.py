@@ -105,10 +105,19 @@ def test_table8_lists_only_sampled_participant_visits(load_figure_module, monkey
     }, index=["0", "1", "2"])
     aml = AnnData(X=np.zeros((3, 1)), obs=obs)
     tables = _tables_with(load_figure_module, monkeypatch, tmp_path, get_aml=lambda: aml)
-    out = tables.table8_dataset_metadata()
+    out = tables.table8_dataset_metadata(datasets=("AML",))
     assert len(out) == 3
     assert (out["n_cells"] > 0).all()
     assert out["n_cell_types"].tolist() == [1, 1, 1]
+
+
+def test_a_failing_dataset_aborts_the_table_instead_of_dropping_it(
+        load_figure_module, monkeypatch, tmp_path):
+    """Supp Table 4 once lost four datasets on a cluster because failures were printed."""
+    tables = _tables_with(load_figure_module, monkeypatch, tmp_path)
+    with pytest.raises(RuntimeError, match="Supplementary Table 8: AML metadata failed"):
+        tables.table8_dataset_metadata(datasets=("AML",))
+    assert not (tmp_path / "Supp_Table8_dataset_metadata.csv").exists()
 
 
 def _covid_cells():
@@ -146,7 +155,8 @@ def test_table4_covid_null_permutes_the_observed_statistic(load_figure_module, m
     tables = _tables_with(load_figure_module, monkeypatch, tmp_path, get_stephenson=lambda: adata)
     monkeypatch.setattr(tables, "score_signatures", lambda ad, layer=None: (ad, [SIG]))
     n_perm = 40
-    out = tables.table4_permutation_results(n_permutations=n_perm, n_jobs=1)
+    out = tables.table4_permutation_results(n_permutations=n_perm, n_jobs=1,
+                                            datasets=("COVID-19",))
     row = out.loc[out["dataset"] == "COVID-19"].iloc[0]
 
     df = st.get_between_arm_aggregated_df(adata, [SIG], COVID_DESIGN, "DFO_8-14", layer="log1p_cpm")
