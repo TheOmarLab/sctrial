@@ -3570,6 +3570,19 @@ def _swap_leading_edge_axes(ax) -> None:
         )
 
 
+def _show_names_once(forest_axes: list) -> Any:
+    """Keep the shared row names on the leftmost forest that drew; hide them on the others.
+
+    A forest whose dataset has no results is switched off by its panel function, so the names
+    must not depend on any one dataset. Returns the axes that carries the names.
+    """
+    names_ax = next((ax for ax in forest_axes if ax.axison), forest_axes[0])
+    for ax in forest_axes:
+        if ax is not names_ax:
+            ax.tick_params(axis="y", labelleft=False)
+    return names_ax
+
+
 def _shrink_colorbars(fig, axes_before: set, fs: float = 3.5) -> None:
     """Shrink tick/label fonts on any colorbar axes added since `axes_before`."""
     for _cb_ax in set(fig.get_axes()) - axes_before:
@@ -3725,8 +3738,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
             _head, _, _tail = _ax_fp.get_xlabel().partition(" (")
             _lines = [_head] + (textwrap.wrap("(" + _tail, 20) if _tail else [])
             _ax_fp.set_xlabel("\n".join(_lines), fontsize=4.5)
-    for _ax_fp in _forest_axes[1:]:
-        _ax_fp.tick_params(axis="y", labelleft=False)
+    _names_ax = _show_names_once(_forest_axes)
 
     # ── L — effect-size heatmap ───────────────────────────────────────
     _axes_before_l = set(fig_c.get_axes())
@@ -3819,7 +3831,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     fig_c.canvas.draw()
     _r = fig_c.canvas.get_renderer()
     _y_px = max(_ax.title.get_window_extent(_r).y1 for _ax in _forest_axes)
-    _g_px = min(t.get_window_extent(_r).x0 for t in ax_f.get_yticklabels() if t.get_text())
+    _g_px = min(t.get_window_extent(_r).x0 for t in _names_ax.get_yticklabels() if t.get_text())
     for _ax, lbl in zip(_forest_axes, "GHIJKL"):
         if _ax is ax_f:
             _x_px, _ha = _g_px, "left"

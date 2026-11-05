@@ -366,3 +366,21 @@ def test_letter_at_panel_corner_takes_a_shared_top(shared):
     m, n = (t.get_window_extent(r) for t in fig.texts[-2:])
     assert m.y1 == pytest.approx(n.y1, abs=0.5) == pytest.approx(top, abs=1.0)
     plt.close(fig)
+
+
+def test_figure4_shared_forest_names_survive_a_missing_dataset(load_figure_module):
+    fig4 = load_figure_module("main/figure4_biological_discovery_multi_dataset")
+    order = ["Apoptosis", "Hypoxia"]
+    df = pd.DataFrame({"label": order, "g": [0.5, -1.0], "lo": [0.1, -1.5], "hi": [0.9, -0.5]})
+    fig, axes = plt.subplots(1, 3)
+    axes[0].axis("off")  # what a panel function does when its dataset has no results
+    for ax in axes[1:]:
+        fig4._forest_plot(ax, df, effect_col="g", ci_lo_col="lo", ci_hi_col="hi",
+                          label_col="label", order=order)
+    names_ax = fig4._show_names_once(list(axes))
+    fig.canvas.draw()
+    assert names_ax is axes[1]
+    shown = {i: [t.get_text() for t in ax.get_yticklabels() if t.get_visible()]
+             for i, ax in enumerate(axes)}
+    assert shown[1] == order[::-1] and shown[2] == []
+    plt.close(fig)
