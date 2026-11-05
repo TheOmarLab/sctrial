@@ -21,10 +21,11 @@ logger = logging.getLogger(__name__)
 def _permute_arms(adata, participant_col: str, arm_col: str, rng):
     """Shuffle arm labels across participants (preserving within-participant structure)."""
     adata = adata.copy()
-    pids = adata.obs[participant_col].unique()
-    arms = adata.obs.groupby(participant_col)[arm_col].first()
-    shuffled_arms = rng.permutation(arms.values)
-    arm_map = dict(zip(pids, shuffled_arms))
+    # observed=True: on a Categorical participant column with unused levels the
+    # groupby would add NaN-arm rows, and the shuffled labels would no longer be a
+    # permutation of the real participants' arms.
+    arms = adata.obs.groupby(participant_col, observed=True)[arm_col].first()
+    arm_map = dict(zip(arms.index, rng.permutation(arms.values)))
     adata.obs[arm_col] = adata.obs[participant_col].map(arm_map)
     return adata
 

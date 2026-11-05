@@ -8,6 +8,7 @@ style configuration, and I/O helpers used by all figure scripts.
 from __future__ import annotations
 
 import gc
+import hashlib
 import os
 import re
 import warnings
@@ -50,6 +51,27 @@ GSEA_OUTPUT = MANUSCRIPT_DIR / "GSEA"
 
 for _d in (MAIN_OUTPUT, SUPP_OUTPUT, GSEA_OUTPUT):
     _d.mkdir(parents=True, exist_ok=True)
+
+
+def _stats_fingerprint() -> str:
+    """Short hash of the package source that determines every DiD estimate.
+
+    Fold this into the key of any cache whose content comes from ``did_fit``,
+    ``did_table`` or DiD-ranked GSEA. A figure's own ``_CODE_VERSION`` or source
+    hash cannot see a change to the package estimator, so without this a cache
+    keeps serving results from the previous estimator, on every machine that
+    holds one.
+    """
+    import sctrial
+
+    pkg = Path(sctrial.__file__).resolve().parent
+    h = hashlib.md5()  # noqa: S324 - cache tag, not security
+    for rel in ("stats/did.py", "utils.py"):
+        h.update((pkg / rel).read_bytes())
+    return h.hexdigest()[:8]
+
+
+STATS_FINGERPRINT = _stats_fingerprint()
 
 # ---------------------------------------------------------------------------
 # Style
@@ -128,8 +150,10 @@ try:
         TrialDesign,
         add_log1p_cpm_layer,
         between_arm_comparison,
+        between_arm_fit_beta,
         did_fit,
         did_table,
+        get_between_arm_aggregated_df,
         get_did_aggregated_df,
         get_within_arm_aggregated_df,
         harmonize_response,
@@ -318,6 +342,602 @@ DATASET_DISPLAY_NAMES: dict[str, str] = {
     "Sade-Feldman": "Melanoma",
     "Stephenson": "COVID-19",
 }
+
+
+# ---------------------------------------------------------------------------
+# Text labels for scatter plots
+# ---------------------------------------------------------------------------
+
+# adjustText settings, gentlest first. Every candidate is laid out and scored on
+# its defects (labels touching a label or a marker, leader lines crossing), with
+# mean leader length breaking ties; the lowest score wins. Several candidates are
+# needed because convergence depends on the font metrics of the rendering
+# machine. Crossing removal is off in the stronger settings: it swaps label pairs
+# every step and the layout oscillates instead of converging.
+_LABEL_LAYOUTS = (
+    dict(expand=(1.2, 1.4), force_text=(0.3, 0.5), force_static=(0.5, 0.7)),
+    dict(expand=(1.2, 1.4), force_text=(0.6, 0.9), force_static=(0.8, 1.0),
+         prevent_crossings=False, max_move=(20, 20)),
+    dict(expand=(1.2, 1.4), force_text=(0.6, 0.9), force_static=(1.0, 1.2),
+         force_pull=(0.0, 0.0), prevent_crossings=False, max_move=(20, 20)),
+    dict(expand=(1.1, 1.3), force_text=(0.8, 1.0), force_static=(1.0, 1.2),
+         prevent_crossings=False, max_move=(40, 40)),
+    dict(expand=(1.5, 1.8), force_text=(0.5, 0.8), force_static=(0.8, 1.0),
+         prevent_crossings=False, max_move=(20, 20)),
+)
+
+
+def _segments_cross(p1, p2, q1, q2) -> bool:
+    """True when segments p1-p2 and q1-q2 properly intersect."""
+    import numpy as np
+
+    def orient(a, b, c):
+        return np.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]))
+    return bool(orient(p1, p2, q1) * orient(p1, p2, q2) < 0
+                and orient(q1, q2, p1) * orient(q1, q2, p2) < 0)
+
+
+def _leaders(boxes, target_px, target_r_px):
+    """Per label: (label centre x, y, target x, y, gap); centre is None when attached."""
+    import numpy as np
+
+    out = []
+    for bb, (mx, my), r in zip(boxes, target_px, target_r_px):
+        gap = float(np.hypot(np.clip(mx, bb.x0, bb.x1) - mx, np.clip(my, bb.y0, bb.y1) - my))
+        out.append(((bb.x0 + bb.x1) / 2, (bb.y0 + bb.y1) / 2, mx, my, gap)
+                   if gap > r + 2 else (None, None, mx, my, gap))
+    return out
+
+
+def _crossing_pairs(leaders):
+    return [(i, j) for i, a in enumerate(leaders) for j, b in enumerate(leaders)
+            if i < j and a[0] is not None and b[0] is not None
+            and _segments_cross(a[:2], a[2:4], b[:2], b[2:4])]
+
+
+def label_layout_score(texts, target_px, target_r_px, obstacle_px, obstacle_r_px,
+                       renderer, blocked_px=(), own=None,
+                       own_slack_px: float = 0.0) -> tuple[int, float]:
+    """(defects, mean label-to-target gap in px) for a finished label layout.
+
+    Defects are label-label overlaps, labels touching any obstacle disc or any
+    blocked display-space box (e.g. a reference line), and crossing leader lines
+    (label centre to its target, counted when the label is detached). ``own``
+    gives each label's own marker as an index into the obstacles; that disc is
+    shrunk by ``own_slack_px`` so a label may sit right beside its own point.
+    """
+    import numpy as np
+
+    boxes = [t.get_window_extent(renderer) for t in texts]
+    defects = sum(boxes[i].overlaps(boxes[j])
+                  for i in range(len(boxes)) for j in range(i + 1, len(boxes)))
+    defects += sum(bb.overlaps(blk) for bb in boxes for blk in blocked_px)
+    for k, bb in enumerate(boxes):
+        radii = np.array(obstacle_r_px, dtype=float, copy=True)
+        if own is not None:
+            radii[own[k]] -= own_slack_px
+        cx = np.clip(obstacle_px[:, 0], bb.x0, bb.x1)
+        cy = np.clip(obstacle_px[:, 1], bb.y0, bb.y1)
+        defects += int(np.any((cx - obstacle_px[:, 0]) ** 2 + (cy - obstacle_px[:, 1]) ** 2
+                              < radii ** 2))
+    leaders = _leaders(boxes, target_px, target_r_px)
+    defects += len(_crossing_pairs(leaders))
+    return defects, float(np.mean([seg[4] for seg in leaders]))
+
+
+def label_points(ax, names, x, y, s, *, fontsize: float, obstacles=None,
+                 hlines=(), vlines=(), priority=None, counts=None,
+                 max_mean_leader_pt: float | None = None, fontweight: str = "bold",
+                 color: str = "black") -> list[str]:
+    """Label scatter points clear of each other and of markers, with leader lines.
+
+    ``names``, ``x``, ``y`` are the points to label (data coordinates) and ``s`` their
+    marker area in pt^2 (scalar or one per point), as passed to ``scatter``.
+    ``obstacles`` is an optional ``(xy, s)`` pair of further markers no label may
+    touch; the labelled points are always obstacles. ``hlines``/``vlines`` are
+    data-coordinate reference lines (e.g. a significance threshold) no label may
+    sit on. ``priority`` (indices into ``names``, most important first) and
+    ``counts`` (label counts to try, largest first) make the function label the top
+    ``n`` points for the first ``n`` whose layout has no defect and, when
+    ``max_mean_leader_pt`` is set, a mean label-to-point gap no longer than that:
+    the right behaviour for a cell too small to name every point. Returns the
+    names that were labelled.
+
+    Each candidate setting in ``_LABEL_LAYOUTS`` is laid out by adjustText against
+    data-space boxes around every marker (marker radius plus 1 pt), with a fixed
+    iteration budget and numpy's global RNG seeded (adjustText jitters coincident
+    labels with it), then crossing leaders are swapped while that lowers the
+    defect score; the best layout is kept. The canvas is drawn first so marker
+    sizes are measured at the figure dpi. Axis limits, the axes position and the
+    label font size must be final before calling: adjustText works in display
+    space, so a later resize moves markers under labels.
+    """
+    import numpy as np
+    from adjustText import adjust_text
+    from matplotlib.patches import FancyArrowPatch
+    from matplotlib.transforms import Bbox
+
+    names = list(names)
+    xy = np.column_stack([np.asarray(x, dtype=float), np.asarray(y, dtype=float)])
+    size = np.broadcast_to(np.asarray(s, dtype=float), (len(names),))
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    to_px = fig.dpi / 72
+
+    def _discs(points, areas):
+        px = ax.transData.transform(points)
+        return px, (np.sqrt(areas) / 2 + 1.0) * to_px
+
+    if obstacles is not None:
+        obs_xy = np.asarray(obstacles[0], dtype=float).reshape(-1, 2)
+        obs_s = np.broadcast_to(np.asarray(obstacles[1], dtype=float), (len(obs_xy),))
+        # A labelled point passed again as an obstacle would block its own label.
+        dup = np.array([np.any(np.all(np.isclose(o, xy), axis=1)) for o in obs_xy],
+                       dtype=bool)
+        all_xy = np.vstack([xy, obs_xy[~dup]])
+        all_s = np.concatenate([size, obs_s[~dup]])
+    else:
+        all_xy, all_s = xy, size
+    obstacle_px, obstacle_r = _discs(all_xy, all_s)
+    # adjustText repels from each marker's own extent; the 1 pt clearance applies
+    # only when scoring (padding the solver's boxes stalls it in dense clusters).
+    marker_r = np.sqrt(all_s) / 2 * to_px
+    inv = ax.transData.inverted()
+    lo = inv.transform(obstacle_px - marker_r[:, None])
+    hi = inv.transform(obstacle_px + marker_r[:, None])
+    boxes = [Bbox([np.minimum(a, b), np.maximum(a, b)]) for a, b in zip(lo, hi)]
+    # Reference lines become thin display-space strips (1 pt either side), and the
+    # four frame edges become strips just inside the axes, so no label sits on a
+    # line it does not describe or touches a spine.
+    frame = ax.get_window_extent(renderer)
+    half = 1.0 * to_px
+    edge = 1.5 * to_px
+    blocked_px = [
+        Bbox([[frame.x0, frame.y0], [frame.x0 + edge, frame.y1]]),
+        Bbox([[frame.x1 - edge, frame.y0], [frame.x1, frame.y1]]),
+        Bbox([[frame.x0, frame.y0], [frame.x1, frame.y0 + edge]]),
+        Bbox([[frame.x0, frame.y1 - edge], [frame.x1, frame.y1]]),
+    ]
+    for yv in hlines:
+        py = ax.transData.transform((0.0, yv))[1]
+        blocked_px.append(Bbox([[frame.x0, py - half], [frame.x1, py + half]]))
+    for xv in vlines:
+        px_ = ax.transData.transform((xv, 0.0))[0]
+        blocked_px.append(Bbox([[px_ - half, frame.y0], [px_ + half, frame.y1]]))
+    # Each setting runs twice, with and without the frame strips among the solver's
+    # obstacles (ensure_inside_axes alone lets labels rest on a spine, but the strips
+    # also perturb adjustText's initial explode step); scoring always includes them.
+    line_boxes = [Bbox(inv.transform(b.get_points())) for b in blocked_px[4:]]
+    frame_boxes = [Bbox(inv.transform(b.get_points())) for b in blocked_px[:4]]
+
+    order = list(priority) if priority is not None else list(range(len(names)))
+    tries = list(counts) if counts is not None else [len(names)]
+    tries = [n for n in tries if n <= len(names)] or [len(names)]
+
+    def _place(keep):
+        target_px, target_r = _discs(xy[keep], size[keep])
+        best = None
+        for settings, with_frame in ((s_, f_) for s_ in _LABEL_LAYOUTS for f_ in (True, False)):
+            texts = [ax.text(xy[i, 0], xy[i, 1], names[i], fontsize=fontsize,
+                             fontweight=fontweight, color=color, zorder=6) for i in keep]
+            objects = boxes + line_boxes + (frame_boxes if with_frame else [])
+            rng_state = np.random.get_state()
+            np.random.seed(0)
+            try:
+                adjust_text(texts, objects=objects, ax=ax, iter_lim=3000,
+                            ensure_inside_axes=True, **settings)
+            finally:
+                np.random.set_state(rng_state)
+            args = (target_px, target_r, obstacle_px, obstacle_r, renderer, blocked_px,
+                    keep, 1.0 * to_px)
+            score = label_layout_score(texts, *args)
+            for _ in range(len(texts)):
+                improved = False
+                cur = [t.get_window_extent(renderer) for t in texts]
+                for i, j in _crossing_pairs(_leaders(cur, target_px, target_r)):
+                    pi, pj = texts[i].get_position(), texts[j].get_position()
+                    texts[i].set_position(pj)
+                    texts[j].set_position(pi)
+                    new = label_layout_score(texts, *args)
+                    if new < score:
+                        score, improved = new, True
+                        break
+                    texts[i].set_position(pi)
+                    texts[j].set_position(pj)
+                if not improved:
+                    break
+            if best is None or score < best[0]:
+                if best is not None:
+                    for t in best[1]:
+                        t.remove()
+                best = (score, texts)
+            else:
+                for t in texts:
+                    t.remove()
+        return best
+
+    # Accept the largest count whose layout is defect-free with short leaders; if
+    # none is, fall back to the fewest defects (then more labels, shorter leaders).
+    max_gap_px = None if max_mean_leader_pt is None else max_mean_leader_pt * to_px
+    attempts, chosen = [], None
+    for n in tries:
+        keep = sorted(order[:n])
+        (defects, mean_gap), texts = _place(keep)
+        attempts.append(((defects, -n, mean_gap), keep, [t.get_position() for t in texts]))
+        for t in texts:
+            t.remove()
+        if defects == 0 and (max_gap_px is None or mean_gap <= max_gap_px):
+            chosen = attempts[-1]
+            break
+    _, keep, positions = chosen if chosen is not None else min(attempts, key=lambda a: a[0])
+    texts = [ax.text(px_, py_, names[i], fontsize=fontsize, fontweight=fontweight,
+                     color=color, ha="center", va="center", zorder=6)
+             for i, (px_, py_) in zip(keep, positions)]
+
+    target_px, target_r = _discs(xy[keep], size[keep])
+    for txt, i, (mx, my), r in zip(texts, keep, target_px, target_r):
+        bb = txt.get_window_extent(renderer)
+        gap = np.hypot(np.clip(mx, bb.x0, bb.x1) - mx, np.clip(my, bb.y0, bb.y1) - my)
+        if gap > r + 2:
+            ax.add_patch(FancyArrowPatch(
+                posA=txt.get_position(), posB=tuple(xy[i]), patchA=txt, arrowstyle="-",
+                color="gray", lw=0.4, alpha=0.7, shrinkA=0.5,
+                shrinkB=float(np.sqrt(size[i]) / 2), zorder=2, transform=ax.transData))
+    return [names[i] for i in keep]
+
+
+def key_below_axes(ax, *, ncol: int, fontsize: float | None = None, gap_pt: float = 2.0,
+                   clear_of=None):
+    """Move the axis legend just below the axis' own text (x tick labels and x label).
+
+    The offset is measured after a draw, in points, so the key clears the axis text at any
+    panel size and never sits on data. ``clear_of`` (axes in the same row) puts the key below
+    the lowest x-axis text of all of them, so a row of keys shares one baseline. Call it once
+    the panel's fonts are final. Returns the new legend, or None when the axis has no legend.
+    """
+    import matplotlib.transforms as mtransforms
+
+    leg = ax.get_legend()
+    if leg is None:
+        return None
+    handles = leg.legend_handles
+    labels = [t.get_text() for t in leg.get_texts()]
+    if fontsize is None:
+        fontsize = leg.get_texts()[0].get_fontsize() if labels else plt.rcParams["legend.fontsize"]
+    leg.remove()
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    axes_bottom = ax.get_window_extent(renderer).y0
+    text_bottom = min([axes_bottom] + [a.xaxis.get_tightbbox(renderer).y0
+                                       for a in (clear_of or [ax])])
+    offset_pt = (axes_bottom - text_bottom) * 72 / fig.dpi + gap_pt
+    return ax.legend(
+        handles=handles, labels=labels, loc="upper center", bbox_to_anchor=(0.5, 0.0),
+        bbox_transform=mtransforms.offset_copy(ax.transAxes, fig=fig, y=-offset_pt,
+                                               units="points"),
+        ncol=ncol, fontsize=fontsize, frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
+        borderpad=0.3, columnspacing=0.8, handlelength=0.8, handletextpad=0.3,
+        labelspacing=0.2,
+    )
+
+
+def letter_at_panel_corner(ax, letter: str, *, fontsize: float, top: float | None = None) -> None:
+    """Put a bold panel letter at the left edge of the panel's own labels, level with its title.
+
+    For panels whose tick labels or title reach well left of the axes (heatmaps with long row
+    names, narrow panels with long titles), where a fixed axes-fraction offset lands on a label.
+    """
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    own = ax.get_yticklabels() + [ax.yaxis.label] + list(ax.texts)  # row names, y label, groups
+    lefts = [t.get_window_extent(renderer).x0 for t in own if t.get_visible() and t.get_text()]
+    lefts += [ax.get_window_extent(renderer).x0]
+    if ax.get_title():
+        lefts.append(ax.title.get_window_extent(renderer).x0)
+    if top is None:  # display y of the letter's top; default level with the title
+        top = (ax.title.get_window_extent(renderer).y1 if ax.get_title()
+               else ax.get_window_extent(renderer).y1)
+    x, y = fig.transFigure.inverted().transform((min(lefts), top))
+    fig.text(x, y, letter, fontsize=fontsize, fontweight="bold", va="top", ha="left")
+
+
+def group_axis_labels(ax, groups, *, fontsize: float, gap_pt: float = 1.5,
+                      axis: str = "x") -> None:
+    """Write one label per group of ticks, outside the tick labels.
+
+    ``groups`` is a list of (label, start, end) in data coordinates along ``axis``. Used where
+    each tick carries only its own short label (Pre/Post, a visit) and the shared part (dataset,
+    arm) would otherwise repeat on every tick. On the x axis the label goes under the tick labels;
+    on the y axis it goes to their left, centred on the group.
+    """
+    import matplotlib.transforms as mtransforms
+
+    if axis not in ("x", "y"):
+        raise ValueError(f"axis must be 'x' or 'y', not {axis!r}")
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    box = ax.get_window_extent(renderer)
+    if axis == "x":
+        edge = min([box.y0] + [t.get_window_extent(renderer).y0
+                               for t in ax.get_xticklabels() if t.get_text()])
+        offset_pt = (box.y0 - edge) * 72 / fig.dpi + gap_pt
+        trans = mtransforms.offset_copy(ax.get_xaxis_transform(), fig=fig, y=-offset_pt,
+                                        units="points")
+        for label, a, b in groups:
+            ax.text((a + b) / 2, 0.0, label, transform=trans, ha="center", va="top",
+                    fontsize=fontsize, clip_on=False)
+    else:
+        edge = min([box.x0] + [t.get_window_extent(renderer).x0
+                               for t in ax.get_yticklabels() if t.get_text()])
+        offset_pt = (box.x0 - edge) * 72 / fig.dpi + gap_pt
+        trans = mtransforms.offset_copy(ax.get_yaxis_transform(), fig=fig, x=-offset_pt,
+                                        units="points")
+        for label, a, b in groups:
+            ax.text(0.0, (a + b) / 2, label, transform=trans, ha="right", va="center_baseline",
+                    fontsize=fontsize, clip_on=False)
+
+
+def _oriented_box(text, renderer):
+    """Centre, half-extents and angle (radians) of a text's rotated rectangle, in display px.
+
+    get_window_extent() gives the axis-aligned box of the rotated text, which for a 30 degree
+    label is far larger than the glyphs; the rotated rectangle has the unrotated size and the
+    same centre.
+    """
+    import numpy as np
+
+    box = text.get_window_extent(renderer)
+    angle = np.deg2rad(text.get_rotation() % 180)
+    if np.isclose(angle, 0) or np.isclose(angle, np.pi / 2):
+        w, h = box.width, box.height
+        angle = 0.0
+    else:
+        rotation = text.get_rotation()
+        text.set_rotation(0)
+        flat = text.get_window_extent(renderer)
+        text.set_rotation(rotation)
+        w, h = flat.width, flat.height
+    return np.array([(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2]), np.array([w, h]) / 2, angle
+
+
+def _box_corners(centre, half, angle):
+    import numpy as np
+
+    c, s = np.cos(angle), np.sin(angle)
+    axes = np.array([[c, s], [-s, c]])
+    signs = np.array([[1, 1], [1, -1], [-1, -1], [-1, 1]])
+    return centre + (signs * half) @ axes, axes
+
+
+def _penetration(a, b) -> float:
+    """Smallest overlap of two convex boxes over their separating axes (<= 0: apart)."""
+    import numpy as np
+
+    (ca, axes_a), (cb, axes_b) = a, b
+    depth = np.inf
+    for axis in np.vstack([axes_a, axes_b]):
+        pa, pb = ca @ axis, cb @ axis
+        depth = min(depth, min(pa.max(), pb.max()) - max(pa.min(), pb.min()))
+        if depth <= 0:
+            return depth
+    return depth
+
+
+def _layout_texts(fig, renderer):
+    """Every visible, non-empty text in the figure as (owner axes or None, description, text)."""
+    items = []
+
+    def add(owner, kind, text):
+        if text is not None and text.get_visible() and text.get_text().strip():
+            items.append((owner, kind, text))
+
+    for ax in fig.axes:
+        if not ax.get_visible():
+            continue
+        for title in (ax.title, ax._left_title, ax._right_title):
+            add(ax, "title", title)
+        for text in ax.texts:
+            add(ax, "text", text)
+        if not ax.axison:  # axis("off"): titles and texts are drawn, labels and ticks are not
+            continue
+        add(ax, "x label", ax.xaxis.label)
+        add(ax, "y label", ax.yaxis.label)
+        for axis, name, bound in ((ax.xaxis, "x tick", ax.get_xbound()),
+                                  (ax.yaxis, "y tick", ax.get_ybound())):
+            lo, hi = min(bound), max(bound)
+            pad = 1e-9 * max(1.0, abs(hi - lo))
+            for tick in axis.get_major_ticks():
+                if lo - pad <= tick.get_loc() <= hi + pad:
+                    add(ax, name, tick.label1)
+                    add(ax, name, tick.label2)
+    for text in fig.texts:
+        add(None, "figure text", text)
+    return items
+
+
+def layout_problems(fig, *, min_overlap_pt: float = 0.5) -> dict[str, list[str]]:
+    """Text that collides with other text, lands on another panel, or leaves the canvas.
+
+    Checks every visible title, axis label, in-view tick label, annotation, figure-level text
+    (panel letters) and legend. Rotated labels are tested as rotated rectangles. A legend counts
+    as one box. Returns {"text overlaps", "text on another axes", "outside canvas"}, each a list of
+    readable descriptions; overlaps smaller than ``min_overlap_pt`` are ignored.
+    """
+    import numpy as np
+
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    tol = min_overlap_pt * fig.dpi / 72
+    entries = []  # (owner axes, description, corners, aabb)
+
+    def panel_name(ax):
+        if ax is None:
+            return "figure"
+        name = ax.get_title() or ax.get_title(loc="left") or ax.yaxis.label.get_text() or "untitled"
+        return " ".join(name.split())
+
+    for owner, kind, text in _layout_texts(fig, renderer):
+        centre, half, angle = _oriented_box(text, renderer)
+        corners, axes = _box_corners(centre, half, angle)
+        label = f"[{panel_name(owner)[:40]}] {kind} {' '.join(text.get_text().split())[:40]!r}"
+        entries.append((owner, label, (corners, axes), text.get_window_extent(renderer)))
+    legends = [(None, lg) for lg in fig.legends] + [(ax, ax.get_legend()) for ax in fig.axes]
+    for ax, legend in legends:
+        if legend is not None and legend.get_visible():
+            box = legend.get_window_extent(renderer)
+            centre = np.array([(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2])
+            corners, axes = _box_corners(centre, np.array([box.width, box.height]) / 2, 0.0)
+            entries.append((ax, f"[{panel_name(ax)[:40]}] legend", (corners, axes), box))
+
+    problems: dict[str, list[str]] = {"text overlaps": [], "text on another axes": [],
+                                      "outside canvas": []}
+    aabbs = np.array([[b.x0, b.y0, b.x1, b.y1] for *_, b in entries])
+    for i in range(len(entries)):
+        near = np.nonzero((aabbs[i + 1:, 0] < aabbs[i, 2]) & (aabbs[i + 1:, 2] > aabbs[i, 0])
+                          & (aabbs[i + 1:, 1] < aabbs[i, 3]) & (aabbs[i + 1:, 3] > aabbs[i, 1]))[0]
+        for j in near + i + 1:
+            depth = _penetration(entries[i][2], entries[j][2])
+            if depth > tol:
+                problems["text overlaps"].append(
+                    f"{entries[i][1]} x {entries[j][1]} ({depth * 72 / fig.dpi:.1f} pt)")
+
+    canvas = fig.bbox
+    areas = []
+    for ax in fig.axes:
+        if ax.get_visible() and ax.axison:
+            a = ax.get_window_extent(renderer)
+            areas.append((ax, a, _box_corners(np.array([(a.x0 + a.x1) / 2, (a.y0 + a.y1) / 2]),
+                                              np.array([a.width, a.height]) / 2, 0.0)))
+    for owner, label, box, aabb in entries:
+        corners = box[0]
+        beyond = max(canvas.x0 - corners[:, 0].min(), corners[:, 0].max() - canvas.x1,
+                     canvas.y0 - corners[:, 1].min(), corners[:, 1].max() - canvas.y1)
+        if beyond > tol:
+            problems["outside canvas"].append(f"{label} ({beyond * 72 / fig.dpi:.1f} pt)")
+        own = owner.get_window_extent(renderer) if owner is not None else None
+        for ax, area, ax_box in areas:
+            if ax is owner or (own is not None and np.allclose(own.extents, area.extents, atol=1)):
+                continue  # its own axes, or a twin sharing the same area
+            if aabb.x1 <= area.x0 or aabb.x0 >= area.x1 or aabb.y1 <= area.y0 or aabb.y0 >= area.y1:
+                continue
+            depth = _penetration(box, ax_box)
+            if depth > tol:
+                problems["text on another axes"].append(
+                    f"{label} on [{panel_name(ax)[:40]}] ({depth * 72 / fig.dpi:.1f} pt)")
+    return problems
+
+
+def report_layout_problems(fig, name: str, *, limit: int = 40) -> int:
+    """Print layout_problems() for a finished figure; returns the number of problems."""
+    problems = layout_problems(fig)
+    total = sum(len(v) for v in problems.values())
+    print(f"    Layout check {name}: " + ", ".join(f"{len(v)} {k}" for k, v in problems.items()))
+    for kind, rows in problems.items():
+        for row in rows[:limit]:
+            print(f"      {kind}: {row}")
+        if len(rows) > limit:
+            print(f"      {kind}: ... {len(rows) - limit} more")
+    return total
+
+
+def plot_cell_vs_participant_beta(ax, res_cell, res_part, *, title: str,
+                                  composite: bool = False,
+                                  label_fs: float | None = None) -> None:
+    """Scatter of cell-level against participant-level beta_DiD, one point per signature.
+
+    Shared by Figure 2B (TNBC) and Supp Figure 3B (melanoma). ``res_cell`` and
+    ``res_part`` are ``did_table`` outputs; ``composite`` sizes everything for the
+    small multi-panel artboard. ``label_fs`` overrides the signature-label size of
+    the standalone panel (by default the active tick-label size).
+    """
+    import matplotlib.patches as mpatches
+    from adjustText import adjust_text
+    from matplotlib.font_manager import FontProperties
+    from matplotlib.lines import Line2D
+    from scipy import stats
+
+    rc = res_cell.set_index("feature")
+    rp = res_part.set_index("feature")
+    common = rc.index.intersection(rp.index)
+
+    beta_cell = rc.loc[common, "beta_DiD"].values
+    beta_part = rp.loc[common, "beta_DiD"].values
+    colors = [COLORS["treated"] if b > 0 else COLORS["control"] for b in beta_part]
+
+    ax.scatter(beta_cell, beta_part, c=colors, s=15 if composite else 30,
+               edgecolors="white", linewidths=0.5, zorder=3)
+
+    lim_lo = min(beta_cell.min(), beta_part.min()) * 1.2
+    lim_hi = max(beta_cell.max(), beta_part.max()) * 1.2
+    ax.plot([lim_lo, lim_hi], [lim_lo, lim_hi], "--",
+            color=COLORS["gray"], lw=1, zorder=1)
+    ax.axhline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
+    ax.axvline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
+
+    # Explicit limits guarantee every marker is inside the view; an earlier version
+    # clipped a marker below the axis while its label floated in the corner. The
+    # standalone panel shares one range so the identity line runs at 45 degrees. The
+    # composite cell is a ~3.5:1 strip where shared limits squeeze the narrow
+    # cell-level spread into the middle third, so each axis spans its own data there.
+    if composite:
+        for set_lim, v in ((ax.set_xlim, beta_cell), (ax.set_ylim, beta_part)):
+            pad = 0.15 * (v.max() - v.min())
+            set_lim(v.min() - pad, v.max() + pad)
+    else:
+        ax.set_xlim(lim_lo, lim_hi)
+        ax.set_ylim(lim_lo, lim_hi)
+
+    ax.tick_params(axis="y", labelsize=5)
+    ax.set_xlabel(r'$\beta_{DID}$ (cell-level)', fontsize=9)
+    ax.set_ylabel(r'$\beta_{DID}$ (participant-level)', fontsize=9)
+    ax.set_title(title, fontsize=11, fontweight="bold")
+
+    # Final text sizes, fixed BEFORE label layout: the standalone export raises
+    # text to a minimum size afterwards and the composite shrinks it, and any
+    # resize after adjust_text has run makes the labels collide.
+    if composite:
+        label_fs = 4.0
+    elif label_fs is None:
+        label_fs = max(
+            5.0, FontProperties(size=plt.rcParams["xtick.labelsize"]).get_size_in_points()
+        )
+
+    # Spearman rho, not Pearson r. The key and the rho statistic sit in one row
+    # below the axes, so nothing inside the plot competes with the labels
+    # (adjustText 1.3.0 cannot avoid artists: its ``objects`` path maps
+    # display-space boxes through the data transform a second time).
+    rho, p = stats.spearmanr(beta_cell, beta_part)
+    handles = [
+        mpatches.Patch(facecolor=COLORS["treated"], label="Positive effect"),
+        mpatches.Patch(facecolor=COLORS["control"], label="Negative effect"),
+        Line2D([], [], linestyle="none", label=f"ρ = {rho:.2f}, p = {p:.1e}"),
+    ]
+    ax.legend(handles=handles, fontsize=5 if composite else label_fs, ncol=3,
+              loc="upper center", bbox_to_anchor=(0.5, -0.5 if composite else -0.12),
+              frameon=True, framealpha=0.9, handlelength=0.8, handletextpad=0.3,
+              columnspacing=1.2, borderpad=0.25)
+
+    # Label every signature and let adjustText resolve overlaps, drawing a thin
+    # leader line from each label back to its marker. x/y are the markers as static
+    # obstacles (not label positions), so no label sits on another signature's
+    # point; a fixed iteration budget keeps the layout reproducible (the default
+    # one-second time limit depends on the machine).
+    texts = [ax.text(xv, yv, sig_display(feat), fontsize=label_fs, alpha=0.9)
+             for feat, xv, yv in zip(common, beta_cell, beta_part)]
+    adjust_text(
+        texts, x=beta_cell, y=beta_part, ax=ax, expand=(1.5, 1.8),
+        force_text=(0.3, 0.5), iter_lim=1000,
+        ensure_inside_axes=True,
+    )
+    for txt, xv, yv in zip(texts, beta_cell, beta_part):
+        tx, ty = txt.get_position()
+        ax.annotate("", xy=(xv, yv), xytext=(tx, ty),
+                    arrowprops=dict(arrowstyle="-", color=COLORS["gray"], lw=0.4, alpha=0.6))
+    despine(ax)
 
 
 def dataset_display(name: str) -> str:
@@ -778,6 +1398,25 @@ def _gsea_cache_path(
     return GSEA_OUTPUT / dataset / method / library_short / "results.csv"
 
 
+def _gsea_fingerprint_path(cache_csv: Path) -> Path:
+    return cache_csv.with_name("stats_fingerprint.txt")
+
+
+def _gsea_did_cache_fresh(cache_csv: Path) -> bool:
+    """A DiD-ranked GSEA cache is usable only if it was built by the current estimator.
+
+    The ranking comes from ``did_table``, so results built by a different estimator
+    are stale even though the file path is unchanged. A missing or mismatched
+    fingerprint is treated as a cache miss.
+    """
+    stamp = _gsea_fingerprint_path(cache_csv)
+    return (
+        cache_csv.exists()
+        and stamp.exists()
+        and stamp.read_text().strip() == STATS_FINGERPRINT
+    )
+
+
 def load_or_run_gsea_did(
     adata,
     design,
@@ -810,7 +1449,7 @@ def load_or_run_gsea_did(
         cache_csv = _gsea_cache_path(dataset_name, short_name, method="did")
 
         # Try loading from cache
-        if not force and cache_csv.exists():
+        if not force and _gsea_did_cache_fresh(cache_csv):
             df = pd.read_csv(cache_csv)
             if len(df) > 0:
                 df["Library"] = short_name
@@ -831,6 +1470,7 @@ def load_or_run_gsea_did(
             if isinstance(res, pd.DataFrame) and len(res) > 0:
                 res["Library"] = short_name
                 res.to_csv(cache_csv, index=False)
+                _gsea_fingerprint_path(cache_csv).write_text(STATS_FINGERPRINT)
                 frames.append(res)
                 print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
             else:

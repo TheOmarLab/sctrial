@@ -32,121 +32,30 @@ from __future__ import annotations
 import gc
 import warnings
 from contextlib import contextmanager
-from pathlib import Path
 
 import matplotlib.gridspec as gridspec
-import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
-from scipy import stats
 
-import sctrial as st
 from sctrial import TrialDesign, did_table
-from sctrial.stats.effect_size import cohens_d_from_did
+from sctrial.stats.effect_size import hedges_g
+
+from .._shared import (
+    COLORS,
+    MAIN_OUTPUT,
+    apply_style,
+    despine,
+    get_tnbc_zhang,
+    plot_cell_vs_participant_beta,
+    save_panel,
+    score_signatures,
+    sig_display,
+    verify_paired_participants,
+)
 
 warnings.filterwarnings("ignore")
-
-# ── Try to import from _shared; fall back to local definitions ────────────
-# Once _shared.py has been updated with TNBC helpers, replace the
-# try/except block below with a direct import like the melanoma script uses:
-#
-#   from .._shared import (
-#       COLORS, MAIN_OUTPUT, apply_style, despine, save_panel,
-#       score_signatures, sig_display, verify_paired_participants,
-#       get_tnbc_zhang, TNBC_DESIGN, TNBC_GENE_SIGNATURES,
-#   )
-
-try:
-    from .._shared import (  # type: ignore[import]
-        COLORS,
-        MAIN_OUTPUT,
-        apply_style,
-        despine,
-        get_tnbc_zhang,
-        save_panel,
-        score_signatures,
-        sig_display,
-        verify_paired_participants,
-    )
-    _SHARED_AVAILABLE = True
-except ImportError:
-    _SHARED_AVAILABLE = False
-
-    # ── Local fallbacks (remove once _shared.py is updated) ──────────────
-
-    COLORS = {
-        "treated":   "#4878CF",   # blue  -- anti-PDL1+Chemo
-        "control":   "#D65F5F",   # red   -- Chemo only
-        "gray":      "#888888",
-        "highlight": "#E8A838",
-    }
-
-
-    def apply_style() -> None:
-        """Minimal publication style — replace with _shared version."""
-        plt.rcParams.update({
-            "figure.facecolor": "white",
-            "axes.facecolor":   "white",
-            "font.family":      "sans-serif",
-        })
-
-    def despine(ax: plt.Axes) -> None:
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-
-    def save_panel(
-        fig: plt.Figure,
-        name: str,
-        figure_name: str,
-        output_dir: Path,
-        *,
-        close: bool = True,
-    ) -> None:
-        panel_dir = output_dir / f"{figure_name}_panels"
-        panel_dir.mkdir(parents=True, exist_ok=True)
-        path = panel_dir / f"{name}.png"
-        fig.savefig(path, dpi=200, bbox_inches="tight", facecolor="white")
-        if close:
-            plt.close(fig)
-        print(f"  Saved {path.name}")
-
-    def sig_display(col: str) -> str:
-        return col.replace("sig_", "")
-
-    def verify_paired_participants(
-        obs: pd.DataFrame,
-        visit_col: str,
-        visits: tuple[str, str],
-        participant_col: str,
-    ) -> dict:
-        counts = obs.groupby(participant_col)[visit_col].nunique()
-        n_paired = int((counts == 2).sum())
-        n_total  = int(len(counts))
-        return {"n_paired": n_paired, "n_total": n_total}
-
-    def score_signatures(
-        adata,
-        gene_sets: dict,
-        layer: str | None = None,
-        min_genes: int = 3,
-        prefix: str = "sig_",
-    ) -> tuple:
-        """Score gene sets using st.score_gene_sets (zmean method)."""
-        st.score_gene_sets(
-            adata,
-            gene_sets=gene_sets,
-            method="zmean",
-            layer=layer,
-            min_genes=min_genes,
-            prefix=prefix,
-            overwrite=True,
-        )
-        sig_cols = [f"{prefix}{name}" for name in gene_sets
-                    if f"{prefix}{name}" in adata.obs.columns]
-        return adata, sig_cols
-
 
 FIGURE_NAME = "Figure2_tnbc_analysis"
 
@@ -397,75 +306,11 @@ def _panel_a(ax: plt.Axes, data: dict) -> None:
 
 # ── Panel B: Beta comparison ──────────────────────────────────────────────
 
-def _panel_b(ax: plt.Axes, data: dict) -> None:
-    rc = data["res_cell"].set_index("feature")
-    rp = data["res_part"].set_index("feature")
-    common = rc.index.intersection(rp.index)
-
-    beta_cell = rc.loc[common, "beta_DiD"].values
-    beta_part = rp.loc[common, "beta_DiD"].values
-    colors    = [COL_TREAT if b > 0 else COL_CTRL for b in beta_part]
-
-    ax.scatter(beta_cell, beta_part, c=colors, s=30,
-               edgecolors="white", linewidths=0.5, zorder=3)
-
-    lim_lo = min(beta_cell.min(), beta_part.min()) * 1.2
-    lim_hi = max(beta_cell.max(), beta_part.max()) * 1.2
-    ax.plot([lim_lo, lim_hi], [lim_lo, lim_hi], "--",
-            color=COL_GRAY, lw=1, zorder=1)
-    ax.axhline(0, color=COL_GRAY, lw=0.5, ls=":", zorder=0)
-    ax.axvline(0, color=COL_GRAY, lw=0.5, ls=":", zorder=0)
-
-    # Explicit symmetric limits (with the identity-line margin) guarantee every
-    # marker is inside the view — no point can be clipped below the axis, which
-    # previously dropped a signature marker while its label floated in the corner.
-    ax.set_xlim(lim_lo, lim_hi)
-    ax.set_ylim(lim_lo, lim_hi)
-
-    # Label every signature and let adjustText resolve overlaps, drawing a thin
-    # leader line from each label back to its marker. The former hand-tuned offsets
-    # had no leader line, so a label pushed far from its point read as an orphaned
-    # marker.
-    from adjustText import adjust_text
-    texts = [ax.text(xv, yv, sig_display(feat), fontsize=5, alpha=0.9)
-             for feat, xv, yv in zip(common, beta_cell, beta_part)]
-    adjust_text(
-        texts, ax=ax, expand=(1.5, 1.8),
-        force_text=(0.3, 0.5),
-        ensure_inside_axes=True,
+def _panel_b(ax: plt.Axes, data: dict, *, composite: bool = False) -> None:
+    plot_cell_vs_participant_beta(
+        ax, data["res_cell"], data["res_part"],
+        title="Effect Size: Cell vs Participant Aggregation", composite=composite,
     )
-    _pull_closer = {"regulatory", "cytotoxic"}
-    for txt, xv, yv in zip(texts, beta_cell, beta_part):
-        if any(k in txt.get_text().lower() for k in _pull_closer):
-            tx, ty = txt.get_position()
-            txt.set_position((xv + (tx - xv) * 0.4, yv + (ty - yv) * 0.4))
-    for txt, xv, yv in zip(texts, beta_cell, beta_part):
-        tx, ty = txt.get_position()
-        ax.annotate("", xy=(xv, yv), xytext=(tx, ty),
-                    arrowprops=dict(arrowstyle="-", color=COL_GRAY, lw=0.4, alpha=0.6))
-
-    # FIX v1 Issue 6: Spearman rho not Pearson r
-    rho, p = stats.spearmanr(beta_cell, beta_part)
-    ax.text(
-        0.05, 0.95, f"ρ = {rho:.2f}, p = {p:.1e}",
-        transform=ax.transAxes, fontsize=8, va="top",
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                  edgecolor=COL_GRAY, alpha=0.8),
-    )
-
-    ax.tick_params(axis="y", labelsize=5)
-    ax.set_xlabel(r'$\beta_{DID}$ (cell-level)', fontsize=9)
-    ax.set_ylabel(r'$\beta_{DID}$ (participant-level)', fontsize=9)
-    ax.set_title("Effect Size: Cell vs Participant Aggregation",
-                 fontsize=11, fontweight="bold")
-
-    handles = [
-        mpatches.Patch(facecolor=COL_TREAT, label="Positive effect"),
-        mpatches.Patch(facecolor=COL_CTRL,  label="Negative effect"),
-    ]
-    ax.legend(handles=handles, fontsize=5, loc="lower left",
-              frameon=True, framealpha=0.9)
-    despine(ax)
 
 
 # ── Panel C: P-value inflation ────────────────────────────────────────────
@@ -704,8 +549,11 @@ def _panel_f(ax: plt.Axes, data: dict) -> None:
     )
     arms = pre.loc[common_pids, DESIGN.arm_col]
 
+    # Control (Chemo) block first, as published. The order is an explicit integer:
+    # mapping a Categorical arm column returns a Categorical that sorts by category
+    # code, not by the mapped value, which silently decided the order before.
     sort_df = pd.DataFrame({
-        "arm_order":  arms.map({DESIGN.arm_treated: 0, DESIGN.arm_control: 1}).values,
+        "arm_order":  np.where(arms.astype(str) == DESIGN.arm_control, 0, 1),
         "mean_delta": -delta_mat.mean(axis=1).values,
     }, index=common_pids)
     ordered = sort_df.sort_values(["arm_order", "mean_delta"]).index.tolist()
@@ -729,9 +577,9 @@ def _panel_f(ax: plt.Axes, data: dict) -> None:
             color=color, clip_on=False,
         ))
 
-    n_treated = sum(1 for p in ordered if arms.loc[p] == DESIGN.arm_treated)
-    if 0 < n_treated < len(ordered):
-        ax.axhline(n_treated - 0.5, color="white", linewidth=2.5, zorder=5)
+    n_control = sum(1 for p in ordered if arms.loc[p] == DESIGN.arm_control)
+    if 0 < n_control < len(ordered):
+        ax.axhline(n_control - 0.5, color="white", linewidth=2.5, zorder=5)
 
     # Build same P1-P12 mapping as panel A
     counts_a = (
@@ -806,13 +654,13 @@ def _panel_f(ax: plt.Axes, data: dict) -> None:
     cbar.set_label("Score Δ", fontsize=8)
     cbar.ax.tick_params(labelsize=7)
 
+    # Arm captions centred on their blocks: control rows 0..n_control-1, then treated.
     trans = blended_transform_factory(ax.transAxes, ax.transData)
-    n_treated = sum(1 for p in ordered if arms.loc[p] == DESIGN.arm_treated)
-    n_control = len(ordered) - n_treated
+    n_treated = len(ordered) - n_control
 
-    if n_treated > 0:
+    if n_control > 0:
         ax.text(
-            -0.22, (n_treated - 1) / 2,
+            -0.22, (n_control - 1) / 2,
             "Chemo",
             transform=trans,
             color=COL_CTRL,
@@ -821,9 +669,9 @@ def _panel_f(ax: plt.Axes, data: dict) -> None:
             rotation=90, clip_on=False,
         )
 
-    if n_control > 0:
+    if n_treated > 0:
         ax.text(
-            -0.22, n_treated + (n_control - 1) / 2,
+            -0.22, n_control + (n_treated - 1) / 2,
             "anti-PDL1+\nChemo",
             transform=trans,
             color=COL_TREAT,
@@ -870,19 +718,18 @@ def _panel_j(ax: plt.Axes, data: dict) -> None:
     despine(ax)
 
 
-# ── Panel H: Cohen's d / Hedge's g ───────────────────────────────────────
+# ── Panel H: Cohen's d / Hedges' g ───────────────────────────────────────
 
 def _panel_h(ax: plt.Axes, data: dict) -> None:
     delta    = data["delta"]
     sig_cols = data["sig_cols"]
     arm      = DESIGN.arm_col
 
-    # FIX v1 Issue 7: use st.cohens_d_from_did (exact gamma correction)
     records = []
     for col in sig_cols:
         x = delta.loc[delta[arm] == DESIGN.arm_treated, col].dropna().values
         y = delta.loc[delta[arm] == DESIGN.arm_control, col].dropna().values
-        d = cohens_d_from_did(x, y)   # Hedge's g via exact gamma correction
+        d = hedges_g(x, y)  # exact small-sample correction of Cohen's d
         records.append({"feature": col, "display": sig_display(col), "d": d})
 
     df     = pd.DataFrame(records).dropna(subset=["d"]).sort_values("d")
@@ -897,7 +744,7 @@ def _panel_h(ax: plt.Axes, data: dict) -> None:
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["display"].values, fontsize=4)
     ax.set_xlabel(
-        f"Hedge's g ({DESIGN.arm_treated} - {DESIGN.arm_control})",
+        f"Hedges' g ({DESIGN.arm_treated} - {DESIGN.arm_control})",
         fontsize=9,
     )
     ax.set_title("Effect Size of Arm Separation", fontsize=11,
@@ -1397,7 +1244,7 @@ def generate() -> None:
 
     # ── Draw all panels first ──────────────────────────────────────────────
     _panel_a(ax_a, data)
-    _panel_b(ax_b, data)
+    _panel_b(ax_b, data, composite=True)
     _panel_c(ax_c, data)
     _panel_d(ax_d, data)
     # Wider inner hspace so the top-row Pre/Post tick labels clear the bottom-row
@@ -1411,12 +1258,10 @@ def generate() -> None:
 
     # ── Legend overrides (all must come AFTER panels are drawn) ───────────
 
-    # Panels B, C, G — move below-axis legends inside plot
-    _inside = {
-        ax_b: "lower left",
-        ax_c: "lower right",
-    }
-    for ax_target, loc in _inside.items():
+    # Panels C and D: move below-axis legends inside the plot, wherever the data
+    # leave room ("best"); a fixed corner covered bars and intervals once the
+    # participant-level estimates changed.
+    for ax_target in (ax_c, ax_d):
         leg = ax_target.get_legend()
         if leg:
             handles = leg.legend_handles
@@ -1424,7 +1269,7 @@ def generate() -> None:
             leg.remove()
             ax_target.legend(
                 handles=handles, labels=labels,
-                fontsize=5, loc=loc,
+                fontsize=5, loc="best",
                 frameon=True, framealpha=0.85,
                 handlelength=0.8, handletextpad=0.2,
                 borderpad=0.2, labelspacing=0.15,
@@ -1459,21 +1304,6 @@ def generate() -> None:
             loc="upper left",
             bbox_to_anchor=(0.04, 1.08),
             ncol=3,
-            frameon=True, framealpha=0.85,
-            handlelength=0.8, handletextpad=0.2,
-            borderpad=0.2, labelspacing=0.15,
-            columnspacing=0.5,
-        )
-
-    # Panel D legend — tighter sizing
-    leg_d = ax_d.get_legend()
-    if leg_d:
-        handles_d = leg_d.legend_handles
-        labels_d  = [t.get_text() for t in leg_d.get_texts()]
-        leg_d.remove()
-        ax_d.legend(
-            handles=handles_d, labels=labels_d,
-            fontsize=5, loc="lower right",
             frameon=True, framealpha=0.85,
             handlelength=0.8, handletextpad=0.2,
             borderpad=0.2, labelspacing=0.15,
@@ -1528,12 +1358,6 @@ def generate() -> None:
                    fontweight="bold", pad=12)
 
     # Panel C y-axis tick labels — kept at same size as D (5 pt)
-
-    # Panel B in composite: smaller markers + slightly larger labels
-    for coll in ax_b.collections:
-        coll.set_sizes([s * 0.5 for s in coll.get_sizes()])
-    for txt in ax_b.texts:
-        txt.set_fontsize(max(txt.get_fontsize() * 0.7, 4.0))
 
     _cap_fontsize(fig_c, _MAX)
 

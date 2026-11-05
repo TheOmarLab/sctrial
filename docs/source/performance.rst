@@ -124,8 +124,8 @@ For many features, use ``did_table_parallel()`` to distribute work across CPU co
 
    **Do not subsample or downsample cells** to work around memory limits.
    Subsampling distorts pseudobulk means, alters cell-type composition within
-   participant groups, and changes WLS weights — especially for rare cell types
-   and low-abundance signals. Instead, use sparse storage (strategy 3), feature
+   participant groups, and changes per-group cell counts, especially for rare cell
+   types and low-abundance signals. Instead, use sparse storage (strategy 3), feature
    batching (see below), per-cell-type decomposition, or run on hardware with
    sufficient memory.
 

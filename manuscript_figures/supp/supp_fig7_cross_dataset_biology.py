@@ -34,6 +34,7 @@ import pandas as pd
 import seaborn as sns
 from scipy import stats as sp_stats
 
+from .._gene_types import describe_resolution, is_display_gene
 from .._shared import (
     COLORS,
     SUPP_OUTPUT,
@@ -47,18 +48,23 @@ from .._shared import (
     get_stephenson,
     get_tnbc_zhang,
     get_vaccine,
+    group_axis_labels,
     harmonize_response,
+    key_below_axes,
+    letter_at_panel_corner,
+    report_layout_problems,
     save_panel,
     sig_display,
 )
 from ..main.figure4_biological_discovery_multi_dataset import (
     _clean_pathway_name,
-    _compact_legend,
     _detect_gsea_columns,
-    _is_likely_protein_coding,
+    _direction_rgba,
+    _numbered_label,
     _prepare_bio_discovery_data,
     _shrink_colorbars,
     _swap_leading_edge_axes,
+    gene_volcano,
 )
 
 # ======================================================================
@@ -144,180 +150,9 @@ def _panel_C_did_summary(ax, data: dict):
 
 # Panel A — Gene-level volcano (Melanoma DiD)
 def panel_A(ax, data: dict, *, composite: bool = False):
-    """Volcano plot of gene-level DiD effects (Sade-Feldman).
-
-    Labels prioritize protein-coding genes over pseudogenes/lncRNAs.
-    When *composite* is True, fewer labels are drawn and adjustText
-    is skipped to avoid cluttering the small composite axes.
-    """
-    gene_results = data["gene_results"]
-
-    if gene_results is None or len(gene_results) == 0:
-        ax.text(
-            0.5, 0.5,
-            "Gene-level results unavailable",
-            transform=ax.transAxes, ha="center", va="center",
-            fontsize=12, color=COLORS["gray"],
-            bbox=dict(boxstyle="round,pad=0.5", facecolor="#f0f0f0",
-                      edgecolor=COLORS["gray"]),
-        )
-        ax.set_title("Gene-Level Volcano Plot", fontsize=11,
-                     fontweight="bold")
-        ax.axis("off")
-        return
-
-    df = gene_results.copy()
-    beta_col = "beta_DiD"
-
-    p_col = "p_DiD"
-
-    df = df.dropna(subset=[beta_col, p_col])
-
-    # Standard volcano: nominal p on y-axis, colour by nominal p < 0.05.
-    # Analytical (nonrobust) SEs provide gene-level resolution; bootstrap
-    # inference is reserved for signature-level tests (Panel D).
-    p_thresh = 0.05
-    df["nlog10"] = -np.log10(df[p_col].clip(lower=1e-300))
-    sig_mask = df[p_col] < p_thresh
-
-    df["category"] = "ns"
-    df.loc[sig_mask & (df[beta_col] > 0), "category"] = "up"
-    df.loc[sig_mask & (df[beta_col] < 0), "category"] = "down"
-
-    color_map = {
-        "ns": COLORS["gray"],
-        "up": COLORS["treated"],
-        "down": COLORS["control"],
-    }
-    alpha_map = {"ns": 0.3, "up": 0.8, "down": 0.8}
-    if composite:
-        size_map = {"ns": 2, "up": 6, "down": 6}
-    else:
-        size_map = {"ns": 8, "up": 20, "down": 20}
-
-    for cat in ["ns", "up", "down"]:
-        sub = df[df["category"] == cat]
-        if len(sub) == 0:
-            continue
-        ax.scatter(
-            sub[beta_col], sub["nlog10"],
-            c=color_map[cat], alpha=alpha_map[cat],
-            s=size_map[cat], edgecolors="none", rasterized=True,
-        )
-
-    N_LABELS = 10
-    labelled_genes: list[str] = []  # ordered by score (highest first)
-
-    for sign in ("pos", "neg"):
-        sub = df[df[beta_col] > 0].copy() if sign == "pos" else df[df[beta_col] < 0].copy()
-        if len(sub) == 0:
-            continue
-        # Restrict to protein-coding genes only
-        sub = sub[sub["feature"].apply(_is_likely_protein_coding)]
-        if len(sub) == 0:
-            continue
-
-        # Force-include top 3 genes by -log10(p) in each direction
-        # (ensures the most significant genes are always labelled)
-        force_genes = set(
-            sub.nlargest(min(3, len(sub)), "nlog10")["feature"].tolist()
-        )
-
-        # Combined score: rank-normalised |β| + rank-normalised -log10(p)
-        # This naturally selects genes at volcano tips (high on both axes).
-        sub = sub.copy()
-        sub["_rank_beta"] = sub[beta_col].abs().rank(pct=True)
-        sub["_rank_sig"] = sub["nlog10"].rank(pct=True)
-        sub["_score"] = sub["_rank_beta"] + sub["_rank_sig"]
-
-        candidates = sub.nlargest(min(N_LABELS * 3, len(sub)), "_score")
-
-        # Deduplicate: skip genes too close to an already-selected one
-        # (prevents overlapping arrows pointing to the same spot).
-        x_range = df[beta_col].max() - df[beta_col].min()
-        y_range = df["nlog10"].max() - df["nlog10"].min()
-        min_dx = x_range * 0.025  # ~2.5% of axis range
-        min_dy = y_range * 0.025
-        selected_coords: list[tuple[float, float]] = []
-        picks: list[str] = []
-
-        # Add forced genes first
-        for _, cand in candidates.iterrows():
-            if cand["feature"] in force_genes and cand["feature"] not in picks:
-                picks.append(cand["feature"])
-                selected_coords.append((cand[beta_col], cand["nlog10"]))
-
-        # Fill remaining slots with score-ranked candidates
-        for _, cand in candidates.iterrows():
-            if cand["feature"] in picks:
-                continue
-            cx, cy = cand[beta_col], cand["nlog10"]
-            too_close = False
-            for sx, sy in selected_coords:
-                if abs(cx - sx) < min_dx and abs(cy - sy) < min_dy:
-                    too_close = True
-                    break
-            if not too_close:
-                picks.append(cand["feature"])
-                selected_coords.append((cx, cy))
-                if len(picks) >= N_LABELS:
-                    break
-
-        labelled_genes.extend(picks)
-
-    labelled_set = set(labelled_genes)
-    labelled_rows = df[df["feature"].isin(labelled_set)].copy()
-
-    from adjustText import adjust_text as _adjust_text
-
-    _lbl_fs = 3.5 if composite else 6.5
-    _arrow_lw = 0.25 if composite else 0.4
-
-    texts = []
-    for _, row in labelled_rows.iterrows():
-        t = ax.text(
-            row[beta_col], row["nlog10"], row["feature"],
-            fontsize=_lbl_fs, fontweight="bold", color="#444444",
-            ha="center", va="center", zorder=5,
-        )
-        texts.append(t)
-
-    x_span = df[beta_col].max() - df[beta_col].min()
-    y_span = df["nlog10"].max() - df["nlog10"].min()
-    _adjust_text(
-        texts, ax=ax,
-        arrowprops=dict(arrowstyle="-", color="#888888", lw=_arrow_lw,
-                        shrinkA=5, shrinkB=3),
-        force_text=(3.0, 3.2),
-        force_static=(3.5, 3.5),
-        force_explode=(0.5, 0.6),
-        expand=(2.3, 2.6),
-        ensure_inside_axes=True,
-        max_move=(x_span * 0.45, y_span * 0.45),
-    )
-
-    # Threshold line
-    thresh_y = -np.log10(p_thresh)
-    ax.axhline(thresh_y, color=COLORS["gray"], ls="--", lw=0.8, zorder=0)
-    ax.axvline(0, color="black", lw=0.6, zorder=0)
-
-    ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
-    ax.set_ylabel(r"$-\log_{10}$(p)")
-    ax.set_title("Gene-Level Volcano (Melanoma DiD)", fontsize=11,
-                 fontweight="bold")
-
-    # Legend — no footnotes, no summary boxes
-    legend_handles = [
-        mpatches.Patch(color=COLORS["treated"], alpha=0.8,
-                       label="Responder ↑"),
-        mpatches.Patch(color=COLORS["control"], alpha=0.8,
-                       label="Non-responder ↑"),
-        mpatches.Patch(color=COLORS["gray"], alpha=0.3,
-                       label="Not significant"),
-    ]
-    ax.legend(handles=legend_handles, fontsize=10, loc="lower left",
-              frameon=True, framealpha=0.9)
-    despine(ax)
+    """Volcano plot of gene-level DiD effects (Sade-Feldman melanoma)."""
+    gene_volcano(ax, data["gene_results"], title="Gene-Level Volcano (Melanoma DiD)",
+                 up_label="Responder ↑", down_label="Non-responder ↑", composite=composite)
 
 
 # ======================================================================
@@ -346,8 +181,8 @@ def panel_B(ax, data: dict):
 
     df = df.dropna(subset=[beta_col, p_col])
 
-    # Filter to protein-coding genes
-    df = df[df["feature"].apply(_is_likely_protein_coding)]
+    print(describe_resolution(df["feature"], "Melanoma waterfall gene types"))
+    df = df[df["feature"].apply(is_display_gene)]
 
     p_thresh = 0.05
     n_per_side = 15
@@ -361,19 +196,10 @@ def panel_B(ax, data: dict):
     )
 
     y_pos = np.arange(len(selected))
-    colors = []
-    for _, row in selected.iterrows():
-        sig = row[p_col] < p_thresh
-        if row[beta_col] > 0:
-            colors.append(
-                COLORS["treated"] if sig else COLORS["treated"] + "55"
-            )
-        else:
-            colors.append(
-                COLORS["control"] if sig else COLORS["control"] + "55"
-            )
+    colors = [_direction_rgba(row[beta_col] > 0, row[p_col] < p_thresh, 0.35)
+              for _, row in selected.iterrows()]
 
-    ax.barh(y_pos, selected[beta_col].values, color=colors, alpha=0.9,
+    ax.barh(y_pos, selected[beta_col].values, color=colors,
             edgecolor="white", linewidth=0.3, height=0.7)
     ax.axvline(0, color="black", lw=0.8)
     ax.set_yticks(y_pos)
@@ -444,28 +270,11 @@ def panel_C(ax, data: dict):
     # Fix #4: Clean pathway names AND disambiguate duplicates
     df_selected["pathway"] = df_selected[term_col].apply(_clean_pathway_name)
     # Disambiguate duplicate display names
-    _seen = {}
-    new_labels = []
-    for idx, row in df_selected.iterrows():
-        label = row["pathway"]
-        if label in _seen:
-            _seen[label] += 1
-            lib = str(row.get("library", ""))
-            if lib and lib != "averaged":
-                label = f"{label} [{lib[:8]}]"
-            else:
-                label = f"{label} ({_seen[label]})"
-        else:
-            _seen[label] = 1
-        new_labels.append(label)
-    df_selected["pathway"] = new_labels
+    _seen: dict[str, int] = {}
+    df_selected["pathway"] = [_numbered_label(lab, _seen) for lab in df_selected["pathway"]]
 
     # Color by direction and significance — use project palette
     # treated (blue) = Responder ↑, control (orange) = Non-responder ↑
-    clr_up_sig = COLORS["treated"]
-    clr_up_ns = COLORS["treated"] + "66"  # 40% alpha hex
-    clr_dn_sig = COLORS["control"]
-    clr_dn_ns = COLORS["control"] + "66"
     colors = []
     for _, row in df_selected.iterrows():
         sig = (
@@ -473,13 +282,10 @@ def panel_C(ax, data: dict):
             and pd.notna(row.get(fdr_col))
             and row[fdr_col] < 0.25
         )
-        if row[nes_col] > 0:
-            colors.append(clr_up_sig if sig else clr_up_ns)
-        else:
-            colors.append(clr_dn_sig if sig else clr_dn_ns)
+        colors.append(_direction_rgba(row[nes_col] > 0, sig, 0.4))
 
     y_pos = np.arange(len(df_selected))
-    ax.barh(y_pos, df_selected[nes_col].values, color=colors, alpha=0.9,
+    ax.barh(y_pos, df_selected[nes_col].values, color=colors,
             edgecolor="white", linewidth=0.5, height=0.7)
 
     ax.axvline(0, color="black", lw=0.8)
@@ -531,8 +337,8 @@ def panel_C(ax, data: dict):
             label="Non-responder ↑ (n.s.)",
         ))
     if legend_handles:
-        ax.legend(handles=legend_handles, fontsize=9, loc="lower right",
-                  frameon=True, framealpha=0.9)
+        ax.legend(handles=legend_handles, fontsize=9)
+        key_below_axes(ax, ncol=2)
     despine(ax)
 
 
@@ -600,22 +406,24 @@ def panel_D(ax, data: dict, *, composite: bool = False):
     selected = selected.sort_values(nes_col, ascending=True)
 
     # Parse leading-edge genes
-    pathway_genes: dict[str, set[str]] = {}
+    # Leading-edge genes keep their ranked order (a set would make tie-breaking,
+    # and so the selected genes, depend on the per-process string hash seed).
+    pathway_genes: dict[str, list[str]] = {}
+    lead_rank: dict[str, int] = {}
     pathway_nes: dict[str, float] = {}
     pathway_fdr: dict[str, float] = {}
     all_genes: set[str] = set()
-    _seen_names: set[str] = set()
+    _seen_names: dict[str, int] = {}
     for _, row in selected.iterrows():
         pname = _clean_pathway_name(str(row[term_col]), max_len=32)
-        if pname in _seen_names:
-            lib = str(row.get("library", ""))
-            pname = f"{pname} [{lib[:8]}]" if lib else f"{pname} (2)"
-        _seen_names.add(pname)
+        pname = _numbered_label(pname, _seen_names)
         genes_str = str(row[lead_col])
         genes = [g.strip() for g in genes_str.replace(";", ",").split(",")
                  if g.strip()]
-        genes = [g for g in genes if _is_likely_protein_coding(g)]
-        pathway_genes[pname] = set(genes)
+        genes = [g for g in genes if is_display_gene(g)]
+        pathway_genes[pname] = list(dict.fromkeys(genes))
+        for pos, g in enumerate(pathway_genes[pname]):
+            lead_rank[g] = min(lead_rank.get(g, pos), pos)
         pathway_nes[pname] = float(row[nes_col])
         if fdr_col is not None and pd.notna(row.get(fdr_col)):
             pathway_fdr[pname] = float(row[fdr_col])
@@ -637,7 +445,7 @@ def panel_D(ax, data: dict, *, composite: bool = False):
         """Count gene occurrences within a group of pathways."""
         counts: dict[str, int] = {}
         for pw in pw_list:
-            for g in pathway_genes.get(pw, set()):
+            for g in pathway_genes.get(pw, []):
                 counts[g] = counts.get(g, 0) + 1
         return counts
 
@@ -646,11 +454,12 @@ def panel_D(ax, data: dict, *, composite: bool = False):
     pos_counts = _count_genes_in_group(pos_pathways)
     neg_counts = _count_genes_in_group(neg_pathways)
 
-    # Take top genes from each direction
+    # Take top genes from each direction: most shared first, ties by best
+    # leading-edge rank, then name.
     pos_genes = sorted(pos_counts.keys(),
-                       key=lambda g: -pos_counts[g])[:half]
+                       key=lambda g: (-pos_counts[g], lead_rank[g], g))[:half]
     neg_genes = sorted(neg_counts.keys(),
-                       key=lambda g: -neg_counts[g])[:half]
+                       key=lambda g: (-neg_counts[g], lead_rank[g], g))[:half]
 
     # Merge, removing duplicates (keep order)
     seen: set[str] = set()
@@ -664,9 +473,9 @@ def panel_D(ax, data: dict, *, composite: bool = False):
     if len(shared_genes) < TOTAL_GENES:
         all_counts: dict[str, int] = {}
         for pw in pathways:
-            for g in pathway_genes.get(pw, set()):
+            for g in pathway_genes.get(pw, []):
                 all_counts[g] = all_counts.get(g, 0) + 1
-        for g in sorted(all_counts.keys(), key=lambda g: -all_counts[g]):
+        for g in sorted(all_counts.keys(), key=lambda g: (-all_counts[g], lead_rank[g], g)):
             if g not in seen:
                 shared_genes.append(g)
                 seen.add(g)
@@ -811,20 +620,18 @@ def panel_D(ax, data: dict, *, composite: bool = False):
         ax.set_title("Leading-Edge Gene Overlap", fontsize=11,
                      fontweight="bold")
 
-    # Legend — inside the heatmap lower-right (gray empty region)
+    # The matrix fills the axes, so the key goes below it (the composite re-places it).
     legend_handles = [
         mpatches.Patch(facecolor=BLUE, label="Resp. ↑"),
         mpatches.Patch(facecolor=ORANGE, label="Non-resp. ↑"),
         mpatches.Patch(facecolor=EMPTY_COLOR, edgecolor="#CCCCCC",
                        label="Not in leading edge"),
     ]
-    ax.legend(
-        handles=legend_handles, fontsize=7, loc="lower right",
-        frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
-        handlelength=1.0, handleheight=0.7,
-    )
+    ax.legend(handles=legend_handles, fontsize=7, handlelength=1.0, handleheight=0.7)
     for spine in ax.spines.values():
         spine.set_visible(False)
+    if not composite:
+        key_below_axes(ax, ncol=3)
 
 
 # Panel E — Cell-type DiD effect heatmap (Melanoma)
@@ -851,8 +658,7 @@ def panel_E(ax, data: dict):
     beta_col = "beta_DiD"
     df = df.dropna(subset=[beta_col])
 
-    # Restrict to protein-coding genes (skip RNU*, RNA5SP*, lncRNAs, etc.)
-    df = df[df["feature"].apply(_is_likely_protein_coding)]
+    df = df[df["feature"].apply(is_display_gene)]
 
     # Select top 15 genes by |β_DiD| (balanced: top 8 pos + top 7 neg)
     n_per_dir = 8
@@ -1323,9 +1129,8 @@ def _panel_gs_distributions(ax, data: dict[str, dict]):
     ax.set_title("Gene-set score distributions (within-dataset z-score)", fontweight="bold")
     ax.set_xlabel("")
     ax.tick_params(axis="x", rotation=20)
-    ylo, yhi = ax.get_ylim()
-    ax.set_ylim(ylo, yhi + (yhi - ylo) * 0.25)
-    ax.legend(fontsize=4, frameon=True, ncol=2, loc="upper right")
+    ax.legend(fontsize=4)
+    key_below_axes(ax, ncol=3)
     despine(ax)
 
 
@@ -1409,7 +1214,8 @@ def _panel_concordant_top_genes(ax, data: dict[str, dict]):
         mpatches.Patch(facecolor=COLORS["treated"], label="Upregulated"),
         mpatches.Patch(facecolor=COLORS["control"], label="Downregulated"),
     ]
-    ax.legend(handles=handles, fontsize=4, frameon=True)
+    ax.legend(handles=handles, fontsize=4)
+    key_below_axes(ax, ncol=2)
     despine(ax)
 
 
@@ -1435,11 +1241,12 @@ def _panel_gene_dist(ax, data: dict[str, dict]):
     import matplotlib.patches as mpatches
     handles = [mpatches.Patch(facecolor=_DS_PALETTE[n], label=_ds_label(n))
                for n in _DS_PALETTE if _ds_label(n) in df["Dataset"].values]
-    ax.legend(handles=handles, fontsize=4, frameon=True, loc="lower right", ncol=2)
+    ax.legend(handles=handles, fontsize=4)
+    key_below_axes(ax, ncol=3)
     despine(ax)
 
 
-def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
+def _panel_exhaustion_by_celltype(ax, data: dict[str, dict], *, label_fontsize: float = 4.0):
     """E: Exhaustion effects by cell type across datasets.
 
     Two-arm: effect = mean(treated Δ) − mean(control Δ),
@@ -1501,8 +1308,18 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
         return
 
     df = pd.DataFrame(rows)
-    # Color by dataset
-    y = np.arange(len(df))
+    # Rows are grouped by dataset, with a small gap between groups; each row names its cell
+    # type and each dataset is named once, beside its group.
+    group_gap = 0.6
+    positions, groups, y_next = [], [], 0.0
+    for name, block in df.groupby("Dataset", sort=False):
+        start = y_next
+        for _ in range(len(block)):
+            positions.append(y_next)
+            y_next += 1.0
+        groups.append((_ds_label(name), start, y_next - 1.0))
+        y_next += group_gap
+    y = np.array(positions)
     colors = [_DS_PALETTE.get(d, "grey") for d in df["Dataset"]]
     ax.errorbar(df["Effect"], y, xerr=1.96 * df["SE"], fmt="none",
                 ecolor="grey", capsize=2, lw=0.8, zorder=1)
@@ -1510,8 +1327,8 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
                linewidth=0.3, zorder=3)
     ax.axvline(0, color="black", lw=0.8, ls="--")
     ax.set_yticks(y)
-    ax.set_yticklabels([f"{r['Cell type']} [{r['Dataset']}]" for _, r in df.iterrows()],
-                       fontsize=4)
+    ax.set_yticklabels(df["Cell type"], fontsize=label_fontsize)
+    ax.set_ylim(y[0] - 0.7, y[-1] + 0.7)
     ax.set_xlabel("Exhaustion effect (treatment)")
     ax.set_title("T cell exhaustion effects by cell type", fontweight="bold")
 
@@ -1519,8 +1336,11 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
     import matplotlib.patches as mpatches
     handles = [mpatches.Patch(facecolor=_DS_PALETTE[n], label=_ds_label(n))
                for n in _DS_PALETTE if n in df["Dataset"].values]
-    ax.legend(handles=handles, fontsize=4, loc="best", frameon=True)
+    ax.legend(handles=handles, fontsize=4)
+    key_below_axes(ax, ncol=3)
     despine(ax)
+    group_axis_labels(ax, groups, fontsize=label_fontsize + 0.5, gap_pt=0.8 * label_fontsize,
+                      axis="y")
 
 
 def _panel_effect_heatmap(ax, data: dict[str, dict]):
@@ -1537,6 +1357,7 @@ def _panel_effect_heatmap(ax, data: dict[str, dict]):
                 cbar_kws={"label": "Effect"})
     ax.set_title("Effect heatmap across datasets", fontweight="bold")
     ax.tick_params(axis="x", rotation=0)
+    ax.set_xticklabels([t.get_text().replace(" (", "\n(") for t in ax.get_xticklabels()])
     ax.tick_params(axis="y", labelsize=4)
 
 
@@ -1548,6 +1369,7 @@ def _panel_paired_trajectories(ax, data: dict[str, dict]):
 
     x_tick = []
     x_tick_lab = []
+    groups = []
     xpos = 0
     for name, ds in data.items():
         pv = ds.get("gs_pv")
@@ -1571,8 +1393,8 @@ def _panel_paired_trajectories(ax, data: dict[str, dict]):
             med1 = np.median(post.loc[common, exhaustion_col].values)
             ax.plot([x0, x1], [med0, med1], color=_DS_PALETTE.get(name, "black"), lw=2.8, zorder=5)
             x_tick.extend([x0, x1])
-            lbl = _ds_label(name)
-            x_tick_lab.extend([f"{lbl}\n{arm}\n{pre_v}", f"{lbl}\n{arm}\n{post_v}"])
+            x_tick_lab.extend([str(pre_v), str(post_v)])
+            groups.append((f"{_ds_label(name)}\n{arm}", x0, x1))
             xpos += 2.5
 
     if not x_tick:
@@ -1580,15 +1402,17 @@ def _panel_paired_trajectories(ax, data: dict[str, dict]):
         return
 
     ax.set_xticks(x_tick)
-    ax.set_xticklabels(x_tick_lab, rotation=30, ha="right")
+    ax.set_xticklabels(x_tick_lab)
     ax.tick_params(axis="x", labelsize=3.5)
     ax.set_ylabel("Exhaustion score")
     ax.set_title("Participant-level paired trajectories (Exhaustion)", fontweight="bold")
     despine(ax)
+    group_axis_labels(ax, groups, fontsize=3.5)
 
 
 def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
     rows = []
+    columns = []  # (column key, visit, "dataset\narm") in display order
     for name, ds in data.items():
         pv = ds.get("gs_pv")
         if pv is None or pv.empty:
@@ -1601,10 +1425,11 @@ def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
                 sub = pv[(pv["arm"] == arm) & (pv["visit"] == visit)]
                 if sub.empty:
                     continue
-                label = f"{_ds_label(name)}\n{arm}\n{visit}"
+                key = f"{_ds_label(name)}|{arm}|{visit}"
+                columns.append((key, str(visit), f"{_ds_label(name)}\n{arm}"))
                 means = sub[gs_cols].mean(axis=0)
                 for gs in gs_cols:
-                    rows.append({"Gene set": gs, "Group": label, "Score": float(means[gs])})
+                    rows.append({"Gene set": gs, "Group": key, "Score": float(means[gs])})
 
     if not rows:
         ax.text(0.5, 0.5, "No enrichment summary", ha="center", va="center", transform=ax.transAxes)
@@ -1612,12 +1437,274 @@ def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
 
     df = pd.DataFrame(rows)
     piv = df.pivot(index="Gene set", columns="Group", values="Score")
+    piv = piv[[key for key, _, _ in columns]]
     sns.heatmap(piv, cmap="RdBu_r", center=0, linewidths=0.3, linecolor="white",
                 ax=ax, cbar_kws={"label": "Mean z-score\n(within-dataset)", "pad": 0.01})
     ax.set_title("Enrichment summary (within-dataset z-score)", fontweight="bold")
     ax.set_xlabel("")
-    ax.tick_params(axis="x", labelsize=3.5, rotation=45)
+    ax.set_xticks(np.arange(len(columns)) + 0.5)
+    ax.set_xticklabels([visit for _, visit, _ in columns], rotation=0)
+    ax.tick_params(axis="x", labelsize=3.5)
     ax.tick_params(axis="y", labelsize=4)
+    groups: list[tuple[str, float, float]] = []
+    for i, (_, _, group) in enumerate(columns):
+        if groups and groups[-1][0] == group:
+            groups[-1] = (group, groups[-1][1], i + 0.5)
+        else:
+            groups.append((group, i + 0.5, i + 0.5))
+    group_axis_labels(ax, groups, fontsize=3.5)
+
+
+def _build_composite(data_mel: dict, data: dict[str, dict]) -> None:
+    """Build and save the combined A–M artboard from the prepared melanoma and cross-dataset data."""
+    # ==================================================================
+    # Composite artboard  (180 mm wide; height from rows_mm below)
+    # ==================================================================
+    #   Row  0: A | B | C  (melanoma: volcano | waterfall | GSEA)
+    #   Row  2: D | E      (melanoma: leading-edge | cell-type HM)
+    #   Row  4: F | G      (cross-dataset: gs-dist | pairwise corr)
+    #   Row  6: H | I      (cross-dataset: concordant genes | gene dist)
+    #   Row  8: J | K      (cross-dataset: exhaustion | effect heatmap)
+    #   Row 10: L          (cross-dataset: paired trajectories)
+    #   Row 12: M          (cross-dataset: enrichment heatmap)
+    # ==================================================================
+    print("  Building composite figure ...")
+
+    _SMALL_RC = {
+        "font.size": 4.5,
+        "axes.titlesize": 5.0,
+        "axes.labelsize": 4.5,
+        "xtick.labelsize": 4.0,
+        "ytick.labelsize": 4.0,
+        "legend.fontsize": 3.5,
+        "legend.title_fontsize": 3.5,
+    }
+    _MAX_FONT = 6
+
+    def _cap_fontsize(fig_obj, maximum):
+        for ax_i in fig_obj.get_axes():
+            for txt in ([ax_i.title, ax_i.xaxis.label, ax_i.yaxis.label]
+                        + ax_i.get_xticklabels() + ax_i.get_yticklabels()
+                        + ax_i.texts):
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            leg = ax_i.get_legend()
+            if leg:
+                for txt in leg.get_texts():
+                    if txt.get_fontsize() > maximum:
+                        txt.set_fontsize(maximum)
+                t = leg.get_title()
+                if t and t.get_fontsize() > maximum:
+                    t.set_fontsize(maximum)
+
+    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
+    plt.rcParams.update(_SMALL_RC)
+
+    _mm = 1.0 / 25.4
+    # Row heights in mm. Each panel row is tall enough for its row labels at the composite font
+    # sizes (labels about 1.2 font heights apart); spacers hold tick labels, keys and titles.
+    rows_mm = [
+        32.5,  # row  0: A | B | C  melanoma; B lists 30 genes at 2.5 pt
+        18.7,  # spacer (keys of A to C, titles of D and E)
+        25.0,  # row  2: D | E      melanoma; E lists 15 genes at 4 pt
+        19.2,  # section spacer
+        17.0,  # row  4: F | G
+        19.2,  # spacer (key of F, titles of H and I)
+        21.5,  # row  6: H | I      H lists 12 genes at 4 pt
+        15.0,  # spacer (keys of H and I, titles of J and K)
+        42.0,  # row  8: J | K      J lists 30 cell types at 3 pt, in six dataset blocks
+        16.3,  # spacer (key of J, title of L)
+        10.2,  # row 10: L (full width)
+        12.4,  # spacer
+        10.2,  # row 12: M (full width)
+    ]
+    _top_mm, _bottom_mm = 5.0, 9.6
+    _height_mm = _top_mm + sum(rows_mm) + _bottom_mm
+    fig_c = plt.figure(figsize=(180 * _mm, _height_mm * _mm))
+
+    outer = fig_c.add_gridspec(
+        len(rows_mm), 1, height_ratios=rows_mm, hspace=0.0,
+        left=0.06, right=0.99, top=1 - _top_mm / _height_mm, bottom=_bottom_mm / _height_mm,
+    )
+
+    # ── Row 0: A | B | C  (melanoma) ─────────────────────────────────
+    gs0 = outer[0].subgridspec(1, 4, wspace=0.40,  # the spacer holds C's pathway names
+                                width_ratios=[1.0, 0.80, 0.33, 0.7])
+    ax_a = fig_c.add_subplot(gs0[0])
+    ax_b = fig_c.add_subplot(gs0[1])
+    ax_c = fig_c.add_subplot(gs0[3])
+
+    panel_A(ax_a, data_mel, composite=True)
+    ax_a.tick_params(axis='y', labelsize=4)
+    ax_a.xaxis.label.set_fontsize(4.5)
+    ax_a.yaxis.label.set_fontsize(4.5)
+    panel_B(ax_b, data_mel)
+    ax_b.tick_params(axis='y', labelsize=2.5)
+    _b_lbls = [t.get_text() for t in ax_b.get_yticklabels()]
+    if _b_lbls:
+        ax_b.set_yticklabels(_b_lbls, fontsize=2.5)
+    panel_C(ax_c, data_mel)
+    ax_c.set_title(ax_c.get_title().replace("Melanoma", "").strip(" —–-") +
+                   " — Melanoma", fontsize=5.0, fontweight="bold")
+    ax_c.tick_params(axis='y', labelsize=3.5)
+    ax_c.set_xticks([-2, 0, 2])
+
+    # ── Row 2: D | E  (melanoma) ──────────────────────────────────────
+    gs2 = outer[2].subgridspec(1, 4, wspace=0.30,  # the first spacer holds D's pathway names
+                                width_ratios=[0.16, 0.95, 0.25, 0.95])
+    ax_d = fig_c.add_subplot(gs2[1])
+    _e = gs2[3].get_position(fig_c)  # 6 mm left, so E's colour bar and its label stay on the canvas
+    ax_e = fig_c.add_axes([_e.x0 - 6.0 / 180, _e.y0, _e.width, _e.height])
+
+    panel_D(ax_d, data_mel, composite=True)
+    _swap_leading_edge_axes(ax_d)
+    ax_d.set_title(ax_d.get_title().replace("Melanoma", "").strip(" —–-") +
+                   " — Melanoma", fontsize=5.0, fontweight="bold")
+    ax_d.tick_params(axis='y', labelsize=4)
+    for _t in ax_d.get_xticklabels():  # one gene per column: vertical names cannot collide
+        _t.set_rotation(90)
+        _t.set_rotation_mode("default")
+        _t.set_ha("center")
+
+    _axes_before_e = set(fig_c.get_axes())
+    panel_E(ax_e, data_mel)
+    _shrink_colorbars(fig_c, _axes_before_e, fs=3.5)
+    for _cb_ax in set(fig_c.get_axes()) - _axes_before_e - {ax_e}:
+        _cb_ax.tick_params(labelsize=4.0)
+        _cb_ax.yaxis.label.set_fontsize(4.5)
+    ax_e.set_title(ax_e.get_title().replace("Melanoma", "").strip(" —–-") +
+                   " — Melanoma", fontsize=5.0, fontweight="bold")
+    ax_e.tick_params(axis='x', labelsize=3.5)
+    ax_e.tick_params(axis='y', labelsize=4)
+
+    # ── Row 4: F | G ──────────────────────────────────────────────────
+    gs4 = outer[4].subgridspec(1, 2, width_ratios=[1.8, 1.0], wspace=0.50)
+    ax_f = fig_c.add_subplot(gs4[0])
+    _g = gs4[1].get_position(fig_c)  # 2.5 mm left, so G's colour-bar label stays on the canvas
+    ax_g = fig_c.add_axes([_g.x0 - 2.5 / 180, _g.y0, _g.width, _g.height])
+
+    _panel_gs_distributions(ax_f, data)
+    ax_f.tick_params(axis='y', labelsize=4)
+    _axes_before_g = set(fig_c.get_axes())
+    _panel_pairwise_corr(ax_g, data)
+    ax_g.tick_params(axis='y', labelsize=4)
+    for _cb_ax in set(fig_c.get_axes()) - _axes_before_g - {ax_g}:
+        _cb_ax.tick_params(labelsize=4.0)
+        _cb_ax.yaxis.label.set_fontsize(4.5)
+
+    # ── Row 6: H | I ──────────────────────────────────────────────────
+    gs6 = outer[6].subgridspec(1, 2, width_ratios=[1.1, 1.0], wspace=0.50)
+    ax_h = fig_c.add_subplot(gs6[0])
+    ax_i = fig_c.add_subplot(gs6[1])
+
+    _panel_concordant_top_genes(ax_h, data)
+    ax_h.tick_params(axis='y', labelsize=4)
+    _panel_gene_dist(ax_i, data)
+    ax_i.tick_params(axis='y', labelsize=4)
+    ax_i.yaxis.label.set_fontsize(4.5)
+
+    # ── Row 8: J | K ──────────────────────────────────────────────────
+    gs8 = outer[8].subgridspec(1, 3, width_ratios=[0.0, 1.0, 1.2], wspace=0.45)
+    ax_j = fig_c.add_subplot(gs8[1])
+    ax_k = fig_c.add_subplot(gs8[2])
+
+    _panel_exhaustion_by_celltype(ax_j, data, label_fontsize=3.0)
+    _axes_before_k = set(fig_c.get_axes())
+    _panel_effect_heatmap(ax_k, data)
+    for _cb_ax in set(fig_c.get_axes()) - _axes_before_k - {ax_k}:
+        _cb_ax.tick_params(labelsize=4.0)
+        _cb_ax.yaxis.label.set_fontsize(4.5)
+
+    # ── Row 10: L (full width) ────────────────────────────────────────
+    ax_l = fig_c.add_subplot(outer[10])
+    _panel_paired_trajectories(ax_l, data)
+    ax_l.tick_params(axis='y', labelsize=4)
+    ax_l.yaxis.label.set_fontsize(4.5)
+    ax_l.set_ylabel(ax_l.get_ylabel().replace(" ", "\n", 1), labelpad=1.5)  # fits the 10 mm row
+    _p = ax_l.get_position()  # 1 mm in from the left, so the two-line label stays on the canvas
+    ax_l.set_position([_p.x0 + 1.0 / 180, _p.y0, _p.width - 1.0 / 180, _p.height])
+
+    # ── Row 12: M (shifted right with wider left margin) ──────────────
+    # M's gene-set names on one line each need about 36 mm left of the heatmap
+    gs12 = outer[12].subgridspec(1, 3, width_ratios=[0.19, 1.0, 0.0], wspace=0.0)
+    ax_m = fig_c.add_subplot(gs12[1])
+    _panel_enrichment_heatmap(ax_m, data)
+    ax_m.xaxis.label.set_fontsize(4.5)
+    ax_m.yaxis.label.set_fontsize(4.5)
+    ax_m.set_yticklabels([t.get_text().replace("\n", " ") for t in ax_m.get_yticklabels()])
+
+    # ── Post-processing ───────────────────────────────────────────────
+    for ax_pp in fig_c.get_axes():
+        leg = ax_pp.get_legend()
+        if leg:
+            leg.get_frame().set_alpha(0.85)
+            leg.get_frame().set_edgecolor("#CCCCCC")
+
+    # Shrink gene-label annotations in the waterfall (volcano labels are final size)
+    for _ax in [ax_b]:
+        for txt in _ax.texts:
+            if txt.get_fontsize() > 4:
+                txt.set_fontsize(max(txt.get_fontsize() * 0.50, 2.5))
+
+    _cap_fontsize(fig_c, _MAX_FONT)
+
+    # Normalise all axes titles to match G (rc axes.titlesize = 5.0)
+    for _ax in fig_c.get_axes():
+        if _ax.get_title():
+            _ax.title.set_fontsize(5.0)
+
+    # Keys below their axes, measured now that the fonts are final.
+    for ax_key, ncol in [(ax_b, 2), (ax_c, 1), (ax_d, 3), (ax_f, 6), (ax_h, 2), (ax_i, 3),
+                         (ax_j, 6)]:
+        key_below_axes(ax_key, ncol=ncol, fontsize=3.5)
+
+    # Bold panel labels A–M
+    _lbl_fs = 7
+
+    # Row 0: A B C  (A, B, C up)
+    ax_a.text(-0.18, 1.10, "A", transform=ax_a.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_b.text(-0.26, 1.10, "B", transform=ax_b.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_c.text(-0.10, 1.10, "C", transform=ax_c.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 2: D E  (D left and up; E up)
+    letter_at_panel_corner(ax_d, "D", fontsize=_lbl_fs)
+    ax_e.text(-0.24, 1.10, "E", transform=ax_e.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 4: F G  (unchanged)
+    ax_f.text(-0.10, 1.10, "F", transform=ax_f.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_g.text(-0.16, 1.10, "G", transform=ax_g.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 6: H I  (further up)
+    ax_h.text(-0.10, 1.16, "H", transform=ax_h.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    ax_i.text(-0.10, 1.16, "I", transform=ax_i.transAxes,
+              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Rows 8 to 12: letters at the left edge of each panel's own labels (J's dataset names,
+    # L's and M's y labels), J and K level with each other
+    fig_c.canvas.draw()
+    _r = fig_c.canvas.get_renderer()
+    _jk_top = max(_ax.title.get_window_extent(_r).y1 for _ax in (ax_j, ax_k))
+    letter_at_panel_corner(ax_j, "J", fontsize=_lbl_fs, top=_jk_top)
+    letter_at_panel_corner(ax_k, "K", fontsize=_lbl_fs, top=_jk_top)
+    letter_at_panel_corner(ax_l, "L", fontsize=_lbl_fs)
+    letter_at_panel_corner(ax_m, "M", fontsize=_lbl_fs)
+
+    plt.rcParams.update(_prev_rc)
+
+    report_layout_problems(fig_c, FIGURE_NAME)
+
+    panel_dir = SUPP_OUTPUT / f"{FIGURE_NAME}_panels"
+    panel_dir.mkdir(exist_ok=True)
+    png_path = panel_dir / f"{FIGURE_NAME}.png"
+    fig_c.savefig(str(png_path), format="png", dpi=600, facecolor="white")
+    pdf_path = panel_dir / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", facecolor="white")
+    print(f"    Saved panel: {FIGURE_NAME}")
+    plt.close(fig_c)
+    print("    Saved combined artboard (PNG + PDF)")
 
 
 def generate():
@@ -1668,253 +1755,7 @@ def generate():
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
 
-    # ==================================================================
-    # Composite artboard  (180 mm × 215 mm)
-    # ==================================================================
-    #   Row  0: A | B | C  (melanoma: volcano | waterfall | GSEA)
-    #   Row  2: D | E      (melanoma: leading-edge | cell-type HM)
-    #   Row  4: F | G      (cross-dataset: gs-dist | pairwise corr)
-    #   Row  6: H | I      (cross-dataset: concordant genes | gene dist)
-    #   Row  8: J | K      (cross-dataset: exhaustion | effect heatmap)
-    #   Row 10: L          (cross-dataset: paired trajectories)
-    #   Row 12: M          (cross-dataset: enrichment heatmap)
-    # ==================================================================
-    print("  Building composite figure ...")
-
-    _SMALL_RC = {
-        "font.size": 4.5,
-        "axes.titlesize": 5.0,
-        "axes.labelsize": 4.5,
-        "xtick.labelsize": 4.0,
-        "ytick.labelsize": 4.0,
-        "legend.fontsize": 3.5,
-        "legend.title_fontsize": 3.5,
-    }
-    _MAX_FONT = 6
-
-    def _cap_fontsize(fig_obj, maximum):
-        for ax_i in fig_obj.get_axes():
-            for txt in ([ax_i.title, ax_i.xaxis.label, ax_i.yaxis.label]
-                        + ax_i.get_xticklabels() + ax_i.get_yticklabels()
-                        + ax_i.texts):
-                if txt.get_fontsize() > maximum:
-                    txt.set_fontsize(maximum)
-            leg = ax_i.get_legend()
-            if leg:
-                for txt in leg.get_texts():
-                    if txt.get_fontsize() > maximum:
-                        txt.set_fontsize(maximum)
-                t = leg.get_title()
-                if t and t.get_fontsize() > maximum:
-                    t.set_fontsize(maximum)
-
-    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
-    plt.rcParams.update(_SMALL_RC)
-
-    _mm = 1.0 / 25.4
-    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
-
-    # 13 rows: 7 content rows interleaved with 6 spacer rows
-    outer = fig_c.add_gridspec(
-        13, 1,
-        height_ratios=[
-            0.65,   # row  0: A | B | C  — melanoma
-            0.40,   # spacer
-            0.50,   # row  2: D | E      — melanoma
-            0.52,   # section spacer
-            0.55,   # row  4: F | G
-            0.39,   # spacer (slightly wider)
-            0.43,   # row  6: H | I
-            0.27,   # spacer
-            0.85,   # row  8: J | K (taller)
-            0.29,   # spacer
-            0.30,   # row 10: L (full width)
-            0.35,   # spacer
-            0.30,   # row 12: M (full width)
-        ],
-        hspace=0.0,
-        left=0.06, right=0.99, top=0.97, bottom=0.03,
-    )
-
-    # ── Row 0: A | B | C  (melanoma) ─────────────────────────────────
-    gs0 = outer[0].subgridspec(1, 4, wspace=0.40,
-                                width_ratios=[1.0, 0.85, 0.18, 0.7])
-    ax_a = fig_c.add_subplot(gs0[0])
-    ax_b = fig_c.add_subplot(gs0[1])
-    ax_c = fig_c.add_subplot(gs0[3])
-
-    panel_A(ax_a, data_mel, composite=True)
-    ax_a.tick_params(axis='y', labelsize=4)
-    ax_a.xaxis.label.set_fontsize(4.5)
-    ax_a.yaxis.label.set_fontsize(4.5)
-    panel_B(ax_b, data_mel)
-    ax_b.tick_params(axis='y', labelsize=2.5)
-    _b_lbls = [t.get_text() for t in ax_b.get_yticklabels()]
-    if _b_lbls:
-        ax_b.set_yticklabels(_b_lbls, fontsize=2.5)
-    panel_C(ax_c, data_mel)
-    ax_c.set_title(ax_c.get_title().replace("Melanoma", "").strip(" —–-") +
-                   " — Melanoma", fontsize=5.0, fontweight="bold")
-    ax_c.tick_params(axis='y', labelsize=3.5)
-    ax_c.set_xticks([-2, 0, 2])
-
-    # ── Row 2: D | E  (melanoma) ──────────────────────────────────────
-    gs2 = outer[2].subgridspec(1, 4, wspace=0.30,
-                                width_ratios=[0.10, 0.95, 0.25, 0.95])
-    ax_d = fig_c.add_subplot(gs2[1])
-    ax_e = fig_c.add_subplot(gs2[3])
-
-    panel_D(ax_d, data_mel, composite=True)
-    _swap_leading_edge_axes(ax_d)
-    ax_d.set_title(ax_d.get_title().replace("Melanoma", "").strip(" —–-") +
-                   " — Melanoma", fontsize=5.0, fontweight="bold")
-    ax_d.tick_params(axis='y', labelsize=4)
-
-    _axes_before_e = set(fig_c.get_axes())
-    panel_E(ax_e, data_mel)
-    _shrink_colorbars(fig_c, _axes_before_e, fs=3.5)
-    for _cb_ax in set(fig_c.get_axes()) - _axes_before_e - {ax_e}:
-        _cb_ax.tick_params(labelsize=4.0)
-        _cb_ax.yaxis.label.set_fontsize(4.5)
-    ax_e.set_title(ax_e.get_title().replace("Melanoma", "").strip(" —–-") +
-                   " — Melanoma", fontsize=5.0, fontweight="bold")
-    ax_e.tick_params(axis='x', labelsize=3.5)
-    ax_e.tick_params(axis='y', labelsize=4)
-
-    # ── Row 4: F | G ──────────────────────────────────────────────────
-    gs4 = outer[4].subgridspec(1, 2, width_ratios=[1.8, 1.0], wspace=0.50)
-    ax_f = fig_c.add_subplot(gs4[0])
-    ax_g = fig_c.add_subplot(gs4[1])
-
-    _panel_gs_distributions(ax_f, data)
-    ax_f.tick_params(axis='y', labelsize=4)
-    _axes_before_g = set(fig_c.get_axes())
-    _panel_pairwise_corr(ax_g, data)
-    ax_g.tick_params(axis='y', labelsize=4)
-    for _cb_ax in set(fig_c.get_axes()) - _axes_before_g - {ax_g}:
-        _cb_ax.tick_params(labelsize=4.0)
-        _cb_ax.yaxis.label.set_fontsize(4.5)
-
-    # ── Row 6: H | I ──────────────────────────────────────────────────
-    gs6 = outer[6].subgridspec(1, 2, width_ratios=[1.1, 1.0], wspace=0.50)
-    ax_h = fig_c.add_subplot(gs6[0])
-    ax_i = fig_c.add_subplot(gs6[1])
-
-    _panel_concordant_top_genes(ax_h, data)
-    ax_h.tick_params(axis='y', labelsize=4)
-    _panel_gene_dist(ax_i, data)
-    ax_i.tick_params(axis='y', labelsize=4)
-    ax_i.yaxis.label.set_fontsize(4.5)
-    _leg_i = ax_i.get_legend()
-    if _leg_i:
-        _i_handles = _leg_i.legend_handles
-        _i_labels = [t.get_text() for t in _leg_i.get_texts()]
-        ax_i.legend(handles=_i_handles, labels=_i_labels,
-                    fontsize=3.5, frameon=True, loc="upper left", ncol=3,
-                    bbox_to_anchor=(0.0, 1.10))
-
-    # ── Row 8: J | K ──────────────────────────────────────────────────
-    gs8 = outer[8].subgridspec(1, 3, width_ratios=[0.0, 1.0, 1.2], wspace=0.45)
-    ax_j = fig_c.add_subplot(gs8[1])
-    ax_k = fig_c.add_subplot(gs8[2])
-
-    _panel_exhaustion_by_celltype(ax_j, data)
-    ax_j.tick_params(axis='y', labelsize=3)
-    _axes_before_k = set(fig_c.get_axes())
-    _panel_effect_heatmap(ax_k, data)
-    for _cb_ax in set(fig_c.get_axes()) - _axes_before_k - {ax_k}:
-        _cb_ax.tick_params(labelsize=4.0)
-        _cb_ax.yaxis.label.set_fontsize(4.5)
-
-    # ── Row 10: L (full width) ────────────────────────────────────────
-    ax_l = fig_c.add_subplot(outer[10])
-    _panel_paired_trajectories(ax_l, data)
-    ax_l.tick_params(axis='y', labelsize=4)
-    ax_l.yaxis.label.set_fontsize(4.5)
-
-    # ── Row 12: M (shifted right with wider left margin) ──────────────
-    gs12 = outer[12].subgridspec(1, 3, width_ratios=[0.14, 1.0, 0.0], wspace=0.0)
-    ax_m = fig_c.add_subplot(gs12[1])
-    _panel_enrichment_heatmap(ax_m, data)
-    ax_m.xaxis.label.set_fontsize(4.5)
-    ax_m.yaxis.label.set_fontsize(4.5)
-
-    # ── Post-processing ───────────────────────────────────────────────
-    for ax_pp in fig_c.get_axes():
-        leg = ax_pp.get_legend()
-        if leg:
-            leg.get_frame().set_alpha(0.85)
-            leg.get_frame().set_edgecolor("#CCCCCC")
-
-    # Compact legends for melanoma panels
-    _mel_bio_locs = {
-        ax_a: "upper center", ax_b: "upper left",
-        ax_c: "upper left",  ax_d: "lower left",
-    }
-    for ax_target, loc in _mel_bio_locs.items():
-        _compact_legend(ax_target, loc, fs=4)
-
-    # Shrink gene-label annotations in volcano/waterfall
-    for _ax in [ax_a, ax_b]:
-        for txt in _ax.texts:
-            if txt.get_fontsize() > 4:
-                txt.set_fontsize(max(txt.get_fontsize() * 0.50, 2.5))
-
-    _cap_fontsize(fig_c, _MAX_FONT)
-
-    # Normalise all axes titles to match G (rc axes.titlesize = 5.0)
-    for _ax in fig_c.get_axes():
-        if _ax.get_title():
-            _ax.title.set_fontsize(5.0)
-
-    # Bold panel labels A–M
-    _lbl_fs = 7
-
-    # Row 0: A B C  (A, B, C up)
-    ax_a.text(-0.18, 1.10, "A", transform=ax_a.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_b.text(-0.26, 1.10, "B", transform=ax_b.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_c.text(-0.10, 1.10, "C", transform=ax_c.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 2: D E  (D left and up; E up)
-    ax_d.text(-0.30, 1.10, "D", transform=ax_d.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_e.text(-0.24, 1.10, "E", transform=ax_e.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 4: F G  (unchanged)
-    ax_f.text(-0.10, 1.10, "F", transform=ax_f.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_g.text(-0.16, 1.10, "G", transform=ax_g.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 6: H I  (further up)
-    ax_h.text(-0.10, 1.16, "H", transform=ax_h.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_i.text(-0.10, 1.16, "I", transform=ax_i.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 8: J K  (unchanged)
-    ax_j.text(-0.16, 1.10, "J", transform=ax_j.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_k.text(-0.10, 1.10, "K", transform=ax_k.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 10: L  (further up)
-    ax_l.text(-0.05, 1.38, "L", transform=ax_l.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 12: M  (left)
-    ax_m.text(-0.16, 1.16, "M", transform=ax_m.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-
-    plt.rcParams.update(_prev_rc)
-
-    panel_dir = SUPP_OUTPUT / f"{FIGURE_NAME}_panels"
-    panel_dir.mkdir(exist_ok=True)
-    png_path = panel_dir / f"{FIGURE_NAME}.png"
-    fig_c.savefig(str(png_path), format="png", dpi=600, facecolor="white")
-    pdf_path = panel_dir / f"{FIGURE_NAME}.pdf"
-    fig_c.savefig(str(pdf_path), format="pdf", facecolor="white")
-    print(f"    Saved panel: {FIGURE_NAME}")
-    plt.close(fig_c)
-    print("    Saved combined artboard (PNG + PDF)")
+    _build_composite(data_mel, data)
 
     # ── Cleanup ───────────────────────────────────────────────────────
     if "adata" in data_mel:

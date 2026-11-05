@@ -322,7 +322,10 @@ def diagnose_trial_data(
 
     # Check cell type distribution if available
     if design.celltype_col and design.celltype_col in adata.obs.columns:
+        # Count only cell types present: a sliced Categorical keeps every level, and
+        # value_counts would report the absent ones with a count of zero.
         celltype_counts = adata.obs[design.celltype_col].value_counts()
+        celltype_counts = celltype_counts[celltype_counts > 0]
         report["n_celltypes"] = len(celltype_counts)
         report["celltype_distribution"] = celltype_counts.to_dict()
 

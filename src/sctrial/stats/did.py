@@ -53,6 +53,9 @@ class DiDConfig:
     """Random seed for bootstrap reproducibility."""
     exclude_crossovers: bool = True
     """Whether to drop crossover cells if crossover_col is set."""
+    weight_col: str | None = None
+    """Column to use as WLS weights. None (default) fits OLS, weighting every
+    participant-visit aggregate equally. See ``did_fit`` for why."""
 
 
 def _validate_did_fit_inputs(df: pd.DataFrame, cols: list[str]) -> None:
@@ -293,6 +296,7 @@ def did_fit(
     use_bootstrap: bool = False,
     n_boot: int = 999,
     seed: int = 42,
+    weight_col: str | None = None,
 ) -> DidFitResult:
     """Fit fixed-effects Difference-in-Differences (DiD) model.
 
@@ -333,9 +337,18 @@ def did_fit(
       Returns NaN for all estimates if n_units < 4.
     - Features with near-zero variance (std < 1e-8) return NaN.
     - Cluster-robust standard errors account for within-participant correlation.
-    - If ``n_cells`` column is present, Weighted Least Squares (WLS) is used.
-      Weights are proportional to n_cells (inverse-variance weighting for
-      participant-level means, since Var(mean) = σ²/n).
+
+    **Weighting**
+
+    The model is fit by ordinary least squares, so every participant-visit
+    aggregate carries equal weight. This is deliberate. Weighting by cell count
+    (``Var(mean) = σ²/n``) assumes that all variance between aggregates is
+    cell-sampling noise, which is the assumption participant-level inference
+    rejects: once a few hundred cells are averaged, between-participant
+    biological variation dominates, and cell-count weights would hand a handful
+    of high-yield participants control of the estimate. Equal weighting also makes
+    the two-visit estimate identical to the participant first-difference
+    estimator. Pass ``weight_col`` to opt into WLS explicitly.
 
     Parameters
     ----------
@@ -363,6 +376,10 @@ def did_fit(
         Number of bootstrap iterations (999 or 1999 for publication).
     seed : int
         Random seed for reproducibility.
+    weight_col : str, optional
+        Column holding WLS weights. ``None`` (default) fits OLS. Every value must
+        be finite and positive, otherwise a ``ValueError`` is raised rather than
+        silently falling back to OLS.
 
     Returns
     -------
@@ -379,9 +396,8 @@ def did_fit(
     cols = [unit, time, arm_bin, y]
     if covariates:
         cols.extend(covariates)
-    # Include n_cells for WLS weighting if available
-    if "n_cells" in df.columns:
-        cols.append("n_cells")
+    if weight_col is not None:
+        cols.append(weight_col)
 
     _validate_did_fit_inputs(df, cols)
 
@@ -414,16 +430,11 @@ def did_fit(
 
     formula = _build_did_formula(time, arm_bin, unit, covariates, outcome_col="outcome_std")
 
-    # Inverse-variance weighting for pre-aggregated means:
-    # Var(mean_i) = sigma^2 / n_i, so weight_i = n_i (proportional to 1/Var)
-    weights = None
-    if "n_cells" in tmp.columns:
-        w = tmp["n_cells"].values.astype(float)
-        if np.all(np.isfinite(w)) and np.all(w > 0):
-            weights = w
-
-    if weights is not None:
-        model = smf.wls(formula, data=tmp, weights=weights)
+    if weight_col is not None:
+        w = tmp[weight_col].to_numpy(dtype=float)
+        if not (np.all(np.isfinite(w)) and np.all(w > 0)):
+            raise ValueError(f"weight_col '{weight_col}' must be finite and positive.")
+        model = smf.wls(formula, data=tmp, weights=w)
     else:
         model = smf.ols(formula, data=tmp)
 
@@ -529,6 +540,7 @@ def did_table(
     n_boot: int = 999,
     seed: int = 42,
     config: DiDConfig | None = None,
+    weight_col: str | None = None,
 ) -> pd.DataFrame:
     """Run Difference-in-Differences (DiD) for a list of features.
 
@@ -588,6 +600,11 @@ def did_table(
         Number of bootstrap permutations.
     seed
         Random seed for bootstrap.
+    weight_col
+        Column to use as WLS weights, for example ``"n_cells"`` (created by
+        ``aggregate="participant_visit"``). ``None`` (default) fits OLS, so each
+        participant-visit aggregate counts equally regardless of how many cells it
+        averages. See ``did_fit`` for the rationale.
 
     Returns
     -------
@@ -610,6 +627,7 @@ def did_table(
         use_bootstrap = config.use_bootstrap
         n_boot = config.n_boot
         seed = config.seed
+        weight_col = config.weight_col
         exclude_crossovers = config.exclude_crossovers
 
     ad, obs = _prepare_did_obs(adata, design, visits, celltype, exclude_crossovers)
@@ -651,6 +669,7 @@ def did_table(
             use_bootstrap=use_bootstrap,
             n_boot=n_boot,
             seed=seed,
+            weight_col=weight_col,
         )
         row = dict(out)
         row["feature"] = feat
@@ -739,6 +758,7 @@ def did_table_parallel(
     backend: str = "loky",
     batch_size: int | None = None,
     config: DiDConfig | None = None,
+    weight_col: str | None = None,
 ) -> pd.DataFrame:
     """Parallelized DiD across features using joblib.
 
@@ -771,6 +791,7 @@ def did_table_parallel(
             n_boot=n_boot,
             seed=seed,
             config=config,
+            weight_col=weight_col,
         )
 
     try:
@@ -787,6 +808,7 @@ def did_table_parallel(
         use_bootstrap = config.use_bootstrap
         n_boot = config.n_boot
         seed = config.seed
+        weight_col = config.weight_col
         exclude_crossovers = config.exclude_crossovers
 
     ad, obs = _prepare_did_obs(adata, design, visits, celltype, exclude_crossovers)
@@ -831,6 +853,7 @@ def did_table_parallel(
             use_bootstrap=use_bootstrap,
             n_boot=n_boot,
             seed=feature_seeds[idx],
+            weight_col=weight_col,
         )
         row = dict(out)
         row["feature"] = feat

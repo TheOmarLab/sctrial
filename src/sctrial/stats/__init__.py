@@ -20,7 +20,7 @@ Advanced Methods
 
 Effect Sizes & Power
 --------------------
-- **add_effect_sizes_to_did**: Cohen's d / Hedge's g for DiD
+- **add_effect_sizes_to_did**: Cohen's d / Hedges' g for DiD
 - **power_did** / **power_paired**: Power calculations (two-arm DiD / single-arm paired)
 - **sample_size_did** / **sample_size_paired**: Sample size determination
 - **sensitivity_paired**: Minimum detectable effect size for paired designs
@@ -30,7 +30,9 @@ from .abundance import abundance_did
 from .bayes import did_table_bayes, prior_predictive_check
 from .comparisons import (
     between_arm_comparison,
+    between_arm_fit_beta,
     compare_gene_in_celltype,
+    get_between_arm_aggregated_df,
     get_within_arm_aggregated_df,
     within_arm_comparison,
     within_arm_fit_beta,
@@ -109,6 +111,8 @@ __all__ = [
     "run_gsea_within_arm",
     "within_arm_comparison",
     "between_arm_comparison",
+    "between_arm_fit_beta",
+    "get_between_arm_aggregated_df",
     "get_did_aggregated_df",
     "get_within_arm_aggregated_df",
     "within_arm_fit_beta",

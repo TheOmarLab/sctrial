@@ -95,6 +95,7 @@ from .._benchmark import (  # noqa: F401
 from .._shared import (
     COLORS,
     MAIN_OUTPUT,
+    STATS_FINGERPRINT,
     TrialDesign,
     apply_style,
     between_arm_comparison,
@@ -260,7 +261,7 @@ def _load_analysis_cache(tag: str) -> dict | None:
 # ======================================================================
 
 def _prepare_sf_data() -> dict:
-    _tag = "sf_analysis_" + _cache_key("sf")
+    _tag = "sf_analysis_" + _cache_key("sf", STATS_FINGERPRINT)
     cached = _load_analysis_cache(_tag)
     if cached is not None:
         print("  SF analysis (cached)")
@@ -301,7 +302,7 @@ def _prepare_sf_data() -> dict:
 
 
 def _prepare_tnbc_data() -> dict:
-    _tag = "tnbc_analysis_" + _cache_key("tnbc")
+    _tag = "tnbc_analysis_" + _cache_key("tnbc", STATS_FINGERPRINT)
     cached = _load_analysis_cache(_tag)
     if cached is not None:
         print("  TNBC analysis (cached)")
@@ -456,7 +457,7 @@ def _paired_cohens_d(participant_deltas: np.ndarray) -> tuple[float, float, floa
 
 
 def _compute_effect_sizes_across_datasets(datasets: list[DatasetInfo]) -> pd.DataFrame:
-    cache_tag = "effects_" + _cache_key(*[f"{n}:{a.n_obs}" for n, a, *_ in datasets])
+    cache_tag = "effects_" + _cache_key("pid-observed", *[f"{n}:{a.n_obs}" for n, a, *_ in datasets])
     cached = _load_cache(cache_tag)
     if cached is not None:
         print("  Effect sizes (cached)")
@@ -480,7 +481,7 @@ def _compute_effect_sizes_across_datasets(datasets: list[DatasetInfo]) -> pd.Dat
                     for arm in [design.arm_treated, design.arm_control]:
                         arm_pb = pb[pb[design.arm_col] == arm]
                         arm_d: list[float] = []
-                        for _, pdf in arm_pb.groupby(pid_col):
+                        for _, pdf in arm_pb.groupby(pid_col, observed=True):
                             if set(visits).issubset(set(pdf[design.visit_col])):
                                 pre = pdf.loc[pdf[design.visit_col] == visits[0], sig].values[0]
                                 post = pdf.loc[pdf[design.visit_col] == visits[1], sig].values[0]
@@ -499,7 +500,7 @@ def _compute_effect_sizes_across_datasets(datasets: list[DatasetInfo]) -> pd.Dat
                         [sig].mean().reset_index()
                     )
                     ds: list[float] = []
-                    for _, pdf in pb.groupby(pid_col):
+                    for _, pdf in pb.groupby(pid_col, observed=True):
                         if set(visits).issubset(set(pdf[design.visit_col])):
                             pre = pdf.loc[pdf[design.visit_col] == visits[0], sig].values[0]
                             post = pdf.loc[pdf[design.visit_col] == visits[1], sig].values[0]
@@ -511,8 +512,11 @@ def _compute_effect_sizes_across_datasets(datasets: list[DatasetInfo]) -> pd.Dat
                 elif dtype == "cross_sectional":
                     visit_mask = adata.obs[design.visit_col] == visits[0]
                     obs_visit = adata.obs.loc[visit_mask]
-                    pb_t = obs_visit.loc[obs_visit[design.arm_col] == design.arm_treated].groupby(pid_col)[sig].mean()
-                    pb_c = obs_visit.loc[obs_visit[design.arm_col] == design.arm_control].groupby(pid_col)[sig].mean()
+                    # observed=True: participant_id is categorical, and without it the
+                    # groupby returns every participant in the cohort (NaN for absent
+                    # ones), so len() counted the whole cohort in each arm.
+                    pb_t = obs_visit.loc[obs_visit[design.arm_col] == design.arm_treated].groupby(pid_col, observed=True)[sig].mean()
+                    pb_c = obs_visit.loc[obs_visit[design.arm_col] == design.arm_control].groupby(pid_col, observed=True)[sig].mean()
                     n1, n2 = len(pb_t), len(pb_c)
                     if n1 < 3 or n2 < 3:
                         continue
@@ -1106,7 +1110,7 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
 # Composite generation
 # ======================================================================
 
-def _load_verified_benchmark_data() -> tuple["pd.DataFrame | None", "pd.DataFrame | None"]:
+def _load_verified_benchmark_data() -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
     """Load both benchmark CSVs, enforcing completion guards explicitly.
 
     The shared loaders in _benchmark.py already call completion_marker,
@@ -1126,7 +1130,7 @@ def _load_verified_benchmark_data() -> tuple["pd.DataFrame | None", "pd.DataFram
             )
         if not layout.completion_marker("sensitivity").exists():
             raise FileNotFoundError(
-                f"no completion_marker for the sensitivity grid; "
+                "no completion_marker for the sensitivity grid; "
                 "run scripts/aggregate_benchmark.py first"
             )
     except (FileNotFoundError, ValueError):

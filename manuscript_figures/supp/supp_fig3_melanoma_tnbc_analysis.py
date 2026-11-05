@@ -21,7 +21,7 @@ G : Forest plot of DiD effects across all gene signatures [Melanoma].
 H : Small-multiple interaction plots for the top 6 signatures [Melanoma].
 I : Per-participant change heatmap across signatures [Melanoma].
 J : Bar plot of mean Δ score (post − pre) by response group [Melanoma].
-K : Cohen's d effect sizes (responder − non-responder) on Δ scores [Melanoma].
+K : Hedges' g effect sizes (responder − non-responder) on Δ scores [Melanoma].
 """
 
 from __future__ import annotations
@@ -31,12 +31,13 @@ import warnings
 from contextlib import contextmanager
 
 import matplotlib.gridspec as gridspec
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
-import matplotlib.patches as mpatches
-from scipy import stats
+
+from sctrial.stats.effect_size import hedges_g
 
 from .._shared import (
     COLORS,
@@ -48,6 +49,7 @@ from .._shared import (
     get_sade_feldman,
     get_tnbc_zhang,
     harmonize_response,
+    plot_cell_vs_participant_beta,
     save_panel,
     score_signatures,
     sig_display,
@@ -235,22 +237,6 @@ def _pseudobulk_all(adata, sig_cols: list[str]) -> pd.DataFrame:
     )
 
 
-def _cohens_d(x: np.ndarray, y: np.ndarray) -> float:
-    """Hedges-corrected Cohen's d  (x − y)."""
-    nx, ny = len(x), len(y)
-    if nx < 2 or ny < 2:
-        return np.nan
-    pooled_sd = np.sqrt(
-        ((nx - 1) * np.var(x, ddof=1) + (ny - 1) * np.var(y, ddof=1))
-        / (nx + ny - 2)
-    )
-    if pooled_sd == 0:
-        return np.nan
-    d = (np.mean(x) - np.mean(y)) / pooled_sd
-    correction = 1 - 3 / (4 * (nx + ny) - 9)
-    return d * correction
-
-
 # ── Panel A: Paired-participant verification (from Figure 1B) ────────────
 
 def _panel_a_paired_verification(ax: plt.Axes, data: dict) -> None:
@@ -318,71 +304,14 @@ def _panel_a_paired_verification(ax: plt.Axes, data: dict) -> None:
 
 # ── Panel B: Coefficient comparison (from Figure 1C) ────────────────────
 
-def _panel_b_beta_comparison(ax: plt.Axes, data: dict) -> None:
-    """Scatter of cell-level vs participant-level beta_DiD with identity line."""
-    res_cell = data["res_cell"].set_index("feature")
-    res_part = data["did_res"].set_index("feature")
-    common = res_cell.index.intersection(res_part.index)
-
-    beta_cell = res_cell.loc[common, "beta_DiD"].values
-    beta_part = res_part.loc[common, "beta_DiD"].values
-
-    colors = [COLORS["treated"] if b > 0 else COLORS["control"] for b in beta_part]
-
-    ax.scatter(beta_cell, beta_part, c=colors, s=20, edgecolors="white",
-               linewidths=0.5, zorder=3)
-
-    lim_lo = min(beta_cell.min(), beta_part.min(), -1.0) * 1.15
-    lim_hi = max(beta_cell.max(), beta_part.max()) * 1.15
-    ax.plot([lim_lo, lim_hi], [lim_lo, lim_hi], "--", color=COLORS["gray"],
-            lw=1, zorder=1, label="Identity")
-    ax.set_xlim(lim_lo, lim_hi)
-    ax.set_ylim(lim_lo, lim_hi)
-    ax.axhline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
-    ax.axvline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
-
-    # adjustText with leader lines resolves the dense near-origin label cluster
-    # (Memory/Regulatory T Cells previously overprinted each other).
-    from adjustText import adjust_text
-    texts = [ax.text(xv, yv, sig_display(feat), fontsize=8, alpha=0.9)
-             for feat, xv, yv in zip(common, beta_cell, beta_part)]
-    adjust_text(
-        texts, ax=ax, expand=(0.92, 0.95),
-        arrowprops=dict(arrowstyle="-", color=COLORS["gray"], lw=0.4, alpha=0.6),
-        ensure_inside_axes=True,
+def _panel_b_beta_comparison(ax: plt.Axes, data: dict, *, composite: bool = False) -> None:
+    """Scatter of cell-level vs participant-level beta_DiD (the Figure 2B panel, melanoma)."""
+    # Labels at this figure's 11 pt floor: its 14 pt tick size crowds the cluster.
+    plot_cell_vs_participant_beta(
+        ax, data["res_cell"], data["did_res"],
+        title="Effect Size: Cell vs Participant Aggregation (Melanoma)", composite=composite,
+        label_fs=_MIN_FONT,
     )
-    # Manual nudges for specific labels after auto-placement
-    _axis_range = ax.get_ylim()[1] - ax.get_ylim()[0]
-    for txt in texts:
-        s = txt.get_text()
-        x, y = txt.get_position()
-        if "NK" in s and "activit" in s.lower():
-            txt.set_position((x, y - 0.06 * _axis_range))
-        elif "Proliferat" in s:
-            txt.set_position((x, y + 0.06 * _axis_range))
-
-    r, p = stats.pearsonr(beta_cell, beta_part)
-    ax.text(
-        0.05, 0.95,
-        f"r = {r:.2f}, p = {p:.1e}",
-        transform=ax.transAxes, fontsize=9, va="top",
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                  edgecolor=COLORS["gray"], alpha=0.8),
-    )
-
-    ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (cell-level)", fontsize=12)
-    ax.set_ylabel(r"$\beta_{\mathrm{DiD}}$ (participant-level)", fontsize=12)
-    ax.set_title("Effect Size: Cell vs Participant Aggregation (Melanoma)", fontsize=11,
-                 fontweight="bold")
-
-    legend_handles = [
-        mpatches.Patch(facecolor=COLORS["treated"], label="Positive effect"),
-        mpatches.Patch(facecolor=COLORS["control"], label="Negative effect"),
-    ]
-    ax.legend(handles=legend_handles, fontsize=16,
-              loc="lower left",
-              frameon=True, framealpha=0.9)
-    despine(ax)
 
 
 # ── Panel C: P-value inflation (from Figure 1D) ─────────────────────────
@@ -443,8 +372,6 @@ def _within_arm_response_forest_tnbc(
 
     mask_R  = (delta[TNBC_DESIGN.arm_col] == arm_label) & (delta[_TNBC_RESP_COL] == _TNBC_R_VAL)
     mask_NR = (delta[TNBC_DESIGN.arm_col] == arm_label) & (delta[_TNBC_RESP_COL] == _TNBC_NR_VAL)
-    n_R  = int(mask_R.sum())
-    n_NR = int(mask_NR.sum())
 
     rng = np.random.default_rng(42)
     records = []
@@ -807,10 +734,12 @@ def _panel_i_heatmap(ax: plt.Axes, data: dict) -> None:
     )
     arms = pre.loc[common_pids, DESIGN.arm_col]
 
-    # Sort: Responders first, then by mean Δ
+    # Sort: Responders first, then by mean Δ. The order is an explicit integer:
+    # mapping a Categorical returns a Categorical that sorts by category code, not
+    # by the mapped value, and the separator below assumes Responders come first.
     mean_delta = delta.mean(axis=1)
     sort_df = pd.DataFrame({
-        "arm_order": arms.map({"Responder": 0, "Non-responder": 1}).values,
+        "arm_order": np.where(arms.astype(str) == "Responder", 0, 1),
         "mean_delta": -mean_delta.values,
     }, index=common_pids)
     ordered_pids = sort_df.sort_values(["arm_order", "mean_delta"]).index.tolist()
@@ -928,10 +857,10 @@ def _panel_j_delta_by_response(ax: plt.Axes, data: dict) -> None:
     despine(ax)
 
 
-# ── Panel H: Cohen's d ──────────────────────────────────────────────────
+# ── Panel K: Hedges' g ──────────────────────────────────────────────────
 
 def _panel_k_cohens_d(ax: plt.Axes, data: dict) -> None:
-    """Horizontal lollipop of Cohen's d (responder − non-responder) on Δ."""
+    """Horizontal lollipop of Hedges' g (responder − non-responder) on Δ."""
     delta = data["delta"]
     sig_cols = data["sig_cols"]
     arm = DESIGN.arm_col
@@ -940,7 +869,7 @@ def _panel_k_cohens_d(ax: plt.Axes, data: dict) -> None:
     for col in sig_cols:
         x = delta.loc[delta[arm] == "Responder", col].dropna().values
         y = delta.loc[delta[arm] == "Non-responder", col].dropna().values
-        d = _cohens_d(x, y)
+        d = hedges_g(x, y)
         records.append({"feature": col, "display": sig_display(col), "d": d})
 
     df = pd.DataFrame(records).dropna(subset=["d"]).sort_values("d")
@@ -955,7 +884,7 @@ def _panel_k_cohens_d(ax: plt.Axes, data: dict) -> None:
     ax.axvline(0, ls=":", color=COLORS["gray"], lw=0.8, zorder=0)
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["display"].values, fontsize=4.5)
-    ax.set_xlabel("Cohen's d (Responder − Non-responder)")
+    ax.set_xlabel("Hedges' g (Responder − Non-responder)")
     ax.set_title("Effect Size of Response Separation (Melanoma)", fontsize=10,
                  fontweight="bold")
 
@@ -1203,7 +1132,7 @@ def generate() -> None:
     #   Row 8 (content): K (centred)
     outer = fig_c.add_gridspec(
         9, 1,
-        height_ratios=[1.0, 1.05, 1.8, 1.05, 3.8, 0.75, 1.8, 1.05, 1.8],
+        height_ratios=[1.0, 1.2, 1.8, 1.05, 3.8, 0.75, 1.8, 1.05, 1.8],
         hspace=0,
         left=0.10, right=0.95, top=0.97, bottom=0.05,
     )
@@ -1236,7 +1165,7 @@ def generate() -> None:
 
     # ── Draw all panels ────────────────────────────────────────────────────
     _panel_a_paired_verification(ax_a, data)
-    _panel_b_beta_comparison(ax_b, data)
+    _panel_b_beta_comparison(ax_b, data, composite=True)
     _panel_c_pvalue_inflation(ax_c, data)
     _panel_d_tnbc_mean_delta_by_arm(ax_d, tnbc_data)
     _panel_e_tnbc_response_did_chemo(ax_e, tnbc_data)
@@ -1255,14 +1184,13 @@ def generate() -> None:
 
     # Move below-figure legends inside the plot area for space
     _inside = {
-        ax_b:      "lower left",
         ax_c:      "lower right",    # Melanoma p-value inflation
         ax_d:      "center right",   # TNBC mean delta by arm
         ax_e:      "lower right",    # TNBC Chemo DID
         ax_f:      "upper left",     # TNBC anti-PDL1 DID
         ax_g_comp: "upper left",     # Melanoma forest
         ax_j:      "lower right",    # Melanoma delta by response
-        ax_k:      "lower right",    # Melanoma Cohen's d
+        ax_k:      "lower right",    # Melanoma Hedges' g
     }
     for ax_target, loc in _inside.items():
         leg = ax_target.get_legend()
@@ -1317,10 +1245,6 @@ def generate() -> None:
             ncol=3, frameon=True, framealpha=0.95, edgecolor="#CCCCCC",
         )
 
-    # Panel B: shrink annotation text in composite
-    for txt in ax_b.texts:
-        txt.set_fontsize(max(txt.get_fontsize() * 0.55, 3.0))
-
     # Panel C: nudge "p = 0.05" annotation down
     for txt in ax_c.texts:
         if "0.05" in txt.get_text():
@@ -1328,8 +1252,8 @@ def generate() -> None:
             txt.set_position((x, y - 2))
 
     # Panel I (heatmap): replace below-legend with y-axis group labels
-    from matplotlib.transforms import blended_transform_factory
     from matplotlib.colors import to_rgba
+    from matplotlib.transforms import blended_transform_factory
     leg_i = ax_i.get_legend()
     if leg_i:
         leg_i.remove()

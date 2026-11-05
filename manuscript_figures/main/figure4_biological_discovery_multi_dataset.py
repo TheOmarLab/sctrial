@@ -33,13 +33,16 @@ import gc
 import hashlib
 import pickle  # noqa: S403 — local dev cache of our own DataFrames
 import re
+import textwrap
 import traceback
 import warnings
 from pathlib import Path
 from typing import Any
 
+import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
+import matplotlib.transforms as mtransforms
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
@@ -48,10 +51,12 @@ from statsmodels.stats.multitest import multipletests
 
 from sctrial import abundance_did
 
+from .._gene_types import describe_resolution, is_display_gene
 from .._shared import (
     COLORS,
     GSEA_OUTPUT,
     MAIN_OUTPUT,
+    STATS_FINGERPRINT,
     TrialDesign,
     add_log1p_cpm_layer,
     apply_style,
@@ -66,9 +71,13 @@ from .._shared import (
     get_vaccine,
     harmonize_response,
     hedges_g,
+    key_below_axes,
+    label_points,
+    letter_at_panel_corner,
     load_or_run_gsea_cross_sectional,
     load_or_run_gsea_did,
     load_or_run_gsea_within_arm,
+    report_layout_problems,
     save_panel,
     score_signatures,
     sig_display,
@@ -85,42 +94,6 @@ FIGURE_NAME = "Figure4_biological_discovery_multi_dataset"
 # ── Cache directory for expensive computations ─────────────────────────
 _CACHE_DIR = Path(__file__).resolve().parent.parent / "_cache"
 
-# Pseudogene / non-coding RNA / mitochondrial / ribosomal patterns to
-# EXCLUDE from volcano labels — only protein-coding genes get labelled.
-_NONCODING_PATTERN = re.compile(
-    r"^(RNU\d|RNA5SP|RNY\d|RN7S[LK]|SNOR[AD]|MIR\d|LINC\d|LOC\d|"
-    r"AC\d{6}|AL\d{6}|AP\d{6}|"
-    r"RP\d+-|RP[SL]\d+P|CT[ABCD]-|XXbac-|KB-|LA16c-|GS\d-|"
-    r"HIGD1AP|MTCO\d|RMVSL|BCRP|NAMA$|SLMO|"
-    r"IGH[VDJ]|IGKV|IGLV|IGKJ|IGLJ|"  # Ig V/D/J segments (NOT constant regions)
-    r"TRB[VDJ]|TRA[VDJ]|TRG[VDJ]|TRD[VDJ]|"  # TCR V/D/J segments
-    r"OR\d+[A-Z]|VN\d+R|"  # olfactory/vomeronasal receptors
-    r"MT-|"  # mitochondrial genes
-    r"RPS\d|RPL\d|"  # ribosomal protein genes
-    r"HCG\d|SPRR\d|"  # HLA complex group pseudogenes, small proline-rich
-    r"HLA-|"  # HLA genes (highly polymorphic, not discovery-informative)
-    r"[A-Z]{1,2}\d{2}NC\d|"  # contig-derived lncRNAs (e.g., LL22NC03-75A1.9)
-    r"[A-Z]\d{5}\.\d)",  # Ensembl-style identifiers (e.g., Z95704.4)
-    re.IGNORECASE,
-)
-# Suffix patterns for processed pseudogenes (e.g. PRPS1P1, RPS2P1, HCG17)
-_PSEUDOGENE_SUFFIX = re.compile(r"P\d+$", re.IGNORECASE)
-
-
-def _is_likely_protein_coding(gene: str) -> bool:
-    """Heuristic: return True if gene name looks protein-coding."""
-    if _NONCODING_PATTERN.match(gene) is not None:
-        return False
-    # Catch processed pseudogenes ending with P + digits (e.g., PRPS1P1, RPS2P1)
-    # but exclude genuine genes like TP53, APC, etc. (short suffix, common genes)
-    if _PSEUDOGENE_SUFFIX.search(gene) and len(gene) > 4:
-        # Only flag if the P-digit suffix is preceded by another digit
-        # (e.g., PRPS1P1 → "1P1", but not APC → no match)
-        base = _PSEUDOGENE_SUFFIX.sub("", gene)
-        if base and base[-1].isdigit():
-            return False
-    return True
-
 
 # ======================================================================
 # Data preparation
@@ -136,7 +109,7 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
     _code_hash = hashlib.md5(  # noqa: S324 — not security, just cache tag
         Path(__file__).read_bytes()
     ).hexdigest()[:8]
-    cache_key = f"figure5_sade_feldman_v4_{_code_hash}"
+    cache_key = f"figure5_sade_feldman_v5_{_code_hash}_{STATS_FINGERPRINT}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     if use_cache and cache_path.exists():
@@ -187,171 +160,11 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
         seed=42,
     )
 
-    # GSEA on multiple gene-set libraries for comprehensive pathway analysis
-    # Uses shared helper that caches results under manuscript/GSEA/Melanoma/
+    # Each library's own GSEApy permutation FDR, as in Supplementary Table 3 and Figure 4C/4N.
     gsea_results = load_or_run_gsea_did(
         adata, design, visits, "log1p_tpm", "Melanoma",
     )
-
-    if gsea_results is not None and len(gsea_results) > 0:
-        # Detect the pathway-name column
-        term_col = None
-        for c in gsea_results.columns:
-            cl = c.lower().strip()
-            if cl == "term":
-                term_col = c
-                break
-        if term_col is None:
-            for c in gsea_results.columns:
-                if c.lower() in ("name", "pathway"):
-                    term_col = c
-                    break
-            if term_col is None:
-                term_col = gsea_results.columns[0]
-
-        # Global pathway selection: the top pathways by NES across all gene
-        # sets, with no thematic keyword filter.
-
-        # Handle duplicate pathways across libraries: average NES
-        nes_col_name = None
-        for c in gsea_results.columns:
-            if c.lower().strip() == "nes":
-                nes_col_name = c
-                break
-        if nes_col_name is None:
-            for c in gsea_results.columns:
-                if "nes" in c.lower():
-                    nes_col_name = c
-                    break
-
-        if nes_col_name is not None:
-            # Clean pathway names for dedup comparison
-            gsea_results["_clean_term"] = gsea_results[term_col].apply(
-                lambda s: _clean_pathway_name(s, max_len=200)
-            )
-            gsea_results[nes_col_name] = pd.to_numeric(
-                gsea_results[nes_col_name], errors="coerce"
-            )
-
-            # For pathways that appear in multiple libraries, average their
-            # numeric columns and concatenate leading-edge genes
-            nom_col = None
-            for c in gsea_results.columns:
-                cl = c.lower().strip()
-                if cl in ("nom p-val", "pval", "p-value", "nom_pval"):
-                    nom_col = c
-                    break
-
-            fdr_col_detect = None
-            for c in gsea_results.columns:
-                if c.lower().strip() in ("fdr q-val", "fdr"):
-                    fdr_col_detect = c
-                    break
-            if fdr_col_detect is None:
-                for c in gsea_results.columns:
-                    if "fdr" in c.lower():
-                        fdr_col_detect = c
-                        break
-
-            lead_col_detect = None
-            for c in gsea_results.columns:
-                cl = c.lower().strip()
-                if cl in ("lead_genes", "leading_edge"):
-                    lead_col_detect = c
-                    break
-            if lead_col_detect is None:
-                for c in gsea_results.columns:
-                    if "lead" in c.lower() and "gene" in c.lower():
-                        lead_col_detect = c
-                        break
-
-            # Check for duplicates
-            dup_mask = gsea_results.duplicated(subset=["_clean_term"], keep=False)
-            n_dup_pathways = gsea_results.loc[dup_mask, "_clean_term"].nunique()
-            if n_dup_pathways > 0:
-                print(f"  Averaging {n_dup_pathways} duplicate pathways "
-                      f"across libraries")
-
-                # For duplicates: group and average numeric cols, union lead genes
-                deduped_rows = []
-                for clean_name, group in gsea_results.groupby("_clean_term"):
-                    if len(group) == 1:
-                        deduped_rows.append(group.iloc[0].to_dict())
-                        continue
-                    row = group.iloc[0].to_dict()
-                    # Average NES
-                    row[nes_col_name] = group[nes_col_name].mean()
-                    # Average NOM p-val if available
-                    if nom_col is not None and nom_col in group.columns:
-                        row[nom_col] = pd.to_numeric(
-                            group[nom_col], errors="coerce"
-                        ).mean()
-                    # Average FDR
-                    if fdr_col_detect is not None and fdr_col_detect in group.columns:
-                        row[fdr_col_detect] = pd.to_numeric(
-                            group[fdr_col_detect], errors="coerce"
-                        ).mean()
-                    # Union leading-edge genes
-                    if lead_col_detect is not None and lead_col_detect in group.columns:
-                        all_genes = set()
-                        for _, r in group.iterrows():
-                            gs = str(r[lead_col_detect])
-                            all_genes.update(
-                                g.strip()
-                                for g in gs.replace(";", ",").split(",")
-                                if g.strip()
-                            )
-                        row[lead_col_detect] = ";".join(sorted(all_genes))
-                    # Mark as averaged
-                    row["library"] = "averaged"
-                    deduped_rows.append(row)
-
-                gsea_results = pd.DataFrame(deduped_rows)
-
-            gsea_results = gsea_results.drop(columns=["_clean_term"], errors="ignore")
-
-        # Recompute FDR across the *pooled* pathway universe to control
-        # multiplicity properly when combining libraries.
-        fdr_col_name = None
-        for c in gsea_results.columns:
-            if c.lower().strip() in ("fdr q-val", "fdr"):
-                fdr_col_name = c
-                break
-        if fdr_col_name is None:
-            for c in gsea_results.columns:
-                if "fdr" in c.lower():
-                    fdr_col_name = c
-                    break
-        if fdr_col_name is not None:
-            from statsmodels.stats.multitest import multipletests
-            # Preserve per-library FDR, add pooled FDR
-            gsea_results["FDR_per_library"] = gsea_results[fdr_col_name]
-            nom_col = None
-            for c in gsea_results.columns:
-                cl = c.lower().strip()
-                if cl in ("nom p-val", "pval", "p-value", "nom_pval"):
-                    nom_col = c
-                    break
-            if nom_col is not None:
-                pvals = pd.to_numeric(
-                    gsea_results[nom_col], errors="coerce"
-                ).fillna(1).values
-            else:
-                pvals = gsea_results[fdr_col_name].fillna(1).values
-            _, fdr_pooled, _, _ = multipletests(
-                pvals, method="fdr_bh",
-            )
-            gsea_results[fdr_col_name] = fdr_pooled
-            n_sig_pooled = (fdr_pooled < 0.25).sum()
-            print(
-                f"  GSEA total: {len(gsea_results)} pathways "
-                f"({n_sig_pooled} FDR<0.25 after pooled correction)"
-            )
-        else:
-            print(
-                f"  GSEA total: {len(gsea_results)} pathways"
-            )
-    else:
+    if gsea_results is not None and len(gsea_results) == 0:
         gsea_results = None
 
     # ------------------------------------------------------------------
@@ -462,7 +275,7 @@ def _prepare_tnbc_bio_discovery_data(*, use_cache: bool = True) -> dict:
     _code_hash = hashlib.md5(
         Path(__file__).read_bytes()
     ).hexdigest()[:8]
-    cache_key = f"figure5_tnbc_did_v1_{_code_hash}"
+    cache_key = f"figure5_tnbc_did_v1_{_code_hash}_{STATS_FINGERPRINT}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     if use_cache and cache_path.exists():
@@ -931,6 +744,22 @@ def _clean_pathway_name(s: str, max_len: int = 55) -> str:
 # Panel A -- Gene waterfall plot (top genes by effect size)
 # ======================================================================
 
+
+def _direction_rgba(positive: bool, significant: bool, ns_alpha: float):
+    """Bar color: direction by hue, significance by opacity.
+
+    The opacity has to live in the RGBA tuple. A scalar ``alpha=`` passed to ``barh`` replaces
+    every bar's alpha, which draws non-significant bars exactly like significant ones.
+    """
+    base = COLORS["treated"] if positive else COLORS["control"]
+    return mcolors.to_rgba(base, 0.9 if significant else ns_alpha)
+
+
+def _numbered_label(label: str, seen: dict[str, int]) -> str:
+    """Make a display label unique by numbering repeats: X, X (2), X (3)."""
+    seen[label] = seen.get(label, 0) + 1
+    return label if seen[label] == 1 else f"{label} ({seen[label]})"
+
 def _tnbc_waterfall(ax, data: dict):
     """Top 30 protein-coding genes ranked by effect size (waterfall).
 
@@ -951,8 +780,8 @@ def _tnbc_waterfall(ax, data: dict):
 
     df = df.dropna(subset=[beta_col, p_col])
 
-    # Filter to protein-coding genes
-    df = df[df["feature"].apply(_is_likely_protein_coding)]
+    print(describe_resolution(df["feature"], "TNBC waterfall gene types"))
+    df = df[df["feature"].apply(is_display_gene)]
 
     p_thresh = 0.05
     n_per_side = 15
@@ -1072,28 +901,11 @@ def _tnbc_gsea_bars(ax, data: dict):
     # Fix #4: Clean pathway names AND disambiguate duplicates
     df_selected["pathway"] = df_selected[term_col].apply(_clean_pathway_name)
     # Disambiguate duplicate display names
-    _seen = {}
-    new_labels = []
-    for idx, row in df_selected.iterrows():
-        label = row["pathway"]
-        if label in _seen:
-            _seen[label] += 1
-            lib = str(row.get("library", ""))
-            if lib and lib != "averaged":
-                label = f"{label} [{lib[:8]}]"
-            else:
-                label = f"{label} ({_seen[label]})"
-        else:
-            _seen[label] = 1
-        new_labels.append(label)
-    df_selected["pathway"] = new_labels
+    _seen: dict[str, int] = {}
+    df_selected["pathway"] = [_numbered_label(lab, _seen) for lab in df_selected["pathway"]]
 
     # Color by direction and significance — use project palette
     # treated (blue) = anti-PDL1+Chemo ↑, control (orange) = Chemo ↑
-    clr_up_sig = COLORS["treated"]
-    clr_up_ns = COLORS["treated"] + "66"  # 40% alpha hex
-    clr_dn_sig = COLORS["control"]
-    clr_dn_ns = COLORS["control"] + "66"
     colors = []
     for _, row in df_selected.iterrows():
         sig = (
@@ -1101,13 +913,10 @@ def _tnbc_gsea_bars(ax, data: dict):
             and pd.notna(row.get(fdr_col))
             and row[fdr_col] < 0.25
         )
-        if row[nes_col] > 0:
-            colors.append(clr_up_sig if sig else clr_up_ns)
-        else:
-            colors.append(clr_dn_sig if sig else clr_dn_ns)
+        colors.append(_direction_rgba(row[nes_col] > 0, sig, 0.4))
 
     y_pos = np.arange(len(df_selected))
-    ax.barh(y_pos, df_selected[nes_col].values, color=colors, alpha=0.9,
+    ax.barh(y_pos, df_selected[nes_col].values, color=colors,
             edgecolor="white", linewidth=0.5, height=0.7)
 
     ax.axvline(0, color="black", lw=0.8)
@@ -1159,8 +968,8 @@ def _tnbc_gsea_bars(ax, data: dict):
             label=f"{_TNBC_CONTROL_ARM} ↑ (n.s.)",
         ))
     if legend_handles:
-        ax.legend(handles=legend_handles, fontsize=9, loc="lower right",
-                  frameon=True, framealpha=0.9)
+        ax.legend(handles=legend_handles, fontsize=9)
+        key_below_axes(ax, ncol=2)
     despine(ax)
 
 
@@ -1251,22 +1060,24 @@ def _tnbc_leading_edge(ax, data: dict, *, composite: bool = False):
     selected = selected.sort_values(nes_col, ascending=True)
 
     # Parse leading-edge genes
-    pathway_genes: dict[str, set[str]] = {}
+    # Leading-edge genes keep their ranked order (a set would make tie-breaking,
+    # and so the selected genes, depend on the per-process string hash seed).
+    pathway_genes: dict[str, list[str]] = {}
+    lead_rank: dict[str, int] = {}
     pathway_nes: dict[str, float] = {}
     pathway_fdr: dict[str, float] = {}
     all_genes: set[str] = set()
-    _seen_names: set[str] = set()
+    _seen_names: dict[str, int] = {}
     for _, row in selected.iterrows():
         pname = _clean_pathway_name(str(row[term_col]), max_len=32)
-        if pname in _seen_names:
-            lib = str(row.get("library", ""))
-            pname = f"{pname} [{lib[:8]}]" if lib else f"{pname} (2)"
-        _seen_names.add(pname)
+        pname = _numbered_label(pname, _seen_names)
         genes_str = str(row[lead_col])
         genes = [g.strip() for g in genes_str.replace(";", ",").split(",")
                  if g.strip()]
-        genes = [g for g in genes if _is_likely_protein_coding(g)]
-        pathway_genes[pname] = set(genes)
+        genes = [g for g in genes if is_display_gene(g)]
+        pathway_genes[pname] = list(dict.fromkeys(genes))
+        for pos, g in enumerate(pathway_genes[pname]):
+            lead_rank[g] = min(lead_rank.get(g, pos), pos)
         pathway_nes[pname] = float(row[nes_col])
         if fdr_col is not None and pd.notna(row.get(fdr_col)):
             pathway_fdr[pname] = float(row[fdr_col])
@@ -1288,7 +1099,7 @@ def _tnbc_leading_edge(ax, data: dict, *, composite: bool = False):
         """Count gene occurrences within a group of pathways."""
         counts: dict[str, int] = {}
         for pw in pw_list:
-            for g in pathway_genes.get(pw, set()):
+            for g in pathway_genes.get(pw, []):
                 counts[g] = counts.get(g, 0) + 1
         return counts
 
@@ -1297,11 +1108,12 @@ def _tnbc_leading_edge(ax, data: dict, *, composite: bool = False):
     pos_counts = _count_genes_in_group(pos_pathways)
     neg_counts = _count_genes_in_group(neg_pathways)
 
-    # Take top genes from each direction
+    # Take top genes from each direction: most shared first, ties by best
+    # leading-edge rank, then name.
     pos_genes = sorted(pos_counts.keys(),
-                       key=lambda g: -pos_counts[g])[:half]
+                       key=lambda g: (-pos_counts[g], lead_rank[g], g))[:half]
     neg_genes = sorted(neg_counts.keys(),
-                       key=lambda g: -neg_counts[g])[:half]
+                       key=lambda g: (-neg_counts[g], lead_rank[g], g))[:half]
 
     # Merge, removing duplicates (keep order)
     seen: set[str] = set()
@@ -1315,9 +1127,9 @@ def _tnbc_leading_edge(ax, data: dict, *, composite: bool = False):
     if len(shared_genes) < TOTAL_GENES:
         all_counts: dict[str, int] = {}
         for pw in pathways:
-            for g in pathway_genes.get(pw, set()):
+            for g in pathway_genes.get(pw, []):
                 all_counts[g] = all_counts.get(g, 0) + 1
-        for g in sorted(all_counts.keys(), key=lambda g: -all_counts[g]):
+        for g in sorted(all_counts.keys(), key=lambda g: (-all_counts[g], lead_rank[g], g)):
             if g not in seen:
                 shared_genes.append(g)
                 seen.add(g)
@@ -1462,20 +1274,18 @@ def _tnbc_leading_edge(ax, data: dict, *, composite: bool = False):
         ax.set_title("Leading-Edge Gene Overlap", fontsize=11,
                      fontweight="bold")
 
-    # Legend inside the heatmap lower-right (gray empty region)
+    # The matrix fills the axes, so the key goes below it (the composite re-places it).
     legend_handles = [
         mpatches.Patch(facecolor=BLUE, label=f"{_TNBC_TREATED_ARM} ↑"),
         mpatches.Patch(facecolor=ORANGE, label=f"{_TNBC_CONTROL_ARM} ↑"),
         mpatches.Patch(facecolor=EMPTY_COLOR, edgecolor="#CCCCCC",
                        label="Not in leading edge"),
     ]
-    ax.legend(
-        handles=legend_handles, fontsize=7, loc="lower right",
-        frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
-        handlelength=1.0, handleheight=0.7,
-    )
+    ax.legend(handles=legend_handles, fontsize=7, handlelength=1.0, handleheight=0.7)
     for spine in ax.spines.values():
         spine.set_visible(False)
+    if not composite:
+        key_below_axes(ax, ncol=3)
 
 
 def _panel_C_did_summary(ax, data: dict):
@@ -1571,14 +1381,21 @@ def panel_D(ax, data: dict):
 # ======================================================================
 
 def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
-    """Volcano plot of gene-level DiD effects (Sade-Feldman).
+    """Volcano plot of gene-level DiD effects (TNBC)."""
+    gene_volcano(ax, data["gene_results"], title="Gene-Level Volcano (TNBC DiD)",
+                 up_label=f"{_TNBC_TREATED_ARM} ↑", down_label=f"{_TNBC_CONTROL_ARM} ↑",
+                 composite=composite)
 
-    Labels prioritize protein-coding genes over pseudogenes/lncRNAs.
-    When *composite* is True, fewer labels are drawn and adjustText
-    is skipped to avoid cluttering the small composite axes.
+
+def gene_volcano(ax, gene_results, *, title: str, up_label: str, down_label: str,
+                 composite: bool = False) -> None:
+    """Volcano plot of gene-level DiD effects (Figure 4A, Supp Fig 7A).
+
+    Nominal p on the y-axis, colour by p < 0.05 and direction. Labels prioritize
+    protein-coding genes and are placed by ``label_points`` clear of each other, of
+    every significant marker, of the threshold line and of the frame; the
+    composite cell keeps as many of the most significant labelled genes as fit.
     """
-    gene_results = data["gene_results"]
-
     if gene_results is None or len(gene_results) == 0:
         ax.text(
             0.5, 0.5,
@@ -1640,15 +1457,14 @@ def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
         if len(sub) == 0:
             continue
         # Restrict to protein-coding genes only
-        sub = sub[sub["feature"].apply(_is_likely_protein_coding)]
+        sub = sub[sub["feature"].apply(is_display_gene)]
         if len(sub) == 0:
             continue
 
-        # Force-include top 3 genes by -log10(p) in each direction
-        # (ensures the most significant genes are always labelled)
-        force_genes = set(
-            sub.nlargest(min(3, len(sub)), "nlog10")["feature"].tolist()
-        )
+        # Force-include the top 3 genes by -log10(p) in each direction, taken from
+        # the significance ranking itself (not from the score-ranked candidates
+        # below, which can omit a highly significant gene with a moderate effect).
+        forced = sub.nlargest(min(3, len(sub)), "nlog10")
 
         # Combined score: rank-normalised |β| + rank-normalised -log10(p)
         # This naturally selects genes at volcano tips (high on both axes).
@@ -1668,23 +1484,24 @@ def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
         selected_coords: list[tuple[float, float]] = []
         picks: list[str] = []
 
-        # Add forced genes first
-        for _, cand in candidates.iterrows():
-            if cand["feature"] in force_genes and cand["feature"] not in picks:
-                picks.append(cand["feature"])
-                selected_coords.append((cand[beta_col], cand["nlog10"]))
+        def _too_close(cx, cy):
+            return any(abs(cx - sx) < min_dx and abs(cy - sy) < min_dy
+                       for sx, sy in selected_coords)
+
+        # Significant forced genes are always labelled; a non-significant one is
+        # skipped when it nearly coincides with a gene already picked.
+        for _, cand in forced.iterrows():
+            if cand["category"] == "ns" and _too_close(cand[beta_col], cand["nlog10"]):
+                continue
+            picks.append(cand["feature"])
+            selected_coords.append((cand[beta_col], cand["nlog10"]))
 
         # Fill remaining slots with score-ranked candidates
         for _, cand in candidates.iterrows():
             if cand["feature"] in picks:
                 continue
             cx, cy = cand[beta_col], cand["nlog10"]
-            too_close = False
-            for sx, sy in selected_coords:
-                if abs(cx - sx) < min_dx and abs(cy - sy) < min_dy:
-                    too_close = True
-                    break
-            if not too_close:
+            if not _too_close(cx, cy):
                 picks.append(cand["feature"])
                 selected_coords.append((cx, cy))
                 if len(picks) >= N_LABELS:
@@ -1692,90 +1509,59 @@ def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
 
         labelled_genes.extend(picks)
 
-    labelled_set = set(labelled_genes)
-    labelled_rows = df[df["feature"].isin(labelled_set)].copy()
-
-    from adjustText import adjust_text as _adjust_text
-
-    _lbl_fs = 5.5 if composite else 6.5
-    _arrow_lw = 0.25 if composite else 0.4
-
-    # Store original data-point coords before adjust_text moves labels
-    text_origins = [
-        (row[beta_col], row["nlog10"]) for _, row in labelled_rows.iterrows()
-    ]
-
-    texts = []
-    for _, row in labelled_rows.iterrows():
-        t = ax.text(
-            row[beta_col], row["nlog10"], row["feature"],
-            fontsize=_lbl_fs, fontweight="bold", color="#444444",
-            ha="center", va="center", zorder=5,
-        )
-        texts.append(t)
-
-    x_span = df[beta_col].max() - df[beta_col].min()
-    y_span = df["nlog10"].max() - df["nlog10"].min()
-    # No arrowprops here — arrows are drawn manually after all nudges
-    _adjust_text(
-        texts, ax=ax,
-        force_text=(2.0, 2.0),
-        force_points=(3.5, 3.5),
-        expand=(1.8, 2.0),
-        ensure_inside_axes=True,
-        max_move=(x_span * 0.25, y_span * 0.25),
-        only_move="xy",
-    )
-    # Manual nudge: move PRSS53 label down so arrow angle changes
-    for _t in texts:
-        if _t.get_text() == "PRSS53":
-            _tx, _ty = _t.get_position()
-            _t.set_position((_tx, _ty - y_span * 0.06))
-
-    # CHI3L2: force label to the right of its data point
-    for _t, (ox, oy) in zip(texts, text_origins):
-        if _t.get_text() == "CHI3L2":
-            _t.set_position((ox + x_span * 0.04, oy))
-            _t.set_ha("left")
-
-    # Draw arrows from original data points to final label positions
-    for _t, (ox, oy) in zip(texts, text_origins):
-        tx, ty = _t.get_position()
-        if abs(tx - ox) > 1e-9 or abs(ty - oy) > 1e-9:
-            ax.annotate(
-                "", xy=(ox, oy), xytext=(tx, ty),
-                arrowprops=dict(arrowstyle="-", color="#888888", lw=_arrow_lw,
-                                shrinkA=3, shrinkB=5),
-                zorder=4,
-            )
-
-    # Threshold line
+    # Final geometry before any label is placed: symmetric effect axis, fixed limits
+    # with headroom so the labels of the most extreme genes fit inside the frame.
+    x_max = df[beta_col].abs().max() * 1.18
+    ax.set_xlim(-x_max, x_max)
+    ax.set_ylim(0, df["nlog10"].max() * 1.22)
     thresh_y = -np.log10(p_thresh)
     ax.axhline(thresh_y, color=COLORS["gray"], ls="--", lw=0.8, zorder=0)
     ax.axvline(0, color="black", lw=0.6, zorder=0)
-
     ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
     ax.set_ylabel(r"$-\log_{10}$(p)")
-    ax.set_title("Gene-Level Volcano (TNBC DiD)", fontsize=11,
-                 fontweight="bold")
-
-    # Legend: no footnotes, no summary boxes
-    if composite:
-        pass  # legend is created in the composite section with explicit transform
-    else:
-        legend_handles = [
-            mpatches.Patch(color=COLORS["treated"], alpha=0.8,
-                           label=f"{_TNBC_TREATED_ARM} ↑"),
-            mpatches.Patch(color=COLORS["control"], alpha=0.8,
-                           label=f"{_TNBC_CONTROL_ARM} ↑"),
+    ax.set_title(title, fontsize=11, fontweight="bold")
+    # Key a measured distance (in points) below the x-axis label, so it clears the
+    # label at any panel height.
+    fig = ax.figure
+    fig.canvas.draw()
+    label_bottom = ax.xaxis.label.get_window_extent(fig.canvas.get_renderer()).y0
+    gap_pt = (ax.get_window_extent().y0 - label_bottom) * 72 / fig.dpi + 3
+    ax.legend(
+        handles=[
+            mpatches.Patch(color=COLORS["treated"], alpha=0.8, label=up_label),
+            mpatches.Patch(color=COLORS["control"], alpha=0.8, label=down_label),
             mpatches.Patch(color=COLORS["gray"], alpha=0.3,
-                           label="Not significant"),
-        ]
-        ax.legend(handles=legend_handles, fontsize=10, loc="upper left",
-                  ncol=3, frameon=True, framealpha=0.9,
-                  borderpad=0.3, columnspacing=0.5, handlelength=0.8,
-                  handletextpad=0.4)
+                           label="n.s." if composite else "Not significant"),
+        ],
+        loc="upper center", bbox_to_anchor=(0.5, 0.0),
+        bbox_transform=mtransforms.offset_copy(ax.transAxes, fig=fig, y=-gap_pt,
+                                               units="points"),
+        ncol=3, fontsize=3.5 if composite else 10, frameon=True, framealpha=0.9,
+        borderpad=0.3, columnspacing=0.8, handlelength=0.8, handletextpad=0.3,
+    )
     despine(ax)
+    if not composite:
+        ax.figure.tight_layout()
+
+    # Labels go on last, at their final size, clear of every significant marker and
+    # of each other; the composite cell keeps the most significant genes that fit,
+    # down to the significant ones alone.
+    rows = df.set_index("feature").loc[labelled_genes]
+    rows = rows.sort_values("nlog10", ascending=False)
+    sig = df[df["category"] != "ns"]
+    n_lab = len(rows)
+    n_sig = int((rows["category"] != "ns").sum())
+    label_points(
+        ax, list(rows.index), rows[beta_col].values, rows["nlog10"].values,
+        rows["category"].map(size_map).values,
+        fontsize=3.6 if composite else 6.5, color="#444444",
+        obstacles=(sig[[beta_col, "nlog10"]].values, sig["category"].map(size_map).values),
+        hlines=(thresh_y,), vlines=(0.0,),
+        priority=range(n_lab),
+        counts=sorted({n_lab, n_sig, *(n for n in (16, 12, 8) if n_sig < n < n_lab)},
+                      reverse=True) if composite else None,
+        max_mean_leader_pt=10.0 if composite else None,
+    )
 
 
 # ======================================================================
@@ -2053,7 +1839,7 @@ def _panel_tnbc_celltype_hm(ax, data_tnbc: dict):
     df = gene_results.copy()
     beta_col = "beta_DiD"  # renamed from beta_time
     df = df.dropna(subset=[beta_col])
-    df = df[df["feature"].apply(_is_likely_protein_coding)]
+    df = df[df["feature"].apply(is_display_gene)]
 
     n_per_dir = 8
     df_pos = df[df[beta_col] > 0].nlargest(n_per_dir, beta_col)
@@ -2290,7 +2076,7 @@ def _panel_tnbc_response_celltype_hm(ax, data_tnbc: dict, *, arm: str) -> None:
     df = gene_results.copy()
     beta_col = "beta_DiD"
     df = df.dropna(subset=[beta_col])
-    df = df[df["feature"].apply(_is_likely_protein_coding)]
+    df = df[df["feature"].apply(is_display_gene)]
     n_per_dir = 8
     df_pos = df[df[beta_col] > 0].nlargest(n_per_dir, beta_col)
     df_neg = df[df[beta_col] < 0].nsmallest(n_per_dir - 1, beta_col)
@@ -2673,38 +2459,18 @@ def _panel_tnbc_response_gsea_bars(ax, data_tnbc: dict, *, arm: str) -> None:
     df_selected = df_selected.copy()
     df_selected["pathway"] = df_selected[term_col].apply(_clean_pathway_name)
     _seen: dict[str, int] = {}
-    new_labels = []
-    for _, row in df_selected.iterrows():
-        label = row["pathway"]
-        if label in _seen:
-            _seen[label] += 1
-            lib = str(row.get("library", ""))
-            label = f"{label} [{lib[:8]}]" if lib and lib != "averaged" else f"{label} ({_seen[label]})"
-        else:
-            _seen[label] = 1
-        new_labels.append(label)
-    df_selected["pathway"] = new_labels
-
-    clr_up_sig = COLORS["treated"]
-    clr_up_ns = COLORS["treated"] + "66"
-    clr_dn_sig = COLORS["control"]
-    clr_dn_ns = COLORS["control"] + "66"
+    df_selected["pathway"] = [_numbered_label(lab, _seen) for lab in df_selected["pathway"]]
 
     def _is_sig(row):
         return (fdr_col is not None
                 and pd.notna(row.get(fdr_col))
                 and row[fdr_col] < 0.25)
 
-    colors = []
-    for _, row in df_selected.iterrows():
-        sig = _is_sig(row)
-        colors.append(
-            (clr_up_sig if sig else clr_up_ns) if row[nes_col] > 0
-            else (clr_dn_sig if sig else clr_dn_ns)
-        )
+    colors = [_direction_rgba(row[nes_col] > 0, _is_sig(row), 0.4)
+              for _, row in df_selected.iterrows()]
 
     y_pos = np.arange(len(df_selected))
-    ax.barh(y_pos, df_selected[nes_col].values, color=colors, alpha=0.9,
+    ax.barh(y_pos, df_selected[nes_col].values, color=colors,
             edgecolor="white", linewidth=0.5, height=0.7)
     ax.axvline(0, color="black", lw=0.8)
     ax.set_yticks(y_pos)
@@ -2737,8 +2503,8 @@ def _panel_tnbc_response_gsea_bars(ax, data_tnbc: dict, *, arm: str) -> None:
         legend_handles.append(mpatches.Patch(
             color=COLORS["control"], alpha=0.4, label="Non-responder ↑ (n.s.)"))
     if legend_handles:
-        ax.legend(handles=legend_handles, fontsize=9, loc="lower right",
-                  frameon=True, framealpha=0.9)
+        ax.legend(handles=legend_handles, fontsize=9)
+        key_below_axes(ax, ncol=2)
     despine(ax)
 
 
@@ -2812,29 +2578,46 @@ def _forest_plot(
     color_neg: str = COLORS["control"],
     legend_pos_label: str = "Positive",
     legend_neg_label: str = "Negative",
+    order: list[str] | None = None,
 ) -> None:
-    """Draw a horizontal forest plot on *ax*."""
-    df = df.sort_values(effect_col, ascending=True).reset_index(drop=True)
-    n_rows = len(df)
+    """Draw a horizontal forest plot on *ax*.
+
+    Rows are sorted by effect (largest at the top) unless ``order`` gives the row labels from
+    top to bottom; then every forest drawn with the same ``order`` has the same rows, so a row
+    of forests can share one set of row names. Labels in ``order`` absent from ``df`` stay empty.
+    """
+    if order is None:
+        df = df.sort_values(effect_col, ascending=True).reset_index(drop=True)
+        y_of = pd.Series(np.arange(len(df)), index=df.index)
+        tick_labels = list(df[label_col].values)
+    else:
+        rows = {label: len(order) - 1 - k for k, label in enumerate(order)}
+        df = df[df[label_col].isin(rows)].reset_index(drop=True)
+        y_of = df[label_col].map(rows)
+        tick_labels = list(reversed(order))
+    n_rows = len(tick_labels)
 
     for i, row in df.iterrows():
         es = row[effect_col]
         lo, hi = row[ci_lo_col], row[ci_hi_col]
         color = color_pos if es > 0 else color_neg
+        y = y_of[i]
 
         lw = 1.2
         ms = 2.2
 
-        ax.plot([lo, hi], [i, i], color=color, lw=lw, solid_capstyle="round")
+        ax.plot([lo, hi], [y, y], color=color, lw=lw, solid_capstyle="round")
         ax.plot(
-            es, i, "o", color=color, markersize=ms,
+            es, y, "o", color=color, markersize=ms,
             markeredgecolor="white", markeredgewidth=0.8,
         )
 
     # Set axis limits *before* placing stars so we know the data range
     ax.axvline(0, color="black", ls="-", lw=0.8, alpha=0.5)
     ax.set_yticks(np.arange(n_rows))
-    ax.set_yticklabels(df[label_col].values, fontsize=8)
+    ax.set_yticklabels(tick_labels, fontsize=8)
+    if order is not None:
+        ax.set_ylim(-0.6, n_rows - 0.4)
     ax.set_xlabel(xlabel, fontsize=9)
     ax.tick_params(axis="x", labelsize=7)
 
@@ -2852,7 +2635,7 @@ def _forest_plot(
                     hi = row[ci_hi_col]
                     es = row[effect_col]
                     x_txt = max(hi, es) + 0.03 * x_range
-                    ax.text(x_txt, i, star, fontsize=8, va="center",
+                    ax.text(x_txt, y_of[i], star, fontsize=8, va="center",
                             fontweight="bold", color=(
                                 color_pos if es > 0 else color_neg))
 
@@ -3377,7 +3160,7 @@ def _build_heatmap_data(
 
 # ── panel functions ───────────────────────────────────────────────────────
 
-def panel_a_covid(ax, data: dict[str, Any]) -> None:
+def panel_a_covid(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
     """Panel A: COVID-19 Stephenson cross-sectional (Severe vs Mild)."""
     ax.set_title("COVID-19", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "A", transform=ax.transAxes, fontsize=14,
@@ -3396,15 +3179,16 @@ def panel_a_covid(ax, data: dict[str, Any]) -> None:
         ci_lo_col="ci_lo",
         ci_hi_col="ci_hi",
         label_col="label",
-        xlabel="Hedge's g (Severe vs Mild)",
+        xlabel="Hedges' g (Severe vs Mild)",
         color_pos=COLORS["treated"],
         color_neg=COLORS["control"],
         legend_pos_label="Severe $\\uparrow$",
         legend_neg_label="Mild $\\uparrow$",
+        order=order,
     )
 
 
-def panel_b_vaccine(ax, data: dict[str, Any]) -> None:
+def panel_b_vaccine(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
     """Panel B: Vaccine within-arm paired Pre->Post."""
     ax.set_title("Vaccine (GSE171964)", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "B", transform=ax.transAxes, fontsize=14,
@@ -3428,10 +3212,11 @@ def panel_b_vaccine(ax, data: dict[str, Any]) -> None:
         color_neg=COLORS["control"],
         legend_pos_label="Post $\\uparrow$",
         legend_neg_label="Pre $\\uparrow$",
+        order=order,
     )
 
 
-def panel_c_aml(ax, data: dict[str, Any]) -> None:
+def panel_c_aml(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
     """Panel C: AML clinical dataset (within-arm Pre→Post)."""
     ax.set_title("AML (GSE116256)", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "C", transform=ax.transAxes, fontsize=14,
@@ -3455,10 +3240,11 @@ def panel_c_aml(ax, data: dict[str, Any]) -> None:
         color_neg=COLORS["control"],
         legend_pos_label="Post $\\uparrow$",
         legend_neg_label="Pre $\\uparrow$",
+        order=order,
     )
 
 
-def panel_d_cart(ax, data: dict[str, Any]) -> None:
+def panel_d_cart(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
     """Panel D: CAR-T clinical dataset (within-arm)."""
     ax.set_title("CAR-T (GSE290722)", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "D", transform=ax.transAxes, fontsize=14,
@@ -3482,10 +3268,11 @@ def panel_d_cart(ax, data: dict[str, Any]) -> None:
         color_neg=COLORS["control"],
         legend_pos_label="Post $\\uparrow$",
         legend_neg_label="Pre $\\uparrow$",
+        order=order,
     )
 
 
-def panel_e_melanoma(ax, data: dict[str, Any]) -> None:
+def panel_e_melanoma(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
     """Panel E: Melanoma (Sade-Feldman) DiD — Responder vs Non-responder."""
     ax.set_title("Melanoma", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "E", transform=ax.transAxes, fontsize=14,
@@ -3509,10 +3296,11 @@ def panel_e_melanoma(ax, data: dict[str, Any]) -> None:
         color_neg=COLORS["control"],
         legend_pos_label="Responder $\\uparrow$",
         legend_neg_label="Non-resp. $\\uparrow$",
+        order=order,
     )
 
 
-def panel_p_tnbc(ax, data: dict[str, Any]) -> None:
+def panel_p_tnbc(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
     """Panel P: TNBC within-arm (anti-PDL1+Chemo) Pre→Post forest plot."""
     ax.set_title("TNBC", fontsize=6, fontweight="bold",
                  loc="left", pad=8)
@@ -3537,6 +3325,7 @@ def panel_p_tnbc(ax, data: dict[str, Any]) -> None:
         color_neg=COLORS["control"],
         legend_pos_label="anti-PDL1+Chemo $\\uparrow$",
         legend_neg_label="Chemo $\\uparrow$",
+        order=order,
     )
 
 
@@ -3544,7 +3333,8 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
     """Panel Q (was F): Cross-dataset standardised effect-size heatmap."""
     import seaborn as sns
 
-    ax.set_title("Cross-Dataset Effect Sizes", fontsize=8, fontweight="bold", loc="center", pad=8)
+    # pad leaves room for the significance key drawn just above the cells
+    ax.set_title("Cross-Dataset Effect Sizes", fontsize=8, fontweight="bold", loc="center", pad=16)
     ax.text(-0.12, 1.05, "F", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
 
@@ -3556,20 +3346,18 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
         ax.axis("off")
         return
 
-    # Build combined annotation: effect size + stars
-    annot_combined = mat.copy().astype(object)
+    # Each cell shows its effect size; a significance mark, when there is one, sits centred above
+    # the value rather than after it, so "-1.2†" never runs into the next cell.
+    annot_values = mat.copy().astype(object)
     for r in mat.index:
         for c in mat.columns:
             val = mat.loc[r, c]
-            star = star_mat.loc[r, c] if star_mat is not None else ""
-            if pd.isna(val):
-                annot_combined.loc[r, c] = ""
-            else:
-                annot_combined.loc[r, c] = f"{val:.1f}{star}"
+            annot_values.loc[r, c] = "" if pd.isna(val) else f"{val:.1f}"
 
     # Determine colour limits symmetrically
     vmax = max(abs(np.nanmin(mat.values)), abs(np.nanmax(mat.values)), 0.5)
 
+    texts_before = set(ax.texts)
     sns.heatmap(
         mat,
         ax=ax,
@@ -3580,11 +3368,26 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
         linewidths=0.8,
         linecolor="white",
         cbar_kws={"label": "Standardised effect", "shrink": 0.7, "aspect": 20},
-        annot=annot_combined.values,
+        annot=annot_values.values,
         fmt="",
         annot_kws={"fontsize": 7, "fontweight": "bold"},
         mask=mat.isna(),  # grey out missing cells
     )
+    marks = {}
+    if star_mat is not None:
+        for i, r in enumerate(mat.index):
+            for j, c in enumerate(mat.columns):
+                star = star_mat.loc[r, c] if r in star_mat.index and c in star_mat.columns else ""
+                if star and pd.notna(mat.loc[r, c]):
+                    marks[(i, j)] = star
+    for value in [t for t in ax.texts if t not in texts_before]:  # seaborn's cell values
+        x, y = value.get_position()
+        cell = (int(y), int(x))
+        value.set_y(y + 0.13)  # every value sits a little low, so marked and unmarked align
+        if cell in marks:
+            ax.text(x, y - 0.27, marks[cell], ha="center", va="center",
+                    fontsize=0.8 * value.get_fontsize(), fontweight="bold",
+                    color=value.get_color())
 
     ax.set_xlabel("")
     ax.set_ylabel("")
@@ -3592,8 +3395,10 @@ def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
                        fontsize=7.5)
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=8.5)
 
+    meaning = {"***": "FDR < 0.001", "**": "FDR < 0.01", "*": "FDR < 0.05", "†": "FDR 0.05–0.1"}
+    shown = [m for m in meaning if m in set(marks.values())] or ["*", "†"]
     ax.text(
-        0.5, 1.01, "* FDR < 0.05   † FDR 0.05–0.1",
+        0.5, 1.01, "   ".join(f"{m} {meaning[m]}" for m in shown),
         transform=ax.transAxes,
         fontsize=6, color="0.45", ha="center", va="bottom",
         style="italic",
@@ -3766,6 +3571,19 @@ def _swap_leading_edge_axes(ax) -> None:
         )
 
 
+def _show_names_once(forest_axes: list) -> Any:
+    """Keep the shared row names on the leftmost forest that drew; hide them on the others.
+
+    A forest whose dataset has no results is switched off by its panel function, so the names
+    must not depend on any one dataset. Returns the axes that carries the names.
+    """
+    names_ax = next((ax for ax in forest_axes if ax.axison), forest_axes[0])
+    for ax in forest_axes:
+        if ax is not names_ax:
+            ax.tick_params(axis="y", labelleft=False)
+    return names_ax
+
+
 def _shrink_colorbars(fig, axes_before: set, fs: float = 3.5) -> None:
     """Shrink tick/label fonts on any colorbar axes added since `axes_before`."""
     for _cb_ax in set(fig.get_axes()) - axes_before:
@@ -3776,33 +3594,15 @@ def _shrink_colorbars(fig, axes_before: set, fs: float = 3.5) -> None:
             _cb_ax.set_xlabel(_cb_ax.get_xlabel(), fontsize=fs)
 
 
-def _compact_legend(ax, loc: str, fs: float = 3.0) -> None:
-    """Replace the current legend with a compact version at `loc`."""
-    leg = ax.get_legend()
-    if not leg:
-        return
-    handles = leg.legend_handles
-    labels  = [t.get_text() for t in leg.get_texts()]
-    leg.remove()
-    ax.legend(
-        handles=handles, labels=labels,
-        fontsize=fs, loc=loc,
-        frameon=True, framealpha=0.85,
-        edgecolor="#CCCCCC",
-        handlelength=1, handletextpad=0.3,
-        borderpad=0.3, labelspacing=0.2,
-    )
-
-
 def _build_composite(data_tnbc: dict, data5: dict) -> None:
-    """Build and save the combined 14-panel artboard (180 × 195 mm).
+    """Build and save the combined 14-panel artboard (180 mm wide; height from ``rows_mm``).
 
-    Layout (9-row grid):
-      Row  0: A | B | C(wide)         TNBC: volcano | waterfall | GSEA bars
-      Row  2: D(wide) | E | F         TNBC: leading-edge | cell-type HM | abundance DiD
-      Row  4: G | H | I               COVID | Vaccine | AML forest plots
-      Row  6: J | K | L               CAR-T | Melanoma | TNBC forest plots
-      Row  8: M | N                   effect heatmap | GSEA cross-dataset
+    Layout (7-row grid, spacer rows between panel rows):
+      Row 0: A | B | C(wide)          TNBC: volcano | waterfall | GSEA bars
+      Row 2: D(wide) | E | F          TNBC: leading-edge | cell-type HM | abundance DiD
+      Row 4: G | H | I | J | K | L    COVID | Vaccine | AML | CAR-T | Melanoma | TNBC forests,
+                                      one alphabetical row order, names drawn once left of G
+      Row 6: M | N                    effect heatmap | GSEA cross-dataset
     """
     print("  Building composite artboard...")
 
@@ -3820,56 +3620,55 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
     plt.rcParams.update(_SMALL_RC)
 
-    fig_c = plt.figure(figsize=(180 * _mm, 200 * _mm))
-
-    # 9 rows; height sum ≈ 7.55  →  195 mm / 7.55 ≈ 25.8 mm per unit
+    # Row heights in mm. Each panel row is tall enough for its row labels at the composite font
+    # sizes (labels about 1.2 font heights apart); spacers hold tick labels, keys and titles.
+    rows_mm = [
+        32.8,  # 0: A | B | C   TNBC volcano | top genes | GSEA bars
+        19.4,  # 1: spacer (keys of A to C, titles of D to F)
+        28.0,  # 2: D | E | F   15 pathways | 15 genes | 12 cell types
+        24.5,  # 3: spacer (D gene names, E cell types, keys, forest titles)
+        38.0,  # 4: G to L      six forests sharing the 19 signature names
+        26.5,  # 5: spacer (x labels and keys of G to L, titles of M and N)
+        29.0,  # 6: M | N       effect sizes | 15 replicated pathways
+    ]
+    _top_mm, _bottom_mm = 4.4, 24.0  # bottom: M's vertical signature names
+    _height_mm = _top_mm + sum(rows_mm) + _bottom_mm
+    fig_c = plt.figure(figsize=(180 * _mm, _height_mm * _mm))
     outer = fig_c.add_gridspec(
-        9, 1,
-        height_ratios=[
-            1.50,  # 0:  A | B | C   — TNBC (taller panels)
-            0.70,  # 1:  spacer
-            0.90,  # 2:  D | E       — TNBC
-            0.75,  # 3:  section spacer
-            1.15,  # 4:  F | G | H
-            0.65,  # 5:  spacer
-            1.15,  # 6:  I | J | K
-            0.65,  # 7:  spacer
-            1.25,  # 8:  L | M
-        ],
-        hspace=0.0,
-        left=0.07, right=0.97, top=0.98, bottom=0.03,
+        len(rows_mm), 1, height_ratios=rows_mm, hspace=0.0,
+        left=0.07, right=0.97, top=1 - _top_mm / _height_mm, bottom=_bottom_mm / _height_mm,
     )
 
     # ── Row 0: A(wide) | B(wider) | spacer | C(narrow) ──────────────
-    gs0 = outer[0].subgridspec(1, 4, wspace=0.40,
-                                width_ratios=[1.0, 0.85, 0.18, 0.7])
+    gs0 = outer[0].subgridspec(1, 4, wspace=0.40,  # the spacer holds C's pathway names
+                                width_ratios=[1.0, 0.76, 0.37, 0.7])
     ax_a = fig_c.add_subplot(gs0[0])
     ax_b = fig_c.add_subplot(gs0[1])
     ax_c = fig_c.add_subplot(gs0[3])
 
     # ── Row 2: left-spacer | D | mid-spacer | E | mid-spacer | F ───
-    gs2 = outer[2].subgridspec(1, 6, wspace=0.30,
-                                width_ratios=[0.10, 1.10, 0.15, 0.95, 0.40, 0.80])
+    gs2 = outer[2].subgridspec(1, 6, wspace=0.30,  # the first spacer holds D's pathway names
+                                width_ratios=[0.50, 1.10, 0.15, 0.95, 0.40, 0.80])
     ax_d = fig_c.add_subplot(gs2[1])
     ax_e = fig_c.add_subplot(gs2[3])
     ax_f_abund = fig_c.add_subplot(gs2[5])
 
-    # ── Row 4: F | G | H ─────────────────────────────────────────────
-    gs4 = outer[4].subgridspec(1, 3, wspace=1.05)
-    ax_f = fig_c.add_subplot(gs4[0])
-    ax_g = fig_c.add_subplot(gs4[1])
-    ax_h = fig_c.add_subplot(gs4[2])
+    # ── Row 4: G to L, one row of forests; names drawn once, left of G ──
+    _row = outer[4].get_position(fig_c)
+    _fp_left_mm, _fp_right_mm, _fp_gap_mm = 23.0, 176.0, 6.0
+    _fp_w_mm = (_fp_right_mm - _fp_left_mm - 5 * _fp_gap_mm) / 6
+    _forest_axes = [
+        fig_c.add_axes([(_fp_left_mm + k * (_fp_w_mm + _fp_gap_mm)) / 180, _row.y0,
+                        _fp_w_mm / 180, _row.height])
+        for k in range(6)
+    ]
+    ax_f, ax_g, ax_h, ax_i, ax_j, ax_k = _forest_axes
 
-    # ── Row 6: I | J | K ─────────────────────────────────────────────
-    gs6 = outer[6].subgridspec(1, 3, wspace=1.05)
-    ax_i = fig_c.add_subplot(gs6[0])
-    ax_j = fig_c.add_subplot(gs6[1])
-    ax_k = fig_c.add_subplot(gs6[2])
-
-    # ── Row 8: L | M ─────────────────────────────────────────────────
-    gs8 = outer[8].subgridspec(1, 2, wspace=0.85, width_ratios=[1.3, 0.32])
+    # ── Row 6: M | N ─────────────────────────────────────────────────
+    gs8 = outer[6].subgridspec(1, 2, wspace=0.85, width_ratios=[1.3, 0.32])
     ax_l = fig_c.add_subplot(gs8[0])
-    ax_m = fig_c.add_subplot(gs8[1])
+    _n = gs8[1].get_position(fig_c)  # 2.5 mm left, so N's colour-bar label stays on the canvas
+    ax_m = fig_c.add_axes([_n.x0 - 2.5 / 180, _n.y0, _n.width, _n.height])
 
     # ── Draw TNBC panels A, B, C, D, E ───────────────────────────────
     tnbc_volcano(ax_a, data_tnbc, composite=True)
@@ -3879,19 +3678,6 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     ax_a.yaxis.label.set_fontsize(5.0)
     ax_a.tick_params(axis='x', labelsize=4.5)
     ax_a.tick_params(axis='y', labelsize=4.5)
-    _a_leg = ax_a.legend(
-        handles=[
-            mpatches.Patch(color=COLORS["treated"], alpha=0.8,
-                           label=f"{_TNBC_TREATED_ARM} ↑"),
-            mpatches.Patch(color=COLORS["control"], alpha=0.8,
-                           label=f"{_TNBC_CONTROL_ARM} ↑"),
-            mpatches.Patch(color=COLORS["gray"], alpha=0.3, label="n.s."),
-        ],
-        fontsize=3.5, loc="upper left",
-        frameon=True, framealpha=0.9,
-        borderpad=0.2, handlelength=0.6, handletextpad=0.2,
-    )
-
     tnbc_waterfall(ax_b, data_tnbc)
     ax_b.set_title("Top Genes: TNBC DiD", fontsize=4.5, fontweight="bold")
     ax_b.tick_params(axis='y', labelsize=2.5)
@@ -3914,71 +3700,82 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     _swap_leading_edge_axes(ax_d)
     ax_d.tick_params(axis='y', labelsize=4.0)
     ax_d.tick_params(axis='x', labelsize=4.0)
+    for _t in ax_d.get_xticklabels():  # one gene per column: vertical names cannot collide
+        _t.set_rotation(90)
+        _t.set_rotation_mode("default")
+        _t.set_ha("center")
 
     _axes_before_e = set(fig_c.get_axes())
     tnbc_celltype_hm(ax_e, data_tnbc)
     _shrink_colorbars(fig_c, _axes_before_e, fs=4.5)
     ax_e.tick_params(axis='x', labelsize=4.0)
+    for _t in ax_e.get_xticklabels():  # 11 columns 8 pt apart: 50 degrees keeps names apart
+        _t.set_rotation(50)
+        _t.set_rotation_mode("anchor")
+        _t.set_ha("right")
     ax_e.tick_params(axis='y', labelsize=4.5)
 
     tnbc_abundance_did(ax_f_abund, data_tnbc)
+    ax_f_abund.set_title("Cell-Type Abundance DiD: TNBC")
     ax_f_abund.tick_params(axis='both', labelsize=4.0)
     if ax_f_abund.get_xlabel():
         ax_f_abund.xaxis.label.set_fontsize(4.5)
 
     # ── Draw forest plots G–L ────────────────────────────────────────
+    # One alphabetical row order for all six (the order of panel M's columns), so the
+    # signature names are written once, left of G.
     _fp_tick = 4.5
-    panel_a_covid(ax_f, data5)
-    panel_b_vaccine(ax_g, data5)
-    panel_c_aml(ax_h, data5)
-    panel_d_cart(ax_i, data5)
-    panel_e_melanoma(ax_j, data5)
-    panel_p_tnbc(ax_k, data5)
-    for _ax_fp in [ax_f, ax_g, ax_h, ax_i, ax_j, ax_k]:
+    _order = sorted(set().union(*(
+        set(data5[k]["label"]) for k in ("covid_effects", "vax_effects", "aml_effects",
+                                         "cart_effects", "mel_effects", "tnbc_effects")
+        if data5.get(k) is not None and len(data5[k]))))
+    for _fn, _ax_fp in zip((panel_a_covid, panel_b_vaccine, panel_c_aml, panel_d_cart,
+                            panel_e_melanoma, panel_p_tnbc), _forest_axes):
+        _fn(_ax_fp, data5, order=_order)
+    for _ax_fp in _forest_axes:
         _ax_fp.tick_params(axis='both', labelsize=_fp_tick)
-        if _ax_fp.get_xlabel():
-            _ax_fp.xaxis.label.set_fontsize(4.5)
+        _ax_fp.xaxis.set_major_locator(plt.MaxNLocator(nbins=4))
+        if _ax_fp.get_xlabel():  # "Standardised Δ" over "(Post − Pre)", wrapped to the axes
+            _head, _, _tail = _ax_fp.get_xlabel().partition(" (")
+            _lines = [_head] + (textwrap.wrap("(" + _tail, 20) if _tail else [])
+            _ax_fp.set_xlabel("\n".join(_lines), fontsize=4.5)
+    _names_ax = _show_names_once(_forest_axes)
 
     # ── L — effect-size heatmap ───────────────────────────────────────
     _axes_before_l = set(fig_c.get_axes())
     panel_f_heatmap(ax_l, data5)
     _shrink_colorbars(fig_c, _axes_before_l, fs=5.0)
     ax_l.tick_params(axis='both', labelsize=5.0)
+    for _t in ax_l.get_xticklabels():  # 19 narrow columns: vertical names cannot collide
+        _t.set_rotation(90)
+        _t.set_rotation_mode("default")
+        _t.set_ha("center")
 
     # ── M — cross-dataset GSEA heatmap ───────────────────────────────
     _axes_before_m = set(fig_c.get_axes())
     fig4_gsea_cross(ax_m, data5)
+    ax_m.set_title(ax_m.get_title().replace(" Across ", " Across\n", 1))
     _shrink_colorbars(fig_c, _axes_before_m, fs=4.0)
     ax_m.set_ylabel("")
     ax_m.tick_params(axis='x', labelsize=5.0)
     ax_m.tick_params(axis='y', labelsize=4.5)
+    for _t in ax_m.get_xticklabels():  # one dataset per column: vertical names cannot collide
+        _t.set_rotation(90)
+        _t.set_rotation_mode("default")
+        _t.set_ha("center")
+    for _cb_ax in set(fig_c.get_axes()) - _axes_before_m - {ax_m}:
+        if _cb_ax.get_ylabel():  # the NES label beside its bar, not a bar's width away
+            _cb_ax.set_ylabel(_cb_ax.get_ylabel(), rotation=90, labelpad=1.5, fontsize=4.0)
 
     # ── Post-processing ───────────────────────────────────────────────
 
     # Strip auto-added single-letter labels from panel functions
-    _forest_axes = [ax_f, ax_g, ax_h, ax_i, ax_j, ax_k]
     for _ax in _forest_axes + [ax_f_abund, ax_l, ax_m]:
         for t in [tt for tt in _ax.texts
                   if len(tt.get_text()) == 1 and tt.get_text().isupper()]:
             t.remove()
 
-    # Compact legends — TNBC biological panels
-    _bio_locs = {
-        ax_a: "upper right", ax_b: "upper left",
-        ax_c: "upper left",  ax_d: "lower right",
-        ax_f_abund: "lower right",
-    }
-    for ax_target, loc in _bio_locs.items():
-        _compact_legend(ax_target, loc, fs=4.5)
-
-    # Compact legends — forest plots G–L
-    for ax_target in _forest_axes:
-        _compact_legend(ax_target, "lower right", fs=4.5)
-
-    # Shrink gene-label annotations in volcano/waterfall
-    for txt in ax_a.texts:
-        if txt.get_fontsize() > 4:
-            txt.set_fontsize(max(txt.get_fontsize() * 0.65, 3.0))
+    # Shrink gene-label annotations in the waterfall (volcano labels are final size)
     for txt in ax_b.texts:
         if txt.get_fontsize() > 4:
             txt.set_fontsize(max(txt.get_fontsize() * 0.50, 2.5))
@@ -3999,23 +3796,24 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
         _left_txt = _ax_fp.get_title(loc='left')
         if _left_txt:
             _ax_fp.set_title("", loc='left')
-            _ax_fp.set_title(_left_txt, fontsize=_title_fs, fontweight="bold",
+            _ax_fp.set_title(_left_txt.replace(" (", "\n("), fontsize=_title_fs,
+                             fontweight="bold",
                              loc="center")
 
     _cap_fontsize(fig_c, _MAX_FONT)
 
+    # Keys below their axes, measured now that the fonts are final.
+    for ax_key, ncol in [(ax_b, 2), (ax_c, 1), (ax_d, 3), (ax_f_abund, 2)]:
+        key_below_axes(ax_key, ncol=ncol, fontsize=4.5)
+    for ax_fp in _forest_axes:  # one baseline for the six forest keys
+        key_below_axes(ax_fp, ncol=1, fontsize=4.5, clear_of=_forest_axes)
+
     # ── Bold panel labels A–N ─────────────────────────────────────────
     _lbl_fs = 7.5
-    # Row 0 — 3-panel (A/B narrow, C wide)
+    # Row 0 — A, B narrow; C wide (rows 2, 4 and 6 are placed from measured text below)
     _x3a, _y3a = -0.26, 1.08   # narrow panels (A, B)
-    _x3c, _y3c = -0.10, 1.06   # wide panel (C)
-    # Row 2 — 2-panel (D wide, E narrow)
-    _xw,  _yw  = -0.18, 1.14   # wide leading-edge (D)
-    _xn,  _yn  = -0.18, 1.16   # narrow cell-type HM (E)
-    # 3-panel rows (F–K)
-    _x3, _y3   = -0.22, 1.16
-    # 2-panel rows (L, M)
-    _x2, _y2   = -0.12, 1.14
+    _x3c, _y3c = -0.10, 1.08   # wide panel (C), level with A and B
+    _x3 = -0.22                # A
 
     # Row 0: A B C
     for _ax, lbl, _x, _y in [
@@ -4026,28 +3824,33 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
         _ax.text(_x, _y, lbl, transform=_ax.transAxes,
                  fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     # Row 2: D E F
-    ax_d.text(_x3, _yw, "D", transform=ax_d.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_e.text(_xn, _yn, "E", transform=ax_e.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_f_abund.text(_xn, _yn, "F", transform=ax_f_abund.transAxes,
-                   fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 4: G H I
-    for _ax, lbl in [(ax_f, "G"), (ax_g, "H"), (ax_h, "I")]:
-        _ax.text(_x3, _y3, lbl, transform=_ax.transAxes,
-                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # Row 6: J K L
-    for _ax, lbl in [(ax_i, "J"), (ax_j, "K"), (ax_k, "L")]:
-        _ax.text(_x3, _y3, lbl, transform=_ax.transAxes,
-                 fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # Row 2: each letter at the left edge of its panel's row names, level with its title
+    for _ax, lbl in [(ax_d, "D"), (ax_e, "E"), (ax_f_abund, "F")]:
+        letter_at_panel_corner(_ax, lbl, fontsize=_lbl_fs)
+    # Row 4: G to L. G's letter starts at the shared signature names; H to L sit in the gap
+    # left of their forest, level with the top of the titles.
+    fig_c.canvas.draw()
+    _r = fig_c.canvas.get_renderer()
+    _y_px = max(_ax.title.get_window_extent(_r).y1 for _ax in _forest_axes)
+    _g_px = min(t.get_window_extent(_r).x0 for t in _names_ax.get_yticklabels() if t.get_text())
+    for _ax, lbl in zip(_forest_axes, "GHIJKL"):
+        if _ax is ax_f:
+            _x_px, _ha = _g_px, "left"
+        else:
+            _x_px, _ha = _ax.get_window_extent(_r).x0 - 0.8 / 25.4 * fig_c.dpi, "right"
+        _x, _y = fig_c.transFigure.inverted().transform((_x_px, _y_px))
+        fig_c.text(_x, _y, lbl, fontsize=_lbl_fs, fontweight="bold", va="top", ha=_ha)
     # Row 8: M N
-    ax_l.text(_x2, _y2, "M", transform=ax_l.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_m.text(-0.78, _y2, "N", transform=ax_m.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # M and N letters at the left edge of their row names, level with N's two-line title
+    fig_c.canvas.draw()
+    _r = fig_c.canvas.get_renderer()
+    _mn_top = max(_ax.title.get_window_extent(_r).y1 for _ax in (ax_l, ax_m))
+    letter_at_panel_corner(ax_l, "M", fontsize=_lbl_fs, top=_mn_top)
+    letter_at_panel_corner(ax_m, "N", fontsize=_lbl_fs, top=_mn_top)
 
     plt.rcParams.update(_prev_rc)
 
+    report_layout_problems(fig_c, FIGURE_NAME)
     save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, MAIN_OUTPUT, close=False)
     pdf_path = MAIN_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
     fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",

@@ -11,7 +11,7 @@ Panels
   B  Participant counts per arm × visit (grouped bar chart).
   C  Cells per participant by arm (box + strip).
   D  Genes detected per cell distributions by dataset and group.
-  E  Total counts + mito/ribo QC merged (1×2).
+  E  Total counts + % mitochondrial QC merged (1×2).
   F  Lorenz curve + Gini inequality per dataset.
   G  Post-QC threshold compliance per dataset.
   H  Visit completeness per dataset.
@@ -41,7 +41,9 @@ from .._shared import (
     get_stephenson,
     get_tnbc_zhang,
     get_vaccine,
+    group_axis_labels,
     harmonize_response,
+    report_layout_problems,
     save_panel,
 )
 
@@ -225,29 +227,6 @@ def _get_pct_mito(adata) -> np.ndarray:
     return np.full(adata.n_obs, np.nan)
 
 
-def _get_pct_ribo(adata) -> np.ndarray:
-    obs = adata.obs
-    for col in ("pct_counts_ribo", "pct_ribo", "percent_ribo"):
-        if col in obs.columns:
-            return np.asarray(obs[col], dtype=float)
-    import scipy.sparse as sp
-    for layer in ("counts", "tpm"):
-        if layer in adata.layers:
-            ribo_mask = (adata.var_names.str.upper().str.startswith("RPS") |
-                         adata.var_names.str.upper().str.startswith("RPL"))
-            if ribo_mask.sum() == 0:
-                return np.full(adata.n_obs, np.nan)
-            X = adata.layers[layer]
-            if sp.issparse(X):
-                rb_sum = np.asarray(X[:, ribo_mask].sum(axis=1), dtype=float).ravel()
-                total = np.asarray(X.sum(axis=1), dtype=float).ravel()
-            else:
-                rb_sum = np.asarray(X[:, ribo_mask].sum(axis=1), dtype=float).ravel()
-                total = np.asarray(X.sum(axis=1), dtype=float).ravel()
-            return np.where(total > 0, rb_sum / total * 100, 0.0)
-    return np.full(adata.n_obs, np.nan)
-
-
 # ── unified data loader ──────────────────────────────────────────────
 
 
@@ -280,7 +259,6 @@ def _load_all() -> dict:
                 "ngenes": _get_ngenes(adata),
                 "total_counts": _get_counts(adata),
                 "pct_mito": _get_pct_mito(adata),
-                "pct_ribo": _get_pct_ribo(adata),
             }
             print(f"  {name}: {adata.n_obs:,} cells, {adata.n_vars:,} genes, "
                   f"pid={pid}, vis={vis}, arm={arm}")
@@ -695,61 +673,47 @@ def _panel_counts_dist(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel E: % mito and % ribosomal ─────────────────────────────────
+# ── Panel E: % mitochondrial ─────────────────────────────────────────
+# Ribosomal-protein genes are removed in preprocessing (drop_artifact_genes) before these objects
+# are cached, so a ribosomal percentage cannot be computed from them; only the mitochondrial
+# fraction is shown.
 
 
-def _panel_mito_ribo(ax, loaded: dict):
-    """Side-by-side violins for % mito and % ribo with threshold overlays."""
-    rows = []
-    for name, data in loaded.items():
-        pct_mt = data["pct_mito"]
-        pct_rb = data["pct_ribo"]
-        n = len(pct_mt)
-        idx = np.arange(n)
-        if not np.all(np.isnan(pct_mt)):
-            rows.append(pd.DataFrame({
-                "Dataset": name, "Metric": "% Mito", "Value": pct_mt[idx]}))
-        if not np.all(np.isnan(pct_rb)):
-            rows.append(pd.DataFrame({
-                "Dataset": name, "Metric": "% Ribo", "Value": pct_rb[idx]}))
-
+def _panel_mito(ax, loaded: dict):
+    """Violins of the per-cell mitochondrial percentage with the 20% QC threshold (dashed)."""
+    rows = [
+        pd.DataFrame({"Dataset": name, "Value": data["pct_mito"]})
+        for name, data in loaded.items()
+        if not np.all(np.isnan(data["pct_mito"]))
+    ]
     if not rows:
-        ax.text(0.5, 0.5, "No mito/ribo data available",
+        ax.text(0.5, 0.5, "No mitochondrial data available",
                 ha="center", va="center", transform=ax.transAxes,
                 fontsize=10, fontstyle="italic", color="#888888")
-        ax.set_title("Mitochondrial & Ribosomal Content", fontweight="bold")
+        ax.set_title("Mitochondrial Content", fontweight="bold")
         return
 
     df = pd.concat(rows, ignore_index=True)
-    order = list(loaded.keys())
-
-    sns.violinplot(data=df, x="Dataset", y="Value", hue="Metric",
-                   order=order, cut=0, inner="quartile", linewidth=0.5,
-                   palette={"% Mito": "#e74c3c", "% Ribo": "#3498db"},
-                   density_norm="width", split=False, ax=ax)
-
-    # Threshold overlays
-    ax.axhline(20, color="#e74c3c", linestyle="--", linewidth=0.8, alpha=0.5,
-               label="Mito threshold (20%)")
-    ax.axhline(50, color="#3498db", linestyle="--", linewidth=0.8, alpha=0.5,
-               label="Ribo threshold (50%)")
-
+    present = set(df["Dataset"])
+    order = [name for name in loaded if name in present]
+    sns.violinplot(data=df, x="Dataset", y="Value", order=order, cut=0, inner="quartile",
+                   linewidth=0.5, color="#e74c3c", density_norm="width", ax=ax)
+    ax.axhline(20, color="#e74c3c", linestyle="--", linewidth=0.8, alpha=0.5)
     ax.set_xlabel("")
-    ax.set_ylabel("Percentage")
-    ax.set_title("Mitochondrial & Ribosomal Content", fontweight="bold")
-    ax.legend(fontsize=6, loc="upper right", frameon=True, ncol=2)
+    ax.set_ylabel("% mitochondrial")
+    ax.set_title("Mitochondrial Content", fontweight="bold")
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
 
 
-# ── Panel E merged: Total counts + mito/ribo in 1×2 ──────────────────
+# ── Panel E merged: Total counts + % mitochondrial in 1×2 ─────────────
 
 
 def _panel_counts_mito_merged(fig_merged, loaded: dict):
-    """E: Combined total counts + mito/ribo QC in 1×2 subplot."""
+    """E: Combined total counts + % mitochondrial QC in 1×2 subplot."""
     ax1, ax2 = fig_merged.subplots(1, 2)
     _panel_counts_dist(ax1, loaded)
-    _panel_mito_ribo(ax2, loaded)
+    _panel_mito(ax2, loaded)
 
 
 # ── Panel G: QC attrition waterfall ──────────────────────────────────
@@ -868,7 +832,11 @@ def _panel_lorenz_gini(ax, loaded: dict):
 
 
 def _panel_completeness_detailed(ax, loaded: dict):
-    """Bar chart: fraction of participants with cells at each visit."""
+    """Bar chart: fraction of participants with cells at each visit.
+
+    Each bar is labelled with its visit; the dataset name is written once beside its group of
+    bars, and groups are separated by a small gap.
+    """
     rows = []
     for name, data in loaded.items():
         obs = data["adata"].obs
@@ -877,26 +845,17 @@ def _panel_completeness_detailed(ax, loaded: dict):
         if pid is None:
             continue
 
+        participants = sorted(obs[pid].dropna().unique())
+        n_total = len(participants)
         if vis and vis in obs.columns and obs[vis].nunique() > 1:
-            visits = _visit_sort_order(obs[vis].dropna().unique())
-            participants = sorted(obs[pid].dropna().unique())
-            for v in visits:
-                n_total = len(participants)
-                n_with = len(set(obs.loc[(obs[vis] == v) &
-                                         obs[pid].notna(), pid].unique()))
-                label = f"{name}\n{v}"
-                rows.append({
-                    "Label": label,
-                    "Fraction": n_with / n_total if n_total > 0 else 0,
-                    "Count": f"{n_with}/{n_total}",
-                })
+            for v in _visit_sort_order(obs[vis].dropna().unique()):
+                n_with = len(set(obs.loc[(obs[vis] == v) & obs[pid].notna(), pid].unique()))
+                rows.append({"Dataset": name, "Visit": str(v),
+                             "Fraction": n_with / n_total if n_total > 0 else 0,
+                             "Count": f"{n_with}/{n_total}"})
         else:
-            participants = sorted(obs[pid].dropna().unique())
-            rows.append({
-                "Label": f"{name}\nAll",
-                "Fraction": 1.0,
-                "Count": f"{len(participants)}/{len(participants)}",
-            })
+            rows.append({"Dataset": name, "Visit": "All", "Fraction": 1.0,
+                         "Count": f"{n_total}/{n_total}"})
 
     if not rows:
         ax.text(0.5, 0.5, "No data", ha="center", va="center",
@@ -904,24 +863,34 @@ def _panel_completeness_detailed(ax, loaded: dict):
         return
 
     df = pd.DataFrame(rows)
-
-    y_pos = np.arange(len(df))
+    group_gap = 0.6
+    y_pos, groups, y = [], [], 0.0
+    for name, block in df.groupby("Dataset", sort=False):
+        start = y
+        for _ in range(len(block)):
+            y_pos.append(y)
+            y += 1.0
+        groups.append((name, start, y - 1.0))
+        y += group_gap
+    y_pos = np.array(y_pos)
     colors = ["#27ae60" if f >= 0.9 else "#f39c12" if f >= 0.5 else "#e74c3c"
               for f in df["Fraction"]]
 
     ax.barh(y_pos, df["Fraction"], color=colors, height=0.6,
             edgecolor="white")
-    for i, row in df.iterrows():
-        ax.text(row["Fraction"] + 0.02, i, row["Count"],
+    for yy, (_, row) in zip(y_pos, df.iterrows()):
+        ax.text(row["Fraction"] + 0.02, yy, row["Count"],
                 va="center", ha="left", fontsize=6)
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(df["Label"], fontsize=4.5)
+    ax.set_yticklabels(df["Visit"])
     ax.set_xlim(0, 1.15)
+    ax.set_ylim(y_pos[-1] + 0.7, y_pos[0] - 0.7)  # first dataset on top
     ax.set_xlabel("Fraction of participants with cells")
     ax.set_title("Visit Completeness", fontweight="bold")
-    ax.invert_yaxis()
     despine(ax)
+    font = plt.rcParams["font.size"]
+    group_axis_labels(ax, groups, fontsize=font, gap_pt=0.8 * font, axis="y")
 
 
 # ======================================================================
@@ -937,7 +906,7 @@ def generate():
       B  Participant counts per arm × visit
       C  Cells per participant by arm
       D  Genes detected per cell distributions
-      E  Total counts + mito/ribo QC merged (1×2)
+      E  Total counts + % mitochondrial QC merged (1×2)
       F  Lorenz curve + Gini inequality
       G  Post-QC threshold compliance
       H  Visit completeness
@@ -974,7 +943,7 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel E: Total counts + mito/ribo QC merged (1×2)
+    # Panel E: Total counts + % mitochondrial QC merged (1×2)
     fig = plt.figure(figsize=(18, 5.5))
     _panel_counts_mito_merged(fig, loaded)
     fig.tight_layout()
@@ -1106,13 +1075,15 @@ def generate():
     ax_e2 = fig_c.add_subplot(gs2[2])
 
     # Row 3: F | G | H
-    gs3 = outer[3].subgridspec(1, 3, wspace=0.50)
+    gs3 = outer[3].subgridspec(1, 3, wspace=0.65)  # room for H's dataset labels
     ax_f = fig_c.add_subplot(gs3[0])
     ax_g = fig_c.add_subplot(gs3[1])
     ax_h = fig_c.add_subplot(gs3[2])
 
     # Draw left panels
     _panel_pairing(ax_a, loaded)
+    for _t in ax_a.texts:  # count labels over bars 8.4 pt apart: 5 pt keeps "11" and "10" apart
+        _t.set_fontsize(5)
     _panel_cells_per_pid_arm(ax_c, loaded)
     _panel_ngenes_dist(ax_d, loaded)
 
@@ -1245,14 +1216,14 @@ def generate():
 
     # Fixed y-axis ceilings so the upper-right arm legend clears the tallest bar
     # (the Melanoma Non-responder Post bar reaches ~17, so 17.5 left no room).
-    _b_ylim = {"TNBC": 11.0, "Melanoma": 23.0, "CAR-T": 16.0}
+    _b_ylim = {"TNBC": 11.0, "Melanoma": 23.0, "CAR-T": 18.0}  # headroom for each key
     for ax_bi, nm_bi in ax_b_list:
         if nm_bi in _b_ylim:
             ax_bi.set_ylim(ax_bi.get_ylim()[0], _b_ylim[nm_bi])
 
     # Draw remaining panels
     _panel_counts_dist(ax_e1, loaded)
-    _panel_mito_ribo(ax_e2, loaded)
+    _panel_mito(ax_e2, loaded)
     _panel_lorenz_gini(ax_f, loaded)
     _panel_qc_waterfall(ax_g, loaded, compact=True)
     _panel_completeness_detailed(ax_h, loaded)
@@ -1344,10 +1315,14 @@ def generate():
     for ax_lbl, lbl in [
         (ax_a, "A"), (ax_c, "C"), (ax_d, "D"),
         (ax_e1, "E"), (ax_f, "F"), (ax_g, "G"),
-        (ax_h, "H"),
     ]:
         ax_lbl.text(-0.20, 1.12, lbl, transform=ax_lbl.transAxes,
                     fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # H's dataset labels reach further left than a fixed offset; start the letter at their edge.
+    fig_c.canvas.draw()
+    _h_left = ax_h.get_tightbbox(fig_c.canvas.get_renderer()).x0
+    ax_h.text(ax_h.transAxes.inverted().transform((_h_left, 0))[0], 1.12, "H",
+              transform=ax_h.transAxes, fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
 
     # Panel B label on the first B axes
     if ax_b_list:
@@ -1357,6 +1332,7 @@ def generate():
 
     plt.rcParams.update(_prev_rc)
 
+    report_layout_problems(fig_c, FIGURE_NAME)
     save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
     pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
     fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",

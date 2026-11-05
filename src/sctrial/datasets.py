@@ -1077,7 +1077,7 @@ def load_sade_feldman(
         "GEO matrix is log2(TPM+1); recovered layers['tpm']=linear TPM (2^x-1) "
         "and X=layers['log1p_tpm']=ln(1+TPM)."
     )
-    drop_artifact_genes(adata)  # QC: remove hemoglobin/ribosomal/histone genes (keep cell-cycle)
+    drop_artifact_genes(adata, counts_layer="tpm")  # QC: remove hb/ribosomal/histone genes
 
     # ── PCA → neighbors → UMAP → Leiden ────────────────────────────────
     # Compute BEFORE annotation so that cell-type labels are assigned to
