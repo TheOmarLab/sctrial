@@ -11,7 +11,7 @@ Panels
   B  Participant counts per arm × visit (grouped bar chart).
   C  Cells per participant by arm (box + strip).
   D  Genes detected per cell distributions by dataset and group.
-  E  Total counts + mito/ribo QC merged (1×2).
+  E  Total counts + % mitochondrial QC merged (1×2).
   F  Lorenz curve + Gini inequality per dataset.
   G  Post-QC threshold compliance per dataset.
   H  Visit completeness per dataset.
@@ -225,29 +225,6 @@ def _get_pct_mito(adata) -> np.ndarray:
     return np.full(adata.n_obs, np.nan)
 
 
-def _get_pct_ribo(adata) -> np.ndarray:
-    obs = adata.obs
-    for col in ("pct_counts_ribo", "pct_ribo", "percent_ribo"):
-        if col in obs.columns:
-            return np.asarray(obs[col], dtype=float)
-    import scipy.sparse as sp
-    for layer in ("counts", "tpm"):
-        if layer in adata.layers:
-            ribo_mask = (adata.var_names.str.upper().str.startswith("RPS") |
-                         adata.var_names.str.upper().str.startswith("RPL"))
-            if ribo_mask.sum() == 0:
-                return np.full(adata.n_obs, np.nan)
-            X = adata.layers[layer]
-            if sp.issparse(X):
-                rb_sum = np.asarray(X[:, ribo_mask].sum(axis=1), dtype=float).ravel()
-                total = np.asarray(X.sum(axis=1), dtype=float).ravel()
-            else:
-                rb_sum = np.asarray(X[:, ribo_mask].sum(axis=1), dtype=float).ravel()
-                total = np.asarray(X.sum(axis=1), dtype=float).ravel()
-            return np.where(total > 0, rb_sum / total * 100, 0.0)
-    return np.full(adata.n_obs, np.nan)
-
-
 # ── unified data loader ──────────────────────────────────────────────
 
 
@@ -280,7 +257,6 @@ def _load_all() -> dict:
                 "ngenes": _get_ngenes(adata),
                 "total_counts": _get_counts(adata),
                 "pct_mito": _get_pct_mito(adata),
-                "pct_ribo": _get_pct_ribo(adata),
             }
             print(f"  {name}: {adata.n_obs:,} cells, {adata.n_vars:,} genes, "
                   f"pid={pid}, vis={vis}, arm={arm}")
@@ -695,61 +671,47 @@ def _panel_counts_dist(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel E: % mito and % ribosomal ─────────────────────────────────
+# ── Panel E: % mitochondrial ─────────────────────────────────────────
+# Ribosomal-protein genes are removed in preprocessing (drop_artifact_genes) before these objects
+# are cached, so a ribosomal percentage cannot be computed from them; only the mitochondrial
+# fraction is shown.
 
 
-def _panel_mito_ribo(ax, loaded: dict):
-    """Side-by-side violins for % mito and % ribo with threshold overlays."""
-    rows = []
-    for name, data in loaded.items():
-        pct_mt = data["pct_mito"]
-        pct_rb = data["pct_ribo"]
-        n = len(pct_mt)
-        idx = np.arange(n)
-        if not np.all(np.isnan(pct_mt)):
-            rows.append(pd.DataFrame({
-                "Dataset": name, "Metric": "% Mito", "Value": pct_mt[idx]}))
-        if not np.all(np.isnan(pct_rb)):
-            rows.append(pd.DataFrame({
-                "Dataset": name, "Metric": "% Ribo", "Value": pct_rb[idx]}))
-
+def _panel_mito(ax, loaded: dict):
+    """Violins of the per-cell mitochondrial percentage with the 20% QC threshold (dashed)."""
+    rows = [
+        pd.DataFrame({"Dataset": name, "Value": data["pct_mito"]})
+        for name, data in loaded.items()
+        if not np.all(np.isnan(data["pct_mito"]))
+    ]
     if not rows:
-        ax.text(0.5, 0.5, "No mito/ribo data available",
+        ax.text(0.5, 0.5, "No mitochondrial data available",
                 ha="center", va="center", transform=ax.transAxes,
                 fontsize=10, fontstyle="italic", color="#888888")
-        ax.set_title("Mitochondrial & Ribosomal Content", fontweight="bold")
+        ax.set_title("Mitochondrial Content", fontweight="bold")
         return
 
     df = pd.concat(rows, ignore_index=True)
-    order = list(loaded.keys())
-
-    sns.violinplot(data=df, x="Dataset", y="Value", hue="Metric",
-                   order=order, cut=0, inner="quartile", linewidth=0.5,
-                   palette={"% Mito": "#e74c3c", "% Ribo": "#3498db"},
-                   density_norm="width", split=False, ax=ax)
-
-    # Threshold overlays
-    ax.axhline(20, color="#e74c3c", linestyle="--", linewidth=0.8, alpha=0.5,
-               label="Mito threshold (20%)")
-    ax.axhline(50, color="#3498db", linestyle="--", linewidth=0.8, alpha=0.5,
-               label="Ribo threshold (50%)")
-
+    present = set(df["Dataset"])
+    order = [name for name in loaded if name in present]
+    sns.violinplot(data=df, x="Dataset", y="Value", order=order, cut=0, inner="quartile",
+                   linewidth=0.5, color="#e74c3c", density_norm="width", ax=ax)
+    ax.axhline(20, color="#e74c3c", linestyle="--", linewidth=0.8, alpha=0.5)
     ax.set_xlabel("")
-    ax.set_ylabel("Percentage")
-    ax.set_title("Mitochondrial & Ribosomal Content", fontweight="bold")
-    ax.legend(fontsize=6, loc="upper right", frameon=True, ncol=2)
+    ax.set_ylabel("% mitochondrial")
+    ax.set_title("Mitochondrial Content", fontweight="bold")
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
 
 
-# ── Panel E merged: Total counts + mito/ribo in 1×2 ──────────────────
+# ── Panel E merged: Total counts + % mitochondrial in 1×2 ─────────────
 
 
 def _panel_counts_mito_merged(fig_merged, loaded: dict):
-    """E: Combined total counts + mito/ribo QC in 1×2 subplot."""
+    """E: Combined total counts + % mitochondrial QC in 1×2 subplot."""
     ax1, ax2 = fig_merged.subplots(1, 2)
     _panel_counts_dist(ax1, loaded)
-    _panel_mito_ribo(ax2, loaded)
+    _panel_mito(ax2, loaded)
 
 
 # ── Panel G: QC attrition waterfall ──────────────────────────────────
@@ -937,7 +899,7 @@ def generate():
       B  Participant counts per arm × visit
       C  Cells per participant by arm
       D  Genes detected per cell distributions
-      E  Total counts + mito/ribo QC merged (1×2)
+      E  Total counts + % mitochondrial QC merged (1×2)
       F  Lorenz curve + Gini inequality
       G  Post-QC threshold compliance
       H  Visit completeness
@@ -974,7 +936,7 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel E: Total counts + mito/ribo QC merged (1×2)
+    # Panel E: Total counts + % mitochondrial QC merged (1×2)
     fig = plt.figure(figsize=(18, 5.5))
     _panel_counts_mito_merged(fig, loaded)
     fig.tight_layout()
@@ -1252,7 +1214,7 @@ def generate():
 
     # Draw remaining panels
     _panel_counts_dist(ax_e1, loaded)
-    _panel_mito_ribo(ax_e2, loaded)
+    _panel_mito(ax_e2, loaded)
     _panel_lorenz_gini(ax_f, loaded)
     _panel_qc_waterfall(ax_g, loaded, compact=True)
     _panel_completeness_detailed(ax_h, loaded)
