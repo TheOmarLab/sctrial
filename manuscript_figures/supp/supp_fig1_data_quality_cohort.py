@@ -1213,7 +1213,7 @@ def generate():
 
     # Fixed y-axis ceilings so the upper-right arm legend clears the tallest bar
     # (the Melanoma Non-responder Post bar reaches ~17, so 17.5 left no room).
-    _b_ylim = {"TNBC": 11.0, "Melanoma": 23.0, "CAR-T": 16.0}
+    _b_ylim = {"TNBC": 11.0, "Melanoma": 23.0, "CAR-T": 18.0}  # headroom for each key
     for ax_bi, nm_bi in ax_b_list:
         if nm_bi in _b_ylim:
             ax_bi.set_ylim(ax_bi.get_ylim()[0], _b_ylim[nm_bi])
