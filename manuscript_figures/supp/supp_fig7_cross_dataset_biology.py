@@ -48,13 +48,14 @@ from .._shared import (
     get_stephenson,
     get_tnbc_zhang,
     get_vaccine,
+    group_axis_labels,
     harmonize_response,
+    key_below_axes,
     save_panel,
     sig_display,
 )
 from ..main.figure4_biological_discovery_multi_dataset import (
     _clean_pathway_name,
-    _compact_legend,
     _detect_gsea_columns,
     _direction_rgba,
     _numbered_label,
@@ -617,20 +618,18 @@ def panel_D(ax, data: dict, *, composite: bool = False):
         ax.set_title("Leading-Edge Gene Overlap", fontsize=11,
                      fontweight="bold")
 
-    # Legend — inside the heatmap lower-right (gray empty region)
+    # The matrix fills the axes, so the key goes below it (the composite re-places it).
     legend_handles = [
         mpatches.Patch(facecolor=BLUE, label="Resp. ↑"),
         mpatches.Patch(facecolor=ORANGE, label="Non-resp. ↑"),
         mpatches.Patch(facecolor=EMPTY_COLOR, edgecolor="#CCCCCC",
                        label="Not in leading edge"),
     ]
-    ax.legend(
-        handles=legend_handles, fontsize=7, loc="lower right",
-        frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
-        handlelength=1.0, handleheight=0.7,
-    )
+    ax.legend(handles=legend_handles, fontsize=7, handlelength=1.0, handleheight=0.7)
     for spine in ax.spines.values():
         spine.set_visible(False)
+    if not composite:
+        key_below_axes(ax, ncol=3)
 
 
 # Panel E — Cell-type DiD effect heatmap (Melanoma)
@@ -1128,9 +1127,8 @@ def _panel_gs_distributions(ax, data: dict[str, dict]):
     ax.set_title("Gene-set score distributions (within-dataset z-score)", fontweight="bold")
     ax.set_xlabel("")
     ax.tick_params(axis="x", rotation=20)
-    ylo, yhi = ax.get_ylim()
-    ax.set_ylim(ylo, yhi + (yhi - ylo) * 0.25)
-    ax.legend(fontsize=4, frameon=True, ncol=2, loc="upper right")
+    ax.legend(fontsize=4)
+    key_below_axes(ax, ncol=3)
     despine(ax)
 
 
@@ -1214,7 +1212,8 @@ def _panel_concordant_top_genes(ax, data: dict[str, dict]):
         mpatches.Patch(facecolor=COLORS["treated"], label="Upregulated"),
         mpatches.Patch(facecolor=COLORS["control"], label="Downregulated"),
     ]
-    ax.legend(handles=handles, fontsize=4, frameon=True)
+    ax.legend(handles=handles, fontsize=4)
+    key_below_axes(ax, ncol=2)
     despine(ax)
 
 
@@ -1240,7 +1239,8 @@ def _panel_gene_dist(ax, data: dict[str, dict]):
     import matplotlib.patches as mpatches
     handles = [mpatches.Patch(facecolor=_DS_PALETTE[n], label=_ds_label(n))
                for n in _DS_PALETTE if _ds_label(n) in df["Dataset"].values]
-    ax.legend(handles=handles, fontsize=4, frameon=True, loc="lower right", ncol=2)
+    ax.legend(handles=handles, fontsize=4)
+    key_below_axes(ax, ncol=3)
     despine(ax)
 
 
@@ -1324,7 +1324,8 @@ def _panel_exhaustion_by_celltype(ax, data: dict[str, dict]):
     import matplotlib.patches as mpatches
     handles = [mpatches.Patch(facecolor=_DS_PALETTE[n], label=_ds_label(n))
                for n in _DS_PALETTE if n in df["Dataset"].values]
-    ax.legend(handles=handles, fontsize=4, loc="best", frameon=True)
+    ax.legend(handles=handles, fontsize=4)
+    key_below_axes(ax, ncol=3)
     despine(ax)
 
 
@@ -1353,6 +1354,7 @@ def _panel_paired_trajectories(ax, data: dict[str, dict]):
 
     x_tick = []
     x_tick_lab = []
+    groups = []
     xpos = 0
     for name, ds in data.items():
         pv = ds.get("gs_pv")
@@ -1376,8 +1378,8 @@ def _panel_paired_trajectories(ax, data: dict[str, dict]):
             med1 = np.median(post.loc[common, exhaustion_col].values)
             ax.plot([x0, x1], [med0, med1], color=_DS_PALETTE.get(name, "black"), lw=2.8, zorder=5)
             x_tick.extend([x0, x1])
-            lbl = _ds_label(name)
-            x_tick_lab.extend([f"{lbl}\n{arm}\n{pre_v}", f"{lbl}\n{arm}\n{post_v}"])
+            x_tick_lab.extend([str(pre_v), str(post_v)])
+            groups.append((f"{_ds_label(name)}\n{arm}", x0, x1))
             xpos += 2.5
 
     if not x_tick:
@@ -1385,15 +1387,17 @@ def _panel_paired_trajectories(ax, data: dict[str, dict]):
         return
 
     ax.set_xticks(x_tick)
-    ax.set_xticklabels(x_tick_lab, rotation=30, ha="right")
+    ax.set_xticklabels(x_tick_lab)
     ax.tick_params(axis="x", labelsize=3.5)
     ax.set_ylabel("Exhaustion score")
     ax.set_title("Participant-level paired trajectories (Exhaustion)", fontweight="bold")
     despine(ax)
+    group_axis_labels(ax, groups, fontsize=3.5)
 
 
 def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
     rows = []
+    columns = []  # (column key, visit, "dataset\narm") in display order
     for name, ds in data.items():
         pv = ds.get("gs_pv")
         if pv is None or pv.empty:
@@ -1406,10 +1410,11 @@ def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
                 sub = pv[(pv["arm"] == arm) & (pv["visit"] == visit)]
                 if sub.empty:
                     continue
-                label = f"{_ds_label(name)}\n{arm}\n{visit}"
+                key = f"{_ds_label(name)}|{arm}|{visit}"
+                columns.append((key, str(visit), f"{_ds_label(name)}\n{arm}"))
                 means = sub[gs_cols].mean(axis=0)
                 for gs in gs_cols:
-                    rows.append({"Gene set": gs, "Group": label, "Score": float(means[gs])})
+                    rows.append({"Gene set": gs, "Group": key, "Score": float(means[gs])})
 
     if not rows:
         ax.text(0.5, 0.5, "No enrichment summary", ha="center", va="center", transform=ax.transAxes)
@@ -1417,12 +1422,22 @@ def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
 
     df = pd.DataFrame(rows)
     piv = df.pivot(index="Gene set", columns="Group", values="Score")
+    piv = piv[[key for key, _, _ in columns]]
     sns.heatmap(piv, cmap="RdBu_r", center=0, linewidths=0.3, linecolor="white",
                 ax=ax, cbar_kws={"label": "Mean z-score\n(within-dataset)", "pad": 0.01})
     ax.set_title("Enrichment summary (within-dataset z-score)", fontweight="bold")
     ax.set_xlabel("")
-    ax.tick_params(axis="x", labelsize=3.5, rotation=45)
+    ax.set_xticks(np.arange(len(columns)) + 0.5)
+    ax.set_xticklabels([visit for _, visit, _ in columns], rotation=0)
+    ax.tick_params(axis="x", labelsize=3.5)
     ax.tick_params(axis="y", labelsize=4)
+    groups: list[tuple[str, float, float]] = []
+    for i, (_, _, group) in enumerate(columns):
+        if groups and groups[-1][0] == group:
+            groups[-1] = (group, groups[-1][1], i + 0.5)
+        else:
+            groups.append((group, i + 0.5, i + 0.5))
+    group_axis_labels(ax, groups, fontsize=3.5)
 
 
 def generate():
@@ -1538,7 +1553,7 @@ def generate():
             0.30,   # row 12: M (full width)
         ],
         hspace=0.0,
-        left=0.06, right=0.99, top=0.97, bottom=0.03,
+        left=0.06, right=0.99, top=0.97, bottom=0.05,
     )
 
     # ── Row 0: A | B | C  (melanoma) ─────────────────────────────────
@@ -1610,13 +1625,6 @@ def generate():
     _panel_gene_dist(ax_i, data)
     ax_i.tick_params(axis='y', labelsize=4)
     ax_i.yaxis.label.set_fontsize(4.5)
-    _leg_i = ax_i.get_legend()
-    if _leg_i:
-        _i_handles = _leg_i.legend_handles
-        _i_labels = [t.get_text() for t in _leg_i.get_texts()]
-        ax_i.legend(handles=_i_handles, labels=_i_labels,
-                    fontsize=3.5, frameon=True, loc="upper left", ncol=3,
-                    bbox_to_anchor=(0.0, 1.10))
 
     # ── Row 8: J | K ──────────────────────────────────────────────────
     gs8 = outer[8].subgridspec(1, 3, width_ratios=[0.0, 1.0, 1.2], wspace=0.45)
@@ -1651,14 +1659,6 @@ def generate():
             leg.get_frame().set_alpha(0.85)
             leg.get_frame().set_edgecolor("#CCCCCC")
 
-    # Compact legends for melanoma panels
-    _mel_bio_locs = {
-        ax_b: "upper left",
-        ax_c: "upper left",  ax_d: "lower left",
-    }
-    for ax_target, loc in _mel_bio_locs.items():
-        _compact_legend(ax_target, loc, fs=4)
-
     # Shrink gene-label annotations in the waterfall (volcano labels are final size)
     for _ax in [ax_b]:
         for txt in _ax.texts:
@@ -1671,6 +1671,11 @@ def generate():
     for _ax in fig_c.get_axes():
         if _ax.get_title():
             _ax.title.set_fontsize(5.0)
+
+    # Keys below their axes, measured now that the fonts are final.
+    for ax_key, ncol in [(ax_b, 2), (ax_c, 2), (ax_d, 3), (ax_f, 6), (ax_h, 2), (ax_i, 3),
+                         (ax_j, 3)]:
+        key_below_axes(ax_key, ncol=ncol, fontsize=3.5)
 
     # Bold panel labels A–M
     _lbl_fs = 7

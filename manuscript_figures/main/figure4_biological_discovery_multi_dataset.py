@@ -70,6 +70,7 @@ from .._shared import (
     get_vaccine,
     harmonize_response,
     hedges_g,
+    key_below_axes,
     label_points,
     load_or_run_gsea_cross_sectional,
     load_or_run_gsea_did,
@@ -1270,20 +1271,18 @@ def _tnbc_leading_edge(ax, data: dict, *, composite: bool = False):
         ax.set_title("Leading-Edge Gene Overlap", fontsize=11,
                      fontweight="bold")
 
-    # Legend inside the heatmap lower-right (gray empty region)
+    # The matrix fills the axes, so the key goes below it (the composite re-places it).
     legend_handles = [
         mpatches.Patch(facecolor=BLUE, label=f"{_TNBC_TREATED_ARM} ↑"),
         mpatches.Patch(facecolor=ORANGE, label=f"{_TNBC_CONTROL_ARM} ↑"),
         mpatches.Patch(facecolor=EMPTY_COLOR, edgecolor="#CCCCCC",
                        label="Not in leading edge"),
     ]
-    ax.legend(
-        handles=legend_handles, fontsize=7, loc="lower right",
-        frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
-        handlelength=1.0, handleheight=0.7,
-    )
+    ax.legend(handles=legend_handles, fontsize=7, handlelength=1.0, handleheight=0.7)
     for spine in ax.spines.values():
         spine.set_visible(False)
+    if not composite:
+        key_below_axes(ax, ncol=3)
 
 
 def _panel_C_did_summary(ax, data: dict):
@@ -3540,24 +3539,6 @@ def _shrink_colorbars(fig, axes_before: set, fs: float = 3.5) -> None:
             _cb_ax.set_xlabel(_cb_ax.get_xlabel(), fontsize=fs)
 
 
-def _compact_legend(ax, loc: str, fs: float = 3.0) -> None:
-    """Replace the current legend with a compact version at `loc`."""
-    leg = ax.get_legend()
-    if not leg:
-        return
-    handles = leg.legend_handles
-    labels  = [t.get_text() for t in leg.get_texts()]
-    leg.remove()
-    ax.legend(
-        handles=handles, labels=labels,
-        fontsize=fs, loc=loc,
-        frameon=True, framealpha=0.85,
-        edgecolor="#CCCCCC",
-        handlelength=1, handletextpad=0.3,
-        borderpad=0.3, labelspacing=0.2,
-    )
-
-
 def _build_composite(data_tnbc: dict, data5: dict) -> None:
     """Build and save the combined 14-panel artboard (180 × 195 mm).
 
@@ -3699,6 +3680,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     # ── M — cross-dataset GSEA heatmap ───────────────────────────────
     _axes_before_m = set(fig_c.get_axes())
     fig4_gsea_cross(ax_m, data5)
+    ax_m.set_title(ax_m.get_title().replace(" Across ", " Across\n", 1))
     _shrink_colorbars(fig_c, _axes_before_m, fs=4.0)
     ax_m.set_ylabel("")
     ax_m.tick_params(axis='x', labelsize=5.0)
@@ -3712,19 +3694,6 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
         for t in [tt for tt in _ax.texts
                   if len(tt.get_text()) == 1 and tt.get_text().isupper()]:
             t.remove()
-
-    # Compact legends — TNBC biological panels
-    _bio_locs = {
-        ax_b: "upper left",
-        ax_c: "upper left",  ax_d: "lower right",
-        ax_f_abund: "lower right",
-    }
-    for ax_target, loc in _bio_locs.items():
-        _compact_legend(ax_target, loc, fs=4.5)
-
-    # Compact legends — forest plots G–L
-    for ax_target in _forest_axes:
-        _compact_legend(ax_target, "lower right", fs=4.5)
 
     # Shrink gene-label annotations in the waterfall (volcano labels are final size)
     for txt in ax_b.texts:
@@ -3751,6 +3720,11 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
                              loc="center")
 
     _cap_fontsize(fig_c, _MAX_FONT)
+
+    # Keys below their axes, measured now that the fonts are final.
+    for ax_key, ncol in ([(ax_b, 2), (ax_c, 2), (ax_d, 3), (ax_f_abund, 2)]
+                         + [(ax_fp, 2) for ax_fp in _forest_axes]):
+        key_below_axes(ax_key, ncol=ncol, fontsize=4.5)
 
     # ── Bold panel labels A–N ─────────────────────────────────────────
     _lbl_fs = 7.5
@@ -3791,8 +3765,16 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     # Row 8: M N
     ax_l.text(_x2, _y2, "M", transform=ax_l.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    ax_m.text(-0.78, _y2, "N", transform=ax_m.transAxes,
-              fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # N's pathway names and title reach far left of its narrow heatmap, so the letter is
+    # anchored to the leftmost of them and kept above the title.
+    fig_c.canvas.draw()
+    _r = fig_c.canvas.get_renderer()
+    _n_left = min([t.get_window_extent(_r).x0 for t in ax_m.get_yticklabels() if t.get_text()]
+                  + [ax_m.title.get_window_extent(_r).x0])
+    _n_top = max(ax_l.transAxes.transform((0, _y2))[1],
+                 ax_m.title.get_window_extent(_r).y1 + (1 + _lbl_fs) * fig_c.dpi / 72)
+    _n_x, _n_y = fig_c.transFigure.inverted().transform((_n_left, _n_top))
+    fig_c.text(_n_x, _n_y, "N", fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
 
     plt.rcParams.update(_prev_rc)
 

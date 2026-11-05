@@ -587,6 +587,62 @@ def label_points(ax, names, x, y, s, *, fontsize: float, obstacles=None,
     return [names[i] for i in keep]
 
 
+def key_below_axes(ax, *, ncol: int, fontsize: float | None = None, gap_pt: float = 2.0):
+    """Move the axis legend just below the axis' own text (x tick labels and x label).
+
+    The offset is measured after a draw, in points, so the key clears the axis text at any
+    panel size and never sits on data. Call it once the panel's fonts are final. Returns the
+    new legend, or None when the axis has no legend.
+    """
+    import matplotlib.transforms as mtransforms
+
+    leg = ax.get_legend()
+    if leg is None:
+        return None
+    handles = leg.legend_handles
+    labels = [t.get_text() for t in leg.get_texts()]
+    if fontsize is None:
+        fontsize = leg.get_texts()[0].get_fontsize() if labels else plt.rcParams["legend.fontsize"]
+    leg.remove()
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    axes_bottom = ax.get_window_extent(renderer).y0
+    text_bottom = min(axes_bottom, ax.xaxis.get_tightbbox(renderer).y0)
+    offset_pt = (axes_bottom - text_bottom) * 72 / fig.dpi + gap_pt
+    return ax.legend(
+        handles=handles, labels=labels, loc="upper center", bbox_to_anchor=(0.5, 0.0),
+        bbox_transform=mtransforms.offset_copy(ax.transAxes, fig=fig, y=-offset_pt,
+                                               units="points"),
+        ncol=ncol, fontsize=fontsize, frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
+        borderpad=0.3, columnspacing=0.8, handlelength=0.8, handletextpad=0.3,
+        labelspacing=0.2,
+    )
+
+
+def group_axis_labels(ax, groups, *, fontsize: float, gap_pt: float = 1.5) -> None:
+    """Write one label under each group of x ticks, below the tick labels.
+
+    ``groups`` is a list of (label, x_start, x_end) in data coordinates. Used where each tick
+    carries only its own short label (e.g. Pre/Post) and the shared part (dataset, arm) would
+    otherwise repeat on every tick.
+    """
+    import matplotlib.transforms as mtransforms
+
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    axes_bottom = ax.get_window_extent(renderer).y0
+    tick_bottom = min([axes_bottom] + [t.get_window_extent(renderer).y0
+                                       for t in ax.get_xticklabels() if t.get_text()])
+    offset_pt = (axes_bottom - tick_bottom) * 72 / fig.dpi + gap_pt
+    trans = mtransforms.offset_copy(ax.get_xaxis_transform(), fig=fig, y=-offset_pt,
+                                    units="points")
+    for label, x0, x1 in groups:
+        ax.text((x0 + x1) / 2, 0.0, label, transform=trans, ha="center", va="top",
+                fontsize=fontsize, clip_on=False)
+
+
 def plot_cell_vs_participant_beta(ax, res_cell, res_part, *, title: str,
                                   composite: bool = False,
                                   label_fs: float | None = None) -> None:
