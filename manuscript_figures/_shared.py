@@ -344,6 +344,249 @@ DATASET_DISPLAY_NAMES: dict[str, str] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Text labels for scatter plots
+# ---------------------------------------------------------------------------
+
+# adjustText settings, gentlest first. Every candidate is laid out and scored on
+# its defects (labels touching a label or a marker, leader lines crossing), with
+# mean leader length breaking ties; the lowest score wins. Several candidates are
+# needed because convergence depends on the font metrics of the rendering
+# machine. Crossing removal is off in the stronger settings: it swaps label pairs
+# every step and the layout oscillates instead of converging.
+_LABEL_LAYOUTS = (
+    dict(expand=(1.2, 1.4), force_text=(0.3, 0.5), force_static=(0.5, 0.7)),
+    dict(expand=(1.2, 1.4), force_text=(0.6, 0.9), force_static=(0.8, 1.0),
+         prevent_crossings=False, max_move=(20, 20)),
+    dict(expand=(1.2, 1.4), force_text=(0.6, 0.9), force_static=(1.0, 1.2),
+         force_pull=(0.0, 0.0), prevent_crossings=False, max_move=(20, 20)),
+    dict(expand=(1.1, 1.3), force_text=(0.8, 1.0), force_static=(1.0, 1.2),
+         prevent_crossings=False, max_move=(40, 40)),
+    dict(expand=(1.5, 1.8), force_text=(0.5, 0.8), force_static=(0.8, 1.0),
+         prevent_crossings=False, max_move=(20, 20)),
+)
+
+
+def _segments_cross(p1, p2, q1, q2) -> bool:
+    """True when segments p1-p2 and q1-q2 properly intersect."""
+    import numpy as np
+
+    def orient(a, b, c):
+        return np.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]))
+    return bool(orient(p1, p2, q1) * orient(p1, p2, q2) < 0
+                and orient(q1, q2, p1) * orient(q1, q2, p2) < 0)
+
+
+def _leaders(boxes, target_px, target_r_px):
+    """Per label: (label centre x, y, target x, y, gap); centre is None when attached."""
+    import numpy as np
+
+    out = []
+    for bb, (mx, my), r in zip(boxes, target_px, target_r_px):
+        gap = float(np.hypot(np.clip(mx, bb.x0, bb.x1) - mx, np.clip(my, bb.y0, bb.y1) - my))
+        out.append(((bb.x0 + bb.x1) / 2, (bb.y0 + bb.y1) / 2, mx, my, gap)
+                   if gap > r + 2 else (None, None, mx, my, gap))
+    return out
+
+
+def _crossing_pairs(leaders):
+    return [(i, j) for i, a in enumerate(leaders) for j, b in enumerate(leaders)
+            if i < j and a[0] is not None and b[0] is not None
+            and _segments_cross(a[:2], a[2:4], b[:2], b[2:4])]
+
+
+def label_layout_score(texts, target_px, target_r_px, obstacle_px, obstacle_r_px,
+                       renderer, blocked_px=(), own=None,
+                       own_slack_px: float = 0.0) -> tuple[int, float]:
+    """(defects, mean label-to-target gap in px) for a finished label layout.
+
+    Defects are label-label overlaps, labels touching any obstacle disc or any
+    blocked display-space box (e.g. a reference line), and crossing leader lines
+    (label centre to its target, counted when the label is detached). ``own``
+    gives each label's own marker as an index into the obstacles; that disc is
+    shrunk by ``own_slack_px`` so a label may sit right beside its own point.
+    """
+    import numpy as np
+
+    boxes = [t.get_window_extent(renderer) for t in texts]
+    defects = sum(boxes[i].overlaps(boxes[j])
+                  for i in range(len(boxes)) for j in range(i + 1, len(boxes)))
+    defects += sum(bb.overlaps(blk) for bb in boxes for blk in blocked_px)
+    for k, bb in enumerate(boxes):
+        radii = np.array(obstacle_r_px, dtype=float, copy=True)
+        if own is not None:
+            radii[own[k]] -= own_slack_px
+        cx = np.clip(obstacle_px[:, 0], bb.x0, bb.x1)
+        cy = np.clip(obstacle_px[:, 1], bb.y0, bb.y1)
+        defects += int(np.any((cx - obstacle_px[:, 0]) ** 2 + (cy - obstacle_px[:, 1]) ** 2
+                              < radii ** 2))
+    leaders = _leaders(boxes, target_px, target_r_px)
+    defects += len(_crossing_pairs(leaders))
+    return defects, float(np.mean([seg[4] for seg in leaders]))
+
+
+def label_points(ax, names, x, y, s, *, fontsize: float, obstacles=None,
+                 hlines=(), vlines=(), priority=None, counts=None,
+                 max_mean_leader_pt: float | None = None, fontweight: str = "bold",
+                 color: str = "black") -> list[str]:
+    """Label scatter points clear of each other and of markers, with leader lines.
+
+    ``names``, ``x``, ``y`` are the points to label (data coordinates) and ``s`` their
+    marker area in pt^2 (scalar or one per point), as passed to ``scatter``.
+    ``obstacles`` is an optional ``(xy, s)`` pair of further markers no label may
+    touch; the labelled points are always obstacles. ``hlines``/``vlines`` are
+    data-coordinate reference lines (e.g. a significance threshold) no label may
+    sit on. ``priority`` (indices into ``names``, most important first) and
+    ``counts`` (label counts to try, largest first) make the function label the top
+    ``n`` points for the first ``n`` whose layout has no defect and, when
+    ``max_mean_leader_pt`` is set, a mean label-to-point gap no longer than that:
+    the right behaviour for a cell too small to name every point. Returns the
+    names that were labelled.
+
+    Each candidate setting in ``_LABEL_LAYOUTS`` is laid out by adjustText against
+    data-space boxes around every marker (marker radius plus 1 pt), with a fixed
+    iteration budget and numpy's global RNG seeded (adjustText jitters coincident
+    labels with it), then crossing leaders are swapped while that lowers the
+    defect score; the best layout is kept. The canvas is drawn first so marker
+    sizes are measured at the figure dpi. Axis limits, the axes position and the
+    label font size must be final before calling: adjustText works in display
+    space, so a later resize moves markers under labels.
+    """
+    import numpy as np
+    from adjustText import adjust_text
+    from matplotlib.patches import FancyArrowPatch
+    from matplotlib.transforms import Bbox
+
+    names = list(names)
+    xy = np.column_stack([np.asarray(x, dtype=float), np.asarray(y, dtype=float)])
+    size = np.broadcast_to(np.asarray(s, dtype=float), (len(names),))
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    to_px = fig.dpi / 72
+
+    def _discs(points, areas):
+        px = ax.transData.transform(points)
+        return px, (np.sqrt(areas) / 2 + 1.0) * to_px
+
+    if obstacles is not None:
+        obs_xy = np.asarray(obstacles[0], dtype=float).reshape(-1, 2)
+        obs_s = np.broadcast_to(np.asarray(obstacles[1], dtype=float), (len(obs_xy),))
+        # A labelled point passed again as an obstacle would block its own label.
+        dup = np.array([np.any(np.all(np.isclose(o, xy), axis=1)) for o in obs_xy],
+                       dtype=bool)
+        all_xy = np.vstack([xy, obs_xy[~dup]])
+        all_s = np.concatenate([size, obs_s[~dup]])
+    else:
+        all_xy, all_s = xy, size
+    obstacle_px, obstacle_r = _discs(all_xy, all_s)
+    # adjustText repels from each marker's own extent; the 1 pt clearance applies
+    # only when scoring (padding the solver's boxes stalls it in dense clusters).
+    marker_r = np.sqrt(all_s) / 2 * to_px
+    inv = ax.transData.inverted()
+    lo = inv.transform(obstacle_px - marker_r[:, None])
+    hi = inv.transform(obstacle_px + marker_r[:, None])
+    boxes = [Bbox([np.minimum(a, b), np.maximum(a, b)]) for a, b in zip(lo, hi)]
+    # Reference lines become thin display-space strips (1 pt either side), and the
+    # four frame edges become strips just inside the axes, so no label sits on a
+    # line it does not describe or touches a spine.
+    frame = ax.get_window_extent(renderer)
+    half = 1.0 * to_px
+    edge = 1.5 * to_px
+    blocked_px = [
+        Bbox([[frame.x0, frame.y0], [frame.x0 + edge, frame.y1]]),
+        Bbox([[frame.x1 - edge, frame.y0], [frame.x1, frame.y1]]),
+        Bbox([[frame.x0, frame.y0], [frame.x1, frame.y0 + edge]]),
+        Bbox([[frame.x0, frame.y1 - edge], [frame.x1, frame.y1]]),
+    ]
+    for yv in hlines:
+        py = ax.transData.transform((0.0, yv))[1]
+        blocked_px.append(Bbox([[frame.x0, py - half], [frame.x1, py + half]]))
+    for xv in vlines:
+        px_ = ax.transData.transform((xv, 0.0))[0]
+        blocked_px.append(Bbox([[px_ - half, frame.y0], [px_ + half, frame.y1]]))
+    # Each setting runs twice, with and without the frame strips among the solver's
+    # obstacles (ensure_inside_axes alone lets labels rest on a spine, but the strips
+    # also perturb adjustText's initial explode step); scoring always includes them.
+    line_boxes = [Bbox(inv.transform(b.get_points())) for b in blocked_px[4:]]
+    frame_boxes = [Bbox(inv.transform(b.get_points())) for b in blocked_px[:4]]
+
+    order = list(priority) if priority is not None else list(range(len(names)))
+    tries = list(counts) if counts is not None else [len(names)]
+    tries = [n for n in tries if n <= len(names)] or [len(names)]
+
+    def _place(keep):
+        target_px, target_r = _discs(xy[keep], size[keep])
+        best = None
+        for settings, with_frame in ((s_, f_) for s_ in _LABEL_LAYOUTS for f_ in (True, False)):
+            texts = [ax.text(xy[i, 0], xy[i, 1], names[i], fontsize=fontsize,
+                             fontweight=fontweight, color=color, zorder=6) for i in keep]
+            objects = boxes + line_boxes + (frame_boxes if with_frame else [])
+            rng_state = np.random.get_state()
+            np.random.seed(0)
+            try:
+                adjust_text(texts, objects=objects, ax=ax, iter_lim=3000,
+                            ensure_inside_axes=True, **settings)
+            finally:
+                np.random.set_state(rng_state)
+            args = (target_px, target_r, obstacle_px, obstacle_r, renderer, blocked_px,
+                    keep, 1.0 * to_px)
+            score = label_layout_score(texts, *args)
+            for _ in range(len(texts)):
+                improved = False
+                cur = [t.get_window_extent(renderer) for t in texts]
+                for i, j in _crossing_pairs(_leaders(cur, target_px, target_r)):
+                    pi, pj = texts[i].get_position(), texts[j].get_position()
+                    texts[i].set_position(pj)
+                    texts[j].set_position(pi)
+                    new = label_layout_score(texts, *args)
+                    if new < score:
+                        score, improved = new, True
+                        break
+                    texts[i].set_position(pi)
+                    texts[j].set_position(pj)
+                if not improved:
+                    break
+            if best is None or score < best[0]:
+                if best is not None:
+                    for t in best[1]:
+                        t.remove()
+                best = (score, texts)
+            else:
+                for t in texts:
+                    t.remove()
+        return best
+
+    # Accept the largest count whose layout is defect-free with short leaders; if
+    # none is, fall back to the fewest defects (then more labels, shorter leaders).
+    max_gap_px = None if max_mean_leader_pt is None else max_mean_leader_pt * to_px
+    attempts, chosen = [], None
+    for n in tries:
+        keep = sorted(order[:n])
+        (defects, mean_gap), texts = _place(keep)
+        attempts.append(((defects, -n, mean_gap), keep, [t.get_position() for t in texts]))
+        for t in texts:
+            t.remove()
+        if defects == 0 and (max_gap_px is None or mean_gap <= max_gap_px):
+            chosen = attempts[-1]
+            break
+    _, keep, positions = chosen if chosen is not None else min(attempts, key=lambda a: a[0])
+    texts = [ax.text(px_, py_, names[i], fontsize=fontsize, fontweight=fontweight,
+                     color=color, ha="center", va="center", zorder=6)
+             for i, (px_, py_) in zip(keep, positions)]
+
+    target_px, target_r = _discs(xy[keep], size[keep])
+    for txt, i, (mx, my), r in zip(texts, keep, target_px, target_r):
+        bb = txt.get_window_extent(renderer)
+        gap = np.hypot(np.clip(mx, bb.x0, bb.x1) - mx, np.clip(my, bb.y0, bb.y1) - my)
+        if gap > r + 2:
+            ax.add_patch(FancyArrowPatch(
+                posA=txt.get_position(), posB=tuple(xy[i]), patchA=txt, arrowstyle="-",
+                color="gray", lw=0.4, alpha=0.7, shrinkA=0.5,
+                shrinkB=float(np.sqrt(size[i]) / 2), zorder=2, transform=ax.transData))
+    return [names[i] for i in keep]
+
+
 def plot_cell_vs_participant_beta(ax, res_cell, res_part, *, title: str,
                                   composite: bool = False,
                                   label_fs: float | None = None) -> None:

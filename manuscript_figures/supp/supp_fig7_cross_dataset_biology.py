@@ -59,6 +59,7 @@ from ..main.figure4_biological_discovery_multi_dataset import (
     _prepare_bio_discovery_data,
     _shrink_colorbars,
     _swap_leading_edge_axes,
+    gene_volcano,
 )
 
 # ======================================================================
@@ -144,180 +145,9 @@ def _panel_C_did_summary(ax, data: dict):
 
 # Panel A — Gene-level volcano (Melanoma DiD)
 def panel_A(ax, data: dict, *, composite: bool = False):
-    """Volcano plot of gene-level DiD effects (Sade-Feldman).
-
-    Labels prioritize protein-coding genes over pseudogenes/lncRNAs.
-    When *composite* is True, fewer labels are drawn and adjustText
-    is skipped to avoid cluttering the small composite axes.
-    """
-    gene_results = data["gene_results"]
-
-    if gene_results is None or len(gene_results) == 0:
-        ax.text(
-            0.5, 0.5,
-            "Gene-level results unavailable",
-            transform=ax.transAxes, ha="center", va="center",
-            fontsize=12, color=COLORS["gray"],
-            bbox=dict(boxstyle="round,pad=0.5", facecolor="#f0f0f0",
-                      edgecolor=COLORS["gray"]),
-        )
-        ax.set_title("Gene-Level Volcano Plot", fontsize=11,
-                     fontweight="bold")
-        ax.axis("off")
-        return
-
-    df = gene_results.copy()
-    beta_col = "beta_DiD"
-
-    p_col = "p_DiD"
-
-    df = df.dropna(subset=[beta_col, p_col])
-
-    # Standard volcano: nominal p on y-axis, colour by nominal p < 0.05.
-    # Analytical (nonrobust) SEs provide gene-level resolution; bootstrap
-    # inference is reserved for signature-level tests (Panel D).
-    p_thresh = 0.05
-    df["nlog10"] = -np.log10(df[p_col].clip(lower=1e-300))
-    sig_mask = df[p_col] < p_thresh
-
-    df["category"] = "ns"
-    df.loc[sig_mask & (df[beta_col] > 0), "category"] = "up"
-    df.loc[sig_mask & (df[beta_col] < 0), "category"] = "down"
-
-    color_map = {
-        "ns": COLORS["gray"],
-        "up": COLORS["treated"],
-        "down": COLORS["control"],
-    }
-    alpha_map = {"ns": 0.3, "up": 0.8, "down": 0.8}
-    if composite:
-        size_map = {"ns": 2, "up": 6, "down": 6}
-    else:
-        size_map = {"ns": 8, "up": 20, "down": 20}
-
-    for cat in ["ns", "up", "down"]:
-        sub = df[df["category"] == cat]
-        if len(sub) == 0:
-            continue
-        ax.scatter(
-            sub[beta_col], sub["nlog10"],
-            c=color_map[cat], alpha=alpha_map[cat],
-            s=size_map[cat], edgecolors="none", rasterized=True,
-        )
-
-    N_LABELS = 10
-    labelled_genes: list[str] = []  # ordered by score (highest first)
-
-    for sign in ("pos", "neg"):
-        sub = df[df[beta_col] > 0].copy() if sign == "pos" else df[df[beta_col] < 0].copy()
-        if len(sub) == 0:
-            continue
-        # Restrict to protein-coding genes only
-        sub = sub[sub["feature"].apply(_is_likely_protein_coding)]
-        if len(sub) == 0:
-            continue
-
-        # Force-include top 3 genes by -log10(p) in each direction
-        # (ensures the most significant genes are always labelled)
-        force_genes = set(
-            sub.nlargest(min(3, len(sub)), "nlog10")["feature"].tolist()
-        )
-
-        # Combined score: rank-normalised |β| + rank-normalised -log10(p)
-        # This naturally selects genes at volcano tips (high on both axes).
-        sub = sub.copy()
-        sub["_rank_beta"] = sub[beta_col].abs().rank(pct=True)
-        sub["_rank_sig"] = sub["nlog10"].rank(pct=True)
-        sub["_score"] = sub["_rank_beta"] + sub["_rank_sig"]
-
-        candidates = sub.nlargest(min(N_LABELS * 3, len(sub)), "_score")
-
-        # Deduplicate: skip genes too close to an already-selected one
-        # (prevents overlapping arrows pointing to the same spot).
-        x_range = df[beta_col].max() - df[beta_col].min()
-        y_range = df["nlog10"].max() - df["nlog10"].min()
-        min_dx = x_range * 0.025  # ~2.5% of axis range
-        min_dy = y_range * 0.025
-        selected_coords: list[tuple[float, float]] = []
-        picks: list[str] = []
-
-        # Add forced genes first
-        for _, cand in candidates.iterrows():
-            if cand["feature"] in force_genes and cand["feature"] not in picks:
-                picks.append(cand["feature"])
-                selected_coords.append((cand[beta_col], cand["nlog10"]))
-
-        # Fill remaining slots with score-ranked candidates
-        for _, cand in candidates.iterrows():
-            if cand["feature"] in picks:
-                continue
-            cx, cy = cand[beta_col], cand["nlog10"]
-            too_close = False
-            for sx, sy in selected_coords:
-                if abs(cx - sx) < min_dx and abs(cy - sy) < min_dy:
-                    too_close = True
-                    break
-            if not too_close:
-                picks.append(cand["feature"])
-                selected_coords.append((cx, cy))
-                if len(picks) >= N_LABELS:
-                    break
-
-        labelled_genes.extend(picks)
-
-    labelled_set = set(labelled_genes)
-    labelled_rows = df[df["feature"].isin(labelled_set)].copy()
-
-    from adjustText import adjust_text as _adjust_text
-
-    _lbl_fs = 3.5 if composite else 6.5
-    _arrow_lw = 0.25 if composite else 0.4
-
-    texts = []
-    for _, row in labelled_rows.iterrows():
-        t = ax.text(
-            row[beta_col], row["nlog10"], row["feature"],
-            fontsize=_lbl_fs, fontweight="bold", color="#444444",
-            ha="center", va="center", zorder=5,
-        )
-        texts.append(t)
-
-    x_span = df[beta_col].max() - df[beta_col].min()
-    y_span = df["nlog10"].max() - df["nlog10"].min()
-    _adjust_text(
-        texts, ax=ax,
-        arrowprops=dict(arrowstyle="-", color="#888888", lw=_arrow_lw,
-                        shrinkA=5, shrinkB=3),
-        force_text=(3.0, 3.2),
-        force_static=(3.5, 3.5),
-        force_explode=(0.5, 0.6),
-        expand=(2.3, 2.6),
-        ensure_inside_axes=True,
-        max_move=(x_span * 0.45, y_span * 0.45),
-    )
-
-    # Threshold line
-    thresh_y = -np.log10(p_thresh)
-    ax.axhline(thresh_y, color=COLORS["gray"], ls="--", lw=0.8, zorder=0)
-    ax.axvline(0, color="black", lw=0.6, zorder=0)
-
-    ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
-    ax.set_ylabel(r"$-\log_{10}$(p)")
-    ax.set_title("Gene-Level Volcano (Melanoma DiD)", fontsize=11,
-                 fontweight="bold")
-
-    # Legend — no footnotes, no summary boxes
-    legend_handles = [
-        mpatches.Patch(color=COLORS["treated"], alpha=0.8,
-                       label="Responder ↑"),
-        mpatches.Patch(color=COLORS["control"], alpha=0.8,
-                       label="Non-responder ↑"),
-        mpatches.Patch(color=COLORS["gray"], alpha=0.3,
-                       label="Not significant"),
-    ]
-    ax.legend(handles=legend_handles, fontsize=10, loc="lower left",
-              frameon=True, framealpha=0.9)
-    despine(ax)
+    """Volcano plot of gene-level DiD effects (Sade-Feldman melanoma)."""
+    gene_volcano(ax, data["gene_results"], title="Gene-Level Volcano (Melanoma DiD)",
+                 up_label="Responder ↑", down_label="Non-responder ↑", composite=composite)
 
 
 # ======================================================================
@@ -1848,14 +1678,14 @@ def generate():
 
     # Compact legends for melanoma panels
     _mel_bio_locs = {
-        ax_a: "upper center", ax_b: "upper left",
+        ax_b: "upper left",
         ax_c: "upper left",  ax_d: "lower left",
     }
     for ax_target, loc in _mel_bio_locs.items():
         _compact_legend(ax_target, loc, fs=4)
 
-    # Shrink gene-label annotations in volcano/waterfall
-    for _ax in [ax_a, ax_b]:
+    # Shrink gene-label annotations in the waterfall (volcano labels are final size)
+    for _ax in [ax_b]:
         for txt in _ax.texts:
             if txt.get_fontsize() > 4:
                 txt.set_fontsize(max(txt.get_fontsize() * 0.50, 2.5))

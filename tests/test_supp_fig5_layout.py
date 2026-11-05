@@ -1,4 +1,6 @@
-"""Supp Fig 5 layout: gene labels are reproducible and clear, keys sit off the data."""
+"""Scatter labelling (``_shared.label_points``) and the Supp Fig 5 layout that uses it."""
+
+import sys
 
 import matplotlib
 
@@ -12,12 +14,32 @@ import pytest  # noqa: E402
 pytest.importorskip("adjustText")
 
 
+def _shared():
+    return sys.modules["manuscript_figures._shared"]
+
+
 def _genes(n=20, seed=3):
     rng = np.random.default_rng(seed)
     x = rng.normal(size=n)
     y = 0.8 * x + rng.normal(scale=0.4, size=n)
     feats = [f"G{i}" for i in range(n)]
     return feats, pd.Series(x, index=feats), pd.Series(y, index=feats)
+
+
+def _defects(ax, texts, xy, s, obstacles=None):
+    """Defect count of a finished layout, measured the way label_points scores it."""
+    fig = ax.figure
+    fig.canvas.draw()
+    r = (np.sqrt(s) / 2 + 1.0) * fig.dpi / 72
+    target_px = ax.transData.transform(xy)
+    target_r = np.full(len(xy), r)
+    obs_px, obs_r = target_px, target_r
+    if obstacles is not None:
+        obs_px = np.vstack([target_px, ax.transData.transform(obstacles)])
+        obs_r = np.full(len(obs_px), r)
+    defects, _ = _shared().label_layout_score(texts, target_px, target_r, obs_px, obs_r,
+                                              fig.canvas.get_renderer())
+    return defects
 
 
 def _labelled_scatter(sf5, *, composite):
@@ -45,11 +67,10 @@ def test_gene_labels_are_reproducible(load_figure_module, composite):
 def test_standalone_labels_every_gene_without_defects(load_figure_module):
     sf5 = load_figure_module("supp/supp_fig5_sensitivity_robustness")
     fig, ax, sc, feats, xs, ys = _labelled_scatter(sf5, composite=False)
-    assert sorted(t.get_text() for t in ax.texts) == sorted(feats)
-    xy = ax.transData.transform(np.column_stack([xs[feats], ys[feats]]))
     labels = sorted(ax.texts, key=lambda t: feats.index(t.get_text()))
-    defects, _ = sf5._layout_score(ax, labels, xy, sf5._clearance_px(ax, sc))
-    assert defects == 0
+    assert [t.get_text() for t in labels] == feats
+    xy = np.column_stack([xs[feats], ys[feats]])
+    assert _defects(ax, labels, xy, sc.get_sizes()[0]) == 0
     renderer = fig.canvas.get_renderer()
     frame = ax.get_window_extent(renderer)
     for t in ax.texts:
@@ -68,6 +89,40 @@ def test_composite_drops_the_least_discordant_genes_first(load_figure_module):
     hidden = set(feats) - shown
     if hidden:
         assert resid[sorted(hidden)].max() <= resid[sorted(shown)].min()
+    plt.close(fig)
+
+
+def test_label_points_keeps_labels_off_obstacle_markers(load_figure_module):
+    load_figure_module("supp/supp_fig5_sensitivity_robustness")
+    rng = np.random.default_rng(7)
+    xy = rng.uniform(0, 10, size=(8, 2))
+    others = rng.uniform(0, 10, size=(40, 2))
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.scatter(*others.T, s=40)
+    ax.scatter(*xy.T, s=40)
+    ax.set_xlim(-1, 11)
+    ax.set_ylim(-1, 11)
+    names = [f"L{i}" for i in range(len(xy))]
+    shown = _shared().label_points(ax, names, xy[:, 0], xy[:, 1], 40, fontsize=7,
+                                   obstacles=(others, 40))
+    assert shown == names
+    labels = sorted(ax.texts, key=lambda t: names.index(t.get_text()))
+    assert _defects(ax, labels, xy, 40, obstacles=others) == 0
+    plt.close(fig)
+
+
+def test_label_points_draws_a_leader_only_for_detached_labels(load_figure_module):
+    load_figure_module("supp/supp_fig5_sensitivity_robustness")
+    fig, ax = plt.subplots(figsize=(4, 4))
+    xy = np.array([[0.0, 0.0], [0.02, 0.0], [0.04, 0.0]])
+    ax.scatter(*xy.T, s=30)
+    ax.set_xlim(-1, 1)
+    ax.set_ylim(-1, 1)
+    _shared().label_points(ax, ["A", "B", "C"], xy[:, 0], xy[:, 1], 30, fontsize=8)
+    from matplotlib.patches import FancyArrowPatch
+
+    leaders = [p for p in ax.patches if isinstance(p, FancyArrowPatch)]
+    assert 1 <= len(leaders) <= 3
     plt.close(fig)
 
 

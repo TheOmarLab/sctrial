@@ -40,6 +40,7 @@ from typing import Any
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
+import matplotlib.transforms as mtransforms
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
@@ -67,6 +68,7 @@ from .._shared import (
     get_vaccine,
     harmonize_response,
     hedges_g,
+    label_points,
     load_or_run_gsea_cross_sectional,
     load_or_run_gsea_did,
     load_or_run_gsea_within_arm,
@@ -1572,14 +1574,21 @@ def panel_D(ax, data: dict):
 # ======================================================================
 
 def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
-    """Volcano plot of gene-level DiD effects (Sade-Feldman).
+    """Volcano plot of gene-level DiD effects (TNBC)."""
+    gene_volcano(ax, data["gene_results"], title="Gene-Level Volcano (TNBC DiD)",
+                 up_label=f"{_TNBC_TREATED_ARM} ↑", down_label=f"{_TNBC_CONTROL_ARM} ↑",
+                 composite=composite)
 
-    Labels prioritize protein-coding genes over pseudogenes/lncRNAs.
-    When *composite* is True, fewer labels are drawn and adjustText
-    is skipped to avoid cluttering the small composite axes.
+
+def gene_volcano(ax, gene_results, *, title: str, up_label: str, down_label: str,
+                 composite: bool = False) -> None:
+    """Volcano plot of gene-level DiD effects (Figure 4A, Supp Fig 7A).
+
+    Nominal p on the y-axis, colour by p < 0.05 and direction. Labels prioritize
+    protein-coding genes and are placed by ``label_points`` clear of each other, of
+    every significant marker, of the threshold line and of the frame; the
+    composite cell keeps as many of the most significant labelled genes as fit.
     """
-    gene_results = data["gene_results"]
-
     if gene_results is None or len(gene_results) == 0:
         ax.text(
             0.5, 0.5,
@@ -1645,11 +1654,10 @@ def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
         if len(sub) == 0:
             continue
 
-        # Force-include top 3 genes by -log10(p) in each direction
-        # (ensures the most significant genes are always labelled)
-        force_genes = set(
-            sub.nlargest(min(3, len(sub)), "nlog10")["feature"].tolist()
-        )
+        # Force-include the top 3 genes by -log10(p) in each direction, taken from
+        # the significance ranking itself (not from the score-ranked candidates
+        # below, which can omit a highly significant gene with a moderate effect).
+        forced = sub.nlargest(min(3, len(sub)), "nlog10")
 
         # Combined score: rank-normalised |β| + rank-normalised -log10(p)
         # This naturally selects genes at volcano tips (high on both axes).
@@ -1669,23 +1677,24 @@ def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
         selected_coords: list[tuple[float, float]] = []
         picks: list[str] = []
 
-        # Add forced genes first
-        for _, cand in candidates.iterrows():
-            if cand["feature"] in force_genes and cand["feature"] not in picks:
-                picks.append(cand["feature"])
-                selected_coords.append((cand[beta_col], cand["nlog10"]))
+        def _too_close(cx, cy):
+            return any(abs(cx - sx) < min_dx and abs(cy - sy) < min_dy
+                       for sx, sy in selected_coords)
+
+        # Significant forced genes are always labelled; a non-significant one is
+        # skipped when it nearly coincides with a gene already picked.
+        for _, cand in forced.iterrows():
+            if cand["category"] == "ns" and _too_close(cand[beta_col], cand["nlog10"]):
+                continue
+            picks.append(cand["feature"])
+            selected_coords.append((cand[beta_col], cand["nlog10"]))
 
         # Fill remaining slots with score-ranked candidates
         for _, cand in candidates.iterrows():
             if cand["feature"] in picks:
                 continue
             cx, cy = cand[beta_col], cand["nlog10"]
-            too_close = False
-            for sx, sy in selected_coords:
-                if abs(cx - sx) < min_dx and abs(cy - sy) < min_dy:
-                    too_close = True
-                    break
-            if not too_close:
+            if not _too_close(cx, cy):
                 picks.append(cand["feature"])
                 selected_coords.append((cx, cy))
                 if len(picks) >= N_LABELS:
@@ -1693,90 +1702,59 @@ def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
 
         labelled_genes.extend(picks)
 
-    labelled_set = set(labelled_genes)
-    labelled_rows = df[df["feature"].isin(labelled_set)].copy()
-
-    from adjustText import adjust_text as _adjust_text
-
-    _lbl_fs = 5.5 if composite else 6.5
-    _arrow_lw = 0.25 if composite else 0.4
-
-    # Store original data-point coords before adjust_text moves labels
-    text_origins = [
-        (row[beta_col], row["nlog10"]) for _, row in labelled_rows.iterrows()
-    ]
-
-    texts = []
-    for _, row in labelled_rows.iterrows():
-        t = ax.text(
-            row[beta_col], row["nlog10"], row["feature"],
-            fontsize=_lbl_fs, fontweight="bold", color="#444444",
-            ha="center", va="center", zorder=5,
-        )
-        texts.append(t)
-
-    x_span = df[beta_col].max() - df[beta_col].min()
-    y_span = df["nlog10"].max() - df["nlog10"].min()
-    # No arrowprops here — arrows are drawn manually after all nudges
-    _adjust_text(
-        texts, ax=ax,
-        force_text=(2.0, 2.0),
-        force_points=(3.5, 3.5),
-        expand=(1.8, 2.0),
-        ensure_inside_axes=True,
-        max_move=(x_span * 0.25, y_span * 0.25),
-        only_move="xy",
-    )
-    # Manual nudge: move PRSS53 label down so arrow angle changes
-    for _t in texts:
-        if _t.get_text() == "PRSS53":
-            _tx, _ty = _t.get_position()
-            _t.set_position((_tx, _ty - y_span * 0.06))
-
-    # CHI3L2: force label to the right of its data point
-    for _t, (ox, oy) in zip(texts, text_origins):
-        if _t.get_text() == "CHI3L2":
-            _t.set_position((ox + x_span * 0.04, oy))
-            _t.set_ha("left")
-
-    # Draw arrows from original data points to final label positions
-    for _t, (ox, oy) in zip(texts, text_origins):
-        tx, ty = _t.get_position()
-        if abs(tx - ox) > 1e-9 or abs(ty - oy) > 1e-9:
-            ax.annotate(
-                "", xy=(ox, oy), xytext=(tx, ty),
-                arrowprops=dict(arrowstyle="-", color="#888888", lw=_arrow_lw,
-                                shrinkA=3, shrinkB=5),
-                zorder=4,
-            )
-
-    # Threshold line
+    # Final geometry before any label is placed: symmetric effect axis, fixed limits
+    # with headroom so the labels of the most extreme genes fit inside the frame.
+    x_max = df[beta_col].abs().max() * 1.18
+    ax.set_xlim(-x_max, x_max)
+    ax.set_ylim(0, df["nlog10"].max() * 1.22)
     thresh_y = -np.log10(p_thresh)
     ax.axhline(thresh_y, color=COLORS["gray"], ls="--", lw=0.8, zorder=0)
     ax.axvline(0, color="black", lw=0.6, zorder=0)
-
     ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
     ax.set_ylabel(r"$-\log_{10}$(p)")
-    ax.set_title("Gene-Level Volcano (TNBC DiD)", fontsize=11,
-                 fontweight="bold")
-
-    # Legend: no footnotes, no summary boxes
-    if composite:
-        pass  # legend is created in the composite section with explicit transform
-    else:
-        legend_handles = [
-            mpatches.Patch(color=COLORS["treated"], alpha=0.8,
-                           label=f"{_TNBC_TREATED_ARM} ↑"),
-            mpatches.Patch(color=COLORS["control"], alpha=0.8,
-                           label=f"{_TNBC_CONTROL_ARM} ↑"),
+    ax.set_title(title, fontsize=11, fontweight="bold")
+    # Key a measured distance (in points) below the x-axis label, so it clears the
+    # label at any panel height.
+    fig = ax.figure
+    fig.canvas.draw()
+    label_bottom = ax.xaxis.label.get_window_extent(fig.canvas.get_renderer()).y0
+    gap_pt = (ax.get_window_extent().y0 - label_bottom) * 72 / fig.dpi + 3
+    ax.legend(
+        handles=[
+            mpatches.Patch(color=COLORS["treated"], alpha=0.8, label=up_label),
+            mpatches.Patch(color=COLORS["control"], alpha=0.8, label=down_label),
             mpatches.Patch(color=COLORS["gray"], alpha=0.3,
-                           label="Not significant"),
-        ]
-        ax.legend(handles=legend_handles, fontsize=10, loc="upper left",
-                  ncol=3, frameon=True, framealpha=0.9,
-                  borderpad=0.3, columnspacing=0.5, handlelength=0.8,
-                  handletextpad=0.4)
+                           label="n.s." if composite else "Not significant"),
+        ],
+        loc="upper center", bbox_to_anchor=(0.5, 0.0),
+        bbox_transform=mtransforms.offset_copy(ax.transAxes, fig=fig, y=-gap_pt,
+                                               units="points"),
+        ncol=3, fontsize=3.5 if composite else 10, frameon=True, framealpha=0.9,
+        borderpad=0.3, columnspacing=0.8, handlelength=0.8, handletextpad=0.3,
+    )
     despine(ax)
+    if not composite:
+        ax.figure.tight_layout()
+
+    # Labels go on last, at their final size, clear of every significant marker and
+    # of each other; the composite cell keeps the most significant genes that fit,
+    # down to the significant ones alone.
+    rows = df.set_index("feature").loc[labelled_genes]
+    rows = rows.sort_values("nlog10", ascending=False)
+    sig = df[df["category"] != "ns"]
+    n_lab = len(rows)
+    n_sig = int((rows["category"] != "ns").sum())
+    label_points(
+        ax, list(rows.index), rows[beta_col].values, rows["nlog10"].values,
+        rows["category"].map(size_map).values,
+        fontsize=3.6 if composite else 6.5, color="#444444",
+        obstacles=(sig[[beta_col, "nlog10"]].values, sig["category"].map(size_map).values),
+        hlines=(thresh_y,), vlines=(0.0,),
+        priority=range(n_lab),
+        counts=sorted({n_lab, n_sig, *(n for n in (16, 12, 8) if n_sig < n < n_lab)},
+                      reverse=True) if composite else None,
+        max_mean_leader_pt=10.0 if composite else None,
+    )
 
 
 # ======================================================================
@@ -3880,19 +3858,6 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     ax_a.yaxis.label.set_fontsize(5.0)
     ax_a.tick_params(axis='x', labelsize=4.5)
     ax_a.tick_params(axis='y', labelsize=4.5)
-    _a_leg = ax_a.legend(
-        handles=[
-            mpatches.Patch(color=COLORS["treated"], alpha=0.8,
-                           label=f"{_TNBC_TREATED_ARM} ↑"),
-            mpatches.Patch(color=COLORS["control"], alpha=0.8,
-                           label=f"{_TNBC_CONTROL_ARM} ↑"),
-            mpatches.Patch(color=COLORS["gray"], alpha=0.3, label="n.s."),
-        ],
-        fontsize=3.5, loc="upper left",
-        frameon=True, framealpha=0.9,
-        borderpad=0.2, handlelength=0.6, handletextpad=0.2,
-    )
-
     tnbc_waterfall(ax_b, data_tnbc)
     ax_b.set_title("Top Genes: TNBC DiD", fontsize=4.5, fontweight="bold")
     ax_b.tick_params(axis='y', labelsize=2.5)
@@ -3965,7 +3930,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
 
     # Compact legends — TNBC biological panels
     _bio_locs = {
-        ax_a: "upper right", ax_b: "upper left",
+        ax_b: "upper left",
         ax_c: "upper left",  ax_d: "lower right",
         ax_f_abund: "lower right",
     }
@@ -3976,10 +3941,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     for ax_target in _forest_axes:
         _compact_legend(ax_target, "lower right", fs=4.5)
 
-    # Shrink gene-label annotations in volcano/waterfall
-    for txt in ax_a.texts:
-        if txt.get_fontsize() > 4:
-            txt.set_fontsize(max(txt.get_fontsize() * 0.65, 3.0))
+    # Shrink gene-label annotations in the waterfall (volcano labels are final size)
     for txt in ax_b.texts:
         if txt.get_fontsize() > 4:
             txt.set_fontsize(max(txt.get_fontsize() * 0.50, 2.5))

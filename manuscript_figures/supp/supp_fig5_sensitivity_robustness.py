@@ -58,6 +58,7 @@ from .._shared import (
     get_tnbc_zhang,
     get_vaccine,
     harmonize_response,
+    label_points,
     save_panel,
     score_signatures,
     within_arm_comparison,
@@ -163,177 +164,27 @@ def _pad_limits(ax, x, y, *, frac: float = 0.15) -> None:
         set_lim(v.min() - pad, v.max() + pad)
 
 
-# adjustText settings, gentlest first. Every candidate is laid out and scored on
-# its defects (labels touching a label or a marker, leader lines crossing), with
-# mean leader length breaking ties; the lowest score wins. Several candidates are
-# needed because convergence depends on the font metrics of the rendering
-# machine. Crossing removal is off in the stronger settings: it swaps label pairs
-# every step and the layout oscillates instead of converging.
-_LABEL_LAYOUTS = (
-    dict(expand=(1.2, 1.4), force_text=(0.3, 0.5), force_static=(0.5, 0.7)),
-    dict(expand=(1.2, 1.4), force_text=(0.6, 0.9), force_static=(0.8, 1.0),
-         prevent_crossings=False, max_move=(20, 20)),
-    dict(expand=(1.2, 1.4), force_text=(0.6, 0.9), force_static=(1.0, 1.2),
-         force_pull=(0.0, 0.0), prevent_crossings=False, max_move=(20, 20)),
-    dict(expand=(1.1, 1.3), force_text=(0.8, 1.0), force_static=(1.0, 1.2),
-         prevent_crossings=False, max_move=(40, 40)),
-)
-
-
-def _segments_cross(p1, p2, q1, q2) -> bool:
-    """True when segments p1-p2 and q1-q2 properly intersect."""
-    def orient(a, b, c):
-        return np.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]))
-    return (orient(p1, p2, q1) * orient(p1, p2, q2) < 0
-            and orient(q1, q2, p1) * orient(q1, q2, p2) < 0)
-
-
-def _clearance_px(ax, markers) -> float:
-    """Marker radius plus 1 pt (edge line and anti-aliasing), in display pixels."""
-    return (np.sqrt(markers.get_sizes()[0]) / 2 + 1.0) * ax.figure.dpi / 72
-
-
-def _leaders(boxes, xy_disp, radius_px):
-    """Leader segment (label centre to marker) per label, None when attached."""
-    out = []
-    for bb, (mx, my) in zip(boxes, xy_disp):
-        gap = np.hypot(np.clip(mx, bb.x0, bb.x1) - mx, np.clip(my, bb.y0, bb.y1) - my)
-        out.append(((bb.x0 + bb.x1) / 2, (bb.y0 + bb.y1) / 2, mx, my, gap)
-                   if gap > radius_px + 2 else (None, None, mx, my, gap))
-    return out
-
-
-def _crossing_pairs(leaders):
-    return [(i, j) for i, a in enumerate(leaders) for j, b in enumerate(leaders)
-            if i < j and a[0] is not None and b[0] is not None
-            and _segments_cross(a[:2], a[2:4], b[:2], b[2:4])]
-
-
-def _layout_score(ax, texts, xy_disp, radius_px) -> tuple[int, float]:
-    """(defects, mean leader length in px) for a finished label layout.
-
-    Defects are label-label overlaps, labels touching any marker disc, and
-    crossing leader lines (label centre to its marker, drawn when detached).
-    """
-    renderer = ax.figure.canvas.get_renderer()
-    boxes = [t.get_window_extent(renderer) for t in texts]
-    defects = sum(boxes[i].overlaps(boxes[j])
-                  for i in range(len(boxes)) for j in range(i + 1, len(boxes)))
-    for bb in boxes:
-        cx = np.clip(xy_disp[:, 0], bb.x0, bb.x1)
-        cy = np.clip(xy_disp[:, 1], bb.y0, bb.y1)
-        defects += int(np.any((cx - xy_disp[:, 0]) ** 2
-                              + (cy - xy_disp[:, 1]) ** 2 < radius_px ** 2))
-    leaders = _leaders(boxes, xy_disp, radius_px)
-    defects += len(_crossing_pairs(leaders))
-    return defects, float(np.mean([seg[4] for seg in leaders]))
-
-
-def _uncross(ax, texts, xy_disp, radius_px, score):
-    """Swap the positions of labels whose leaders cross while that lowers the score."""
-    renderer = ax.figure.canvas.get_renderer()
-    for _ in range(len(texts)):
-        boxes = [t.get_window_extent(renderer) for t in texts]
-        improved = False
-        for i, j in _crossing_pairs(_leaders(boxes, xy_disp, radius_px)):
-            pi, pj = texts[i].get_position(), texts[j].get_position()
-            texts[i].set_position(pj)
-            texts[j].set_position(pi)
-            new = _layout_score(ax, texts, xy_disp, radius_px)
-            if new < score:
-                score, improved = new, True
-                break
-            texts[i].set_position(pi)
-            texts[j].set_position(pj)
-        if not improved:
-            return score
-    return score
-
-
-def _place_labels(ax, feats, xs, ys, markers, fontsize):
-    """Lay out labels for *feats* with each candidate setting; keep the best.
-
-    Returns ``(score, texts)``. Each candidate runs a fixed number of iterations
-    with numpy's global RNG seeded (adjustText jitters coincident labels with it),
-    so the result is reproducible on a given machine.
-    """
-    from adjustText import adjust_text
-
-    xy_disp = ax.transData.transform(np.column_stack([xs, ys]))
-    radius_px = _clearance_px(ax, markers)
-    best = None
-    for settings in _LABEL_LAYOUTS:
-        texts = [ax.text(xv, yv, f, fontsize=fontsize, fontweight="bold", zorder=6)
-                 for f, xv, yv in zip(feats, xs, ys)]
-        rng_state = np.random.get_state()
-        np.random.seed(0)
-        try:
-            adjust_text(texts, objects=markers, ax=ax, iter_lim=3000,
-                        ensure_inside_axes=True, **settings)
-        finally:
-            np.random.set_state(rng_state)
-        score = _uncross(ax, texts, xy_disp, radius_px,
-                         _layout_score(ax, texts, xy_disp, radius_px))
-        if best is None or score < best[0]:
-            if best is not None:
-                for t in best[1]:
-                    t.remove()
-            best = (score, texts)
-        else:
-            for t in texts:
-                t.remove()
-    return best
-
-
 def _add_gene_labels(ax, features, x_series, y_series, markers, *, fontsize=7,
                      composite=False):
     """Label genes clear of other labels and markers, with leader lines.
 
-    Standalone panels label every gene. A composite cell is too small for that, so
-    it labels the genes that depart most from the linear trend (largest absolute
-    least-squares residual), as many as fit without a defect: the genes a
-    concordance panel needs to name.
-
-    ``markers`` is the scatter's PathCollection: adjustText repels labels from each
-    marker's full extent (bare x/y obstacles are zero-size points, so labels slid
-    onto marker edges). Axis limits and the axes position must be final first.
+    Labels are prioritised by departure from the linear trend (largest absolute
+    least-squares residual): the genes a concordance panel needs to name. A
+    standalone panel labels every gene unless that cannot be laid out without a
+    defect, then drops at most the eight least discordant; a composite cell labels
+    as many as fit. Axis limits and the axes position must be final first (see
+    ``label_points``).
     """
-    from matplotlib.patches import FancyArrowPatch
-
     feats = list(features)
     xs = np.array([x_series[f] for f in feats], dtype=float)
     ys = np.array([y_series[f] for f in feats], dtype=float)
-    # A scatter scales its marker sizes to the figure dpi only when drawn; before
-    # that adjustText measures the markers at 72 dpi, i.e. too small.
-    ax.figure.canvas.draw()
-
-    order = np.arange(len(feats))
-    counts = [len(feats)]
-    if composite:
-        slope, intercept = np.polyfit(xs, ys, 1)
-        order = np.argsort(-np.abs(ys - (slope * xs + intercept)), kind="stable")
-        counts += [n for n in (24, 16, 12, 8) if n < len(feats)]
-    for n in counts:
-        keep = np.sort(order[:n])
-        (defects, _), texts = _place_labels(
-            ax, [feats[i] for i in keep], xs[keep], ys[keep], markers, fontsize)
-        if defects == 0 or n == counts[-1]:
-            break
-        for t in texts:
-            t.remove()
-
-    renderer = ax.figure.canvas.get_renderer()
-    radius_pt = np.sqrt(markers.get_sizes()[0]) / 2
-    radius_px = _clearance_px(ax, markers)
-    for txt, i in zip(texts, keep):
-        mx, my = ax.transData.transform((xs[i], ys[i]))
-        bb = txt.get_window_extent(renderer)
-        gap = np.hypot(np.clip(mx, bb.x0, bb.x1) - mx, np.clip(my, bb.y0, bb.y1) - my)
-        if gap > radius_px + 2:
-            ax.add_patch(FancyArrowPatch(
-                posA=txt.get_position(), posB=(xs[i], ys[i]), patchA=txt,
-                arrowstyle="-", color="gray", lw=0.4, alpha=0.7, shrinkA=0.5,
-                shrinkB=radius_pt, zorder=2, transform=ax.transData))
+    slope, intercept = np.polyfit(xs, ys, 1)
+    priority = np.argsort(-np.abs(ys - (slope * xs + intercept)), kind="stable")
+    n = len(feats)
+    steps = (24, 16, 12, 8) if composite else (n - 4, n - 8)
+    counts = [n] + [k for k in steps if 0 < k < n]
+    label_points(ax, feats, xs, ys, markers.get_sizes()[0], fontsize=fontsize,
+                 priority=priority, counts=counts)
 
 
 def _finish_scatter(ax, features, x_series, y_series, markers, *, fontsize, composite):
