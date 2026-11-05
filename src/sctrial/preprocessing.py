@@ -169,7 +169,14 @@ _HB_RE = re.compile(
     re.IGNORECASE,
 )
 _RIBO_RE = re.compile(r"^(RP[SL]\d+[A-Z]?\d?|RPLP\d|RPSA|FAU|UBA52)$", re.IGNORECASE)
-_HIST_RE = re.compile(r"^HIST\d[0-9A-Z]*$", re.IGNORECASE)
+# Replication-dependent histones under the pre-2020 HGNC symbols (HIST1H4C) and the current ones
+# (H4C3, H1-2, H2AW): Cell Ranger references from GENCODE v35 on use the current symbols. Variant
+# histones (H2AZ1, H2AX, H3-3A, H1-0, H1-10) are replication-independent and are not flagged.
+_HIST_RE = re.compile(
+    r"^(HIST\d[0-9A-Z]*|H1-[1-6]|H2AC\d+P?|H2BC\d+P?|H3C\d+P?|H4C\d+P?"
+    r"|H2AW|H2BU1|H3-4|H3-7|H4-16)$",
+    re.IGNORECASE,
+)
 
 
 def is_artifact_gene(name: str) -> bool:
@@ -236,6 +243,7 @@ def drop_artifact_genes(
     drop_hb: bool = True,
     drop_ribo: bool = True,
     drop_histone: bool = True,
+    counts_layer: str | None = "counts",
 ) -> AnnData:
     """Remove technical-artifact gene classes from *adata* in place (upstream QC).
 
@@ -258,6 +266,14 @@ def drop_artifact_genes(
     genes, including the ambient/housekeeping ones) and after any QC-metric computation.
     The removed gene symbols are recorded in ``adata.uns['artifact_genes_removed']``
     and the classes actually dropped in ``adata.uns['artifact_classes_dropped']``.
+
+    Once the genes are gone their share of each cell's counts cannot be recovered, so
+    before removing them this records, for every dropped class with at least one gene,
+    the percentage of the cell's total in ``counts_layer`` that the class accounts for:
+    ``obs['pct_counts_hb']``, ``obs['pct_counts_ribo']`` and ``obs['pct_counts_histone']``
+    (an existing column is left untouched). The layer used is stored in
+    ``adata.uns['artifact_pct_layer']``. Pass the layer holding raw counts (or linear TPM
+    for TPM-only data); if it is absent nothing is recorded.
     """
     if "is_artifact" not in adata.var:
         flag_artifact_genes(adata)
@@ -271,6 +287,7 @@ def drop_artifact_genes(
         if enabled:
             drop |= adata.var[col].to_numpy()
             classes.append(name)
+    _record_class_percentages(adata, classes, counts_layer)
     keep = ~drop
     removed = adata.var_names[drop].tolist()
     adata._inplace_subset_var(keep)
@@ -281,6 +298,31 @@ def drop_artifact_genes(
         len(removed), ",".join(classes) or "none", int(keep.sum()),
     )
     return adata
+
+
+_CLASS_COLUMNS = {"hemoglobin": "is_hb", "ribosomal": "is_ribo", "histone": "is_histone"}
+_CLASS_PCT = {"hemoglobin": "pct_counts_hb", "ribosomal": "pct_counts_ribo",
+              "histone": "pct_counts_histone"}
+
+
+def _record_class_percentages(adata: AnnData, classes: list[str], layer: str | None) -> None:
+    if not layer or layer not in adata.layers:
+        logger.info("No '%s' layer; artifact-class percentages not recorded.", layer)
+        return
+    X = adata.layers[layer]
+    total = np.asarray(X.sum(axis=1), dtype=float).ravel()
+    recorded = []
+    for name in classes:
+        col = _CLASS_PCT[name]
+        mask = adata.var[_CLASS_COLUMNS[name]].to_numpy()
+        if col in adata.obs.columns or not mask.any():
+            continue
+        part = np.asarray(X[:, mask].sum(axis=1), dtype=float).ravel()
+        with np.errstate(invalid="ignore", divide="ignore"):
+            adata.obs[col] = np.where(total > 0, 100.0 * part / total, np.nan)
+        recorded.append(col)
+    if recorded:
+        adata.uns["artifact_pct_layer"] = layer
 
 
 def add_qc_class_metrics(adata: AnnData, *, counts_layer: str | None = "counts") -> AnnData:
