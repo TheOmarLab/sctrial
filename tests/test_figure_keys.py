@@ -384,3 +384,17 @@ def test_figure4_shared_forest_names_survive_a_missing_dataset(load_figure_modul
              for i, ax in enumerate(axes)}
     assert shown[1] == order[::-1] and shown[2] == []
     plt.close(fig)
+
+
+def test_layout_problems_skips_ticks_of_hidden_axes(shared):
+    fig = plt.figure(figsize=(3, 2))
+    shown = fig.add_axes([0.2, 0.25, 0.7, 0.6])
+    shown.set_title("Shown")
+    spacer = fig.add_axes([0.2, 0.25, 0.7, 0.6])  # a spanning spacer over the same area
+    spacer.axis("off")
+    spacer.set_title("Spacer title")
+    problems = shared.layout_problems(fig)
+    assert not any("untitled" in row or "Spacer title] x tick" in row
+                   for rows in problems.values() for row in rows)
+    assert any("Spacer title" in row for row in problems["text overlaps"])  # titles still drawn
+    plt.close(fig)

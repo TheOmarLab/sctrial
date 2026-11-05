@@ -740,6 +740,10 @@ def _layout_texts(fig, renderer):
             continue
         for title in (ax.title, ax._left_title, ax._right_title):
             add(ax, "title", title)
+        for text in ax.texts:
+            add(ax, "text", text)
+        if not ax.axison:  # axis("off"): titles and texts are drawn, labels and ticks are not
+            continue
         add(ax, "x label", ax.xaxis.label)
         add(ax, "y label", ax.yaxis.label)
         for axis, name, bound in ((ax.xaxis, "x tick", ax.get_xbound()),
@@ -750,8 +754,6 @@ def _layout_texts(fig, renderer):
                 if lo - pad <= tick.get_loc() <= hi + pad:
                     add(ax, name, tick.label1)
                     add(ax, name, tick.label2)
-        for text in ax.texts:
-            add(ax, "text", text)
     for text in fig.texts:
         add(None, "figure text", text)
     return items

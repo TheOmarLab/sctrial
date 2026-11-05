@@ -1082,6 +1082,8 @@ def generate():
 
     # Draw left panels
     _panel_pairing(ax_a, loaded)
+    for _t in ax_a.texts:  # count labels over bars 8.4 pt apart: 5 pt keeps "11" and "10" apart
+        _t.set_fontsize(5)
     _panel_cells_per_pid_arm(ax_c, loaded)
     _panel_ngenes_dist(ax_d, loaded)
 
