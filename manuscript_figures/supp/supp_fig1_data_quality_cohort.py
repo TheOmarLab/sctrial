@@ -888,7 +888,8 @@ def _panel_completeness_detailed(ax, loaded: dict):
     ax.set_xlabel("Fraction of participants with cells")
     ax.set_title("Visit Completeness", fontweight="bold")
     despine(ax)
-    group_axis_labels(ax, groups, fontsize=plt.rcParams["font.size"], axis="y")
+    font = plt.rcParams["font.size"]
+    group_axis_labels(ax, groups, fontsize=font, gap_pt=0.8 * font, axis="y")
 
 
 # ======================================================================
@@ -1073,7 +1074,7 @@ def generate():
     ax_e2 = fig_c.add_subplot(gs2[2])
 
     # Row 3: F | G | H
-    gs3 = outer[3].subgridspec(1, 3, wspace=0.50)
+    gs3 = outer[3].subgridspec(1, 3, wspace=0.65)  # room for H's dataset labels
     ax_f = fig_c.add_subplot(gs3[0])
     ax_g = fig_c.add_subplot(gs3[1])
     ax_h = fig_c.add_subplot(gs3[2])
@@ -1311,10 +1312,14 @@ def generate():
     for ax_lbl, lbl in [
         (ax_a, "A"), (ax_c, "C"), (ax_d, "D"),
         (ax_e1, "E"), (ax_f, "F"), (ax_g, "G"),
-        (ax_h, "H"),
     ]:
         ax_lbl.text(-0.20, 1.12, lbl, transform=ax_lbl.transAxes,
                     fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    # H's dataset labels reach further left than a fixed offset; start the letter at their edge.
+    fig_c.canvas.draw()
+    _h_left = ax_h.get_tightbbox(fig_c.canvas.get_renderer()).x0
+    ax_h.text(ax_h.transAxes.inverted().transform((_h_left, 0))[0], 1.12, "H",
+              transform=ax_h.transAxes, fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
 
     # Panel B label on the first B axes
     if ax_b_list:

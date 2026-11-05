@@ -132,7 +132,7 @@ def test_supp_fig1_completeness_rows_do_not_overlap_at_composite_size(load_figur
     assert [g.get_text() for g in groups] == list(_completeness_data())
     tick_left = min(b.x0 for b in boxes)
     group_boxes = sorted((_extent(g, r) for g in groups), key=lambda b: b.y0)
-    assert all(b.x1 <= tick_left + 0.5 for b in group_boxes)
+    assert all(b.x1 <= tick_left - 0.5 * 5 * fig.dpi / 72 for b in group_boxes)  # half an em clear
     assert all(a.y1 <= b.y0 for a, b in zip(group_boxes, group_boxes[1:]))
     counts = [t.get_text() for t in ax.texts if "/" in t.get_text()]
     assert counts[:2] == ["4/4", "3/4"]
