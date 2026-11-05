@@ -335,8 +335,8 @@ def panel_C(ax, data: dict):
             label="Non-responder ↑ (n.s.)",
         ))
     if legend_handles:
-        ax.legend(handles=legend_handles, fontsize=9, loc="lower right",
-                  frameon=True, framealpha=0.9)
+        ax.legend(handles=legend_handles, fontsize=9)
+        key_below_axes(ax, ncol=2)
     despine(ax)
 
 
@@ -1532,22 +1532,22 @@ def generate():
     plt.rcParams.update(_SMALL_RC)
 
     _mm = 1.0 / 25.4
-    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+    fig_c = plt.figure(figsize=(180 * _mm, 232 * _mm))
 
     # 13 rows: 7 content rows interleaved with 6 spacer rows
     outer = fig_c.add_gridspec(
         13, 1,
         height_ratios=[
             0.65,   # row  0: A | B | C  — melanoma
-            0.40,   # spacer
+            0.55,   # spacer (keys of A to C, titles of D and E)
             0.50,   # row  2: D | E      — melanoma
-            0.52,   # section spacer
-            0.55,   # row  4: F | G
-            0.39,   # spacer (slightly wider)
+            0.55,   # section spacer
+            0.50,   # row  4: F | G
+            0.55,   # spacer (key of F, titles of H and I)
             0.43,   # row  6: H | I
-            0.27,   # spacer
-            0.85,   # row  8: J | K (taller)
-            0.29,   # spacer
+            0.42,   # spacer (keys of H and I, titles of J and K)
+            0.75,   # row  8: J | K (taller)
+            0.42,   # spacer (key of J, title of L)
             0.30,   # row 10: L (full width)
             0.35,   # spacer
             0.30,   # row 12: M (full width)

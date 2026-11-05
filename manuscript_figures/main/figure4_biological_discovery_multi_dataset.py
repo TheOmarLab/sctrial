@@ -965,8 +965,8 @@ def _tnbc_gsea_bars(ax, data: dict):
             label=f"{_TNBC_CONTROL_ARM} ↑ (n.s.)",
         ))
     if legend_handles:
-        ax.legend(handles=legend_handles, fontsize=9, loc="lower right",
-                  frameon=True, framealpha=0.9)
+        ax.legend(handles=legend_handles, fontsize=9)
+        key_below_axes(ax, ncol=2)
     despine(ax)
 
 
@@ -2500,8 +2500,8 @@ def _panel_tnbc_response_gsea_bars(ax, data_tnbc: dict, *, arm: str) -> None:
         legend_handles.append(mpatches.Patch(
             color=COLORS["control"], alpha=0.4, label="Non-responder ↑ (n.s.)"))
     if legend_handles:
-        ax.legend(handles=legend_handles, fontsize=9, loc="lower right",
-                  frameon=True, framealpha=0.9)
+        ax.legend(handles=legend_handles, fontsize=9)
+        key_below_axes(ax, ncol=2)
     despine(ax)
 
 
@@ -3159,7 +3159,7 @@ def panel_a_covid(ax, data: dict[str, Any]) -> None:
         ci_lo_col="ci_lo",
         ci_hi_col="ci_hi",
         label_col="label",
-        xlabel="Hedge's g (Severe vs Mild)",
+        xlabel="Hedges' g (Severe vs Mild)",
         color_pos=COLORS["treated"],
         color_neg=COLORS["control"],
         legend_pos_label="Severe $\\uparrow$",
@@ -3565,20 +3565,20 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
     plt.rcParams.update(_SMALL_RC)
 
-    fig_c = plt.figure(figsize=(180 * _mm, 200 * _mm))
+    fig_c = plt.figure(figsize=(180 * _mm, 220 * _mm))
 
     # 9 rows; height sum ≈ 7.55  →  195 mm / 7.55 ≈ 25.8 mm per unit
     outer = fig_c.add_gridspec(
         9, 1,
         height_ratios=[
             1.50,  # 0:  A | B | C   — TNBC (taller panels)
-            0.70,  # 1:  spacer
+            1.00,  # 1:  spacer (keys of A to C, titles of D to F)
             0.90,  # 2:  D | E       — TNBC
-            0.75,  # 3:  section spacer
+            0.80,  # 3:  section spacer
             1.15,  # 4:  F | G | H
-            0.65,  # 5:  spacer
+            0.85,  # 5:  spacer (forest keys, next titles)
             1.15,  # 6:  I | J | K
-            0.65,  # 7:  spacer
+            0.95,  # 7:  spacer (forest keys, two-line N title)
             1.25,  # 8:  L | M
         ],
         hspace=0.0,
@@ -3654,6 +3654,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     ax_e.tick_params(axis='y', labelsize=4.5)
 
     tnbc_abundance_did(ax_f_abund, data_tnbc)
+    ax_f_abund.set_title("Cell-Type Abundance DiD: TNBC")
     ax_f_abund.tick_params(axis='both', labelsize=4.0)
     if ax_f_abund.get_xlabel():
         ax_f_abund.xaxis.label.set_fontsize(4.5)
@@ -3766,13 +3767,12 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
     ax_l.text(_x2, _y2, "M", transform=ax_l.transAxes,
               fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
     # N's pathway names and title reach far left of its narrow heatmap, so the letter is
-    # anchored to the leftmost of them and kept above the title.
+    # anchored to the leftmost of them, level with the top of the title.
     fig_c.canvas.draw()
     _r = fig_c.canvas.get_renderer()
     _n_left = min([t.get_window_extent(_r).x0 for t in ax_m.get_yticklabels() if t.get_text()]
                   + [ax_m.title.get_window_extent(_r).x0])
-    _n_top = max(ax_l.transAxes.transform((0, _y2))[1],
-                 ax_m.title.get_window_extent(_r).y1 + (1 + _lbl_fs) * fig_c.dpi / 72)
+    _n_top = ax_m.title.get_window_extent(_r).y1
     _n_x, _n_y = fig_c.transFigure.inverted().transform((_n_left, _n_top))
     fig_c.text(_n_x, _n_y, "N", fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
 

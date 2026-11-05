@@ -356,7 +356,7 @@ If ``standardize=True`` (default), ``beta_DiD`` is in standard deviation units (
 
 Positive beta_DiD = feature increased more (or decreased less) in treated vs. control.
 
-For standardized effect sizes (Cohen's d or Hedge's g), use ``add_effect_sizes_to_did()``:
+For standardized effect sizes (Cohen's d or Hedges' g), use ``add_effect_sizes_to_did()``:
 
 .. code-block:: python
 

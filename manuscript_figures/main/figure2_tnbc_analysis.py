@@ -718,7 +718,7 @@ def _panel_j(ax: plt.Axes, data: dict) -> None:
     despine(ax)
 
 
-# ── Panel H: Cohen's d / Hedge's g ───────────────────────────────────────
+# ── Panel H: Cohen's d / Hedges' g ───────────────────────────────────────
 
 def _panel_h(ax: plt.Axes, data: dict) -> None:
     delta    = data["delta"]
@@ -730,7 +730,7 @@ def _panel_h(ax: plt.Axes, data: dict) -> None:
     for col in sig_cols:
         x = delta.loc[delta[arm] == DESIGN.arm_treated, col].dropna().values
         y = delta.loc[delta[arm] == DESIGN.arm_control, col].dropna().values
-        d = cohens_d_from_did(x, y)   # Hedge's g via exact gamma correction
+        d = cohens_d_from_did(x, y)   # Hedges' g via exact gamma correction
         records.append({"feature": col, "display": sig_display(col), "d": d})
 
     df     = pd.DataFrame(records).dropna(subset=["d"]).sort_values("d")
@@ -745,7 +745,7 @@ def _panel_h(ax: plt.Axes, data: dict) -> None:
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["display"].values, fontsize=4)
     ax.set_xlabel(
-        f"Hedge's g ({DESIGN.arm_treated} - {DESIGN.arm_control})",
+        f"Hedges' g ({DESIGN.arm_treated} - {DESIGN.arm_control})",
         fontsize=9,
     )
     ax.set_title("Effect Size of Arm Separation", fontsize=11,
