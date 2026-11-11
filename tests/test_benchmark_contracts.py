@@ -676,26 +676,35 @@ def test_benchmark_refuses_to_run_from_unfrozen_source():
     assert "SystemExit" in seg, "a source mismatch does not stop the run"
 
 
-def test_source_tree_hash_is_deterministic_and_sensitive():
-    """It must be stable across calls and change when any source file changes."""
-    from sctrial.benchmark.manifest import source_tree_sha256
+def test_source_tree_hash_is_deterministic_and_sensitive(tmp_path):
+    """It must be stable across calls and change when any source file changes.
+
+    The change is made to a copy of the hashed tree, never to the checkout, so an
+    interrupted run cannot leave the package source modified.
+    """
+    import shutil
+
+    from sctrial.benchmark.manifest import SOURCE_TREE_PATHS, source_tree_sha256
 
     a = source_tree_sha256()
     assert a == source_tree_sha256(), "hash is not deterministic"
 
-    target = (
-        Path(__file__).resolve().parent.parent
-        / "src" / "sctrial" / "benchmark" / "gates.py"
+    repo = Path(__file__).resolve().parent.parent
+    for rel in SOURCE_TREE_PATHS:
+        src = repo / rel
+        if src.is_dir():
+            shutil.copytree(src, tmp_path / rel,
+                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"))
+        elif src.is_file():
+            shutil.copy2(src, tmp_path / rel)
+    assert source_tree_sha256(tmp_path) == a, "a faithful copy of the tree hashes differently"
+
+    target = tmp_path / "src" / "sctrial" / "benchmark" / "gates.py"
+    target.write_text(target.read_text(encoding="utf-8") + "\n# a single added comment\n",
+                      encoding="utf-8")
+    assert source_tree_sha256(tmp_path) != a, (
+        "a source change did not alter the hash; the guard would not fire"
     )
-    original = target.read_text(encoding="utf-8")
-    try:
-        target.write_text(original + "\n# a single added comment\n", encoding="utf-8")
-        assert source_tree_sha256() != a, (
-            "a source change did not alter the hash; the guard would not fire"
-        )
-    finally:
-        target.write_text(original, encoding="utf-8")
-    assert source_tree_sha256() == a, "hash did not return to its original value"
 
 
 # ---------------------------------------------------------------------------
