@@ -6,7 +6,7 @@ on:
 jobs:
   build-n-publish:
     name: Build and publish to TestPyPI
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       id-token: write  # Mandatory for Trusted Publishing
       contents: read   # Mandatory for actions/checkout in organization repos
