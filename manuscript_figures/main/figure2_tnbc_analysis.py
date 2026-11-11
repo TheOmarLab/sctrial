@@ -320,13 +320,10 @@ def _panel_c(ax: plt.Axes, data: dict) -> None:
     rp = data["res_part"].set_index("feature")
     common = rc.index.intersection(rp.index)
 
-    # FIX v1 Issue 5: use p_DiD_perm for participant-level bars
-    perm_p = rp["p_DiD_perm"] if "p_DiD_perm" in rp.columns else rp["p_DiD"]
-
     df = pd.DataFrame({
         "feature":     common,
         "nlog10_cell": -np.log10(rc.loc[common, "p_DiD"].clip(lower=1e-300).values),
-        "nlog10_part": -np.log10(perm_p.loc[common].clip(lower=1e-300).values),
+        "nlog10_part": -np.log10(rp.loc[common, "p_DiD"].clip(lower=1e-300).values),
         "display":     [sig_display(f) for f in common],
     }).sort_values("nlog10_cell", ascending=True).reset_index(drop=True)
 
@@ -356,11 +353,7 @@ def _panel_c(ax: plt.Axes, data: dict) -> None:
 
 # ── Panel D: Forest plot ──────────────────────────────────────────────────
 def _panel_d(ax: plt.Axes, data: dict) -> None:
-    df = data["res_part"].copy()
-
-    rank_p = df["p_DiD_perm"].fillna(df["p_DiD"]) if "p_DiD_perm" in df.columns else df["p_DiD"]
-    df = df.assign(_rank_p=rank_p).sort_values("beta_DiD").drop(columns="_rank_p")
-    df = df.reset_index(drop=True)
+    df = data["res_part"].sort_values("beta_DiD").reset_index(drop=True)
     y_pos = np.arange(len(df))
 
     # Key CI values by feature name after sorting to guarantee alignment
@@ -434,13 +427,8 @@ def _panel_e(
     adata    = data["adata"]
     res_part = data["res_part"]
 
-    # FIX v1 Issue 5: rank by permutation p-value with fallback
-    if "p_DiD_perm" in res_part.columns:
-        rank_p = res_part["p_DiD_perm"].fillna(res_part["p_DiD"])
-    else:
-        rank_p = res_part["p_DiD"]
     top = (
-        res_part.assign(_rank_p=rank_p)
+        res_part.assign(_rank_p=res_part["p_DiD"])
         .sort_values("_rank_p")
         .head(n_sigs)
         .drop(columns="_rank_p")
@@ -487,10 +475,7 @@ def _panel_e(
         ax.set_xlim(-0.35, 1.35)
         ax.tick_params(axis="y", labelsize=5)
 
-        # FIX v1 Issue 5: use permutation p-value for title
-        p_val = row.get("p_DiD_perm", np.nan)
-        if pd.isna(p_val):
-            p_val = row["p_DiD"]
+        p_val = row["p_DiD"]
         p_str = f"p = {p_val:.3f}" if p_val >= 0.001 else f"p = {p_val:.1e}"
         ax.set_title(f"{sig_display(sig_col)}\n{p_str}",
                      fontsize=9, fontweight="bold", pad=5)
@@ -1176,7 +1161,7 @@ def generate() -> None:
             ("panel_B_beta_comparison",          _panel_b,  (9,  7)),
             ("panel_C_pvalue_inflation",         _panel_c,  (9,  7)),
             ("panel_D_forest",                   _panel_d,  (10, 7)),
-            ("panel_H_cohens_d",                 _panel_h,  (8,  6)),
+            ("panel_H_hedges_g",                 _panel_h,  (8,  6)),
             ("panel_I_response_did_forest",      _panel_i,  (10, 7)),
             ("panel_G_delta_by_arm_response",    _panel_g,  (10, 8)),
             ("panel_J_mean_delta_by_arm",        _panel_j,  (10, 7)),

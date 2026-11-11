@@ -821,7 +821,9 @@ def table4_permutation_results(
     # ── Stephenson (cross-sectional: permute Severe/Mild labels) ────
     # The observed statistic and every null replicate are the same estimand: the
     # standardised between-arm OLS beta on participant-level means in the DFO_8-14
-    # bin (Figure 5, Supp Tables 2-3). Each replicate reshuffles severity across the
+    # bin of the log1p_cpm layer (the bin and layer of Supp Tables 2-3). This beta is
+    # not the Hedges' g that Supp Table 2 reports for COVID-19, so the two tables differ
+    # slightly for this dataset. Each replicate reshuffles severity across the
     # participants sampled in that bin.
     if _selected("COVID-19", datasets):
         try:
