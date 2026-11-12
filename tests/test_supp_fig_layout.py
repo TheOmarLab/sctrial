@@ -140,12 +140,42 @@ def test_figure3_bootstrap_labels_are_reproducible(load_figure_module):
     def layout(global_seed):
         np.random.seed(global_seed)  # whatever state the caller left
         fig, ax = plt.subplots(figsize=(4, 3))
-        fig3._panel_a_single(ax, {"df_boot": df}, title="t", dataset="melanoma")
-        out = [t.get_position() for t in ax.texts]
+        pts = fig3._panel_a_single(ax, {"df_boot": df}, title="t", dataset="melanoma")
+        fig3._label_panel_a(ax, pts)
+        out = [(t.get_text(), t.get_position()) for t in ax.texts]
         plt.close(fig)
         return out
 
-    assert layout(1) == layout(2)
+    first = layout(1)
+    assert first == layout(2)
+    assert first  # signatures were named
+
+
+def test_figure3_forest_rows_grouped_and_clear(load_figure_module):
+    fig3 = load_figure_module("main/figure3_robustness_benchmarking")
+    import manuscript_figures._shared as sh
+
+    sigs = ["Cytotoxic T Cell Activity", "T Cell Exhaustion", "Inflammatory Response",
+            "Type I Interferon", "T Cell Activation"]
+    rng = np.random.default_rng(3)
+    rows = []
+    for ds, n in (("TNBC", 12), ("Sade-Feldman", 11), ("Vaccine", 6)):
+        for s in sigs:
+            d = float(rng.normal(0, 0.8))
+            rows.append({"dataset": ds, "signature": s, "d": d, "d_lower": d - 1,
+                         "d_upper": d + 1, "n_participants": n})
+    data = {"scale_data": {"effect_df": pd.DataFrame(rows)}}
+    fig, ax = plt.subplots(figsize=(4, 4))
+    fig3._panel_e_cross_dataset(ax, data)
+    fig.tight_layout()
+    labels = [t.get_text() for t in ax.get_yticklabels()]
+    assert len(labels) == 15 and "TNBC" not in labels  # no header rows
+    texts = [t.get_text() for t in ax.texts]
+    assert "TNBC\nn = 12" in texts and "Melanoma\nn = 11" in texts  # one group label each
+    assert sum(t.startswith(("+", "-")) for t in texts) == 15  # one value per row
+    problems = sh.layout_problems(fig)
+    assert problems["text overlaps"] == []
+    plt.close(fig)
 
 
 _NEBULA_LOG = """\
