@@ -49,6 +49,7 @@ from .._shared import (
     harmonize_response,
     key_below_axes,
     letter_at_panel_corner,
+    output_dpi,
     report_layout_problems,
     save_panel,
 )
@@ -702,7 +703,8 @@ def _build_composite(data: dict[str, dict], tnbc_name: str, mel_name: str,
     rows_mm = [40.0, 23.0, 40.0, 23.0, 38.0, 26.0, 38.0]
     top_mm, bottom_mm = 7.0, 24.0
     height_mm = top_mm + sum(rows_mm) + bottom_mm
-    fig_c = plt.figure(figsize=(180 * _mm, height_mm * _mm))
+    # Laid out at the resolution it is written at, so measured placements hold in the file.
+    fig_c = plt.figure(figsize=(180 * _mm, height_mm * _mm), dpi=output_dpi())
     outer = fig_c.add_gridspec(len(rows_mm), 1, height_ratios=rows_mm, hspace=0.0,
                                left=0.07, right=0.97,
                                top=1 - top_mm / height_mm, bottom=bottom_mm / height_mm)

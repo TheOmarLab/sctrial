@@ -186,3 +186,18 @@ def test_nebula_hierarchy_annotations_do_not_overlap(load_figure_module, tmp_pat
     problems = sh.layout_problems(fig)
     assert problems["text overlaps"] == [] and problems["outside canvas"] == []
     plt.close(fig)
+
+
+@pytest.mark.parametrize("scale", [1.0, 0.35])
+def test_size_key_matches_dot_areas(sf2, scale):
+    fig, ax = plt.subplots(figsize=(3, 3))
+    sf2._size_key(ax, fontsize=5, title_fontsize=6, scale=scale)
+    sizes = [h.get_markersize() for h in ax.get_legend().legend_handles]
+    # a dot for a fraction f has area f * 200 * scale pt^2, i.e. diameter sqrt of that
+    assert sizes == pytest.approx([np.sqrt(f * 200 * scale) for f in (0.25, 0.5, 0.75)])
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    marks = [h.get_window_extent(r) for h in ax.get_legend().legend_handles]
+    for upper, lower in zip(marks, marks[1:]):  # rows far enough apart that circles do not touch
+        assert upper.y0 - lower.y1 >= 0
+    plt.close(fig)

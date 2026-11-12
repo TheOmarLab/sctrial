@@ -110,6 +110,17 @@ def apply_style():
         "ps.fonttype": 42,
     })
 
+def output_dpi() -> float:
+    """The resolution figures are written at (``savefig.dpi``; "figure" means figure.dpi).
+
+    Composites that place text from measurements are created at this resolution, so the
+    measured layout is the layout in the file: text extents measured on a coarser canvas
+    differ from the written ones by glyph-width rounding.
+    """
+    dpi = plt.rcParams["savefig.dpi"]
+    return float(plt.rcParams["figure.dpi"] if dpi == "figure" else dpi)
+
+
 def despine(ax):
     """Remove top and right spines."""
     ax.spines["top"].set_visible(False)

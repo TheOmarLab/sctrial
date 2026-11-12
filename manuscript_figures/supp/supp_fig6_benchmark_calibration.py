@@ -60,6 +60,7 @@ from .._shared import (
     apply_style,
     despine,
     letter_left_of_band,
+    output_dpi,
     report_layout_problems,
     save_panel,
 )
@@ -252,7 +253,8 @@ _DGH_WIDTHS = [1.4, 1.0, 1.0]
 def _composite_cells():
     """The 180 x 233 mm composite figure and its named row cells."""
     _mm = 1.0 / 25.4
-    fig = plt.figure(figsize=(180 * _mm, 233 * _mm))
+    # Laid out at the resolution it is written at, so measured placements hold in the file.
+    fig = plt.figure(figsize=(180 * _mm, 233 * _mm), dpi=output_dpi())
     outer = fig.add_gridspec(len(_COMPOSITE_LAYOUT), 1,
                              height_ratios=[h for _, h in _COMPOSITE_LAYOUT],
                              left=0.095, right=0.95, top=0.975, bottom=0.05, hspace=0.0)

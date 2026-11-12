@@ -44,6 +44,7 @@ from .._shared import (
     harmonize_response,
     key_below_axes,
     letter_at_panel_corner,
+    output_dpi,
     report_layout_problems,
     save_panel,
 )
@@ -419,14 +420,30 @@ def _panel_marker_dotplot(fig, ax, dot):
     ax.set_ylim(-0.5, len(ct_used) - 0.5)
     ax.set_title("Canonical Marker Expression", fontweight="bold")
 
-    for frac_val in [0.25, 0.5, 0.75]:
-        ax.scatter([], [], s=frac_val * 200, c="grey", alpha=0.5,
-                   edgecolors="grey", label=f"{frac_val:.0%}")
-    ax.legend(title="Frac. expr.", fontsize=5, title_fontsize=6,
-              loc="lower left", bbox_to_anchor=(1.02, 0.0), frameon=True,
-              handletextpad=0.1)
-
+    _size_key(ax, fontsize=5, title_fontsize=6, scale=1.0)
     despine(ax)
+
+
+def _size_key(ax, *, fontsize: float, title_fontsize: float, scale: float) -> None:
+    """Fraction-expressing size key beside the axes, below the colour bar.
+
+    Marker areas are ``frac * 200 * scale`` (pt^2), as the dots. Rows are spaced by the
+    largest marker's diameter so the reference circles do not overlap each other or the
+    frame.
+    """
+    import matplotlib.lines as mlines
+
+    fracs = (0.25, 0.5, 0.75)
+    diam = float(np.sqrt(max(fracs) * 200 * scale))  # pt
+    handles = [mlines.Line2D([], [], linestyle="none", marker="o",
+                             markersize=float(np.sqrt(f * 200 * scale)), color="grey",
+                             alpha=0.5, markeredgecolor="grey", label=f"{f:.0%}")
+               for f in fracs]
+    ax.legend(handles=handles, title="Frac. expr.", fontsize=fontsize,
+              title_fontsize=title_fontsize, loc="lower left", bbox_to_anchor=(1.02, 0.0),
+              frameon=True, handletextpad=0.4, borderpad=0.6,
+              handlelength=max(1.0, diam / fontsize), handleheight=max(0.7, diam / fontsize),
+              labelspacing=0.4)
 
 
 # ── Panel D: Silhouette scores ────────────────────────────────────
@@ -983,6 +1000,7 @@ _SMALL_RC = {
     "legend.title_fontsize": 2.5,
 }
 _MAX_FONT = 5.5
+_COMPOSITE_DOT_SCALE = 0.35  # panel C marker areas in the composite, dots and size key alike
 
 
 def _cap_fontsize(fig_obj, maximum):
@@ -1062,7 +1080,8 @@ def _build_composite(prep: dict):
     rows_mm = [30.0, 17.0, 30.0, 12.0, 40.0, 17.0, 38.0, 16.0, 42.0]
     top_mm, bottom_mm = 6.0, 3.0
     height_mm = top_mm + sum(rows_mm) + bottom_mm
-    fig_c = plt.figure(figsize=(180 * _mm, height_mm * _mm))
+    # Laid out at the resolution it is written at, so measured placements hold in the file.
+    fig_c = plt.figure(figsize=(180 * _mm, height_mm * _mm), dpi=output_dpi())
     outer = fig_c.add_gridspec(len(rows_mm), 1, height_ratios=rows_mm, hspace=0.0,
                                left=0.06, right=0.98,
                                top=1 - top_mm / height_mm, bottom=bottom_mm / height_mm)
@@ -1101,16 +1120,11 @@ def _build_composite(prep: dict):
     _panel_marker_dotplot(fig_c, ax_c, prep["dotplot"])
     ax_c.tick_params(axis="x", labelsize=4)
     ax_c.tick_params(axis="y", labelsize=4)
+    # Dots shrink to fit the composite cell; the size key uses the same scale.
     for _coll in ax_c.collections:
-        _coll.set_sizes(_coll.get_sizes() * 0.35)
-    _leg_c = ax_c.get_legend()
-    if _leg_c:
-        for _lh in _leg_c.legend_handles:
-            if hasattr(_lh, "set_sizes"):
-                _lh.set_sizes([s * 0.1 for s in _lh.get_sizes()])
-        for _txt in _leg_c.get_texts():
-            _txt.set_fontsize(4.5)
-        _leg_c.get_title().set_fontsize(4.5)
+        _coll.set_sizes(_coll.get_sizes() * _COMPOSITE_DOT_SCALE)
+    if ax_c.get_legend():
+        _size_key(ax_c, fontsize=4.5, title_fontsize=4.5, scale=_COMPOSITE_DOT_SCALE)
 
     gs_d = gs_cd[1].subgridspec(2, 1, hspace=0.80)
     ax_d1 = fig_c.add_subplot(gs_d[0])
