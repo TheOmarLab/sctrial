@@ -925,16 +925,23 @@ def _draw_alluvial(ax, flow: pd.DataFrame, right_label: str, *, fontsize: float,
             fontsize=header_fontsize, fontweight="bold", clip_on=False)
 
 
+def _alluvial_standalone(name: str, item: dict):
+    """Standalone panel G figure for one dataset (title above the column headers)."""
+    fig = plt.figure(figsize=(4.2, 4.0))
+    ax = fig.add_axes([0.3, 0.04, 0.4, 0.80])
+    _draw_alluvial(ax, item["flow"], item["right_label"], fontsize=8)
+    ax.set_title(name, fontweight="bold", fontsize=10, pad=26)
+    return fig
+
+
 def _save_alluvial_panels(alluvial: dict) -> None:
     """Standalone PNG and interactive HTML of panel G for each dataset."""
     panel_dir = SUPP_OUTPUT / f"{FIGURE_NAME}_panels"
     panel_dir.mkdir(parents=True, exist_ok=True)
     for name, item in alluvial.items():
         safe_name = name.replace(" ", "_").replace("-", "_")
-        fig = plt.figure(figsize=(4.2, 4.0))
-        ax = fig.add_axes([0.3, 0.04, 0.4, 0.84])
-        _draw_alluvial(ax, item["flow"], item["right_label"], fontsize=8)
-        ax.set_title(name, fontweight="bold", fontsize=10, pad=16)
+        fig = _alluvial_standalone(name, item)
+        report_layout_problems(fig, f"panel_G_{safe_name}")
         save_panel(fig, f"panel_G_{safe_name}", FIGURE_NAME, SUPP_OUTPUT)
         try:
             _write_alluvial_html(panel_dir / f"panel_G_{safe_name}.html",

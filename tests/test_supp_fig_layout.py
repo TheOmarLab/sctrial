@@ -63,6 +63,19 @@ def test_alluvial_labels_never_overlap(sf2):
     plt.close(fig)
 
 
+def test_standalone_alluvial_title_clears_headers(sf2):
+    import manuscript_figures._shared as sh
+
+    fig = sf2._alluvial_standalone("TNBC", {"flow": _flows(), "right_label": "Arm"})
+    problems = sh.layout_problems(fig)
+    assert problems["text overlaps"] == [] and problems["outside canvas"] == []
+    ax = fig.axes[0]
+    r = fig.canvas.get_renderer()
+    headers = max(t.get_window_extent(r).y1 for t in ax.texts if t.get_text() in ("Cell type", "Arm"))
+    assert (ax.title.get_window_extent(r).y0 - headers) * 72 / fig.dpi >= 4  # a visible gap, pt
+    plt.close(fig)
+
+
 def test_spread_labels_keeps_gap_and_bounds(sf2):
     y = np.array([0.10, 0.11, 0.12, 0.50, 0.98, 0.99])
     out = sf2._spread_labels(y, 0.05, 0.02, 0.98)
