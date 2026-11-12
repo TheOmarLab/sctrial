@@ -38,7 +38,8 @@ Version bump to stable release. No functional changes from 0.3.4.
 - NEBULA runner: filter zero-count cells before computing log library-size offset; set `ncore=1` to prevent PSOCK port conflicts; robust R error capture and crash detection
 - COVID loader: CITE-seq antibody-capture features (~49% of aggregate counts) were sitting in the gene matrix, confounding library-size normalisation; split to `obsm["protein"]`
 - Melanoma: sample filter silently dropped 19% of QC-passing cells (3,108 of 16,291) and 7 of 32 patients; per-cell annotations now sourced from the published labels; RECIST arm normalised to leading code
-- Vaccine and AML loaders: data-integrity fixes from 4-team audit
+- Vaccine loader: 45 CITE-seq antibody-capture features moved from the gene matrix to `obsm["protein"]`, so they no longer enter the library-size denominator
+- AML loader: hemoglobin genes kept in bone marrow, where they define the erythroid populations; the deposited MUTZ-3 and OCI-AML3 cell lines excluded from the healthy-donor reference
 - Benchmark: signal-count truncation, frozen design leaking into scenarios, split jobs overwriting combined results
 
 ### Improved
@@ -64,7 +65,8 @@ Version bump to stable release. No functional changes from 0.3.4.
 - NEBULA runner: filter zero-count cells before computing log library-size offset; set `ncore=1` to prevent PSOCK port conflicts; robust R error capture and crash detection
 - COVID loader: CITE-seq antibody-capture features (~49% of aggregate counts) were sitting in the gene matrix, confounding library-size normalisation; split to `obsm["protein"]`
 - Melanoma: sample filter silently dropped 19% of QC-passing cells (3,108 of 16,291) and 7 of 32 patients; per-cell annotations now sourced from the published labels; RECIST arm normalised to leading code
-- Vaccine and AML loaders: data-integrity fixes from 4-team audit
+- Vaccine loader: 45 CITE-seq antibody-capture features moved from the gene matrix to `obsm["protein"]`, so they no longer enter the library-size denominator
+- AML loader: hemoglobin genes kept in bone marrow, where they define the erythroid populations; the deposited MUTZ-3 and OCI-AML3 cell lines excluded from the healthy-donor reference
 - Benchmark: signal-count truncation, frozen design leaking into scenarios, split jobs overwriting combined results
 
 ### Improved
