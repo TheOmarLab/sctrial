@@ -172,15 +172,15 @@ def _panel_nebula_hierarchy(fig, *, ax=None, composite: bool = False):
     ax.tick_params(labelsize=_lbl)
     # Positive control: under NEBULA's own DGP the offset is unbiased and Type I is
     # nominal, so the inflation above is the omitted hierarchy, not a wiring error.
-    # Placed low and right of the rising segment (the curve is above 0.6 wherever
-    # the box is), between the nominal line and the calibrated-sigma label.
+    # The box names the control and gives its two values; what it shows is stated in
+    # the caption. It sits low and right of the rising segment (the curve is above
+    # 0.6 wherever the box is), below the calibrated-sigma label.
     c = parsed["control"]
     if c.get("fpr") is not None and c.get("mean_beta") is not None:
         mb = c["mean_beta"]
         mb_str = f"{mb:+.3f}" if abs(mb) >= 5e-4 else "0.000"
         ax.annotate(
-            f"Model-compatible control\n(NEBULA's own DGP):\nType I = {c['fpr']:.3f}, "
-            fr"mean $\beta$ = {mb_str}""\n→ offset validated",
+            f"Model-compatible control\nType I = {c['fpr']:.3f}, " fr"mean $\beta$ = {mb_str}",
             (0.30, 0.09), xycoords="axes fraction", fontsize=_ann, va="bottom", ha="left",
             bbox=dict(boxstyle="round,pad=0.35", fc="white", ec="#cccccc", alpha=0.95))
     despine(ax)
@@ -225,6 +225,31 @@ def _cell_ink(fig, renderer, cell, *, reach_left_mm: float = 16.0, reach_up_mm: 
     return min(lefts), max(tops)
 
 
+# Composite rows (name, height ratio); "s" rows are spacers holding tick labels, keys
+# and the next row's titles.
+_COMPOSITE_LAYOUT = [
+    ("AB",  0.82), ("s", 0.80),
+    ("DGH", 0.78), ("s", 0.95),
+    ("FG",  1.20), ("s", 0.62),
+    ("HI",  1.25), ("s", 0.70),
+    ("J",   1.20), ("s", 0.95),
+    ("LM",  0.65), ("s", 0.75),
+    ("NO",  0.65),
+]
+_DGH_WIDTHS = [1.4, 1.0, 1.0]
+
+
+def _composite_cells():
+    """The 180 x 230 mm composite figure and its named row cells."""
+    _mm = 1.0 / 25.4
+    fig = plt.figure(figsize=(180 * _mm, 230 * _mm))
+    outer = fig.add_gridspec(len(_COMPOSITE_LAYOUT), 1,
+                             height_ratios=[h for _, h in _COMPOSITE_LAYOUT],
+                             left=0.085, right=0.965, top=0.975, bottom=0.03, hspace=0.0)
+    cell = {name: outer[i] for i, (name, _) in enumerate(_COMPOSITE_LAYOUT) if name != "s"}
+    return fig, cell
+
+
 def _build_composite(bench, core) -> None:
     """Assemble panels A-N of the benchmark artboard, 180 mm wide.
 
@@ -233,22 +258,7 @@ def _build_composite(bench, core) -> None:
     detection; J bias and RMSE; K | L family FPR and TPR; M | N evaluability and
     convergence. Titles, keys and letters are placed from measured text.
     """
-    _mm = 1.0 / 25.4
-    fig = plt.figure(figsize=(180 * _mm, 230 * _mm))
-
-    layout = [
-        ("AB",  0.82), ("s", 0.80),
-        ("DGH", 0.78), ("s", 0.95),
-        ("FG",  1.20), ("s", 0.62),
-        ("HI",  1.25), ("s", 0.70),
-        ("J",   1.20), ("s", 0.95),
-        ("LM",  0.65), ("s", 0.75),
-        ("NO",  0.65),
-    ]
-    hr = [h for _, h in layout]
-    outer = fig.add_gridspec(len(layout), 1, height_ratios=hr,
-                             left=0.085, right=0.965, top=0.975, bottom=0.03, hspace=0.0)
-    cell = {name: outer[i] for i, (name, _) in enumerate(layout) if name != "s"}
+    fig, cell = _composite_cells()
 
     # A | B: mixed-signal FPR (balanced | one-directional)
     sub_ab = cell["AB"].subgridspec(1, 2, wspace=0.22)
@@ -258,7 +268,7 @@ def _build_composite(bench, core) -> None:
                                pct_in_axis_label=True)
 
     # C | D | E: pure-null vs tested-set | NEBULA hierarchy | end-to-end vs tested
-    sub_dgh = cell["DGH"].subgridspec(1, 3, width_ratios=[1.4, 1.0, 1.0], wspace=0.32)
+    sub_dgh = cell["DGH"].subgridspec(1, 3, width_ratios=_DGH_WIDTHS, wspace=0.32)
     _panel_bench_pure_null_fpr(fig, bench, composite=True, gs_parent=sub_dgh[0])
     _panel_nebula_hierarchy(fig, ax=fig.add_subplot(sub_dgh[1]), composite=True)
     _panel_bench_endtoend_vs_tested(fig.add_subplot(sub_dgh[2]), core, composite=True)

@@ -101,3 +101,43 @@ def test_family_tick_labels_wrap_in_composite(load_figure_module):
     bm._family_ticklabels(ax, ["3:7 arm imbalance", "50 cells/PV"], composite=False, fontsize=8)
     assert [t.get_text() for t in ax.get_xticklabels()] == ["3:7 arm imbalance", "50 cells/PV"]
     plt.close(fig)
+
+
+_NEBULA_LOG = """\
+MODEL-COMPATIBLE NULL: DGP matches NEBULA's assumed model exactly
+  mean beta      : -0.0003  (MCSE 0.0003)
+  FPR at 0.05    : 0.0473
+
+SIGMA_U ABLATION: is the participant-by-visit level responsible?
+   sigma_u   mean beta     MCSE  FPR@0.05  FPR MCSE  converged
+     0.000     +0.0002   0.0003    0.0489    0.0025     1.0000
+     0.250     -0.0044   0.0016    0.6837    0.0058     1.0000
+     0.500     -0.0081   0.0034    0.8158    0.0052     1.0000
+     0.768     -0.0154   0.0073    0.8651    0.0037     1.0000
+
+WORKAROUND DIAGNOSTIC: id = participant x visit, participant fixed effects
+  standard (id=participant)              FPR 0.8530 +/- 0.0080   mean beta -0.0261
+  workaround (id=participant x visit)    FPR 0.2245 +/- 0.0109   mean beta -0.0127
+"""
+
+
+@pytest.mark.parametrize("composite", [True, False])
+def test_nebula_hierarchy_annotations_do_not_overlap(load_figure_module, tmp_path, composite):
+    sf6 = load_figure_module("supp/supp_fig6_benchmark_calibration")
+    import manuscript_figures._shared as sh
+
+    (tmp_path / "nebula_hierarchy_diagnostic.log").write_text(_NEBULA_LOG)
+    sf6._DIAG_DIR = tmp_path
+    if composite:  # the panel's own cell in the composite, where the axes are 15 mm tall
+        fig, cell = sf6._composite_cells()
+        ax = fig.add_subplot(cell["DGH"].subgridspec(1, 3, width_ratios=sf6._DGH_WIDTHS,
+                                                     wspace=0.32)[1])
+        sf6._panel_nebula_hierarchy(fig, ax=ax, composite=True)
+    else:
+        fig = plt.figure(figsize=(7, 5))
+        sf6._panel_nebula_hierarchy(fig)
+        ax = fig.axes[0]
+    assert len(ax.texts) == 2  # the calibrated-sigma label and the control box
+    problems = sh.layout_problems(fig)
+    assert problems["text overlaps"] == [] and problems["outside canvas"] == []
+    plt.close(fig)
