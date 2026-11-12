@@ -552,7 +552,7 @@ def _panel_bench_signal_rmse(fig, bench_df: pd.DataFrame, *, composite: bool = F
         ax_bias.set_ylim(-0.03, 0.01)
         ax_bias.yaxis.set_major_locator(MultipleLocator(_bias_step))
         ax_bias.set_title(f"{n_g:,} genes", fontsize=_ttl_fs, fontweight="bold",
-                          color="#1a1a1a", pad=(-7 if composite else 8))
+                          color="#1a1a1a", pad=(2 if composite else 8))
         _style_axis(ax_bias)
         ax_rmse.set_xticks(x_positions)
         ax_rmse.set_xticklabels([f"{f}%" for f in _SIGNAL_FRACTIONS], fontsize=_axis_fs)
@@ -574,15 +574,22 @@ def _panel_bench_signal_rmse(fig, bench_df: pd.DataFrame, *, composite: bool = F
     ]
     _leg_fs = 5.2 if composite else 10
     if composite:
-        _anchor = bias_axes[0]
-        _cx = 2.0
-        _anchor.text(_cx, 1.25, "Effect-size estimation accuracy", transform=_anchor.transAxes,
-                     ha="center", va="bottom", fontsize=5.9, fontweight="bold")
-        _anchor.legend(handles=legend_handles, loc="upper center", ncol=len(method_order),
-                       bbox_to_anchor=(_cx, -0.15), bbox_transform=_anchor.transAxes,
-                       frameon=True, framealpha=0.93, edgecolor="#cccccc", fontsize=_leg_fs,
-                       handlelength=0.85, handleheight=0.42, handletextpad=0.35,
-                       columnspacing=0.55, borderpad=0.35)
+        # Title just above the column titles and the key just below the RMSE row's
+        # x labels, both measured, so neither sits on a column title or on data.
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        inv = fig.transFigure.inverted()
+        x_mid = 0.5 * (bias_axes[0].get_position().x0 + bias_axes[-1].get_position().x1)
+        title_top = max(a.title.get_window_extent(renderer).y1 for a in bias_axes)
+        y_title = inv.transform((0, title_top + 2.0 * fig.dpi / 72))[1]
+        fig.text(x_mid, y_title, "Effect-size estimation accuracy", ha="center",
+                 va="bottom", fontsize=5.9, fontweight="bold")
+        rmse_bottom = min(a.get_tightbbox(renderer).y0 for a in rmse_axes)
+        y_key = inv.transform((0, rmse_bottom - 2.0 * fig.dpi / 72))[1]
+        fig.legend(handles=legend_handles, loc="upper center", ncol=len(method_order),
+                   bbox_to_anchor=(x_mid, y_key), frameon=True, framealpha=0.93,
+                   edgecolor="#cccccc", fontsize=_leg_fs, handlelength=0.85,
+                   handleheight=0.42, handletextpad=0.35, columnspacing=0.55, borderpad=0.35)
     else:
         fig.suptitle("Estimator bias and RMSE (per method's own oracle)",
                      fontsize=13, fontweight="bold", y=0.998)
@@ -811,7 +818,7 @@ def _panel_bench_qq_heatmap(fig, bench_df, *, composite: bool = False, gs_parent
                     txt = "n/a"
                     fc = "#777777"
                 else:
-                    txt = f"{val * 100:.1f}%"
+                    txt = f"{val * 100:.1f}" if composite else f"{val * 100:.1f}%"
                     # White text only on the dark (high-%) cells.
                     fc = "white" if val > 0.35 else "#222222"
                 ax.text(ci, ri, txt, ha="center", va="center",
@@ -1209,13 +1216,15 @@ def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
                                 common_xlabel_composite=False,
                                 common_xlabel_pad=0.005,
                                 ytick_main=None, ytick_strip=None,
-                                marker_scale=1.0):
+                                marker_scale=1.0, pct_in_axis_label=False):
     """Shared 3D/3E body: four tested-set-size facets, x = signal fraction,
     calibrated methods in the main region and NEBULA in an upper strip.
 
     `rate` has columns scenario, method, mean, mcse plus n_genes and signal_pct.
     `panel_sizes` restricts the facets shown (the lean main figure shows one
     representative tested-set size; the full grid lives in the supplement).
+    `pct_in_axis_label` writes the ticks as bare numbers and the axis label as
+    "Signal fraction (%)", for facets too narrow for "10%" and "20%" side by side.
     """
     _ttl = 4.6 if composite else 11
     _ax = 5.2 if composite else 10
@@ -1223,6 +1232,7 @@ def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
     sizes = panel_sizes if panel_sizes is not None else _PANEL_SIZES
     fracs = _SIGNAL_FRACTIONS
     xpos = {f: i for i, f in enumerate(fracs)}
+    xlabel = "Signal fraction (%)" if pct_in_axis_label else "Signal fraction"
     # Wider per-method x-offsets so the calibrated methods (all near the nominal
     # band) stay separable; at 0.03 limma-voom's marker sat under sctrial's.
     off = {"dreamlet": 0.11, "limma_voom": 0.055, "sctrial_did": -0.055,
@@ -1257,13 +1267,13 @@ def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
         if nominal:
             ax_main.axhline(0.05, color="#555555", linestyle="--", linewidth=1.0, alpha=0.8)
         ax_main.set_xticks(range(len(fracs)))
-        ax_main.set_xticklabels([f"{f}%" for f in fracs])
+        ax_main.set_xticklabels([f"{f}" if pct_in_axis_label else f"{f}%" for f in fracs])
         ax_main.set_xlim(-0.5, len(fracs) - 0.5)
         ax_strip.set_title(f"{ng:,} tested genes", fontsize=_ttl, fontweight="bold",
                            pad=(1 if composite else 3),
                            y=(title_y_composite if composite else 1.0))
         if not (composite and common_xlabel_composite):
-            ax_main.set_xlabel("Signal fraction", fontsize=_ax,
+            ax_main.set_xlabel(xlabel, fontsize=_ax,
                                labelpad=(1 if composite else 4))
         for a in (ax_main, ax_strip):
             a.tick_params(labelsize=_tk)
@@ -1280,7 +1290,7 @@ def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
     if composite and common_xlabel_composite and gs_parent is not None:
         pos = gs_parent.get_position(fig)
         fig.text(0.5 * (pos.x0 + pos.x1), pos.y0 - common_xlabel_pad,
-                 "Signal fraction", fontsize=_ax, ha="center", va="top")
+                 xlabel, fontsize=_ax, ha="center", va="top")
     if not composite:
         if title:
             fig.suptitle(title, fontsize=13, fontweight="bold", y=1.0)
@@ -1295,7 +1305,8 @@ def _faceted_broken_by_fraction(fig, rate, *, ylabel, main_ylim, strip_ylim,
 
 
 def _panel_bench_mixed_fpr(fig, bench_df, *, composite: bool = False, panel_sizes=None,
-                           gs_parent=None, architecture="balanced"):
+                           gs_parent=None, architecture="balanced", title_y_composite=0.75,
+                           ytick_strip=None, pct_in_axis_label=False):
     """Mixed-signal null-gene FPR, four tested-set-size facets, for one signal
     architecture ('balanced' or 'one_directional')."""
     _arch_lab = {"balanced": "Balanced signal architecture",
@@ -1312,8 +1323,9 @@ def _panel_bench_mixed_fpr(fig, bench_df, *, composite: bool = False, panel_size
         fig, rate, ylabel="Null-gene FPR\n(p < 0.05)",
         main_ylim=(0.025, 0.075), strip_ylim=(0.68, 0.90), arch=_arch_lab,
         title="Mixed-signal null-gene false-positive rate", composite=composite,
-        panel_sizes=panel_sizes, gs_parent=gs_parent, title_y_composite=0.75,
-        common_xlabel_composite=True, common_xlabel_pad=0.018, marker_scale=0.7)
+        panel_sizes=panel_sizes, gs_parent=gs_parent, title_y_composite=title_y_composite,
+        common_xlabel_composite=True, common_xlabel_pad=0.018, marker_scale=0.7,
+        ytick_strip=ytick_strip, pct_in_axis_label=pct_in_axis_label)
 
 
 def _panel_bench_bh_fdr(fig, bench_df, *, composite: bool = False, panel_sizes=None,
@@ -1454,6 +1466,16 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=
                    columnspacing=1.1, handlelength=1.6)
 
 
+def _family_ticklabels(ax, labels, *, composite: bool, fontsize: float) -> None:
+    """Robustness-family tick labels: two unrotated lines in a composite cell, where
+    rotated single-line labels of neighbouring families overlap; rotated otherwise."""
+    if composite:
+        ax.set_xticklabels(["\n".join(lab.rsplit(" ", 1)) for lab in labels],
+                           rotation=0, ha="center", fontsize=fontsize, linespacing=1.0)
+    else:
+        ax.set_xticklabels(labels, rotation=20, ha="right", fontsize=fontsize)
+
+
 def _panel_bench_scenario_families(ax, core_df, *, composite: bool = False):
     """Null-gene FPR across robustness families, per method.
 
@@ -1504,8 +1526,8 @@ def _panel_bench_scenario_families(ax, core_df, *, composite: bool = False):
     _add_nominal_band(ax)
     ax.set_ylim(0, ymax)
     ax.set_xticks(x)
-    ax.set_xticklabels([lab for _, lab in fam_order],
-                       rotation=20, ha="right", fontsize=(3.8 if composite else 8))
+    _family_ticklabels(ax, [lab for _, lab in fam_order], composite=composite,
+                       fontsize=(3.8 if composite else 8))
     ax.set_ylabel("Null-gene FPR\n(p < 0.05)", fontsize=(5.0 if composite else 10))
     ax.tick_params(axis="y", labelsize=(4.6 if composite else 8))
     if not composite:
@@ -1523,7 +1545,7 @@ def _panel_bench_scenario_families(ax, core_df, *, composite: bool = False):
 def _panel_bench_discovery_sensitivity(fig, bench_df, *, composite=False,
                                        gs_parent=None, mode="end_to_end",
                                        panel_sizes=None, suppress_ylabel=False,
-                                       marker_scale=1.0):
+                                       marker_scale=1.0, title_y_composite=0.80):
     """FDR-controlled discovery sensitivity: BH-controlled end-to-end true-positive
     rate vs signal fraction, one facet per tested-set size (balanced architecture).
 
@@ -1546,7 +1568,7 @@ def _panel_bench_discovery_sensitivity(fig, bench_df, *, composite=False,
         nominal=False, composite=composite, gs_parent=gs_parent,
         panel_sizes=panel_sizes, suppress_ylabel=suppress_ylabel,
         ytick_main=[0.0, 0.1, 0.2, 0.3], ytick_strip=[1.0, 1.2],
-        marker_scale=marker_scale)
+        marker_scale=marker_scale, title_y_composite=title_y_composite)
 
 
 def _panel_bench_quality(ax, core_df, *, kind="evaluability", composite=False):
@@ -1587,8 +1609,7 @@ def _panel_bench_quality(ax, core_df, *, kind="evaluability", composite=False):
     # Focus the y-range on the informative band so the small dips are visible.
     ax.set_ylim(0.80, 1.01)
     ax.set_xticks(x)
-    ax.set_xticklabels([lab for _, lab in fam_order], rotation=20, ha="right",
-                       fontsize=_tk)
+    _family_ticklabels(ax, [lab for _, lab in fam_order], composite=composite, fontsize=_tk)
     # Short y-label in the composite so the rotated label's top does not reach the
     # panel letter at the cell's upper-left (the parenthetical is in the caption).
     if composite:
@@ -1648,7 +1669,7 @@ def _panel_bench_family_tpr(ax, core_df, *, composite=False):
                label=_BENCH_METHOD_LABELS[method], edgecolor="white", linewidth=0.4)
     ax.set_ylim(0, 1.02)
     ax.set_xticks(x)
-    ax.set_xticklabels([lab for _, lab in fams], rotation=20, ha="right", fontsize=_tk)
+    _family_ticklabels(ax, [lab for _, lab in fams], composite=composite, fontsize=_tk)
     ax.set_ylabel("End-to-end\nBH TPR", fontsize=5.2 if composite else _ax)
     ax.set_title("Signal detection across robustness families",
                  fontsize=_ttl, fontweight="bold", pad=(4 if composite else 8))
@@ -1695,8 +1716,12 @@ def _panel_bench_endtoend_vs_tested(ax, core_df, *, composite=False):
                         va="bottom", fontsize=11, color=col, fontweight="bold")
     ax.set_xticks(x)
     # Full canonical labels, matching the evaluability/convergence panels.
-    ax.set_xticklabels([_BENCH_METHOD_LABELS[mm] for mm in order],
-                       rotation=20, ha="right", fontsize=_tk)
+    if composite:
+        ax.set_xticklabels([_BENCH_METHOD_LABELS[mm].replace(" (", "\n(") for mm in order],
+                           rotation=0, ha="center", fontsize=_tk, linespacing=1.0)
+    else:
+        ax.set_xticklabels([_BENCH_METHOD_LABELS[mm] for mm in order],
+                           rotation=20, ha="right", fontsize=_tk)
     # Headroom so the legend (upper-left, over the empty region) and the NEBULA
     # asterisk clear the tallest bars.
     ax.set_ylim(0, 1.14)

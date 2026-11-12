@@ -37,6 +37,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .._benchmark import (
+    _axes_in_cell,
     _bench_legend_below,
     _load_benchmark_data,
     _load_core_benchmark_data,
@@ -53,7 +54,14 @@ from .._benchmark import (
     _panel_bench_signal_rmse,
     _panel_bench_typeI_main,
 )
-from .._shared import MANUSCRIPT_DIR, SUPP_OUTPUT, apply_style, despine, save_panel
+from .._shared import (
+    MANUSCRIPT_DIR,
+    SUPP_OUTPUT,
+    apply_style,
+    despine,
+    report_layout_problems,
+    save_panel,
+)
 
 FIGURE_NAME = "SuppFig6_benchmark_calibration"
 _DIAG_DIR = MANUSCRIPT_DIR / "benchmark" / "validation" / "nebula_diagnostic"
@@ -151,9 +159,10 @@ def _panel_nebula_hierarchy(fig, *, ax=None, composite: bool = False):
     # Mark the calibrated sigma_u (the frozen simulator's value = the largest x).
     su_cal = float(su.max())
     ax.axvline(su_cal, color="#888", linestyle=":", linewidth=0.9, alpha=0.7, zorder=1)
-    ax.annotate(rf"calibrated $\sigma_u$={su_cal:.3f}", (su_cal + 0.015, 0.02),
-                fontsize=(_ann + 1.2 if composite else _ann), ha="left",
-                va="bottom", color="#555", rotation=90)
+    # Horizontal, left of the marker line, in the empty band under the plateau.
+    ax.annotate(f"calibrated\n$\\sigma_u$ = {su_cal:.3f}", (su_cal - 0.015, 0.55),
+                fontsize=(_ann + 1.2 if composite else _ann), ha="right", va="center",
+                color="#555")
     ax.set_ylim(0.0, 1.0)
     ax.set_xlim(-0.03, su_cal + 0.06)
     ax.set_xlabel(r"Participant$\times$visit s.d. $\sigma_u$ (omitted by NEBULA)", fontsize=_lbl)
@@ -163,8 +172,8 @@ def _panel_nebula_hierarchy(fig, *, ax=None, composite: bool = False):
     ax.tick_params(labelsize=_lbl)
     # Positive control: under NEBULA's own DGP the offset is unbiased and Type I is
     # nominal, so the inflation above is the omitted hierarchy, not a wiring error.
-    # Placed in the lower-right empty region (the curve is at ~0.8+ for x>0.3), so
-    # the rising segment never crosses the box.
+    # Placed low and right of the rising segment (the curve is above 0.6 wherever
+    # the box is), between the nominal line and the calibrated-sigma label.
     c = parsed["control"]
     if c.get("fpr") is not None and c.get("mean_beta") is not None:
         mb = c["mean_beta"]
@@ -172,7 +181,7 @@ def _panel_nebula_hierarchy(fig, *, ax=None, composite: bool = False):
         ax.annotate(
             f"Model-compatible control\n(NEBULA's own DGP):\nType I = {c['fpr']:.3f}, "
             fr"mean $\beta$ = {mb_str}""\n→ offset validated",
-            (0.22, 0.30), xycoords="axes fraction", fontsize=_ann, va="center", ha="left",
+            (0.30, 0.09), xycoords="axes fraction", fontsize=_ann, va="bottom", ha="left",
             bbox=dict(boxstyle="round,pad=0.35", fc="white", ec="#cccccc", alpha=0.95))
     despine(ax)
     for spine in ("left", "bottom"):
@@ -182,133 +191,163 @@ def _panel_nebula_hierarchy(fig, *, ax=None, composite: bool = False):
     del prov
 
 
-def _composite(bench, core) -> None:
-    """Assemble the condensed A-O benchmark artboard at 180×215 mm.
+def _cell_ink(fig, renderer, cell, *, reach_left_mm: float = 16.0, reach_up_mm: float = 8.0):
+    """Left edge of a panel's axis text and top of its title, in display pixels.
 
-    Rows merged vs the original: A+B share one row; D+G+H share one row;
-    L+M share one row; N+O share one row. Panel C (pure-null vs participants,
-    identical to Fig3C) is dropped. All renderers are unchanged.
+    The left edge is the leftmost axes frame or y-axis text in the cell, or a figure-level
+    y label beside the cell (within ``reach_left_mm``, inside the cell's height). Titles
+    do not count toward it, so a letter never lands on a wide title. The top is the
+    highest axes text in the cell or a figure-level title starting at most
+    ``reach_up_mm`` above it.
     """
+    pos = cell.get_position(fig)
+    w, h = fig.bbox.width, fig.bbox.height
+    x0p, x1p, y0p, y1p = pos.x0 * w, pos.x1 * w, pos.y0 * h, pos.y1 * h
+    mm = fig.dpi / 25.4
+    lefts, tops = [], []
+    for ax in _axes_in_cell(fig, cell):
+        if not ax.get_visible():
+            continue
+        lefts.append(ax.get_window_extent(renderer).x0)
+        yb = ax.yaxis.get_tightbbox(renderer)
+        if yb is not None:
+            lefts.append(yb.x0)
+        tb = ax.get_tightbbox(renderer)
+        if tb is not None:
+            tops.append(tb.y1)
+    ink_top = max(tops)
+    for text in fig.texts:
+        b = text.get_window_extent(renderer)
+        if b.x1 <= x0p and b.x1 > x0p - reach_left_mm * mm and b.y0 >= y0p and b.y1 <= y1p:
+            lefts.append(b.x0)
+        elif b.x1 > x0p and b.x0 < x1p and ink_top - 1 <= b.y0 <= ink_top + reach_up_mm * mm:
+            tops.append(b.y1)
+    return min(lefts), max(tops)
 
+
+def _build_composite(bench, core) -> None:
+    """Assemble panels A-N of the benchmark artboard, 180 mm wide.
+
+    Rows: A | B mixed-signal FPR; C | D | E pure-null, NEBULA hierarchy, end-to-end vs
+    tested; F | G QQ and calibration heatmaps; H | I discovery sensitivity and marginal
+    detection; J bias and RMSE; K | L family FPR and TPR; M | N evaluability and
+    convergence. Titles, keys and letters are placed from measured text.
+    """
     _mm = 1.0 / 25.4
-    fig = plt.figure(figsize=(180 * _mm, 215 * _mm))
+    fig = plt.figure(figsize=(180 * _mm, 230 * _mm))
 
-    # Rows: top (legend only), AB, DGH, FG (QQ | beta-envelope),
-    # HI (marginal 2-row | discovery 2-row aligned side-by-side), J, LM, NO.
-    # Panel letters run A-N sequentially by visual order.
     layout = [
-        ("AB",  0.82), ("s", 0.72),
-        ("DGH", 0.78), ("s", 0.90),
+        ("AB",  0.82), ("s", 0.80),
+        ("DGH", 0.78), ("s", 0.95),
         ("FG",  1.20), ("s", 0.62),
-        ("HI",  1.25), ("s", 0.62),
-        ("J",   1.20), ("s", 0.62),
-        ("LM",  0.65), ("s", 0.62),
+        ("HI",  1.25), ("s", 0.70),
+        ("J",   1.20), ("s", 0.95),
+        ("LM",  0.65), ("s", 0.75),
         ("NO",  0.65),
     ]
     hr = [h for _, h in layout]
     outer = fig.add_gridspec(len(layout), 1, height_ratios=hr,
-                             left=0.085, right=0.965, top=0.992, bottom=0.008, hspace=0.0)
+                             left=0.085, right=0.965, top=0.975, bottom=0.03, hspace=0.0)
     cell = {name: outer[i] for i, (name, _) in enumerate(layout) if name != "s"}
 
-    # A | B — mixed-signal FPR (balanced | one-directional)
+    # A | B: mixed-signal FPR (balanced | one-directional)
     sub_ab = cell["AB"].subgridspec(1, 2, wspace=0.22)
-    _panel_bench_mixed_fpr(fig, bench, composite=True, gs_parent=sub_ab[0], architecture="balanced")
-    _panel_bench_mixed_fpr(fig, bench, composite=True, gs_parent=sub_ab[1], architecture="one_directional")
+    for gs_ab, arch in ((sub_ab[0], "balanced"), (sub_ab[1], "one_directional")):
+        _panel_bench_mixed_fpr(fig, bench, composite=True, gs_parent=gs_ab, architecture=arch,
+                               title_y_composite=1.0, ytick_strip=[0.7, 0.9],
+                               pct_in_axis_label=True)
 
-    # C | D | E — pure-null vs tested-set | NEBULA hierarchy | end-to-end vs tested
+    # C | D | E: pure-null vs tested-set | NEBULA hierarchy | end-to-end vs tested
     sub_dgh = cell["DGH"].subgridspec(1, 3, width_ratios=[1.4, 1.0, 1.0], wspace=0.32)
     _panel_bench_pure_null_fpr(fig, bench, composite=True, gs_parent=sub_dgh[0])
     _panel_nebula_hierarchy(fig, ax=fig.add_subplot(sub_dgh[1]), composite=True)
     _panel_bench_endtoend_vs_tested(fig.add_subplot(sub_dgh[2]), core, composite=True)
 
-    # F | G — QQ plots (common ylabel) | beta-envelope heatmaps
+    # F | G: QQ plots (common y label) | calibration heatmaps
     sub_fg = cell["FG"].subgridspec(1, 2, wspace=0.30, width_ratios=[1, 1.18])
     _panel_bench_qq_single(fig, bench, n_genes=200, signal_pct=10, composite=True,
                            gs_parent=sub_fg[0], suppress_ylabel=True)
     _panel_bench_qq_heatmap(fig, bench, composite=True, gs_parent=sub_fg[1])
 
-    # H | I — discovery sensitivity (2×2 sizes) | marginal-detection curves (2 designs)
-    # Use a shared 2-row × 2-col inner grid so H's size rows align with I's design rows.
-    # hspace=0.55 matches power_vs_n's internal hspace so the row boundary aligns.
+    # H | I: discovery sensitivity (2 x 2 tested-set sizes) | marginal detection
     sub_hi = cell["HI"].subgridspec(2, 2, hspace=0.95, wspace=0.30)
-    _panel_bench_discovery_sensitivity(fig, bench, composite=True, gs_parent=sub_hi[0, 0],
-                                       panel_sizes=[50, 200], suppress_ylabel=True,
-                                       marker_scale=0.7)
-    _panel_bench_discovery_sensitivity(fig, bench, composite=True, gs_parent=sub_hi[1, 0],
-                                       panel_sizes=[500, 2000], suppress_ylabel=True,
-                                       marker_scale=0.7)
+    for row, sizes in ((0, [50, 200]), (1, [500, 2000])):
+        _panel_bench_discovery_sensitivity(fig, bench, composite=True, gs_parent=sub_hi[row, 0],
+                                           panel_sizes=sizes, suppress_ylabel=True,
+                                           marker_scale=0.7, title_y_composite=1.0)
     _panel_bench_power_vs_n(fig, core, composite=True, gs_parent=sub_hi[0:2, 1],
                             marker_scale=0.7)
 
-    # J — bias / RMSE
+    # J: bias and RMSE (title and key placed by the renderer)
     _panel_bench_signal_rmse(fig, bench, composite=True, gs_parent=cell["J"])
 
-    # K | L — null FPR families | TPR families
+    # K | L: null FPR | TPR across robustness families
     sub_lm = cell["LM"].subgridspec(1, 2, wspace=0.38)
     ax_l = fig.add_subplot(sub_lm[0])
     _panel_bench_scenario_families(ax_l, core, composite=True)
-    ax_l.set_title("Null-gene FPR across robustness families", fontsize=6.0, fontweight="bold", pad=4)
+    ax_l.set_title("Null-gene FPR across robustness families", fontsize=6.0, fontweight="bold",
+                   pad=4)
     _panel_bench_family_tpr(fig.add_subplot(sub_lm[1]), core, composite=True)
 
-    # M | N — evaluability | convergence
+    # M | N: evaluability | convergence
     sub_no = cell["NO"].subgridspec(1, 2, wspace=0.38)
     _panel_bench_quality(fig.add_subplot(sub_no[0]), core, kind="evaluability", composite=True)
     _panel_bench_quality(fig.add_subplot(sub_no[1]), core, kind="convergence", composite=True)
 
     fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    inv = fig.transFigure.inverted()
+    pt = fig.dpi / 72
 
-    # Legend in the spacer below A and B — use tight-bbox so it clears xtick labels.
-    _bench_legend_below(fig, cell["AB"], fontsize=4.6, short=True, markersize=4,
-                        y_pad=0.007)
+    # Method key below A and B, clear of their tick and axis labels.
+    _bench_legend_below(fig, cell["AB"], fontsize=4.6, short=True, markersize=4, y_pad=0.007)
 
-    # No figure-level legend: A and B carry no per-panel legend in composite mode.
-
-    # Common ylabels for F (QQ, both rows) and I (discovery sensitivity, both rows).
+    # Common y labels for F (both QQ rows) and H (both discovery rows).
     _ylfs = 5.2
-    pos_f = sub_fg[0].get_position(fig)
-    fig.text(pos_f.x0 - 0.045, 0.5 * (pos_f.y0 + pos_f.y1),
-             r"Observed $-\log_{10}(p)$", fontsize=_ylfs,
-             ha="right", va="center", rotation=90)
-    pos_i0 = sub_hi[0, 0].get_position(fig)
-    pos_i1 = sub_hi[1, 0].get_position(fig)
-    fig.text(pos_i0.x0 - 0.045, 0.5 * (pos_i1.y0 + pos_i0.y1),
-             "FDR-controlled\ndiscovery sensitivity", fontsize=_ylfs,
-             ha="right", va="center", rotation=90)
-
-    # Panel titles centred above each cell (composite renderers suppress their own titles).
-    def _title(sp, text, y_offset=0.005):
+    for sp, text in ((sub_fg[0], r"Observed $-\log_{10}(p)$"),
+                     (sub_hi[0:2, 0], "FDR-controlled\ndiscovery sensitivity")):
         pos = sp.get_position(fig)
-        fig.text(0.5 * (pos.x0 + pos.x1), min(pos.y1 + y_offset, 0.995), text,
-                 fontsize=6.0, fontweight="bold", va="bottom", ha="center")
+        fig.text(pos.x0 - 0.045, 0.5 * (pos.y0 + pos.y1), text, fontsize=_ylfs,
+                 ha="right", va="center", rotation=90)
 
-    _title(sub_ab[0], "Mixed-signal null-gene FPR (balanced)", y_offset=0.062)
-    _title(sub_ab[1], "Mixed-signal null-gene FPR (one-directional)", y_offset=0.062)
-    _title(sub_fg[0], "Null-gene p-value QQ (200 genes, 10% signal)", y_offset=0.018)
-    _title(sub_fg[1], "Null-gene calibration: % of p-values outside 95% CI", y_offset=0.018)
-    _title(sub_hi[0, 0], "FDR-controlled discovery sensitivity (end-to-end TPR)", y_offset=0.010)
-    _title(sub_hi[0:2, 1], "Marginal detection probability", y_offset=0.010)
-
-    # Panel letters A-N in sequential visual order.
-    for lab, sp in [
-        ("A", sub_ab[0]),  ("B", sub_ab[1]),
-        ("C", sub_dgh[0]), ("D", sub_dgh[1]), ("E", sub_dgh[2]),
-        ("F", sub_fg[0]),  ("G", sub_fg[1]),
-        ("H", sub_hi[0, 0]), ("I", sub_hi[0:2, 1]),
-        ("J", cell["J"]),
-        ("K", sub_lm[0]),  ("L", sub_lm[1]),
-        ("M", sub_no[0]),  ("N", sub_no[1]),
-    ]:
+    # Panel titles 2 pt above the highest text in their cells (the renderers draw
+    # facet titles but no panel title in a composite).
+    fig.canvas.draw()
+    for sp, text in ((sub_ab[0], "Mixed-signal null-gene FPR (balanced)"),
+                     (sub_ab[1], "Mixed-signal null-gene FPR (one-directional)"),
+                     (sub_fg[0], "Null-gene p-value QQ (200 genes, 10% signal)"),
+                     (sub_fg[1], "Null-gene calibration: % of p-values outside 95% CI"),
+                     (sub_hi[0, 0], "FDR-controlled discovery sensitivity (end-to-end TPR)"),
+                     (sub_hi[0:2, 1], "Marginal detection probability")):
         pos = sp.get_position(fig)
-        # Further left + higher than the axes corner so the letter clears the
-        # rotated y-axis labels of the bar panels (L-O).
-        fig.text(max(pos.x0 - 0.064, 0.001), min(pos.y1 + 0.010, 0.998), lab,
-                 fontsize=8.5, fontweight="bold", va="bottom", ha="left")
+        top = max(a.get_tightbbox(renderer).y1 for a in _axes_in_cell(fig, sp)
+                  if a.get_visible())
+        y = inv.transform((0, top + 2.0 * pt))[1]
+        fig.text(0.5 * (pos.x0 + pos.x1), y, text, fontsize=6.0, fontweight="bold",
+                 va="bottom", ha="center")
+
+    # Panel letters A-N: at the left edge of each panel's axis text, level with the
+    # top of its title.
+    fig.canvas.draw()
+    letters = [("A", sub_ab[0]), ("B", sub_ab[1]),
+               ("C", sub_dgh[0]), ("D", sub_dgh[1]), ("E", sub_dgh[2]),
+               ("F", sub_fg[0]), ("G", sub_fg[1]),
+               ("H", sub_hi[0:2, 0]), ("I", sub_hi[0:2, 1]),
+               ("J", cell["J"]),
+               ("K", sub_lm[0]), ("L", sub_lm[1]),
+               ("M", sub_no[0]), ("N", sub_no[1])]
+    placed = [(lab, *_cell_ink(fig, renderer, sp)) for lab, sp in letters]
+    for lab, left, top in placed:
+        x, y = inv.transform((left, top))
+        fig.text(x, y, lab, fontsize=8.5, fontweight="bold", va="top", ha="left")
+
+    report_layout_problems(fig, FIGURE_NAME)
 
     save_panel(fig, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
     pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
     fig.savefig(str(pdf_path), format="pdf", bbox_inches="tight", facecolor="white")
     plt.close(fig)
-    print(f"  {FIGURE_NAME} composite (A-O) saved")
+    print(f"  {FIGURE_NAME} composite (A-N) saved")
 
 
 def generate() -> None:
@@ -394,6 +433,6 @@ def generate() -> None:
     save_panel(fig, "panel_M_endtoend_vs_tested", FIGURE_NAME, SUPP_OUTPUT)
 
     print(f"  {FIGURE_NAME}: individual panels A-M saved; assembling composite")
-    _composite(bench, core)
+    _build_composite(bench, core)
     print(f"  {FIGURE_NAME} complete")
     gc.collect()
