@@ -1,0 +1,103 @@
+"""Layout helpers behind Supp Figs 2, 6 and 8: alluvial geometry, keys, tick labels."""
+
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.patches as mpatches  # noqa: E402
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+import pytest  # noqa: E402
+
+pytest.importorskip("plotly")
+pytest.importorskip("scanpy")
+
+_MM = 1 / 25.4
+
+
+@pytest.fixture
+def sf2(load_figure_module):
+    return load_figure_module("supp/supp_fig2_annotation_baseline")
+
+
+def _flows():
+    """Twelve cell types, two of them in very few participants, across two arms."""
+    counts = {"B cell": (9, 8), "CD4+ T": (10, 9), "CD8+ T": (10, 9), "DC": (8, 7),
+              "Erythroid": (1, 0), "HSC/Prog": (1, 1), "Monocyte": (10, 9), "NK": (9, 9),
+              "Other": (3, 2), "Plasma": (6, 5), "T other": (10, 9), "Treg": (9, 8)}
+    rows = [{"Cell type": ct, "Arm": arm, "count": n}
+            for ct, pair in counts.items() for arm, n in zip(("Chemo", "anti-PDL1+Chemo"), pair)
+            if n > 0]
+    return pd.DataFrame(rows)
+
+
+def _bars(ax, x0):
+    return [p for p in ax.patches
+            if isinstance(p, mpatches.Rectangle) and np.isclose(p.get_x(), x0)]
+
+
+def test_alluvial_sides_share_one_height_scale(sf2):
+    flow = _flows()
+    fig = plt.figure(figsize=(30 * _MM, 40 * _MM))
+    ax = fig.add_axes([0.35, 0.05, 0.3, 0.85])
+    sf2._draw_alluvial(ax, flow, "Arm", fontsize=4)
+    left = sum(p.get_height() for p in _bars(ax, 0.0))
+    # The right side draws coloured segments and an outline per arm; compare outlines.
+    right = sum(p.get_height() for p in _bars(ax, 0.95) if p.get_facecolor()[3] == 0)
+    assert left == pytest.approx(right)
+    per_participant = left / flow["count"].sum()
+    for p in _bars(ax, 0.0):
+        assert p.get_height() / per_participant == pytest.approx(round(p.get_height() / per_participant))
+    plt.close(fig)
+
+
+def test_alluvial_labels_never_overlap(sf2):
+    import manuscript_figures._shared as sh
+
+    fig = plt.figure(figsize=(30 * _MM, 40 * _MM))
+    ax = fig.add_axes([0.35, 0.05, 0.3, 0.8])
+    sf2._draw_alluvial(ax, _flows(), "Arm", fontsize=4)
+    problems = sh.layout_problems(fig)
+    assert problems["text overlaps"] == []
+    plt.close(fig)
+
+
+def test_spread_labels_keeps_gap_and_bounds(sf2):
+    y = np.array([0.10, 0.11, 0.12, 0.50, 0.98, 0.99])
+    out = sf2._spread_labels(y, 0.05, 0.02, 0.98)
+    s = np.sort(out)
+    assert np.all(np.diff(s) >= 0.05 - 1e-12)
+    assert s[0] >= 0.02 - 1e-12 and s[-1] <= 0.98 + 1e-12
+    assert np.argsort(out).tolist() == np.argsort(y).tolist()  # order is preserved
+
+
+def test_key_below_axes_on_axes_without_x_text(load_figure_module):
+    load_figure_module("supp/supp_fig2_annotation_baseline")
+    import manuscript_figures._shared as sh
+
+    fig, ax = plt.subplots(figsize=(2, 2))
+    ax.scatter([0, 1], [0, 1], label="a")
+    ax.scatter([1, 0], [0, 1], label="b")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.legend()
+    leg = sh.key_below_axes(ax, ncol=2)
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    assert leg.get_window_extent(r).y1 <= ax.get_window_extent(r).y0
+    plt.close(fig)
+
+
+def test_family_tick_labels_wrap_in_composite(load_figure_module):
+    load_figure_module("supp/supp_fig6_benchmark_calibration")
+    import manuscript_figures._benchmark as bm
+
+    fig, ax = plt.subplots()
+    ax.set_xticks(range(2))
+    bm._family_ticklabels(ax, ["3:7 arm imbalance", "50 cells/PV"], composite=True, fontsize=4)
+    assert [t.get_text() for t in ax.get_xticklabels()] == ["3:7 arm\nimbalance", "50\ncells/PV"]
+    assert all(t.get_rotation() == 0 for t in ax.get_xticklabels())
+    bm._family_ticklabels(ax, ["3:7 arm imbalance", "50 cells/PV"], composite=False, fontsize=8)
+    assert [t.get_text() for t in ax.get_xticklabels()] == ["3:7 arm imbalance", "50 cells/PV"]
+    plt.close(fig)
