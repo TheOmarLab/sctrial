@@ -240,7 +240,7 @@ def _cell_ink(fig, renderer, cell, *, title=None, reach_left_mm: float = 16.0):
 _COMPOSITE_LAYOUT = [
     ("AB",  0.82), ("s", 0.95),
     ("DGH", 0.78), ("s", 0.95),
-    ("FG",  1.20), ("s", 0.62),
+    ("FG",  1.35), ("s", 0.62),
     ("HI",  1.25), ("s", 0.70),
     ("J",   1.20), ("s", 0.95),
     ("LM",  0.65), ("s", 0.75),
@@ -250,9 +250,9 @@ _DGH_WIDTHS = [1.4, 1.0, 1.0]
 
 
 def _composite_cells():
-    """The 180 x 230 mm composite figure and its named row cells."""
+    """The 180 x 233 mm composite figure and its named row cells."""
     _mm = 1.0 / 25.4
-    fig = plt.figure(figsize=(180 * _mm, 230 * _mm))
+    fig = plt.figure(figsize=(180 * _mm, 233 * _mm))
     outer = fig.add_gridspec(len(_COMPOSITE_LAYOUT), 1,
                              height_ratios=[h for _, h in _COMPOSITE_LAYOUT],
                              left=0.095, right=0.95, top=0.975, bottom=0.05, hspace=0.0)
