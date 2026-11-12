@@ -610,8 +610,8 @@ def key_below_axes(ax, *, ncol: int, fontsize: float | None = None, gap_pt: floa
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
     axes_bottom = ax.get_window_extent(renderer).y0
-    text_bottom = min([axes_bottom] + [a.xaxis.get_tightbbox(renderer).y0
-                                       for a in (clear_of or [ax])])
+    boxes = [a.xaxis.get_tightbbox(renderer) for a in (clear_of or [ax])]
+    text_bottom = min([axes_bottom] + [b.y0 for b in boxes if b is not None])  # None: no x text
     offset_pt = (axes_bottom - text_bottom) * 72 / fig.dpi + gap_pt
     return ax.legend(
         handles=handles, labels=labels, loc="upper center", bbox_to_anchor=(0.5, 0.0),
