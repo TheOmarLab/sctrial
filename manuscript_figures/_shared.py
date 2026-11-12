@@ -623,24 +623,55 @@ def key_below_axes(ax, *, ncol: int, fontsize: float | None = None, gap_pt: floa
     )
 
 
-def letter_at_panel_corner(ax, letter: str, *, fontsize: float, top: float | None = None) -> None:
+def letter_left_of_band(fig, letter: str, *, fontsize: float, left: float, top: float,
+                        boxes, gap_pt: float = 2.5) -> tuple[float, float]:
+    """Figure coordinates for a bold letter whose top is at display y ``top``.
+
+    The letter starts at display x ``left`` unless one of ``boxes`` (display-space bounding
+    boxes of the panel's text) shares its height band and starts within the letter's width;
+    then it moves left to end ``gap_pt`` before the leftmost such box.
+    """
+    import matplotlib.text as mtext
+
+    renderer = fig.canvas.get_renderer()
+    probe = mtext.Text(0, 0, letter, fontsize=fontsize, fontweight="bold")
+    probe.set_figure(fig)
+    ext = probe.get_window_extent(renderer)
+    gap = gap_pt * fig.dpi / 72
+    band = [b for b in boxes if b.y1 > top - ext.height and b.y0 < top]
+    x = left
+    if band:
+        x = min(x, min(b.x0 for b in band) - ext.width - gap)
+    return tuple(fig.transFigure.inverted().transform((x, top)))
+
+
+def letter_at_panel_corner(ax, letter: str, *, fontsize: float, top: float | None = None,
+                           keep_clear: bool = False) -> None:
     """Put a bold panel letter at the left edge of the panel's own labels, level with its title.
 
     For panels whose tick labels or title reach well left of the axes (heatmaps with long row
     names, narrow panels with long titles), where a fixed axes-fraction offset lands on a label.
+    ``keep_clear`` moves the letter left of any of the panel's text in its height band, for a
+    title wider than its axes or a y label reaching up to the title.
     """
     fig = ax.figure
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
     own = ax.get_yticklabels() + [ax.yaxis.label] + list(ax.texts)  # row names, y label, groups
-    lefts = [t.get_window_extent(renderer).x0 for t in own if t.get_visible() and t.get_text()]
+    own = [t for t in own if t.get_visible() and t.get_text()]
+    lefts = [t.get_window_extent(renderer).x0 for t in own]
     lefts += [ax.get_window_extent(renderer).x0]
     if ax.get_title():
         lefts.append(ax.title.get_window_extent(renderer).x0)
+        own.append(ax.title)
     if top is None:  # display y of the letter's top; default level with the title
         top = (ax.title.get_window_extent(renderer).y1 if ax.get_title()
                else ax.get_window_extent(renderer).y1)
-    x, y = fig.transFigure.inverted().transform((min(lefts), top))
+    if keep_clear:
+        x, y = letter_left_of_band(fig, letter, fontsize=fontsize, left=min(lefts), top=top,
+                                   boxes=[t.get_window_extent(renderer) for t in own])
+    else:
+        x, y = fig.transFigure.inverted().transform((min(lefts), top))
     fig.text(x, y, letter, fontsize=fontsize, fontweight="bold", va="top", ha="left")
 
 

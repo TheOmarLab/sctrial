@@ -17,7 +17,7 @@ from matplotlib.patches import Patch  # noqa: F401
 from matplotlib.ticker import MaxNLocator, MultipleLocator  # noqa: F401
 from scipy import stats
 
-from ._shared import MANUSCRIPT_DIR, despine
+from ._shared import MANUSCRIPT_DIR, despine, group_axis_labels
 
 warnings.filterwarnings("ignore")
 
@@ -1466,12 +1466,39 @@ def _panel_bench_power_vs_n(fig, core_df, *, composite: bool = False, only_beta=
                    columnspacing=1.1, handlelength=1.6)
 
 
+_FAMILY_GROUPS = ((" cells/PV", "cells/PV"), (" miss", "missing"),
+                  (" arm imbalance", "arm imbalance"))
+
+
+def _split_family(label: str) -> tuple[str, str | None]:
+    """A family label as (tick text, group): "3:7 arm imbalance" -> ("3:7", "arm imbalance").
+
+    Families outside a group keep their name, one word per line ("comp.\nstress").
+    """
+    for suffix, group in _FAMILY_GROUPS:
+        if label.endswith(suffix):
+            return label[: -len(suffix)], group
+    return label.replace(" ", "\n"), None
+
+
 def _family_ticklabels(ax, labels, *, composite: bool, fontsize: float) -> None:
-    """Robustness-family tick labels: two unrotated lines in a composite cell, where
-    rotated single-line labels of neighbouring families overlap; rotated otherwise."""
+    """Robustness-family tick labels.
+
+    In a composite cell, where neighbouring full names overlap at any readable angle,
+    each tick carries only its value and one label under each run of ticks names the
+    group (cells/PV, missing, arm imbalance); the axis' fonts must be final.
+    """
     if composite:
-        ax.set_xticklabels(["\n".join(lab.rsplit(" ", 1)) for lab in labels],
-                           rotation=0, ha="center", fontsize=fontsize, linespacing=1.0)
+        parts = [_split_family(lab) for lab in labels]
+        ax.set_xticklabels([tick for tick, _ in parts], rotation=0, ha="center",
+                           fontsize=fontsize, linespacing=1.0)
+        groups, start = [], 0
+        for i in range(1, len(parts) + 1):
+            if i == len(parts) or parts[i][1] != parts[start][1]:
+                if parts[start][1] is not None:
+                    groups.append((parts[start][1], start, i - 1))
+                start = i
+        group_axis_labels(ax, groups, fontsize=fontsize, gap_pt=1.0)
     else:
         ax.set_xticklabels(labels, rotation=20, ha="right", fontsize=fontsize)
 
@@ -1567,7 +1594,8 @@ def _panel_bench_discovery_sensitivity(fig, bench_df, *, composite=False,
         title="FDR-controlled discovery sensitivity (end-to-end TPR)",
         nominal=False, composite=composite, gs_parent=gs_parent,
         panel_sizes=panel_sizes, suppress_ylabel=suppress_ylabel,
-        ytick_main=[0.0, 0.1, 0.2, 0.3], ytick_strip=[1.0, 1.2],
+        ytick_main=[0.0, 0.1, 0.2] if composite else [0.0, 0.1, 0.2, 0.3],
+        ytick_strip=[1.0] if composite else [1.0, 1.2],
         marker_scale=marker_scale, title_y_composite=title_y_composite)
 
 
@@ -1717,14 +1745,16 @@ def _panel_bench_endtoend_vs_tested(ax, core_df, *, composite=False):
     ax.set_xticks(x)
     # Full canonical labels, matching the evaluability/convergence panels.
     if composite:
-        ax.set_xticklabels([_BENCH_METHOD_LABELS[mm].replace(" (", "\n(") for mm in order],
-                           rotation=0, ha="center", fontsize=_tk, linespacing=1.0)
+        ax.set_xticklabels([_BENCH_METHOD_LABELS_SHORT[mm] for mm in order], rotation=30,
+                           ha="right", rotation_mode="anchor", fontsize=_tk)
     else:
         ax.set_xticklabels([_BENCH_METHOD_LABELS[mm] for mm in order],
                            rotation=20, ha="right", fontsize=_tk)
     # Headroom so the legend (upper-left, over the empty region) and the NEBULA
     # asterisk clear the tallest bars.
-    ax.set_ylim(0, 1.14)
+    ax.set_ylim(0, 1.25 if composite else 1.14)
+    if composite:
+        ax.set_yticks([0.0, 0.5, 1.0])
     ax.set_ylabel("BH TPR\n(cell-yield families)", fontsize=_ax)
     ax.set_title("End-to-end vs tested-only detection",
                  fontsize=_ttl, fontweight="bold", pad=(4 if composite else 8))
@@ -1815,7 +1845,8 @@ def _panel_bench_pure_null_fpr(fig, bench_df, *, composite: bool = False,
     ax_main.set_xlim(-0.35, len(panel_sizes) - 0.65)
     ax_main.set_xlabel("Panel size (genes)", fontsize=_tk_fs)
     ax_main.set_ylabel("Pure-null Type I error\n(p < 0.05)", fontsize=5.2 if composite else _tk_fs)
-    ax_main.set_yticks([0.0, 0.02, 0.04, 0.06, 0.08, 0.10])
+    # In a composite cell the main axis' top tick sits against the strip's lowest tick.
+    ax_main.set_yticks([0.0, 0.04, 0.08] if composite else [0.0, 0.02, 0.04, 0.06, 0.08, 0.10])
     ax_strip.set_yticks([0.7, 0.8])
     for a in (ax_main, ax_strip):
         a.tick_params(labelsize=_tk_fs)

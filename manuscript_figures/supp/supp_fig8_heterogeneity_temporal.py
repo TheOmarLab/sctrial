@@ -743,12 +743,13 @@ def _build_composite(data: dict[str, dict], tnbc_name: str, mel_name: str,
                        ((ax_d, ax_e, ax_f), ("panel_D", "panel_E", "panel_F")),
                        ((ax_g, ax_h, ax_i), ("panel_G", "panel_H", "panel_I")),
                        ((ax_j, ax_k), ("panel_J", "panel_K"))):
+        keyed = [a for a in row if a.get_legend() is not None]  # one baseline per row of keys
         for ax_r, name in zip(row, names):
-            key_below_axes(ax_r, ncol=_KEY_NCOL.get(name, 2), clear_of=list(row))
+            key_below_axes(ax_r, ncol=_KEY_NCOL.get(name, 2), clear_of=keyed)
 
     for ax_lbl, lbl in zip((ax_a, ax_b, ax_c, ax_d, ax_e, ax_f, ax_g, ax_h, ax_i, ax_j, ax_k),
                            "ABCDEFGHIJK"):
-        letter_at_panel_corner(ax_lbl, lbl, fontsize=9)
+        letter_at_panel_corner(ax_lbl, lbl, fontsize=9, keep_clear=True)
 
     report_layout_problems(fig_c, FIGURE_NAME)
     plt.rcParams.update(_prev_rc)

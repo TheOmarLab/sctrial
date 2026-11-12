@@ -59,6 +59,7 @@ from .._shared import (
     SUPP_OUTPUT,
     apply_style,
     despine,
+    letter_left_of_band,
     report_layout_problems,
     save_panel,
 )
@@ -167,8 +168,9 @@ def _panel_nebula_hierarchy(fig, *, ax=None, composite: bool = False):
     ax.set_xlim(-0.03, su_cal + 0.06)
     ax.set_xlabel(r"Participant$\times$visit s.d. $\sigma_u$ (omitted by NEBULA)", fontsize=_lbl)
     ax.set_ylabel("NEBULA Type I error\n(p < 0.05)", fontsize=5.2 if composite else _lbl)
-    ax.set_title(r"NEBULA hierarchy validation ($\sigma_u$ ablation)",
-                 fontsize=_ttl, fontweight="bold")
+    # Two lines in the composite, where one line is wider than the panel.
+    ax.set_title("NEBULA hierarchy validation" + ("\n" if composite else " ")
+                 + r"($\sigma_u$ ablation)", fontsize=_ttl, fontweight="bold")
     ax.tick_params(labelsize=_lbl)
     # Positive control: under NEBULA's own DGP the offset is unbiased and Type I is
     # nominal, so the inflation above is the omitted hierarchy, not a wiring error.
@@ -191,20 +193,21 @@ def _panel_nebula_hierarchy(fig, *, ax=None, composite: bool = False):
     del prov
 
 
-def _cell_ink(fig, renderer, cell, *, reach_left_mm: float = 16.0, reach_up_mm: float = 8.0):
-    """Left edge of a panel's axis text and top of its title, in display pixels.
+def _cell_ink(fig, renderer, cell, *, title=None, reach_left_mm: float = 16.0):
+    """Left edge of a panel's axis text, top of its title, and its text boxes, in display px.
 
-    The left edge is the leftmost axes frame or y-axis text in the cell, or a figure-level
-    y label beside the cell (within ``reach_left_mm``, inside the cell's height). Titles
-    do not count toward it, so a letter never lands on a wide title. The top is the
-    highest axes text in the cell or a figure-level title starting at most
-    ``reach_up_mm`` above it.
+    The left edge is the leftmost axes frame or y-axis text in the cell, or a rotated
+    figure-level y label beside the cell (within ``reach_left_mm``, inside the cell's
+    height). Titles do not count toward it, so a letter never lands on a wide title. The
+    top is the highest axes text in the cell or the panel's figure-level ``title``. The
+    boxes (y-axis text, axes titles, ``title`` and the side y labels) let the letter keep
+    clear of a y label or title reaching up beside it.
     """
     pos = cell.get_position(fig)
     w, h = fig.bbox.width, fig.bbox.height
-    x0p, x1p, y0p, y1p = pos.x0 * w, pos.x1 * w, pos.y0 * h, pos.y1 * h
-    mm = fig.dpi / 25.4
-    lefts, tops = [], []
+    x0p, y0p, y1p = pos.x0 * w, pos.y0 * h, pos.y1 * h
+    reach = reach_left_mm * fig.dpi / 25.4
+    lefts, tops, boxes = [], [], []
     for ax in _axes_in_cell(fig, cell):
         if not ax.get_visible():
             continue
@@ -212,23 +215,30 @@ def _cell_ink(fig, renderer, cell, *, reach_left_mm: float = 16.0, reach_up_mm: 
         yb = ax.yaxis.get_tightbbox(renderer)
         if yb is not None:
             lefts.append(yb.x0)
+            boxes.append(yb)
         tb = ax.get_tightbbox(renderer)
         if tb is not None:
             tops.append(tb.y1)
-    ink_top = max(tops)
+        if ax.get_title():
+            boxes.append(ax.title.get_window_extent(renderer))
+    if title is not None:
+        tb = title.get_window_extent(renderer)
+        tops.append(tb.y1)
+        boxes.append(tb)
     for text in fig.texts:
+        if text.get_rotation() % 180 != 90:
+            continue
         b = text.get_window_extent(renderer)
-        if b.x1 <= x0p and b.x1 > x0p - reach_left_mm * mm and b.y0 >= y0p and b.y1 <= y1p:
+        if x0p - reach < b.x1 <= x0p and b.y0 >= y0p - 1 and b.y1 <= y1p + 1:
             lefts.append(b.x0)
-        elif b.x1 > x0p and b.x0 < x1p and ink_top - 1 <= b.y0 <= ink_top + reach_up_mm * mm:
-            tops.append(b.y1)
-    return min(lefts), max(tops)
+            boxes.append(b)
+    return min(lefts), max(tops), boxes
 
 
 # Composite rows (name, height ratio); "s" rows are spacers holding tick labels, keys
 # and the next row's titles.
 _COMPOSITE_LAYOUT = [
-    ("AB",  0.82), ("s", 0.80),
+    ("AB",  0.82), ("s", 0.95),
     ("DGH", 0.78), ("s", 0.95),
     ("FG",  1.20), ("s", 0.62),
     ("HI",  1.25), ("s", 0.70),
@@ -245,7 +255,7 @@ def _composite_cells():
     fig = plt.figure(figsize=(180 * _mm, 230 * _mm))
     outer = fig.add_gridspec(len(_COMPOSITE_LAYOUT), 1,
                              height_ratios=[h for _, h in _COMPOSITE_LAYOUT],
-                             left=0.085, right=0.965, top=0.975, bottom=0.03, hspace=0.0)
+                             left=0.095, right=0.95, top=0.975, bottom=0.05, hspace=0.0)
     cell = {name: outer[i] for i, (name, _) in enumerate(_COMPOSITE_LAYOUT) if name != "s"}
     return fig, cell
 
@@ -280,7 +290,7 @@ def _build_composite(bench, core) -> None:
     _panel_bench_qq_heatmap(fig, bench, composite=True, gs_parent=sub_fg[1])
 
     # H | I: discovery sensitivity (2 x 2 tested-set sizes) | marginal detection
-    sub_hi = cell["HI"].subgridspec(2, 2, hspace=0.95, wspace=0.30)
+    sub_hi = cell["HI"].subgridspec(2, 2, hspace=1.3, wspace=0.30)
     for row, sizes in ((0, [50, 200]), (1, [500, 2000])):
         _panel_bench_discovery_sensitivity(fig, bench, composite=True, gs_parent=sub_hi[row, 0],
                                            panel_sizes=sizes, suppress_ylabel=True,
@@ -323,18 +333,22 @@ def _build_composite(bench, core) -> None:
     # Panel titles 2 pt above the highest text in their cells (the renderers draw
     # facet titles but no panel title in a composite).
     fig.canvas.draw()
-    for sp, text in ((sub_ab[0], "Mixed-signal null-gene FPR (balanced)"),
-                     (sub_ab[1], "Mixed-signal null-gene FPR (one-directional)"),
-                     (sub_fg[0], "Null-gene p-value QQ (200 genes, 10% signal)"),
-                     (sub_fg[1], "Null-gene calibration: % of p-values outside 95% CI"),
-                     (sub_hi[0, 0], "FDR-controlled discovery sensitivity (end-to-end TPR)"),
-                     (sub_hi[0:2, 1], "Marginal detection probability")):
+    titles = {}
+    for lab, sp, text in (("A", sub_ab[0], "Mixed-signal null-gene FPR (balanced)"),
+                          ("B", sub_ab[1], "Mixed-signal null-gene FPR (one-directional)"),
+                          ("F", sub_fg[0], "Null-gene p-value QQ (200 genes, 10% signal)"),
+                          ("G", sub_fg[1], "Null-gene calibration: % of p-values outside 95% CI"),
+                          ("H", sub_hi[0, 0],
+                           "FDR-controlled discovery sensitivity (end-to-end TPR)"),
+                          ("I", sub_hi[0:2, 1], "Marginal detection probability")):
         pos = sp.get_position(fig)
         top = max(a.get_tightbbox(renderer).y1 for a in _axes_in_cell(fig, sp)
                   if a.get_visible())
         y = inv.transform((0, top + 2.0 * pt))[1]
-        fig.text(0.5 * (pos.x0 + pos.x1), y, text, fontsize=6.0, fontweight="bold",
-                 va="bottom", ha="center")
+        titles[lab] = fig.text(0.5 * (pos.x0 + pos.x1), y, text, fontsize=6.0,
+                               fontweight="bold", va="bottom", ha="center")
+    titles["J"] = next(tx for tx in fig.texts
+                       if tx.get_text() == "Effect-size estimation accuracy")
 
     # Panel letters A-N: at the left edge of each panel's axis text, level with the
     # top of its title.
@@ -346,9 +360,9 @@ def _build_composite(bench, core) -> None:
                ("J", cell["J"]),
                ("K", sub_lm[0]), ("L", sub_lm[1]),
                ("M", sub_no[0]), ("N", sub_no[1])]
-    placed = [(lab, *_cell_ink(fig, renderer, sp)) for lab, sp in letters]
-    for lab, left, top in placed:
-        x, y = inv.transform((left, top))
+    placed = [(lab, *_cell_ink(fig, renderer, sp, title=titles.get(lab))) for lab, sp in letters]
+    for lab, left, top, boxes in placed:
+        x, y = letter_left_of_band(fig, lab, fontsize=8.5, left=left, top=top, boxes=boxes)
         fig.text(x, y, lab, fontsize=8.5, fontweight="bold", va="top", ha="left")
 
     report_layout_problems(fig, FIGURE_NAME)

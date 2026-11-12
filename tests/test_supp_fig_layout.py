@@ -89,18 +89,50 @@ def test_key_below_axes_on_axes_without_x_text(load_figure_module):
     plt.close(fig)
 
 
-def test_family_tick_labels_wrap_in_composite(load_figure_module):
+def test_family_tick_labels_grouped_in_a_composite_cell(load_figure_module):
     load_figure_module("supp/supp_fig6_benchmark_calibration")
     import manuscript_figures._benchmark as bm
+    import manuscript_figures._shared as sh
+
+    labels = ["50 cells/PV", "250 cells/PV", "1,000 cells/PV", "emp. het. yield", "10% miss",
+              "20% miss", "3:7 arm imbalance", "5:10 arm imbalance", "10:20 arm imbalance",
+              "het. effect", "comp. stress"]
+    fig = plt.figure(figsize=(180 * _MM, 40 * _MM))
+    ax = fig.add_axes([0.55, 0.45, 0.4, 0.4])  # half-width cell, as panels K to N
+    ax.set_xticks(range(len(labels)))
+    bm._family_ticklabels(ax, labels, composite=True, fontsize=3.8)
+    assert [t.get_text() for t in ax.get_xticklabels()] == [
+        "50", "250", "1,000", "emp.\nhet.\nyield", "10%", "20%", "3:7", "5:10", "10:20",
+        "het.\neffect", "comp.\nstress"]
+    assert [t.get_text() for t in ax.texts] == ["cells/PV", "missing", "arm imbalance"]
+    problems = sh.layout_problems(fig)
+    assert problems["text overlaps"] == [] and problems["outside canvas"] == []
+    plt.close(fig)
 
     fig, ax = plt.subplots()
-    ax.set_xticks(range(2))
-    bm._family_ticklabels(ax, ["3:7 arm imbalance", "50 cells/PV"], composite=True, fontsize=4)
-    assert [t.get_text() for t in ax.get_xticklabels()] == ["3:7 arm\nimbalance", "50\ncells/PV"]
-    assert all(t.get_rotation() == 0 for t in ax.get_xticklabels())
-    bm._family_ticklabels(ax, ["3:7 arm imbalance", "50 cells/PV"], composite=False, fontsize=8)
-    assert [t.get_text() for t in ax.get_xticklabels()] == ["3:7 arm imbalance", "50 cells/PV"]
+    ax.set_xticks(range(len(labels)))
+    bm._family_ticklabels(ax, labels, composite=False, fontsize=8)
+    assert [t.get_text() for t in ax.get_xticklabels()] == labels  # standalone unchanged
+    assert all(t.get_rotation() == 20 for t in ax.get_xticklabels())
     plt.close(fig)
+
+
+def test_figure3_bootstrap_labels_are_reproducible(load_figure_module):
+    fig3 = load_figure_module("main/figure3_robustness_benchmarking")
+    rng = np.random.default_rng(1)
+    df = pd.DataFrame({"feature": [f"Signature {i}" for i in range(12)],
+                       "se_DiD": rng.uniform(0.6, 1.4, 12)})
+    df["se_DiD_boot"] = df["se_DiD"] * rng.uniform(0.8, 1.1, 12)
+
+    def layout(global_seed):
+        np.random.seed(global_seed)  # whatever state the caller left
+        fig, ax = plt.subplots(figsize=(4, 3))
+        fig3._panel_a_single(ax, {"df_boot": df}, title="t", dataset="melanoma")
+        out = [t.get_position() for t in ax.texts]
+        plt.close(fig)
+        return out
+
+    assert layout(1) == layout(2)
 
 
 _NEBULA_LOG = """\

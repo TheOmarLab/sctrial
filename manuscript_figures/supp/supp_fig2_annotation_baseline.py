@@ -1136,7 +1136,7 @@ def _build_composite(prep: dict):
             continue
         _draw_alluvial(ax_gi, item["flow"], item["right_label"], fontsize=4,
                        header_fontsize=4.5)
-        ax_gi.set_title(name, fontweight="bold", fontsize=5.5, pad=9)
+        ax_gi.set_title(name, fontweight="bold", fontsize=5.5, pad=12)
     _fit_row_to_ink(fig_c, axes_g, left=0.02, right=0.98, gap_mm=2.5)
 
     # Post-processing: fonts final, then keys and letters, then the layout check
