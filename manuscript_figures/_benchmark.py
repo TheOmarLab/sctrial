@@ -428,7 +428,7 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
         xs = np.array([n_to_x[int(n)] for n in sub["n_genes"].values], float)
         # scenario-median points (small, jittered slightly) behind the summary
         pts = scen_med[scen_med["method"] == method]
-        jit = (hash(method) % 5 - 2) * 0.03
+        jit = (_BENCH_METHODS.index(method) - (len(_BENCH_METHODS) - 1) / 2) * 0.03
         ax.scatter([n_to_x[int(n)] + jit for n in pts["n_genes"]],
                    pts["runtime_seconds"], s=(4 if composite else 14),
                    color=style["color"], alpha=0.38, edgecolors="none",

@@ -747,12 +747,21 @@ def _panel_a_single(
             arrowprops=dict(arrowstyle="-", color="#bbbbbb", lw=0.5, shrinkA=1, shrinkB=1),
             expand=(1.1, 1.3), force_text=(0.5, 0.6), force_points=(0.3, 0.4),
         )
+        # A fixed iteration budget and a seeded global RNG make the layout reproducible:
+        # without iter_lim, adjustText stops after 1 s of wall-clock time, and it jitters
+        # coincident labels with numpy's global RNG.
+        _adj_kw["iter_lim"] = 3000
+        rng_state = np.random.get_state()
+        np.random.seed(0)
         try:
-            adjust_text(texts, add_objects=[stat_text], **_adj_kw)
-        except TypeError:
-            # Older/newer adjustText may name the parameter differently; fall back
-            # to repelling from points/text only.
-            adjust_text(texts, **_adj_kw)
+            try:
+                adjust_text(texts, add_objects=[stat_text], **_adj_kw)
+            except TypeError:
+                # Older/newer adjustText may name the parameter differently; fall back
+                # to repelling from points/text only.
+                adjust_text(texts, **_adj_kw)
+        finally:
+            np.random.set_state(rng_state)
 
 
 def _panel_a(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict, *, composite: bool = False) -> None:
