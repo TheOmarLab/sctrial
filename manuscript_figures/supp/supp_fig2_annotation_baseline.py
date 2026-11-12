@@ -42,6 +42,9 @@ from .._shared import (
     get_vaccine,
     harmonize_celltype,
     harmonize_response,
+    key_below_axes,
+    letter_at_panel_corner,
+    report_layout_problems,
     save_panel,
 )
 
@@ -168,17 +171,39 @@ def _arm_col(obs):
     return None
 
 
+# ── Prepared panel data ───────────────────────────────────────────
+#
+# Every statistic is computed once from the loaded AnnData objects; the standalone
+# panels and the composite draw from the same prepared values.
+
+
+def _umap_data(loaded: dict) -> dict:
+    """UMAP coordinates with cell-type and grouping labels, per dataset."""
+    out = {}
+    for name, data in loaded.items():
+        adata = data["adata"]
+        ct_col = data["ct_col"]
+        arm = data.get("arm_col")
+        grp_col = arm if arm else data.get("visit_col")
+        out[name] = {
+            "emb": adata.obsm["X_umap"],
+            "ct": adata.obs[ct_col].astype(str).values if ct_col is not None else None,
+            "grp": adata.obs[grp_col].astype(str).values if grp_col is not None else None,
+            "grp_label": "arm" if arm else "visit",
+        }
+    return out
+
+
 # ── Panel A: UMAP per dataset (mini-UMAPs) ─────────────────────
 
-def _panel_umap_grid(fig, axes, loaded: dict):
+def _panel_umap_grid(fig, axes, umap: dict):
     """Mini-UMAPs coloured by cell type."""
-    ds_names = list(loaded.keys())
+    ds_names = list(umap.keys())
     for i, name in enumerate(ds_names):
         ax = axes[i]
-        adata = loaded[name]["adata"]
-        ct_col = loaded[name]["ct_col"]
+        labels = umap[name]["ct"]
 
-        if ct_col is None:
+        if labels is None:
             ax.text(0.5, 0.5, "No annotation", ha="center", va="center",
                     transform=ax.transAxes, fontsize=9, fontstyle="italic",
                     color="#888888")
@@ -186,8 +211,7 @@ def _panel_umap_grid(fig, axes, loaded: dict):
             ax.axis("off")
             continue
 
-        emb = adata.obsm["X_umap"]
-        labels = adata.obs[ct_col].astype(str).values
+        emb = umap[name]["emb"]
         unique_cts = sorted(set(labels))
         palette = _build_ct_palette(unique_cts)
 
@@ -199,39 +223,34 @@ def _panel_umap_grid(fig, axes, loaded: dict):
                    c=colors, s=DOT_SIZE, alpha=0.7, edgecolors="none",
                    rasterized=True)
 
-        # Compact legend
         handles = [mpatches.Patch(facecolor=palette[ct], edgecolor="none",
                                   label=ct) for ct in unique_cts[:12]]
         if len(unique_cts) > 12:
             handles.append(mpatches.Patch(facecolor="grey", edgecolor="none",
                                           label=f"+ {len(unique_cts)-12} more"))
-        ax.legend(handles=handles, fontsize=6, loc="best", frameon=True,
-                  framealpha=0.8, ncol=1, handlelength=0.8, handleheight=0.7,
-                  borderpad=0.4, labelspacing=0.2, markerscale=0.5)
+        ax.legend(handles=handles, fontsize=6, loc="upper center",
+                  bbox_to_anchor=(0.5, -0.02), frameon=False, ncol=2,
+                  handlelength=0.8, handleheight=0.7, borderpad=0.4,
+                  labelspacing=0.2, columnspacing=0.8)
 
         ax.set_title(name, fontweight="bold", fontsize=9)
         ax.set_xticks([])
         ax.set_yticks([])
         despine(ax)
 
-    # Hide unused axes
     for i in range(len(ds_names), len(axes)):
         axes[i].axis("off")
 
 
 # ── Panel B: UMAP per dataset coloured by grouping variable ──────
 
-def _panel_umap_grouping(fig, axes, loaded: dict):
-    """Mini-UMAPs coloured by arm_col or visit_col."""
-    ds_names = list(loaded.keys())
+def _panel_umap_grouping(fig, axes, umap: dict):
+    """Mini-UMAPs coloured by arm or visit; the key is placed below by the caller."""
+    ds_names = list(umap.keys())
     for i, name in enumerate(ds_names):
         ax = axes[i]
-        adata = loaded[name]["adata"]
-        arm = loaded[name].get("arm_col")
-        vis = loaded[name].get("visit_col")
-
-        grp_col = arm if arm else vis
-        if grp_col is None:
+        labels = umap[name]["grp"]
+        if labels is None:
             ax.text(0.5, 0.5, "No grouping", ha="center", va="center",
                     transform=ax.transAxes, fontsize=9, fontstyle="italic",
                     color="#888888")
@@ -239,8 +258,7 @@ def _panel_umap_grouping(fig, axes, loaded: dict):
             ax.axis("off")
             continue
 
-        emb = adata.obsm["X_umap"]
-        labels = adata.obs[grp_col].astype(str).values
+        emb = umap[name]["emb"]
         unique_vals = sorted(set(labels))
         palette = dict(zip(unique_vals,
                            sns.color_palette("Set1", len(unique_vals))))
@@ -254,13 +272,9 @@ def _panel_umap_grouping(fig, axes, loaded: dict):
 
         handles = [mpatches.Patch(facecolor=palette[v], edgecolor="none",
                                   label=v) for v in unique_vals]
-        leg_loc = "upper left" if name == "TNBC" else "upper right" if name == "COVID-19" else "lower left"
-        ax.legend(handles=handles, fontsize=6.5, loc=leg_loc, frameon=True,
-                  framealpha=0.8, handlelength=0.6, handleheight=0.5,
-                  borderpad=0.2, labelspacing=0.1, handletextpad=0.3)
+        ax.legend(handles=handles, fontsize=6.5)
 
-        grp_label = "arm" if arm else "visit"
-        ax.set_title(f"{name} ({grp_label})", fontweight="bold", fontsize=9)
+        ax.set_title(f"{name} ({umap[name]['grp_label']})", fontweight="bold", fontsize=9)
         ax.set_xticks([])
         ax.set_yticks([])
         despine(ax)
@@ -271,35 +285,38 @@ def _panel_umap_grouping(fig, axes, loaded: dict):
 
 # ── Panel C: Marker gene dot plot ─────────────────────────────────
 
-def _panel_marker_dotplot(fig, ax, loaded: dict):
-    """Top 3 marker genes per cell type, dot plot.
+# canonical_markers keys must match HARMONIZED_CELLTYPE_ORDER labels
+_CANONICAL_MARKERS = {
+    "T other": ["CD3D", "CD3E", "TRAC"],
+    "CD8+ T": ["CD8A", "CD8B", "GZMB"],
+    "CD4+ T": ["CD4", "IL7R", "CCR7"],
+    "B cell": ["CD19", "MS4A1", "CD79A"],
+    "NK": ["NKG7", "GNLY", "KLRD1"],
+    "Monocyte": ["CD14", "LYZ", "S100A9"],
+    "DC": ["FCER1A", "CLEC10A", "CD1C"],
+    "Plasma": ["MZB1", "JCHAIN", "SDC1"],
+}
 
-    Color = mean log-expression (averaged across datasets).
-    Size  = fraction of cells expressing the marker.
+
+def _marker_dotplot_data(loaded: dict):
+    """Mean log-expression and fraction expressing per marker x harmonised cell type.
+
+    Each dataset contributes its own mean and fraction; the panel shows their average
+    across datasets. Returns ``(pivot_expr, pivot_frac)``, or a message string when there
+    is nothing to draw.
     """
-    # canonical_markers keys must match HARMONIZED_CELLTYPE_ORDER labels
-    canonical_markers = {
-        "T other": ["CD3D", "CD3E", "TRAC"],
-        "CD8+ T": ["CD8A", "CD8B", "GZMB"],
-        "CD4+ T": ["CD4", "IL7R", "CCR7"],
-        "B cell": ["CD19", "MS4A1", "CD79A"],
-        "NK": ["NKG7", "GNLY", "KLRD1"],
-        "Monocyte": ["CD14", "LYZ", "S100A9"],
-        "DC": ["FCER1A", "CLEC10A", "CD1C"],
-        "Plasma": ["MZB1", "JCHAIN", "SDC1"],
-    }
-    all_markers = [m for mks in canonical_markers.values() for m in mks]
-
     import scipy.sparse as sp
 
+    all_markers = [m for mks in _CANONICAL_MARKERS.values() for m in mks]
     rows = []
     for name, data in loaded.items():
         adata = data["adata"]
         X = _get_log_expr(adata)
         if X is None:
             continue
-        gene_names = list(adata.var_names)
-        gene_idx_map = {g.upper(): i for i, g in enumerate(gene_names)}
+        if sp.issparse(X) and X.format == "coo":
+            X = X.tocsr()
+        gene_idx_map = {g.upper(): i for i, g in enumerate(adata.var_names)}
 
         ct_col = data["ct_col"]
         if ct_col is None:
@@ -308,17 +325,16 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
         raw_labels = adata.obs[ct_col].astype(str).values
         harm_labels = np.array([harmonize_celltype(lbl) for lbl in raw_labels])
 
-        if sp.issparse(X):
-            X_arr = X.toarray()
-        else:
-            X_arr = np.asarray(X, dtype=float)
+        present = [(m, gene_idx_map[m.upper()]) for m in all_markers
+                   if m.upper() in gene_idx_map]
+        if not present:
+            continue
+        cols = [idx for _, idx in present]
+        X_sub = X[:, cols]
+        X_arr = X_sub.toarray() if sp.issparse(X_sub) else np.asarray(X_sub, dtype=float)
 
-        for marker in all_markers:
-            idx = gene_idx_map.get(marker.upper())
-            if idx is None:
-                continue
-            raw_col = X_arr[:, idx].ravel()
-
+        for j, (marker, _) in enumerate(present):
+            raw_col = X_arr[:, j].ravel()
             for ct_label in HARMONIZED_CELLTYPE_ORDER:
                 mask = harm_labels == ct_label
                 if mask.sum() < 10:
@@ -333,10 +349,7 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
                 })
 
     if not rows:
-        ax.text(0.5, 0.5, "No marker data", ha="center", va="center",
-                transform=ax.transAxes, fontsize=10, fontstyle="italic")
-        ax.set_title("Marker Gene Expression", fontweight="bold")
-        return
+        return "No marker data"
 
     df = pd.DataFrame(rows)
     agg = df.groupby(["Marker", "Cell type"]).agg(
@@ -345,22 +358,37 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
     ).reset_index()
 
     ct_used = [ct for ct in HARMONIZED_CELLTYPE_ORDER if ct in agg["Cell type"].values]
-    marker_order = [m for mks in canonical_markers.values() for m in mks
+    marker_order = [m for mks in _CANONICAL_MARKERS.values() for m in mks
                     if m in agg["Marker"].values]
     markers_used = list(dict.fromkeys(marker_order))
-
     if not ct_used or not markers_used:
-        ax.text(0.5, 0.5, "No overlap", ha="center", va="center",
-                transform=ax.transAxes, fontsize=10, fontstyle="italic")
-        return
+        return "No overlap"
 
     pivot_expr = agg.pivot_table(
         index="Cell type", columns="Marker", values="mean_expr", fill_value=0)
     pivot_frac = agg.pivot_table(
         index="Cell type", columns="Marker", values="frac_expr", fill_value=0)
-
     pivot_expr = pivot_expr.reindex(index=ct_used, columns=markers_used, fill_value=0)
     pivot_frac = pivot_frac.reindex(index=ct_used, columns=markers_used, fill_value=0)
+    return pivot_expr, pivot_frac
+
+
+def _panel_marker_dotplot(fig, ax, dot):
+    """Top 3 marker genes per cell type, dot plot.
+
+    Color = mean log-expression (averaged across datasets).
+    Size  = fraction of cells expressing the marker.
+    The size key sits right of the axes, below the colour bar, off the data.
+    """
+    if isinstance(dot, str):
+        ax.text(0.5, 0.5, dot, ha="center", va="center",
+                transform=ax.transAxes, fontsize=10, fontstyle="italic")
+        if dot == "No marker data":
+            ax.set_title("Marker Gene Expression", fontweight="bold")
+        return
+    pivot_expr, pivot_frac = dot
+    ct_used = list(pivot_expr.index)
+    markers_used = list(pivot_expr.columns)
 
     expr_max = max(float(pivot_expr.values.max()), 0.01)
 
@@ -378,7 +406,8 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
                 )
 
     if sc_handle is not None:
-        cbar = fig.colorbar(sc_handle, ax=ax, shrink=0.4, pad=0.02, aspect=15)
+        cbar = fig.colorbar(sc_handle, ax=ax, shrink=0.4, pad=0.02, aspect=15,
+                            anchor=(0.0, 1.0))
         cbar.set_label("Mean log\nexpression", fontsize=5)
         cbar.ax.tick_params(labelsize=5)
 
@@ -394,19 +423,18 @@ def _panel_marker_dotplot(fig, ax, loaded: dict):
         ax.scatter([], [], s=frac_val * 200, c="grey", alpha=0.5,
                    edgecolors="grey", label=f"{frac_val:.0%}")
     ax.legend(title="Frac. expr.", fontsize=5, title_fontsize=6,
-              loc="upper right", frameon=True, handletextpad=0.1)
+              loc="lower left", bbox_to_anchor=(1.02, 0.0), frameon=True,
+              handletextpad=0.1)
 
     despine(ax)
 
 
 # ── Panel D: Silhouette scores ────────────────────────────────────
 
-def _panel_silhouette(ax, loaded: dict):
+def _silhouette_scores(loaded: dict) -> tuple[list[str], list[float]]:
     """Centroid-silhouette approximation on PCA/Harmony (full data)."""
-
     ds_names = []
     scores = []
-
     for name, data in loaded.items():
         adata = data["adata"]
         ct_col = data["ct_col"]
@@ -446,7 +474,11 @@ def _panel_silhouette(ax, loaded: dict):
             scores.append(s)
         except Exception as exc:
             print(f"    {name}: silhouette failed ({exc})")
+    return ds_names, scores
 
+
+def _panel_silhouette(ax, sil: tuple[list[str], list[float]]):
+    ds_names, scores = sil
     if not ds_names:
         ax.text(0.5, 0.5, "No silhouette data", ha="center", va="center",
                 transform=ax.transAxes, fontsize=10, fontstyle="italic")
@@ -467,14 +499,14 @@ def _panel_silhouette(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel E: Embedding neighbourhood purity ──────────────────────
+# ── Panel D (lower): Embedding neighbourhood purity ──────────────
 
-def _panel_knn_purity(ax, loaded: dict):
-    """Label purity from full Scanpy neighbour graph (no subsampling)."""
+def _knn_purities(loaded: dict) -> tuple[list[str], list[float]]:
+    """Label purity from the full Scanpy neighbour graph (no subsampling)."""
+    from scipy import sparse as sp
 
     ds_names = []
     purities = []
-
     for name, data in loaded.items():
         adata = data["adata"]
         ct_col = data["ct_col"]
@@ -488,23 +520,17 @@ def _panel_knn_purity(ax, loaded: dict):
             conn = conn.tocsr()
             conn.eliminate_zeros()  # ensure .data matches structural nnz exactly
             labels = pd.Categorical(adata.obs[ct_col].astype(str)).codes
-            # Vectorised kNN purity: build same-label weight matrix, row-sum
             label_arr = np.asarray(labels)
-            # Derive row/col indices from the CSR structure itself so they are
-            # guaranteed to align 1:1 with conn.data (conn.nonzero() instead
-            # value-filters and can return a different length if a matrix has
-            # explicit zero entries stored, causing a shape mismatch).
+            # Row/col indices from the CSR structure itself, so they align 1:1 with
+            # conn.data (conn.nonzero() value-filters and can return another length).
             cols = conn.indices
             rows = np.repeat(np.arange(conn.shape[0]), np.diff(conn.indptr))
             same_label = label_arr[rows] == label_arr[cols]
-            # Build sparse matrix of same-label weights only
-            from scipy import sparse as sp
             same_w = sp.csr_matrix(
                 (conn.data * same_label, (rows, cols)), shape=conn.shape
             )
             total_w = np.asarray(conn.sum(axis=1)).ravel()
             same_w_sum = np.asarray(same_w.sum(axis=1)).ravel()
-            # Mask out cells with no neighbours
             valid = total_w > 0
             if not valid.any():
                 continue
@@ -513,7 +539,11 @@ def _panel_knn_purity(ax, loaded: dict):
             purities.append(purity)
         except Exception as exc:
             print(f"    {name}: kNN purity failed ({exc})")
+    return ds_names, purities
 
+
+def _panel_knn_purity(ax, pur: tuple[list[str], list[float]]):
+    ds_names, purities = pur
     if not ds_names:
         ax.text(0.5, 0.5, "No embedding data", ha="center", va="center",
                 transform=ax.transAxes, fontsize=10, fontstyle="italic")
@@ -528,39 +558,30 @@ def _panel_knn_purity(ax, loaded: dict):
 
     ax.set_ylabel("Graph label purity (connectivities)")
     ax.set_title("Embedding Neighbourhood Purity (Full Graph)", fontweight="bold")
-    ax.set_ylim(0, 1.05)
+    # Headroom above 1 so a value label near 1 stays inside the axes, below the title.
+    ax.set_ylim(0, 1.2)
+    ax.set_yticks([0, 0.5, 1.0])
     ax.axhline(1.0, color="grey", linewidth=0.5, linestyle="--", alpha=0.3)
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
 
 
-# ── Panel D merged: Silhouette + kNN purity in 1×2 ───────────────
-
-def _panel_embedding_quality(fig_merged, loaded: dict):
-    """D: Combined silhouette + kNN purity in 1×2 subplot."""
-    ax1, ax2 = fig_merged.subplots(1, 2)
-    _panel_silhouette(ax1, loaded)
-    _panel_knn_purity(ax2, loaded)
-
-
 # ── Panel F: Quantitative baseline arm overlap (kNN mixing) ──────
 
-def _panel_arm_mixing(ax, loaded: dict):
-    """Quantitative baseline arm overlap via kNN arm-mixing score.
+def _arm_mixing_scores(loaded: dict):
+    """Baseline kNN arm-mixing score per dataset and its random-mixing expectation.
 
-    For each dataset with an arm column, at baseline: build kNN graph
-    (k=15) in PCA space, compute participant-weighted fraction of neighbors
-    from the opposite arm.  The expected value under random mixing is
-    2*p*(1-p) (for two arms with proportions p and 1-p), NOT 0.5, which
-    only holds when arms are equal-sized.  Each dataset gets its own
-    dataset-specific reference line.
+    For each dataset with an arm column, at baseline: build a kNN graph (k=15) in PCA
+    space and compute the participant-weighted fraction of neighbours from the other
+    arm. The expected value under random mixing is 2*p*(1-p) for two arms with
+    participant proportions p and 1-p (0.5 only when the arms are equal-sized).
+    Returns (names, scores, expected).
     """
     from sklearn.neighbors import NearestNeighbors
 
     ds_names = []
     mix_scores = []
-    null_lines = []  # dataset-specific expected mixing under random assignment
-
+    null_lines = []
     for name, data in loaded.items():
         arm = data.get("arm_col")
         vis = data.get("visit_col")
@@ -570,7 +591,6 @@ def _panel_arm_mixing(ax, loaded: dict):
         adata = data["adata"]
         obs = adata.obs
 
-        # Get baseline cells
         if vis:
             pre_mask = obs[vis].astype(str).str.lower().isin(
                 ["pre", "baseline", "d0", "day0", "0", "d000"])
@@ -590,14 +610,12 @@ def _panel_arm_mixing(ax, loaded: dict):
         if len(unique_arms) < 2:
             continue
 
-        # Build kNN (k=15)
         nn = NearestNeighbors(n_neighbors=min(16, len(idx)),
                               metric="euclidean", algorithm="auto")
         nn.fit(emb)
         _, nbr_idx = nn.kneighbors(emb)
         nbr_idx = nbr_idx[:, 1:]  # exclude self
 
-        # Participant-weighted mixing: average per-participant mean mixing score
         obs_sub = obs.iloc[idx].copy()
         obs_sub["_mix"] = [float(np.mean(arms[nbr_idx[i]] != arms[i]))
                            for i in range(len(idx))]
@@ -607,9 +625,6 @@ def _panel_arm_mixing(ax, loaded: dict):
         else:
             mix_score = float(obs_sub["_mix"].mean())
 
-        # Expected mixing under random assignment: 2*p*(1-p)
-        # Use participant-level arm proportions to match the observed
-        # score which is also participant-weighted.
         if pid and pid in obs_sub.columns:
             pid_arms = obs_sub.groupby(pid)[arm].first()
             arm_counts = pid_arms.value_counts(normalize=True)
@@ -621,7 +636,11 @@ def _panel_arm_mixing(ax, loaded: dict):
         ds_names.append(name)
         mix_scores.append(mix_score)
         null_lines.append(expected_null)
+    return ds_names, mix_scores, null_lines
 
+
+def _panel_arm_mixing(ax, mixing):
+    ds_names, mix_scores, null_lines = mixing
     if not ds_names:
         ax.text(0.5, 0.5, "No arm-overlap data", ha="center", va="center",
                 transform=ax.transAxes)
@@ -630,16 +649,24 @@ def _panel_arm_mixing(ax, loaded: dict):
     x_pos = np.arange(len(ds_names))
     colors = [_DS_PALETTE.get(n, "grey") for n in ds_names]
     bars = ax.bar(x_pos, mix_scores, color=colors, edgecolor="white", width=0.6)
-    for bar, s in zip(bars, mix_scores):
-        ax.text(bar.get_x() + bar.get_width() / 2, s + 0.01, f"{s:.3f}",
+    y_top = min(max(mix_scores + null_lines) * 1.3, 1.0)
+    ax.set_ylim(0, y_top)
+    # A value sits on its bar, unless the label would reach the expected-value line
+    # just above the bar; then it sits above the line. The label height is taken as
+    # 6% of the axis range (a 7 pt label is under 4% in the standalone panel and 5.5%
+    # in the composite).
+    label_h = 0.06 * y_top
+    for bar, s, null in zip(bars, mix_scores, null_lines):
+        y = s + 0.01
+        if s < null and y + label_h > null - 0.01:
+            y = null + 0.012
+        ax.text(bar.get_x() + bar.get_width() / 2, y, f"{s:.3f}",
                 ha="center", va="bottom", fontsize=7, fontweight="bold")
 
-    # Per-dataset expected null line (tick marks spanning the bar width)
     bar_w = 0.6
     for xi, null in enumerate(null_lines):
         ax.plot([xi - bar_w / 2, xi + bar_w / 2], [null, null],
                 color="black", linewidth=0.6, linestyle="--", zorder=4)
-    # Add a single legend entry for the null lines
     ax.plot([], [], color="black", linewidth=0.6, linestyle="--",
             label="Expected (random, 2p(1−p))")
 
@@ -647,16 +674,15 @@ def _panel_arm_mixing(ax, loaded: dict):
     ax.set_xticklabels(ds_names)
     ax.set_ylabel("Arm-mixing score (participant-weighted)")
     ax.set_title("Baseline Arm Overlap (kNN mixing, k=15)", fontweight="bold")
-    ax.set_ylim(0, min(max(mix_scores + null_lines) * 1.3, 1.0) if mix_scores else 1)
-    ax.legend(fontsize=7, frameon=True)
+    ax.legend(fontsize=7)
     ax.tick_params(axis="x", rotation=15)
     despine(ax)
 
 
 # ── Panel E: Cell type × dataset cross-tabulation ─────────────────
 
-def _panel_ct_crosstab(ax, loaded: dict):
-    """Heatmap: harmonised cell type × dataset (normalised within dataset)."""
+def _celltype_crosstab(loaded: dict):
+    """Harmonised cell-type fractions within each dataset (cell type x dataset)."""
     rows = []
     for name, data in loaded.items():
         ct_col = data["ct_col"]
@@ -665,25 +691,25 @@ def _panel_ct_crosstab(ax, loaded: dict):
         harmonised = data["adata"].obs[ct_col].astype(str).map(harmonize_celltype)
         cts = harmonised.value_counts(normalize=True)
         for ct, frac in cts.items():
-            rows.append({"Dataset": name, "Cell type": ct,
-                         "Fraction": frac})
-
+            rows.append({"Dataset": name, "Cell type": ct, "Fraction": frac})
     if not rows:
-        ax.text(0.5, 0.5, "No cell-type data", ha="center", va="center",
-                transform=ax.transAxes)
-        return
+        return None
 
     df = pd.DataFrame(rows)
     pivot = df.pivot_table(index="Cell type", columns="Dataset",
                            values="Fraction", aggfunc="sum", fill_value=0)
-
-    # Enforce manuscript dataset order in columns
     ds_order = [name for name, _ in DATASETS if name in pivot.columns]
     pivot = pivot.reindex(columns=ds_order, fill_value=0)
-
     order = [c for c in HARMONIZED_CELLTYPE_ORDER if c in pivot.index]
-    pivot = pivot.loc[order]
+    return pivot.loc[order]
 
+
+def _panel_ct_crosstab(ax, pivot):
+    """Heatmap: harmonised cell type × dataset (normalised within dataset)."""
+    if pivot is None:
+        ax.text(0.5, 0.5, "No cell-type data", ha="center", va="center",
+                transform=ax.transAxes)
+        return
     sns.heatmap(pivot, cmap="YlOrBr", annot=True, fmt=".2f",
                 linewidths=0.5, ax=ax, vmin=0, vmax=pivot.values.max(),
                 cbar_kws={"label": "Fraction", "shrink": 0.7})
@@ -693,89 +719,46 @@ def _panel_ct_crosstab(ax, loaded: dict):
     despine(ax)
 
 
-# ── Panel G: Baseline cell-type composition — plotly parallel categories ──
+# ── Panel G: Baseline cell-type composition (participant-weighted alluvial) ──
 
+def _alluvial_flows(obs_sub, right_col: str, ct_col: str, right_label: str,
+                    pid_col: str | None) -> pd.DataFrame | None:
+    """Participants per (harmonised cell type, arm or visit) flow.
 
-def _make_plotly_parcats(ds_name: str, obs_sub, right_col: str, ct_col: str,
-                         right_label: str = "Arm", pid_col: str | None = None):
-    """Build a plotly parallel-categories figure for one dataset.
-
-    Returns a plotly Figure or None if insufficient data.
+    The 15 most frequent cell types are kept and the rest pooled as "Other". A flow's
+    weight is the number of participants with cells of that type in that group (the
+    number of cells when no participant column exists).
     """
-    import plotly.express as px
-
     mapped = obs_sub[ct_col].astype(str).map(harmonize_celltype)
-    right_vals = obs_sub[right_col].astype(str)
-
-    # Build per-cell dataframe with harmonised labels
-    df = pd.DataFrame({"Cell type": mapped.values, right_label: right_vals.values})
+    df = pd.DataFrame({"Cell type": mapped.values,
+                       right_label: obs_sub[right_col].astype(str).values})
     if pid_col and pid_col in obs_sub.columns:
         df["pid"] = obs_sub[pid_col].values
-
     if len(df) == 0:
         return None
 
-    # Cap at top 15 cell types
     max_ct = 15
     ct_order = df["Cell type"].value_counts().index.tolist()
     if len(ct_order) > max_ct:
         top_set = set(ct_order[:max_ct])
         df.loc[~df["Cell type"].isin(top_set), "Cell type"] = "Other"
 
-    # Participant-weighted counts per flow
     if pid_col and "pid" in df.columns:
-        flow = (
-            df.groupby(["Cell type", right_label])["pid"]
-            .nunique()
-            .reset_index(name="count")
-        )
+        flow = (df.groupby(["Cell type", right_label])["pid"]
+                .nunique().reset_index(name="count"))
     else:
         flow = df.groupby(["Cell type", right_label]).size().reset_index(name="count")
-
-    # Expand flow counts back to a long dataframe for px.parallel_categories
-    # (plotly weights by row count, so repeat rows by participant count)
-    rows = []
-    for _, r in flow.iterrows():
-        for _ in range(int(r["count"])):
-            rows.append({"Cell type": r["Cell type"], right_label: r[right_label]})
-    df_expanded = pd.DataFrame(rows)
-    if len(df_expanded) == 0:
-        return None
-
-    # Color by cell type using Dark24 palette
-    palette = px.colors.qualitative.Dark24 + px.colors.qualitative.Light24
-    ct_unique = sorted(df_expanded["Cell type"].unique())
-    ct_color_map = {ct: palette[i % len(palette)] for i, ct in enumerate(ct_unique)}
-    color_vals = df_expanded["Cell type"].map(ct_color_map)
-
-    fig = px.parallel_categories(
-        df_expanded,
-        dimensions=["Cell type", right_label],
-        color=color_vals,
-        #title=ds_name,
-        width=850,
-        height=720,
-    )
-    fig.update_layout(
-        coloraxis_showscale=False,
-        font=dict(size=42, color="black"),
-        #title=dict(text=ds_name, font=dict(size=22, family="Arial"),
-        #           x=0.5, xanchor="center", y=0.98, yanchor="top"),
-        margin=dict(l=160, r=100, t=70, b=30),
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-    )
-    return fig
+    flow = flow[flow["count"] > 0].reset_index(drop=True)
+    return flow if len(flow) else None
 
 
-def _panel_baseline_ct_by_arm_separate(loaded: dict):
-    """Per-dataset parallel categories saved as HTML + PNG via plotly.
+def _alluvial_data(loaded: dict) -> dict:
+    """Flows for every dataset with cell types.
 
-    Two-arm datasets: Cell type → Arm (baseline cells only).
-    Single-arm datasets: Cell type → Visit (all cells).
-    Flows are participant-weighted (count unique participants per flow).
+    Two-arm datasets: cell type to arm, baseline cells only. Single-arm datasets: cell
+    type to visit, all cells.
     """
-    ds_entries: list[tuple[str, pd.DataFrame, str, str, str, str | None]] = []
+    out = {}
     for name, data in loaded.items():
         ct = data.get("ct_col")
         if ct is None:
@@ -784,9 +767,7 @@ def _panel_baseline_ct_by_arm_separate(loaded: dict):
         arm = data.get("arm_col")
         vis = data.get("visit_col")
         pid = data.get("pid_col")
-
         if arm is not None:
-            # Two-arm: restrict to baseline, flow Cell type → Arm
             if vis:
                 pre_mask = obs[vis].astype(str).str.lower().isin(
                     ["pre", "baseline", "d0", "day0", "0", "d000"])
@@ -795,38 +776,194 @@ def _panel_baseline_ct_by_arm_separate(loaded: dict):
                 sub = obs.loc[pre_mask]
             else:
                 sub = obs
-            ds_entries.append((name, sub, arm, ct, "Arm", pid))
+            right_col, right_label = arm, "Arm"
         elif vis is not None:
-            # Single-arm: flow Cell type → Visit
-            ds_entries.append((name, obs, vis, ct, "Visit", pid))
+            sub, right_col, right_label = obs, vis, "Visit"
+        else:
+            continue
+        flow = _alluvial_flows(sub, right_col, ct, right_label, pid)
+        if flow is not None:
+            out[name] = {"flow": flow, "right_label": right_label}
+    return out
 
+
+def _alluvial_colors(cell_types) -> dict:
+    """Plotly Dark24 then Light24, assigned in sorted cell-type order."""
+    import plotly.express as px
+
+    palette = px.colors.qualitative.Dark24 + px.colors.qualitative.Light24
+    return {ct: palette[i % len(palette)] for i, ct in enumerate(sorted(cell_types))}
+
+
+def _write_alluvial_html(path, flow: pd.DataFrame, right_label: str) -> None:
+    """Interactive plotly parallel-categories view of the same flows."""
+    import plotly.express as px
+
+    rows = [{"Cell type": r["Cell type"], right_label: r[right_label]}
+            for _, r in flow.iterrows() for _ in range(int(r["count"]))]
+    df_expanded = pd.DataFrame(rows)
+    colors = _alluvial_colors(df_expanded["Cell type"].unique())
+    fig = px.parallel_categories(
+        df_expanded, dimensions=["Cell type", right_label],
+        color=df_expanded["Cell type"].map(colors), width=850, height=720,
+    )
+    fig.update_layout(coloraxis_showscale=False, font=dict(size=18, color="black"),
+                      margin=dict(l=160, r=220, t=70, b=30),
+                      paper_bgcolor="white", plot_bgcolor="white")
+    fig.write_html(str(path), include_plotlyjs="cdn")
+
+
+def _spread_labels(y, min_gap: float, lo: float, hi: float) -> np.ndarray:
+    """Move label centres apart by at least ``min_gap``, keeping them within [lo, hi]."""
+    y = np.asarray(y, dtype=float)
+    order = np.argsort(y)
+    s = y[order].copy()
+    for i in range(1, len(s)):
+        s[i] = max(s[i], s[i - 1] + min_gap)
+    if len(s) and s[-1] > hi:
+        s[-1] = hi
+        for i in range(len(s) - 2, -1, -1):
+            s[i] = min(s[i], s[i + 1] - min_gap)
+    if len(s) and s[0] < lo:
+        s += lo - s[0]
+    out = np.empty_like(s)
+    out[order] = s
+    return out
+
+
+def _draw_alluvial(ax, flow: pd.DataFrame, right_label: str, *, fontsize: float,
+                   header_fontsize: float | None = None) -> None:
+    """Two-column alluvial: cell types (left) to arm or visit (right).
+
+    Bar and ribbon heights are proportional to the participant-weighted flow. Ribbons
+    are coloured by cell type; categories are in sorted order on both sides. Labels are
+    spread apart where neighbouring categories are thinner than a line of text, with a
+    short leader to their bar.
+    """
+    header_fontsize = header_fontsize or fontsize
+    left = sorted(flow["Cell type"].unique())
+    right = sorted(flow[right_label].unique())
+    colors = _alluvial_colors(left)
+    total = float(flow["count"].sum())
+    gap = 0.02
+    bar_w = 0.05
+
+    # One height per participant on both sides; the side with fewer categories (and
+    # so fewer gaps) is centred.
+    unit = (1.0 - gap * (max(len(left), len(right)) - 1)) / total
+
+    def _stack(cats, key):
+        heights = [flow.loc[flow[key] == c, "count"].sum() * unit for c in cats]
+        y = (1.0 - sum(heights) - gap * (len(cats) - 1)) / 2
+        pos = {}
+        for c, h in zip(cats, heights):
+            pos[c] = (y, y + h)
+            y += h + gap
+        return pos
+
+    lpos = _stack(left, "Cell type")
+    rpos = _stack(right, right_label)
+    lcur = {c: lpos[c][0] for c in left}
+    rcur = {c: rpos[c][0] for c in right}
+    seg = {}
+    for c in left:
+        for r in right:
+            n = flow.loc[(flow["Cell type"] == c) & (flow[right_label] == r), "count"].sum()
+            if n > 0:
+                seg[(c, r)] = n * unit
+    for c in left:
+        for r in right:
+            if (c, r) in seg:
+                h = seg[(c, r)]
+                seg[(c, r)] = [lcur[c], lcur[c] + h, None, None]
+                lcur[c] += h
+    for r in right:
+        for c in left:
+            if (c, r) in seg:
+                s = seg[(c, r)]
+                hr = s[1] - s[0]
+                s[2], s[3] = rcur[r], rcur[r] + hr
+                rcur[r] += hr
+
+    t = np.linspace(0.0, 1.0, 60)
+    ease = (1 - np.cos(np.pi * t)) / 2
+    x = bar_w + (1 - 2 * bar_w) * t
+    for (c, r), (l0, l1, r0, r1) in seg.items():
+        ax.fill_between(x, l0 + (r0 - l0) * ease, l1 + (r1 - l1) * ease,
+                        color=colors[c], alpha=0.55, linewidth=0, zorder=1)
+        ax.add_patch(mpatches.Rectangle((1 - bar_w, r0), bar_w, r1 - r0,
+                                        facecolor=colors[c], edgecolor="none", zorder=2))
+    for c in left:
+        y0, y1 = lpos[c]
+        ax.add_patch(mpatches.Rectangle((0, y0), bar_w, y1 - y0, facecolor=colors[c],
+                                        edgecolor="black", linewidth=0.3, zorder=2))
+    for r in right:
+        y0, y1 = rpos[r]
+        ax.add_patch(mpatches.Rectangle((1 - bar_w, y0), bar_w, y1 - y0, facecolor="none",
+                                        edgecolor="black", linewidth=0.3, zorder=3))
+
+    ax.set_xlim(0, 1)
+    ax.set_ylim(1.0, 0.0)
+    ax.axis("off")
+
+    fig = ax.figure
+    height_in = ax.get_position().height * fig.get_figheight()
+    min_gap = fontsize * 1.15 / 72 / height_in
+    pad = 0.012
+    for cats, pos, xb, xt, ha in ((left, lpos, 0.0, -0.05, "right"),
+                                  (right, rpos, 1.0, 1.05, "left")):
+        centres = np.array([(pos[c][0] + pos[c][1]) / 2 for c in cats])
+        placed = _spread_labels(centres, min_gap, min_gap / 2, 1.0 - min_gap / 2)
+        for c, yc, yl in zip(cats, centres, placed):
+            ax.text(xt, yl, c, ha=ha, va="center", fontsize=fontsize, clip_on=False)
+            if abs(yl - yc) > min_gap / 4:
+                xs = (xb - pad, xt + pad) if ha == "right" else (xb + pad, xt - pad)
+                ax.plot(xs, (yc, yl), color="#777777", linewidth=0.3, clip_on=False)
+    ax.text(bar_w / 2, -0.03, "Cell type", ha="center", va="bottom",
+            fontsize=header_fontsize, fontweight="bold", clip_on=False)
+    ax.text(1 - bar_w / 2, -0.03, right_label, ha="center", va="bottom",
+            fontsize=header_fontsize, fontweight="bold", clip_on=False)
+
+
+def _save_alluvial_panels(alluvial: dict) -> None:
+    """Standalone PNG and interactive HTML of panel G for each dataset."""
     panel_dir = SUPP_OUTPUT / f"{FIGURE_NAME}_panels"
     panel_dir.mkdir(parents=True, exist_ok=True)
-    for ds_name, sub, right_col, ct_col, right_label, pid_col in ds_entries:
-        fig = _make_plotly_parcats(
-            ds_name, sub, right_col, ct_col,
-            right_label=right_label, pid_col=pid_col,
-        )
-        if fig is None:
-            continue
-        safe_name = ds_name.replace(" ", "_").replace("-", "_")
-        # Save interactive HTML
-        html_path = panel_dir / f"panel_G_{safe_name}.html"
-        fig.write_html(str(html_path), include_plotlyjs="cdn")
-        # Save static PNG (600 DPI equivalent at 3× scale)
-        png_path = panel_dir / f"panel_G_{safe_name}.png"
-        fig.write_image(str(png_path), format="png", scale=3)
-        print(f"    Saved panel: panel_G_{safe_name}")
+    for name, item in alluvial.items():
+        safe_name = name.replace(" ", "_").replace("-", "_")
+        fig = plt.figure(figsize=(4.2, 4.0))
+        ax = fig.add_axes([0.3, 0.04, 0.4, 0.84])
+        _draw_alluvial(ax, item["flow"], item["right_label"], fontsize=8)
+        ax.set_title(name, fontweight="bold", fontsize=10, pad=16)
+        save_panel(fig, f"panel_G_{safe_name}", FIGURE_NAME, SUPP_OUTPUT)
+        try:
+            _write_alluvial_html(panel_dir / f"panel_G_{safe_name}.html",
+                                 item["flow"], item["right_label"])
+        except Exception as exc:
+            print(f"    panel_G_{safe_name}.html not written ({exc})")
+
+
+def _prepare_panel_data(loaded: dict) -> dict:
+    """Everything panels A-G draw, computed once from the loaded datasets."""
+    return {
+        "umap": _umap_data(loaded),
+        "dotplot": _marker_dotplot_data(loaded),
+        "silhouette": _silhouette_scores(loaded),
+        "purity": _knn_purities(loaded),
+        "crosstab": _celltype_crosstab(loaded),
+        "mixing": _arm_mixing_scores(loaded),
+        "alluvial": _alluvial_data(loaded),
+    }
 
 
 # ======================================================================
-# Composite  (180 mm × ≤215 mm)
+# Composite (180 mm wide)
 # ======================================================================
-#   Row 0: A  — UMAP by cell type (1 × n_ds)
-#   Row 2: B  — UMAP by grouping  (1 × n_ds)
-#   Row 4: C (marker dot plot, left) | D (silhouette + purity, right)
-#   Row 6: E (ct × ds heatmap, left) | F (arm mixing, right)
-#   Row 8: G  — parallel-categories PNGs (1 × n_ds)
+#   Row 0: A, UMAP by cell type (1 x n_ds), keys below
+#   Row 1: B, UMAP by grouping (1 x n_ds), keys below
+#   Row 2: C (marker dot plot, left) | D (silhouette + purity, right)
+#   Row 3: E (ct x ds heatmap, left) | F (arm mixing, right)
+#   Row 4: G, participant-weighted alluvials (1 x n_ds)
 # ======================================================================
 
 _SMALL_RC = {
@@ -859,127 +996,106 @@ def _cap_fontsize(fig_obj, maximum):
                 t.set_fontsize(maximum)
 
 
-def _build_composite(loaded: dict):
-    """Assemble all panels A–G into a single 180 mm × ≤215 mm figure."""
-    import matplotlib.image as mpimg
+def _truncate_to_column(fig, ax, labels, fontsize):
+    """Shorten legend labels that would be wider than half the axes (two-column key)."""
+    import matplotlib.text as _mtext
 
-    print("  Building composite figure (panels A–G) ...")
+    renderer = fig.canvas.get_renderer()
+    col_width = ax.get_window_extent(renderer).width / 2 - 10 * fig.dpi / 72
+    probe = _mtext.Text(0, 0, "W", fontsize=fontsize)
+    probe.figure = fig
+    char_w = probe.get_window_extent(renderer).width
+    max_chars = max(4, int(col_width / char_w) + 4)
+    return [s if len(s) <= max_chars else s[:max_chars - 1] + "…" for s in labels]
+
+
+def _fit_row_to_ink(fig, axes, *, left: float, right: float, gap_mm: float) -> None:
+    """Place a row of equal-width axes so their label ink fills [left, right] with
+    ``gap_mm`` between neighbours' ink.
+
+    Each axes' ink overhang (labels left and right of the frame) is measured after a
+    draw, so wide labels get the room they need and narrow ones give theirs away. Two
+    passes, because labels placed in axes-fraction units move slightly with the width.
+    """
+    if not axes:
+        return
+    mm = fig.dpi / 25.4
+    width_px = fig.bbox.width
+    for _ in range(2):
+        fig.canvas.draw()
+        r = fig.canvas.get_renderer()
+        over = []
+        for ax in axes:
+            frame = ax.get_window_extent(r)
+            ink = ax.get_tightbbox(r)
+            over.append((max(frame.x0 - ink.x0, 0.0), max(ink.x1 - frame.x1, 0.0)))
+        avail = (right - left) * width_px - gap_mm * mm * (len(axes) - 1)
+        w = (avail - sum(lo + ro for lo, ro in over)) / len(axes)
+        x = left * width_px
+        for ax, (lo, ro) in zip(axes, over):
+            pos = ax.get_position()
+            ax.set_position([(x + lo) / width_px, pos.y0, w / width_px, pos.height])
+            x += lo + w + ro + gap_mm * mm
+
+
+def _build_composite(prep: dict):
+    """Assemble panels A-G on a 180 mm wide artboard from the prepared panel data."""
+    print("  Building composite figure (panels A-G) ...")
     _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
     plt.rcParams.update(_SMALL_RC)
 
+    umap = prep["umap"]
+    ds_names = list(umap.keys())
+    n_ds = len(ds_names)
+
+    # Heights in mm: A, its keys, B, its keys and the C|D titles, C|D, the gap holding
+    # C's gene names and the E|F titles, E|F, the gap holding E|F tick labels and the G
+    # titles, and G.
     _mm = 1.0 / 25.4
-    n_ds = len(loaded)
-    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+    rows_mm = [30.0, 17.0, 30.0, 12.0, 40.0, 17.0, 38.0, 16.0, 42.0]
+    top_mm, bottom_mm = 6.0, 3.0
+    height_mm = top_mm + sum(rows_mm) + bottom_mm
+    fig_c = plt.figure(figsize=(180 * _mm, height_mm * _mm))
+    outer = fig_c.add_gridspec(len(rows_mm), 1, height_ratios=rows_mm, hspace=0.0,
+                               left=0.06, right=0.98,
+                               top=1 - top_mm / height_mm, bottom=bottom_mm / height_mm)
 
-    outer = fig_c.add_gridspec(
-        9, 1,
-        height_ratios=[
-            0.28,   # row 0: A (UMAPs cell type)
-            0.17,   # spacer (room for A legends below)
-            0.28,   # row 2: B (UMAPs grouping)
-            0.09,   # spacer (B → C|D)
-            0.36,   # row 4: C | D  (reduced height)
-            0.14,   # spacer (C|D → E|F)
-            0.32,   # row 6: E | F  (reduced height)
-            0.07,   # spacer (E|F → G)
-            0.38,   # row 8: G (PNGs)
-        ],
-        hspace=0.0,
-        left=0.06, right=0.98, top=0.97, bottom=0.03,
-    )
-
-    # ── Row 0: A — UMAPs coloured by cell type ─────────────────────
+    # Row 0: A, UMAPs coloured by cell type
     gs_a = outer[0].subgridspec(1, n_ds, wspace=0.30)
     axes_a = [fig_c.add_subplot(gs_a[0, i]) for i in range(n_ds)]
-    _panel_umap_grid(fig_c, axes_a, loaded)
+    _panel_umap_grid(fig_c, axes_a, umap)
+    fig_c.canvas.draw()
     for _ax in axes_a:
         for _coll in _ax.collections:
-            if hasattr(_coll, "set_sizes"):
-                _coll.set_sizes([0.15])
+            _coll.set_sizes([0.15])
         _leg = _ax.get_legend()
         if _leg:
             _handles = list(_leg.legend_handles)
             _labels = [t.get_text() for t in _leg.get_texts()]
             _leg.remove()
-            # Estimate max chars that fit in one legend column without overlap.
-            # Each column is roughly half the axis width in display points.
-            # Render a temporary legend to measure, then truncate if needed.
-            _test_leg = _ax.legend(
-                handles=_handles, labels=_labels,
-                fontsize=3.5, loc="upper center",
-                bbox_to_anchor=(0.5, -0.02), ncol=2,
+            _ax.legend(
+                handles=_handles, labels=_truncate_to_column(fig_c, _ax, _labels, 3.5),
+                fontsize=3.5, loc="upper center", bbox_to_anchor=(0.5, -0.02), ncol=2,
                 frameon=False, handlelength=0.6, handleheight=0.5,
                 borderpad=0.1, labelspacing=0.12, columnspacing=0.8,
-                markerscale=0.35,
             )
-            try:
-                _renderer = fig_c.canvas.get_renderer()
-                _ax_width_pt = _ax.get_window_extent(_renderer).width
-                # Each of 2 columns gets roughly half minus handle/padding space
-                _col_width_pt = _ax_width_pt / 2 - 10
-                # Measure width of a single character at fontsize 3.5
-                import matplotlib.text as _mtext
-                _probe = _mtext.Text(0, 0, "W", fontsize=3.5)
-                _probe.figure = fig_c
-                _char_w = _probe.get_window_extent(_renderer).width
-                _max_chars = max(4, int(_col_width_pt / _char_w) + 4)
-                _labels_trunc = [
-                    s if len(s) <= _max_chars else s[:_max_chars - 1] + "…"
-                    for s in _labels
-                ]
-                _test_leg.remove()
-                _ax.legend(
-                    handles=_handles, labels=_labels_trunc,
-                    fontsize=3.5, loc="upper center",
-                    bbox_to_anchor=(0.5, -0.02), ncol=2,
-                    frameon=False, handlelength=0.6, handleheight=0.5,
-                    borderpad=0.1, labelspacing=0.12, columnspacing=0.8,
-                    markerscale=0.35,
-                )
-            except Exception:
-                pass  # keep the temporary legend as-is if renderer unavailable
 
-    # ── Row 2: B — UMAPs coloured by grouping variable ─────────────
+    # Row 1: B, UMAPs coloured by grouping variable
     gs_b = outer[2].subgridspec(1, n_ds, wspace=0.30)
     axes_b = [fig_c.add_subplot(gs_b[0, i]) for i in range(n_ds)]
-    _panel_umap_grouping(fig_c, axes_b, loaded)
-    _ds_names_b = list(loaded.keys())
-    for _i, _ax in enumerate(axes_b):
+    _panel_umap_grouping(fig_c, axes_b, umap)
+    for _ax in axes_b:
         for _coll in _ax.collections:
-            if hasattr(_coll, "set_sizes"):
-                _coll.set_sizes([0.15])
-        _leg_b = _ax.get_legend()
-        if _leg_b:
-            _bname = _ds_names_b[_i] if _i < len(_ds_names_b) else ""
-            _bloc = ("upper right" if _bname in ("TNBC", "AML", "COVID-19")
-                     else "lower right" if _bname == "Melanoma" else "lower left")
-            if _bname == "CAR-T":
-                # Rebuild with 2 columns
-                _bh = list(_leg_b.legend_handles)
-                _bl = [t.get_text() for t in _leg_b.get_texts()]
-                _leg_b.remove()
-                _leg_b = _ax.legend(
-                    handles=_bh, labels=_bl,
-                    fontsize=3.5, loc="lower right", frameon=True,
-                    framealpha=0.8, handlelength=0.6, handleheight=0.5,
-                    borderpad=0.2, labelspacing=0.1, handletextpad=0.3,
-                    ncol=2, columnspacing=0.5,
-                )
-            else:
-                for _txt in _leg_b.get_texts():
-                    _txt.set_fontsize(3.5)
-                _leg_b.set_loc(_bloc)
+            _coll.set_sizes([0.15])
 
-    # ── Row 4: C (marker dot plot, left) | D (sil + purity, right) ─
-    gs_cd = outer[4].subgridspec(1, 2, width_ratios=[0.55, 0.45],
-                                 wspace=0.15)
+    # Row 2: C (marker dot plot, left) | D (silhouette + purity, right)
+    gs_cd = outer[4].subgridspec(1, 2, width_ratios=[0.55, 0.45], wspace=0.22)
     ax_c = fig_c.add_subplot(gs_cd[0])
-    _panel_marker_dotplot(fig_c, ax_c, loaded)
+    _panel_marker_dotplot(fig_c, ax_c, prep["dotplot"])
     ax_c.tick_params(axis="x", labelsize=4)
     ax_c.tick_params(axis="y", labelsize=4)
     for _coll in ax_c.collections:
-        if hasattr(_coll, "get_sizes") and hasattr(_coll, "set_sizes"):
-            _coll.set_sizes(_coll.get_sizes() * 0.35)
+        _coll.set_sizes(_coll.get_sizes() * 0.35)
     _leg_c = ax_c.get_legend()
     if _leg_c:
         for _lh in _leg_c.legend_handles:
@@ -987,86 +1103,59 @@ def _build_composite(loaded: dict):
                 _lh.set_sizes([s * 0.1 for s in _lh.get_sizes()])
         for _txt in _leg_c.get_texts():
             _txt.set_fontsize(4.5)
-        _t_c = _leg_c.get_title()
-        if _t_c:
-            _t_c.set_fontsize(4.5)
-        _leg_c.set_loc("lower right")
+        _leg_c.get_title().set_fontsize(4.5)
 
     gs_d = gs_cd[1].subgridspec(2, 1, hspace=0.80)
     ax_d1 = fig_c.add_subplot(gs_d[0])
     ax_d2 = fig_c.add_subplot(gs_d[1])
-    _panel_silhouette(ax_d1, loaded)
-    _panel_knn_purity(ax_d2, loaded)
+    _panel_silhouette(ax_d1, prep["silhouette"])
+    _panel_knn_purity(ax_d2, prep["purity"])
     ax_d1.set_ylabel("Centroid-silhouette\nscore", fontsize=4.5)
     ax_d2.set_ylabel("Graph label purity\n(connectivities)", fontsize=4.5)
 
-    # ── Row 6: E (ct × ds heatmap, left) | F (arm mixing, right) ──
-    gs_ef = outer[6].subgridspec(1, 2, width_ratios=[0.55, 0.45],
-                                 wspace=0.15)
+    # Row 3: E (ct x ds heatmap, left) | F (arm mixing, right)
+    gs_ef = outer[6].subgridspec(1, 2, width_ratios=[0.55, 0.45], wspace=0.22)
     ax_e = fig_c.add_subplot(gs_ef[0])
-    _panel_ct_crosstab(ax_e, loaded)
+    _panel_ct_crosstab(ax_e, prep["crosstab"])
     ax_f = fig_c.add_subplot(gs_ef[1])
-    _panel_arm_mixing(ax_f, loaded)
+    _panel_arm_mixing(ax_f, prep["mixing"])
     for _txt in ax_f.texts:
         _txt.set_fontsize(4.5)
-    _leg_f = ax_f.get_legend()
-    if _leg_f:
-        for _txt in _leg_f.get_texts():
-            _txt.set_fontsize(4.5)
 
-    # ── Row 8: G — parallel-categories PNGs ────────────────────────
-    panel_dir = SUPP_OUTPUT / f"{FIGURE_NAME}_panels"
-    ds_names = list(loaded.keys())
-    gs_g = outer[8].subgridspec(1, n_ds, wspace=0.05)
+    # Row 4: G, participant-weighted alluvials
+    gs_g = outer[8].subgridspec(1, n_ds, wspace=1.15)
     axes_g: list[plt.Axes] = []
     for i, name in enumerate(ds_names):
         ax_gi = fig_c.add_subplot(gs_g[0, i])
         axes_g.append(ax_gi)
-        safe_name = name.replace(" ", "_").replace("-", "_")
-        png_path = panel_dir / f"panel_G_{safe_name}.png"
-        if png_path.exists():
-            img = mpimg.imread(str(png_path))
-            ax_gi.imshow(img)
-            ax_gi.set_title(name, fontweight="bold", fontsize=6, pad=2)
-        else:
-            ax_gi.text(0.5, 0.5, f"{name}\n(PNG not found)",
-                       ha="center", va="center",
+        item = prep["alluvial"].get(name)
+        if item is None:
+            ax_gi.text(0.5, 0.5, f"{name}\n(no flows)", ha="center", va="center",
                        transform=ax_gi.transAxes, fontsize=4)
-        ax_gi.set_xticks([])
-        ax_gi.set_yticks([])
-        ax_gi.axis("off")
+            ax_gi.axis("off")
+            continue
+        _draw_alluvial(ax_gi, item["flow"], item["right_label"], fontsize=4,
+                       header_fontsize=4.5)
+        ax_gi.set_title(name, fontweight="bold", fontsize=5.5, pad=9)
+    _fit_row_to_ink(fig_c, axes_g, left=0.02, right=0.98, gap_mm=2.5)
 
-    # ── Post-processing ────────────────────────────────────────────
+    # Post-processing: fonts final, then keys and letters, then the layout check
     _cap_fontsize(fig_c, _MAX_FONT)
 
-    _lbl_fs = 8
-    _lbl_x = -0.12
-    _lbl_y = 1.15
+    for _ax in axes_b:
+        key_below_axes(_ax, ncol=2, fontsize=3.5, gap_pt=1.0)
+    key_below_axes(ax_f, ncol=1, fontsize=4.5)
 
-    _label_pairs: list[tuple] = [
-        (axes_a[0], "A"),
-        (axes_b[0], "B"),
-        (ax_c, "C"),
-        (ax_d1, "D"),
-        (ax_e, "E"),
-        (ax_f, "F"),
-    ]
-    if axes_g:
-        _label_pairs.append((axes_g[0], "G"))
+    for ax_lbl, lbl in [(axes_a[0], "A"), (axes_b[0], "B"), (ax_c, "C"), (ax_d1, "D"),
+                        (ax_e, "E"), (ax_f, "F"), (axes_g[0], "G")]:
+        letter_at_panel_corner(ax_lbl, lbl, fontsize=8)
 
-    for ax_lbl, lbl in _label_pairs:
-        ax_lbl.text(
-            _lbl_x, _lbl_y, lbl,
-            transform=ax_lbl.transAxes,
-            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
-        )
-
+    report_layout_problems(fig_c, FIGURE_NAME)
     plt.rcParams.update(_prev_rc)
 
     save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
-    pdf_path = panel_dir / f"{FIGURE_NAME}.pdf"
-    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
-                  facecolor="white")
+    pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight", facecolor="white")
     plt.close(fig_c)
     print("    Saved combined artboard (PNG + PDF)")
 
@@ -1076,7 +1165,7 @@ def _build_composite(loaded: dict):
 # ======================================================================
 
 def generate():
-    """Create and save Supplementary Figure 2 panels (A–G) + composite."""
+    """Create and save Supplementary Figure 2 panels (A-G) + composite."""
     print("Supplementary Figure 2: Cell Annotation and Baseline Comparability")
 
     loaded = {}
@@ -1107,21 +1196,29 @@ def generate():
         print("  No datasets available; skipping.")
         return
 
+    prep = _prepare_panel_data(loaded)
+    for data in loaded.values():
+        del data["adata"]
+    loaded.clear()
+    clear_cache()
+    gc.collect()
+    umap = prep["umap"]
+
     # Panel A: UMAP grid coloured by cell type (mini-UMAPs)
-    n_ds = len(loaded)
+    n_ds = len(umap)
     ncols = min(n_ds, 3)
     nrows = (n_ds + ncols - 1) // ncols
     fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 4.5 * nrows))
     axes_flat = axes.ravel() if hasattr(axes, "ravel") else [axes]
-    _panel_umap_grid(fig, axes_flat, loaded)
+    _panel_umap_grid(fig, axes_flat, umap)
     fig.suptitle("Cell-Type UMAPs", fontweight="bold", fontsize=12, y=1.02)
     fig.tight_layout()
     save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Save individual cell-type UMAPs (legend below figure, 2 cols)
-    for name, data in loaded.items():
+    # Individual cell-type UMAPs (key below, two columns)
+    for name, item in umap.items():
         fig_ind, ax_ind = plt.subplots(figsize=(5.5, 6.0))
-        _panel_umap_grid(fig_ind, [ax_ind], {name: data})
+        _panel_umap_grid(fig_ind, [ax_ind], {name: item})
         _leg_ind = ax_ind.get_legend()
         if _leg_ind:
             _h = _leg_ind.legend_handles
@@ -1142,59 +1239,54 @@ def generate():
     # Panel B: UMAP grid coloured by grouping variable (arm/visit)
     fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 4.5 * nrows))
     axes_flat = axes.ravel() if hasattr(axes, "ravel") else [axes]
-    _panel_umap_grouping(fig, axes_flat, loaded)
+    _panel_umap_grouping(fig, axes_flat, umap)
     fig.suptitle("UMAPs by Grouping Variable", fontweight="bold",
                  fontsize=12, y=1.02)
-    fig.tight_layout()
+    fig.tight_layout(h_pad=3.0)
+    for _ax in axes_flat:
+        key_below_axes(_ax, ncol=2)
     save_panel(fig, "panel_B", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Save individual grouping UMAPs
-    for name, data in loaded.items():
+    # Individual grouping UMAPs
+    for name, item in umap.items():
         fig_ind, ax_ind = plt.subplots(figsize=(5.5, 5.0))
-        _panel_umap_grouping(fig_ind, [ax_ind], {name: data})
+        _panel_umap_grouping(fig_ind, [ax_ind], {name: item})
         fig_ind.tight_layout()
+        key_below_axes(ax_ind, ncol=2)
         safe = name.replace(" ", "_").replace("-", "_")
         save_panel(fig_ind, f"panel_B_{safe}", FIGURE_NAME, SUPP_OUTPUT)
 
     # Panel C: Marker gene dot plot
     fig, ax = plt.subplots(figsize=(10, 7))
-    _panel_marker_dotplot(fig, ax, loaded)
+    _panel_marker_dotplot(fig, ax, prep["dotplot"])
     fig.tight_layout()
     save_panel(fig, "panel_C", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel D: Embedding quality — silhouette + kNN purity (1×2)
+    # Panel D: Embedding quality, silhouette + kNN purity (1 x 2)
     fig = plt.figure(figsize=(14, 5))
-    _panel_embedding_quality(fig, loaded)
+    ax1, ax2 = fig.subplots(1, 2)
+    _panel_silhouette(ax1, prep["silhouette"])
+    _panel_knn_purity(ax2, prep["purity"])
     fig.tight_layout()
     save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel E: Cell-type × dataset cross-tabulation heatmap
+    # Panel E: Cell-type x dataset cross-tabulation heatmap
     fig, ax = plt.subplots(figsize=(9, 5))
-    _panel_ct_crosstab(ax, loaded)
+    _panel_ct_crosstab(ax, prep["crosstab"])
     fig.tight_layout()
     save_panel(fig, "panel_E", FIGURE_NAME, SUPP_OUTPUT)
 
     # Panel F: Quantitative baseline arm overlap (kNN mixing score)
     fig, ax = plt.subplots(figsize=(7, 5))
-    _panel_arm_mixing(ax, loaded)
+    _panel_arm_mixing(ax, prep["mixing"])
     fig.tight_layout()
+    key_below_axes(ax, ncol=1)
     save_panel(fig, "panel_F", FIGURE_NAME, SUPP_OUTPUT)
 
-    # Panel G: Per-dataset parallel categories (separate PNGs)
-    try:
-        _panel_baseline_ct_by_arm_separate(loaded)
-    except Exception as exc:
-        print(f"    Skipping plotly panel G PNGs: {exc}")
+    # Panel G: per-dataset alluvials (PNG + interactive HTML)
+    _save_alluvial_panels(prep["alluvial"])
 
-    # ── Composite artboard ─────────────────────────────────────────
-    _build_composite(loaded)
-
-    # Cleanup
-    for data in loaded.values():
-        del data["adata"]
-    loaded.clear()
-    clear_cache()
-    gc.collect()
+    _build_composite(prep)
     print("  Done.\n")
 
 
