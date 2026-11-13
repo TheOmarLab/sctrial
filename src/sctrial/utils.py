@@ -199,7 +199,7 @@ def wild_cluster_bootstrap_t(
     Each bootstrap draw perturbs the **restricted** residuals (imposing
     H0: beta_j = 0) with cluster-level Rademacher weights (±1 with equal
     probability), re-fits the full model via OLS (or WLS when the
-    original fit used weights) with **per-iteration cluster-robust SE**,
+    original fit used non-uniform weights) with **per-iteration cluster-robust SE**,
     and forms a bootstrap t-statistic.  The two-sided p-value is the
     fraction of bootstrap \|t*\| values that exceed the observed \|t\|.
 
@@ -269,9 +269,12 @@ def wild_cluster_bootstrap_t(
     uniq_cl = np.unique(clusters)
     G = len(uniq_cl)
 
-    # Detect WLS vs OLS
+    # Refit with the same estimator as the original fit. statsmodels' OLS is a
+    # subclass of WLS whose ``weights`` are all ones, so presence of the attribute
+    # does not distinguish the two; uniform weights do.
     weights = getattr(fit.model, "weights", None)
-    use_wls = weights is not None
+    w_arr = np.atleast_1d(np.asarray(weights, dtype=float)) if weights is not None else None
+    use_wls = w_arr is not None and not np.allclose(w_arr, w_arr[0])
 
     import statsmodels.api as sm
 

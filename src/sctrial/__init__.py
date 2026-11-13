@@ -46,6 +46,7 @@ from .preprocessing import (
     exclude_artifacts_from_hvg,
     flag_artifact_genes,
     is_artifact_gene,
+    is_ribosomal_gene,
 )
 from .scoring import ScoreMethod, score_gene_sets, score_gene_sets_aucell
 from .stats._extract import extract_gene_vector
@@ -53,7 +54,9 @@ from .stats.abundance import abundance_did
 from .stats.bayes import did_table_bayes, prior_predictive_check
 from .stats.comparisons import (
     between_arm_comparison,
+    between_arm_fit_beta,
     compare_gene_in_celltype,
+    get_between_arm_aggregated_df,
     get_within_arm_aggregated_df,
     within_arm_comparison,
     within_arm_fit_beta,
@@ -141,6 +144,7 @@ __all__ = [
     "exclude_artifacts_from_hvg",
     "flag_artifact_genes",
     "is_artifact_gene",
+    "is_ribosomal_gene",
     "score_gene_sets",
     "score_gene_sets_aucell",
     "ScoreMethod",
@@ -181,6 +185,8 @@ __all__ = [
     "get_within_arm_aggregated_df",
     "get_did_aggregated_df",
     "between_arm_comparison",
+    "between_arm_fit_beta",
+    "get_between_arm_aggregated_df",
     "summarize_did_results",
     "pseudobulk_expression",
     "pseudobulk_within_arm",

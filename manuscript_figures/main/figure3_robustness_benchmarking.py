@@ -95,6 +95,7 @@ from .._benchmark import (  # noqa: F401
 from .._shared import (
     COLORS,
     MAIN_OUTPUT,
+    STATS_FINGERPRINT,
     TrialDesign,
     apply_style,
     between_arm_comparison,
@@ -107,7 +108,12 @@ from .._shared import (
     get_stephenson,
     get_tnbc_zhang,
     get_vaccine,
+    group_axis_labels,
     harmonize_response,
+    key_below_axes,
+    label_points,
+    output_dpi,
+    report_layout_problems,
     save_panel,
     score_signatures,
     sig_display,
@@ -260,7 +266,7 @@ def _load_analysis_cache(tag: str) -> dict | None:
 # ======================================================================
 
 def _prepare_sf_data() -> dict:
-    _tag = "sf_analysis_" + _cache_key("sf")
+    _tag = "sf_analysis_" + _cache_key("sf", STATS_FINGERPRINT)
     cached = _load_analysis_cache(_tag)
     if cached is not None:
         print("  SF analysis (cached)")
@@ -301,7 +307,7 @@ def _prepare_sf_data() -> dict:
 
 
 def _prepare_tnbc_data() -> dict:
-    _tag = "tnbc_analysis_" + _cache_key("tnbc")
+    _tag = "tnbc_analysis_" + _cache_key("tnbc", STATS_FINGERPRINT)
     cached = _load_analysis_cache(_tag)
     if cached is not None:
         print("  TNBC analysis (cached)")
@@ -456,7 +462,7 @@ def _paired_cohens_d(participant_deltas: np.ndarray) -> tuple[float, float, floa
 
 
 def _compute_effect_sizes_across_datasets(datasets: list[DatasetInfo]) -> pd.DataFrame:
-    cache_tag = "effects_" + _cache_key(*[f"{n}:{a.n_obs}" for n, a, *_ in datasets])
+    cache_tag = "effects_" + _cache_key("pid-observed", *[f"{n}:{a.n_obs}" for n, a, *_ in datasets])
     cached = _load_cache(cache_tag)
     if cached is not None:
         print("  Effect sizes (cached)")
@@ -480,7 +486,7 @@ def _compute_effect_sizes_across_datasets(datasets: list[DatasetInfo]) -> pd.Dat
                     for arm in [design.arm_treated, design.arm_control]:
                         arm_pb = pb[pb[design.arm_col] == arm]
                         arm_d: list[float] = []
-                        for _, pdf in arm_pb.groupby(pid_col):
+                        for _, pdf in arm_pb.groupby(pid_col, observed=True):
                             if set(visits).issubset(set(pdf[design.visit_col])):
                                 pre = pdf.loc[pdf[design.visit_col] == visits[0], sig].values[0]
                                 post = pdf.loc[pdf[design.visit_col] == visits[1], sig].values[0]
@@ -499,7 +505,7 @@ def _compute_effect_sizes_across_datasets(datasets: list[DatasetInfo]) -> pd.Dat
                         [sig].mean().reset_index()
                     )
                     ds: list[float] = []
-                    for _, pdf in pb.groupby(pid_col):
+                    for _, pdf in pb.groupby(pid_col, observed=True):
                         if set(visits).issubset(set(pdf[design.visit_col])):
                             pre = pdf.loc[pdf[design.visit_col] == visits[0], sig].values[0]
                             post = pdf.loc[pdf[design.visit_col] == visits[1], sig].values[0]
@@ -511,8 +517,11 @@ def _compute_effect_sizes_across_datasets(datasets: list[DatasetInfo]) -> pd.Dat
                 elif dtype == "cross_sectional":
                     visit_mask = adata.obs[design.visit_col] == visits[0]
                     obs_visit = adata.obs.loc[visit_mask]
-                    pb_t = obs_visit.loc[obs_visit[design.arm_col] == design.arm_treated].groupby(pid_col)[sig].mean()
-                    pb_c = obs_visit.loc[obs_visit[design.arm_col] == design.arm_control].groupby(pid_col)[sig].mean()
+                    # observed=True: participant_id is categorical, and without it the
+                    # groupby returns every participant in the cohort (NaN for absent
+                    # ones), so len() counted the whole cohort in each arm.
+                    pb_t = obs_visit.loc[obs_visit[design.arm_col] == design.arm_treated].groupby(pid_col, observed=True)[sig].mean()
+                    pb_c = obs_visit.loc[obs_visit[design.arm_col] == design.arm_control].groupby(pid_col, observed=True)[sig].mean()
                     n1, n2 = len(pb_t), len(pb_c)
                     if n1 < 3 or n2 < 3:
                         continue
@@ -639,12 +648,19 @@ def _prepare_scalability_data() -> dict:
 # Panel A: Bootstrap vs Analytical SE
 # ======================================================================
 
+_PANEL_A_MARKER_S = 22  # pt^2, the scatter markers and their label obstacles
+
 def _panel_a_single(
     ax, data: dict, *, title: str = "Bootstrap vs Analytical SE",
     composite: bool = False, dataset: str = "melanoma",
-) -> None:
-    """Bootstrap SE scatter (analytical vs bootstrap) with leader lines."""
-    from adjustText import adjust_text
+):
+    """Bootstrap SE against analytical SE, one point per signature.
+
+    Draws the points, the identity line and a key holding Pearson r and its p value.
+    Returns ``(names, analytical, bootstrap)`` for ``_label_panel_a``, which names the
+    points once the axes geometry is final, or None when there is nothing to label.
+    """
+    from matplotlib.lines import Line2D
 
     df_boot = data["df_boot"]
 
@@ -652,7 +668,7 @@ def _panel_a_single(
         ax.text(0.5, 0.5, "Data unavailable", ha="center", va="center", transform=ax.transAxes)
         ax.set_title(title, fontsize=10, fontweight="bold")
         despine(ax)
-        return
+        return None
 
     feats, analytical, bootstrap = [], [], []
     for _, row in df_boot.iterrows():
@@ -669,7 +685,7 @@ def _panel_a_single(
     if len(analytical) == 0:
         ax.text(0.5, 0.5, "Insufficient bootstrap data", ha="center", va="center", transform=ax.transAxes)
         despine(ax)
-        return
+        return None
 
     raw_lo = min(analytical.min(), bootstrap.min())
     raw_hi = max(analytical.max(), bootstrap.max())
@@ -679,7 +695,7 @@ def _panel_a_single(
     x_lo = lo - 0.08 * (hi - lo)
     ax.plot([x_lo, hi], [x_lo, hi], ls="--", color=COLORS["gray"], lw=1, zorder=1)
 
-    ax.scatter(analytical, bootstrap, s=22, color=COLORS["treated"],
+    ax.scatter(analytical, bootstrap, s=_PANEL_A_MARKER_S, color=COLORS["treated"],
                edgecolor="white", linewidth=0.5, zorder=3)
 
     _ax_fs = 5.2 if composite else 10
@@ -691,69 +707,45 @@ def _panel_a_single(
     ax.set_ylim(lo, 2.0 if dataset == "melanoma" else 1.4)
     despine(ax)
 
-    # The r/p statistics box is drawn FIRST and passed to adjust_text as a fixed
-    # object to avoid, so no signature label lands on it (previously the p-value
-    # was overprinted). Labels carry a white bounding box: adjust_text sets the box
-    # as the arrow's patchB, so the leader line terminates at the box EDGE instead
-    # of crossing the glyphs (the "strikethrough" defect).
+    # Pearson r and p in a key, placed below the axes by the caller, clear of the labels.
     r, p = stats.pearsonr(analytical, bootstrap)
-    # TNBC (left subpanel): top-left. Melanoma (right subpanel): bottom-right.
-    if dataset == "melanoma":
-        _stat_x, _stat_ha, _stat_y, _stat_va = 0.96, "right", 0.04, "bottom"
-    else:
-        _stat_x, _stat_ha, _stat_y, _stat_va = 0.04, "left", 0.96, "top"
-    stat_text = ax.text(
-        _stat_x, _stat_y, f"r = {r:.2f}\np = {p:.1e}",
-        transform=ax.transAxes, fontsize=(10 if composite else 10), va=_stat_va, ha=_stat_ha,
-        zorder=6,
-        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#dddddd", alpha=0.9),
+    ax.legend(handles=[Line2D([], [], linestyle="none", label=f"r = {r:.2f}, p = {p:.1e}")],
+              fontsize=5.5 if composite else 9, handlelength=0, handletextpad=0)
+    return [sig_display(f) for f in feats], analytical, bootstrap
+
+
+def _label_panel_a(ax, points, *, composite: bool = False) -> None:
+    """Name the points of a panel A scatter, clear of points, labels and identity line.
+
+    Signatures are named in order of how far their bootstrap SE departs from the
+    analytical SE (distance from the identity line), the ones a reader looks for. The
+    standalone panel names every signature unless that cannot be laid out without a
+    defect, then drops at most the eight closest to the line; a composite cell names as
+    many as fit. The axes limits, position and fonts must be final (see
+    ``label_points``). The dashed identity line is not an obstacle: a label may cross
+    it, which reads far better than labels pushed onto each other.
+    """
+    if points is None:
+        return
+    names, xs, ys = points
+    n = len(names)
+    priority = np.argsort(-np.abs(np.asarray(ys) - np.asarray(xs)), kind="stable")
+    steps = (16, 12, 10, 8, 6, 5, 4, 3) if composite else (n - 4, n - 8)
+    labelled = label_points(ax, names, xs, ys, _PANEL_A_MARKER_S,
+                            fontsize=4.5 if composite else 6.5, fontweight="normal",
+                            color="#1a1a1a", priority=priority,
+                            counts=[n] + [k for k in steps if 0 < k < n])
+    print(f"    {ax.get_title()}: {len(labelled)} of {n} signatures named")
+
+
+def _panel_a(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict, *, composite: bool = False):
+    """Both panel A scatters; returns their points for ``_label_panel_a``."""
+    return (
+        _panel_a_single(ax_top, data_sf, title="Bootstrap vs Analytical SE (Melanoma)",
+                        composite=composite, dataset="melanoma"),
+        _panel_a_single(ax_bottom, data_tnbc, title="Bootstrap vs Analytical SE (TNBC)",
+                        composite=composite, dataset="tnbc"),
     )
-
-    # Per-signature manual (dx, dy) offsets for TNBC as fractions of data range.
-    # Positive dy = up, positive dx = right.
-    _TNBC_OFFSETS: dict[str, tuple[float, float]] = {
-        "Inflammatory": (0.0, -0.008),
-        "Antigen":      (0.0, -0.012),
-        "Checkpoint":   (0.0, +0.008),
-        "Regulatory":   (0.002, 0.002),   # place close to marker → short leader line
-        "Exhaustion":   (0.0, +0.018),    # raise above Monocyte/Macrophage
-        "Monocyte":     (+0.010, 0.0),    # nudge right to stay inside axes
-    }
-
-    # ── Labels with leader lines via adjust_text ──────────────────────
-    # Show in both standalone and composite; font is smaller in composite.
-    if True:
-        texts = []
-        _lbl_fs = 4.5 if composite else 6.5
-        _dr = raw_hi - raw_lo
-        for feat, xa, ya in zip(feats, analytical, bootstrap):
-            label = sig_display(feat)
-            if dataset == "tnbc":
-                for kw, (dx, dy) in _TNBC_OFFSETS.items():
-                    if kw.lower() in label.lower():
-                        xa = xa + dx * _dr
-                        ya = ya + dy * _dr
-                        break
-            texts.append(ax.text(
-                xa, ya, label, fontsize=_lbl_fs, ha="center", va="center",
-                color="#1a1a1a", zorder=5,
-                bbox=dict(boxstyle="round,pad=0.15", fc="none", ec="none", alpha=0.75)))
-        _adj_kw = dict(
-            x=analytical, y=bootstrap, ax=ax,
-            arrowprops=dict(arrowstyle="-", color="#bbbbbb", lw=0.5, shrinkA=1, shrinkB=1),
-            expand=(1.1, 1.3), force_text=(0.5, 0.6), force_points=(0.3, 0.4),
-        )
-        try:
-            adjust_text(texts, add_objects=[stat_text], **_adj_kw)
-        except TypeError:
-            # Older/newer adjustText may name the parameter differently; fall back
-            # to repelling from points/text only.
-            adjust_text(texts, **_adj_kw)
-
-
-def _panel_a(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict, *, composite: bool = False) -> None:
-    _panel_a_single(ax_top, data_sf, title="Bootstrap vs Analytical SE (Melanoma)", composite=composite, dataset="melanoma")
-    _panel_a_single(ax_bottom, data_tnbc, title="Bootstrap vs Analytical SE (TNBC)", composite=composite, dataset="tnbc")
 
 
 # ======================================================================
@@ -969,6 +961,15 @@ def _panel_d_se_comparison(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict) ->
 # ======================================================================
 
 def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
+    """Forest of design-specific standardized effects, five endpoints per dataset.
+
+    Rows are grouped by dataset; each group is named once, with its participant count,
+    to the left of its endpoint labels, and each row's effect is written in a column
+    right of the axes, clear of the confidence intervals. The axes fonts must be final
+    (the group labels are placed from the measured endpoint labels).
+    """
+    import matplotlib.transforms as mtransforms
+
     scale_data = data.get("scale_data")
     if scale_data is None:
         ax.text(0.5, 0.5, "Effect-size data unavailable", ha="center", va="center", transform=ax.transAxes, fontsize=10)
@@ -1000,113 +1001,94 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
         "Type I Interferon": "Type I IFN",
         "T Cell Activation": "T-cell activation",
     }
+    sig_rank = {s: i for i, s in enumerate(_SIG_ORDER)}
 
-    rows: list[dict] = []
-    for ds in ds_order:
+    # Bottom-up y positions: the first dataset and its first endpoint at the top.
+    _GROUP_GAP = 0.6
+    rows: list[tuple[float, dict]] = []
+    groups: list[tuple[str, float, float]] = []
+    y = 0.0
+    for ds in reversed(ds_order):
         grp = effect_df[effect_df["dataset"] == ds]
         if grp.empty:
             continue
-        sig_order_map = {s: i for i, s in enumerate(_SIG_ORDER)}
-        grp = grp.copy()
-        grp["_sort_key"] = grp["signature"].map(lambda s, m=sig_order_map: m.get(s, len(_SIG_ORDER)))
-        grp = grp.sort_values("_sort_key")
-        rows.append({"_group_label": ds})
-        for _, row in grp.iterrows():
-            rows.append(row.to_dict())
-
+        grp = grp.assign(_k=grp["signature"].map(lambda s: sig_rank.get(s, len(_SIG_ORDER))))
+        grp = grp.sort_values("_k")
+        y_first = y
+        for _, row in grp.iloc[::-1].iterrows():
+            rows.append((y, row.to_dict()))
+            y += 1
+        groups.append((ds, y_first, y - 1))
+        y += _GROUP_GAP
     if not rows:
         return
 
-    y = 0
-    y_positions: list[float] = []
-    y_labels: list[str] = []
-    label_datasets: list[str | None] = []
-    data_rows: list[tuple[int, dict]] = []
-    # Extra whitespace above each dataset's group label separates the datasets
-    # visually; the point + label colours carry the grouping.
-    _GROUP_GAP = 0.7
-
-    for r in reversed(rows):
-        if "_group_label" in r:
-            y_positions.append(y)
-            y_labels.append(r["_group_label"])
-            label_datasets.append(None)
-            y += 1 + _GROUP_GAP
-        else:
-            y_positions.append(y)
-            sig_full = r.get("signature", "")
-            sig_short = _SIG_SHORT.get(sig_full, sig_full.replace("_", " "))
-            y_labels.append(f"  {sig_short}")
-            label_datasets.append(r.get("dataset"))
-            data_rows.append((len(y_positions) - 1, r))
-            y += 1
-
-    ax.grid(True, which="major", axis="x", color="#f0f0f0", linewidth=0.3, zorder=0)
-    ax.set_axisbelow(True)
-    ax.axvline(0, color="#444", linewidth=1.0, linestyle="-", zorder=1, alpha=0.5)
-
     _pt_size = 24 if composite else 50
     _ci_lw = 1.7 if composite else 2.2
-    _ann_fs = 5.0 if composite else 7
-    _yt_fs = 6.4 if composite else 8.5
-    _yt_grp_fs = 7.2 if composite else 9.5
+    _ann_fs = 4.5 if composite else 7
+    _yt_fs = 4.5 if composite else 8.5  # the composite's tick-label size
+    _yt_grp_fs = 5.5 if composite else 9.5
     _xl_fs = 5.2 if composite else 11
     _ttl_fs = 7.0 if composite else 13
     _xt_fs = 6.4 if composite else 9.5
 
-    for idx, row in data_rows:
-        yp = y_positions[idx]
+    ax.grid(True, which="major", axis="x", color="#f0f0f0", linewidth=0.3, zorder=0)
+    ax.set_axisbelow(True)
+    ax.axvline(0, color="#444", linewidth=1.0, linestyle="-", zorder=1, alpha=0.5)
+    for ref_d in (-0.8, -0.5, -0.2, 0.2, 0.5, 0.8):
+        ax.axvline(ref_d, color=COLORS["gray"], linewidth=0.4, linestyle=":", zorder=0, alpha=0.25)
+    for (_, _, top_below), (_, bottom_above, _) in zip(groups, groups[1:]):
+        ax.axhline((top_below + bottom_above) / 2, color=COLORS["gray"], linewidth=0.4,
+                   alpha=0.3)
+
+    # Effects in a column right of the axes, never on a confidence interval.
+    value_tr = mtransforms.offset_copy(
+        mtransforms.blended_transform_factory(ax.transAxes, ax.transData),
+        fig=ax.figure, x=3, units="points")
+    for yp, row in rows:
         color = DATASET_COLORS.get(row["dataset"], COLORS["gray"])
         ax.hlines(yp, row["d_lower"], row["d_upper"], color=color, linewidth=_ci_lw, zorder=2, alpha=0.7)
         ax.scatter(row["d"], yp, color=color, s=_pt_size, zorder=3, edgecolors="white", linewidths=1.0)
-        x_annot = row["d_upper"] + 0.08
-        ax.text(x_annot, yp, f"{row['d']:+.2f}  (n\u2090={row['n_participants']})",
-                fontsize=_ann_fs, va="center", ha="left", color="#444")
+        ax.text(1.0, yp, f"{round(row['d'], 2) + 0.0:+.2f}", transform=value_tr, fontsize=_ann_fs,
+                va="center", ha="left", color="#444", clip_on=False)
 
-    for i, lbl in enumerate(y_labels):
-        if lbl in ds_order:
-            yp = y_positions[i]
-            ax.axhline(yp - 0.5, color=COLORS["gray"], linewidth=0.4, linestyle="-", alpha=0.3, xmin=0.0, xmax=1.0)
+    ax.set_yticks([yp for yp, _ in rows])
+    ax.set_yticklabels([_SIG_SHORT.get(r["signature"], r["signature"].replace("_", " "))
+                        for _, r in rows], fontsize=_yt_fs)
+    for tick_label, (_, r) in zip(ax.get_yticklabels(), rows):
+        tick_label.set_color(DATASET_COLORS.get(r["dataset"], "#444"))
 
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels(y_labels, fontsize=_yt_fs)
-    for tick_label, lab_ds in zip(ax.get_yticklabels(), label_datasets):
-        text = tick_label.get_text()
-        if text in ds_order:
-            # Dataset group header: bold, larger, full dataset colour.
-            tick_label.set_fontweight("bold")
-            tick_label.set_fontsize(_yt_grp_fs)
-            tick_label.set_color(DATASET_COLORS.get(text, COLORS["gray"]))
-        elif lab_ds is not None:
-            # Endpoint row: tinted with its dataset colour to preserve grouping.
-            tick_label.set_color(DATASET_COLORS.get(lab_ds, "#444"))
-
-    for ref_d in (-0.8, -0.5, -0.2, 0.2, 0.5, 0.8):
-        ax.axvline(ref_d, color=COLORS["gray"], linewidth=0.4, linestyle=":", zorder=0, alpha=0.25)
-
-    # VERIFIED design-specific: two-arm uses two-sample pooled-SD Cohen's d
-    # (cohens_d_from_did), single-arm uses one-sample paired Cohen's d. Neither
-    # applies the Hedges small-sample correction (that is a separate hedges_g
-    # function), so this is NOT Hedges' g. Labelled as a design-specific
-    # standardized participant-level effect rather than a single "Cohen's d".
     ax.set_xlabel("Standardized effect (design-specific Cohen's d)", fontsize=_xl_fs)
     ax.set_title("Effect sizes: pre-specified endpoints", fontsize=_ttl_fs, fontweight="bold",
                  pad=12 if not composite else 8)
     ax.tick_params(axis="x", which="major", labelsize=_xt_fs)
     all_vals = effect_df[["d_lower", "d_upper", "d"]].values.flatten()
-    x_margin = max(abs(all_vals.min()), abs(all_vals.max())) + 0.5
+    x_margin = max(abs(all_vals.min()), abs(all_vals.max())) + 0.3
     ax.set_xlim(-x_margin, x_margin)
-    ax.set_ylim(-0.6, max(y_positions) + 0.6)
+    ax.set_ylim(-0.7, y - _GROUP_GAP - 0.3)
     despine(ax)
     ax.spines["bottom"].set_linewidth(1.2)
     ax.spines["left"].set_linewidth(1.2)
+
+    # Dataset names (and participant counts) once per group, left of the endpoints.
+    n_texts = len(ax.texts)
+    group_axis_labels(
+        ax,
+        [(f"{_DATASET_DISPLAY_NAMES.get(ds, ds)}\n"
+          f"n = {int(effect_df.loc[effect_df['dataset'] == ds, 'n_participants'].max())}",
+          y_lo, y_hi) for ds, y_lo, y_hi in groups],
+        fontsize=_yt_grp_fs, axis="y", gap_pt=4.0)
+    for txt, (ds, _, _) in zip(ax.texts[n_texts:], groups):
+        txt.set_fontweight("bold")
+        txt.set_color(DATASET_COLORS.get(ds, COLORS["gray"]))
+        txt.set_multialignment("right")
 
 
 # ======================================================================
 # Composite generation
 # ======================================================================
 
-def _load_verified_benchmark_data() -> tuple["pd.DataFrame | None", "pd.DataFrame | None"]:
+def _load_verified_benchmark_data() -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
     """Load both benchmark CSVs, enforcing completion guards explicitly.
 
     The shared loaders in _benchmark.py already call completion_marker,
@@ -1126,7 +1108,7 @@ def _load_verified_benchmark_data() -> tuple["pd.DataFrame | None", "pd.DataFram
             )
         if not layout.completion_marker("sensitivity").exists():
             raise FileNotFoundError(
-                f"no completion_marker for the sensitivity grid; "
+                "no completion_marker for the sensitivity grid; "
                 "run scripts/aggregate_benchmark.py first"
             )
     except (FileNotFoundError, ValueError):
@@ -1175,8 +1157,12 @@ def generate() -> None:
 
     # ── Individual panels ──────────────────────────────────────────────
     fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
-    _panel_a(ax_top, ax_bottom, data, data_tnbc)
-    fig.tight_layout()
+    points = _panel_a(ax_top, ax_bottom, data, data_tnbc)
+    fig.tight_layout(h_pad=4.0, rect=(0, 0.04, 1, 1))  # room for each r/p key below
+    for ax_, pts in zip((ax_top, ax_bottom), points):
+        _label_panel_a(ax_, pts)
+        key_below_axes(ax_, ncol=1)
+    report_layout_problems(fig, "panel_A_bootstrap_validation")
     save_panel(fig, "panel_A_bootstrap_validation", FIGURE_NAME, MAIN_OUTPUT)
 
     fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
@@ -1222,6 +1208,7 @@ def generate() -> None:
     fig, ax = plt.subplots(figsize=(10, 9))
     _panel_e_cross_dataset(ax, data)
     fig.tight_layout()
+    report_layout_problems(fig, "panel_H_cross_dataset_effects")
     save_panel(fig, "panel_H_cross_dataset_effects", FIGURE_NAME, MAIN_OUTPUT)
 
     # ── Combined artboard (180 × 215 mm) ──────────────────────────────
@@ -1275,14 +1262,17 @@ def generate() -> None:
     #   C pure-null Type I error | D mixed-signal null-gene FPR
     #   E realised FDR after BH  | F marginal detection (beta = 0.5)
     #   G runtime  +  H pure-null calibration (lambda_GC)   | I cross-dataset forest
-    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+    # Laid out at the resolution it is written at, so measured placements hold in the file.
+    fig_c = plt.figure(figsize=(180 * _mm, 233 * _mm), dpi=output_dpi())
     # lambda_GC (old panel H) removed. Bottom row places G (runtime) and H
     # (cross-dataset forest) SIDE BY SIDE so neither is over-wide; the forest gets
     # the wider column. Letters are consecutive A-H.
     outer = fig_c.add_gridspec(
         9, 1,
-        height_ratios=[0.80, 0.40, 0.48, 0.46, 0.60, 0.72, 0.72, 0.68, 1.92],
-        hspace=0.0, left=0.085, right=0.965, top=0.980, bottom=0.032,
+        # The bottom row holds the 30-row forest (H) at 4.5 pt row labels.
+        # Row 1 holds panel A's x labels and r/p keys and panel B's titles.
+        height_ratios=[0.80, 0.58, 0.48, 0.46, 0.60, 0.72, 0.72, 0.68, 2.25],
+        hspace=0.0, left=0.100, right=0.965, top=0.972, bottom=0.040,
     )
 
     gs_a = outer[0].subgridspec(1, 2, wspace=0.42)
@@ -1302,8 +1292,10 @@ def generate() -> None:
     fig_c.add_subplot(outer[7]).set_axis_off()
 
     # Bottom row: G runtime (left) | H cross-dataset forest (right, wider column).
-    gs_gh = outer[8].subgridspec(1, 2, width_ratios=[1.0, 1.32], wspace=0.40)
-    ax_rt = fig_c.add_subplot(gs_gh[0])
+    gs_gh = outer[8].subgridspec(1, 2, width_ratios=[1.0, 1.32], wspace=0.52)
+    # G's method key goes below its axes, inside the row (H's forest is taller).
+    ax_rt = fig_c.add_subplot(gs_gh[0].subgridspec(2, 1, height_ratios=[0.80, 0.20],
+                                                   hspace=0.0)[0])
     ax_forest = fig_c.add_subplot(gs_gh[1])
 
     # Benchmark panels (embedded via gs_parent / ax).
@@ -1321,7 +1313,7 @@ def generate() -> None:
         # rather than a below-legend, which would otherwise land on the forest.
 
     # Biological panels (A, B) and the cross-dataset forest (I).
-    _panel_a(ax_a_bot, ax_a_top, data, data_tnbc, composite=True)
+    points_a = _panel_a(ax_a_bot, ax_a_top, data, data_tnbc, composite=True)
     _panel_b(ax_b_bot, ax_b_top, data, data_tnbc, composite=True)
     _panel_e_cross_dataset(ax_forest, data, composite=True)
 
@@ -1330,10 +1322,7 @@ def generate() -> None:
     # Inside legends for the biological panels + forest.
     # Panel A: larger legend; panel H (forest): same treatment. Panel B draws its
     # own composite-sized legend inside _panel_b_single and is excluded here.
-    _inside = {
-        ax_a_top: "upper right", ax_a_bot: "upper right",
-        ax_forest: "lower right",
-    }
+    _inside = {ax_forest: "lower right"}  # panel A's r/p key goes below its axes
     for ax_target, loc in _inside.items():
         leg = ax_target.get_legend()
         if leg:
@@ -1350,6 +1339,13 @@ def generate() -> None:
                 txt.set_fontsize(max(txt.get_fontsize() * 0.55, 3.0))
 
     _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
+
+    # Panel A: name the points once fonts and geometry are final, then the r/p keys.
+    for ax_, pts in zip((ax_a_bot, ax_a_top), points_a):
+        _label_panel_a(ax_, pts, composite=True)
+    for ax_ in (ax_a_bot, ax_a_top):
+        key_below_axes(ax_, ncol=1, clear_of=[ax_a_bot, ax_a_top])
+    key_below_axes(ax_rt, ncol=2, keep_title=True)  # off the runtime curves
 
     # Compact corner titles for the four half-width benchmark panels (composite
     # suppresses their standalone titles), raised above their internal titles.
@@ -1385,7 +1381,9 @@ def generate() -> None:
                             methods=[m for m in _LEGEND_ORDER if m != "nebula"],
                             fontsize=_leg_fs, y_pad=_leg_pad, short=True)
     if bench_df is not None:
-        _bench_legend_below(fig_c, gs_cd[1], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
+        # D's common x label is figure text, below the axes' own text: clear it too.
+        _bench_legend_below(fig_c, gs_cd[1], fontsize=_leg_fs, y_pad=_leg_pad + 0.006,
+                            short=True)
         _bench_legend_below(fig_c, gs_ef[0], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
 
     # Panel letters A-H at each cell's upper-left corner (forest is now H).
@@ -1397,6 +1395,7 @@ def generate() -> None:
         fig_c.text(max(x0 - 0.05, 0.003), min(y1 + 0.013, 0.998), lab,
                    fontsize=8, fontweight="bold", va="bottom", ha="left")
 
+    report_layout_problems(fig_c, FIGURE_NAME)
     plt.rcParams.update(_prev_rc)
 
     save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, MAIN_OUTPUT, close=False)

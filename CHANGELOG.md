@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `is_ribosomal_gene()`: the anchored ribosomal-protein test already used by `flag_artifact_genes()`, exposed so callers stop matching the `RPS`/`RPL` prefix, which also catches the RPS6K kinases, read-through transcripts and ribosomal pseudogenes.
+- `get_between_arm_aggregated_df()` and `between_arm_fit_beta()`: the frame and estimator of `between_arm_comparison()`, for permutation tests, mirroring `get_within_arm_aggregated_df()` and `within_arm_fit_beta()`.
+
+### Changed
+- `drop_artifact_genes()` records, before removing the genes, each dropped class's share of every cell's total in `counts_layer` (`obs['pct_counts_ribo']`, `obs['pct_counts_hb']`, `obs['pct_counts_histone']`; new `counts_layer` argument, default `"counts"`). Once the genes are gone these fractions cannot be recovered, so quality-control plots of ribosomal content previously had nothing valid to show. Existing processed objects are unchanged; the columns appear when a dataset is next processed.
+- `did_fit()` now fits ordinary least squares by default. It previously switched silently to weighted least squares whenever the input carried an `n_cells` column, so every participant-level DiD from `did_table(aggregate="participant_visit")` and `did_table_parallel()` was weighted by cell count. Cell-count weights assume that all variance in a participant-visit mean is cell-sampling noise; in clinical cohorts between-participant variation dominates and cell counts span two orders of magnitude, so a few participants determined each estimate. With two visits the default estimate equals the difference in mean within-participant change between arms, which is the estimator the simulation benchmark validates. Weighted fitting is still available through the new `weight_col` argument of `did_fit()`, `did_table()`, `did_table_parallel()` and `DiDConfig`. Participant-level DiD estimates change; cell-level estimates do not.
+
+### Fixed
+- Replication-dependent histone genes are recognised under their current HGNC symbols (H4C3, H1-2, H2AW, ...) as well as the pre-2020 HIST* symbols. Data aligned to references from GENCODE v35 on (for example Cell Ranger 2024-A) kept their histone genes through `drop_artifact_genes()`. Variant histones (H2AZ1, H2AX, H3-3A, H1-0) are still kept. No bundled dataset changes: all use the older symbols.
+- The wild cluster bootstrap refit OLS models with WLS. It detected weighting from the presence of `model.weights`, which statsmodels also sets, to ones, on OLS models; it now checks whether the weights are uniform.
+- Two type errors reported by mypy in the benchmark gate verdict and the orchestrator command-line entry point.
+- Unused levels of Categorical columns no longer leak into results. `module_score_did_by_pool(allow_unpaired=True)` emitted a NaN row for an arm missing a visit instead of skipping it; `diagnose_trial_data()` counted cell types that were absent; the benchmark's real-data arm permutation could replace real arm labels with missing values.
+
 ## [1.0.0] - 2026-10-05
 
 Version bump to stable release. No functional changes from 0.3.4.
@@ -22,7 +38,8 @@ Version bump to stable release. No functional changes from 0.3.4.
 - NEBULA runner: filter zero-count cells before computing log library-size offset; set `ncore=1` to prevent PSOCK port conflicts; robust R error capture and crash detection
 - COVID loader: CITE-seq antibody-capture features (~49% of aggregate counts) were sitting in the gene matrix, confounding library-size normalisation; split to `obsm["protein"]`
 - Melanoma: sample filter silently dropped 19% of QC-passing cells (3,108 of 16,291) and 7 of 32 patients; per-cell annotations now sourced from the published labels; RECIST arm normalised to leading code
-- Vaccine and AML loaders: data-integrity fixes from 4-team audit
+- Vaccine loader: 45 CITE-seq antibody-capture features moved from the gene matrix to `obsm["protein"]`, so they no longer enter the library-size denominator
+- AML loader: hemoglobin genes kept in bone marrow, where they define the erythroid populations; the deposited MUTZ-3 and OCI-AML3 cell lines excluded from the healthy-donor reference
 - Benchmark: signal-count truncation, frozen design leaking into scenarios, split jobs overwriting combined results
 
 ### Improved
@@ -48,7 +65,8 @@ Version bump to stable release. No functional changes from 0.3.4.
 - NEBULA runner: filter zero-count cells before computing log library-size offset; set `ncore=1` to prevent PSOCK port conflicts; robust R error capture and crash detection
 - COVID loader: CITE-seq antibody-capture features (~49% of aggregate counts) were sitting in the gene matrix, confounding library-size normalisation; split to `obsm["protein"]`
 - Melanoma: sample filter silently dropped 19% of QC-passing cells (3,108 of 16,291) and 7 of 32 patients; per-cell annotations now sourced from the published labels; RECIST arm normalised to leading code
-- Vaccine and AML loaders: data-integrity fixes from 4-team audit
+- Vaccine loader: 45 CITE-seq antibody-capture features moved from the gene matrix to `obsm["protein"]`, so they no longer enter the library-size denominator
+- AML loader: hemoglobin genes kept in bone marrow, where they define the erythroid populations; the deposited MUTZ-3 and OCI-AML3 cell lines excluded from the healthy-donor reference
 - Benchmark: signal-count truncation, frozen design leaking into scenarios, split jobs overwriting combined results
 
 ### Improved

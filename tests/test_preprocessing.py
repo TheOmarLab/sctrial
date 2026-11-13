@@ -351,3 +351,66 @@ class TestSparseFormats:
         libsize = X.sum(axis=1, keepdims=True)
         expected = np.log1p(X / libsize * 1e6)
         np.testing.assert_allclose(result, expected, rtol=1e-10)
+
+
+@pytest.mark.parametrize("name", ["RPL13A", "RPS4X", "RPS4Y1", "RPLP0", "RPSA", "FAU", "UBA52",
+                                  "RPL22L1", "rpl13a"])
+def test_is_ribosomal_gene_matches_ribosomal_proteins(name):
+    assert st.is_ribosomal_gene(name)
+
+
+@pytest.mark.parametrize("name", ["RPS6KA1", "RPS6KB2", "RPS6KL1", "RPS19BP1", "RPL34-AS1",
+                                  "RPS10-NUDT3", "RPL21P28", "RPL13AP17", "TP53"])
+def test_is_ribosomal_gene_rejects_prefix_sharing_genes(name):
+    assert not st.is_ribosomal_gene(name)
+
+
+def _artifact_toy(layer="counts"):
+    genes = ["RPL13A", "RPS6KA1", "HBB", "H2AC6", "CD3E", "MT-CO1"]
+    X = np.array([[10, 5, 3, 0, 80, 2],
+                  [0, 0, 0, 0, 0, 0]], dtype=float)
+    ad = AnnData(X=sp.csr_matrix(np.log1p(X)))
+    ad.var_names = genes
+    ad.layers[layer] = sp.csr_matrix(X)
+    return ad
+
+
+def test_drop_artifact_genes_records_class_percentages_before_dropping():
+    ad = _artifact_toy()
+    st.drop_artifact_genes(ad)
+    assert "RPL13A" not in ad.var_names and "RPS6KA1" in ad.var_names
+    np.testing.assert_allclose(ad.obs["pct_counts_ribo"].to_numpy()[0], 10.0)
+    np.testing.assert_allclose(ad.obs["pct_counts_hb"].to_numpy()[0], 3.0)
+    assert np.isnan(ad.obs["pct_counts_ribo"].to_numpy()[1])  # empty cell
+    assert "H2AC6" not in ad.var_names
+    np.testing.assert_allclose(ad.obs["pct_counts_histone"].to_numpy()[0], 0.0)
+    assert ad.uns["artifact_pct_layer"] == "counts"
+
+
+def test_drop_artifact_genes_records_only_dropped_classes_and_keeps_existing_columns():
+    ad = _artifact_toy()
+    ad.obs["pct_counts_ribo"] = [42.0, 42.0]
+    st.drop_artifact_genes(ad, drop_hb=False)
+    assert "HBB" in ad.var_names and "pct_counts_hb" not in ad.obs
+    assert ad.obs["pct_counts_ribo"].tolist() == [42.0, 42.0]
+
+
+def test_drop_artifact_genes_without_the_layer_records_nothing():
+    ad = _artifact_toy(layer="tpm")
+    st.drop_artifact_genes(ad)  # default counts_layer="counts" is absent
+    assert not any(c.startswith("pct_counts_") for c in ad.obs.columns)
+    assert "artifact_pct_layer" not in ad.uns
+    ad = _artifact_toy(layer="tpm")
+    st.drop_artifact_genes(ad, counts_layer="tpm")
+    np.testing.assert_allclose(ad.obs["pct_counts_ribo"].to_numpy()[0], 10.0)
+
+
+@pytest.mark.parametrize("name", ["HIST1H4C", "HIST1H1C", "HIST2H2AA3", "H4C3", "H1-2", "H2AC6",
+                                  "H2BC12", "H3C2", "H3-7", "H2AW", "H4-16", "H2AC2P"])
+def test_replication_histones_are_artifacts_under_old_and_current_symbols(name):
+    assert st.is_artifact_gene(name)
+
+
+@pytest.mark.parametrize("name", ["H2AZ1", "H2AX", "H3-3A", "H1-0", "H1-10", "H2AJ", "HHEX"])
+def test_variant_histones_and_lookalikes_are_not_artifacts(name):
+    assert not st.is_artifact_gene(name)
