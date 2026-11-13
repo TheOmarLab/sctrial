@@ -599,13 +599,14 @@ def label_points(ax, names, x, y, s, *, fontsize: float, obstacles=None,
 
 
 def key_below_axes(ax, *, ncol: int, fontsize: float | None = None, gap_pt: float = 2.0,
-                   clear_of=None):
+                   clear_of=None, keep_title: bool = False):
     """Move the axis legend just below the axis' own text (x tick labels and x label).
 
     The offset is measured after a draw, in points, so the key clears the axis text at any
     panel size and never sits on data. ``clear_of`` (axes in the same row) puts the key below
     the lowest x-axis text of all of them, so a row of keys shares one baseline. Call it once
-    the panel's fonts are final. Returns the new legend, or None when the axis has no legend.
+    the panel's fonts are final. ``keep_title`` carries the legend's title over. Returns the
+    new legend, or None when the axis has no legend.
     """
     import matplotlib.transforms as mtransforms
 
@@ -614,6 +615,7 @@ def key_below_axes(ax, *, ncol: int, fontsize: float | None = None, gap_pt: floa
         return None
     handles = leg.legend_handles
     labels = [t.get_text() for t in leg.get_texts()]
+    title = leg.get_title().get_text() if keep_title else ""
     if fontsize is None:
         fontsize = leg.get_texts()[0].get_fontsize() if labels else plt.rcParams["legend.fontsize"]
     leg.remove()
@@ -630,7 +632,7 @@ def key_below_axes(ax, *, ncol: int, fontsize: float | None = None, gap_pt: floa
                                                units="points"),
         ncol=ncol, fontsize=fontsize, frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
         borderpad=0.3, columnspacing=0.8, handlelength=0.8, handletextpad=0.3,
-        labelspacing=0.2,
+        labelspacing=0.2, title=title or None, title_fontsize=fontsize,
     )
 
 

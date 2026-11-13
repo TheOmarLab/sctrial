@@ -444,6 +444,7 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
     # as a single annotation rather than per-point clutter. Implementation- and
     # hardware-specific; the caption states the timing boundary and configuration.
     big = summary[summary["n_genes"] == max(_PANEL_SIZES)].set_index("method")["med"]
+    fold: dict[str, float] = {}
     if "sctrial_did" in big.index and big["sctrial_did"] > 0:
         base = big["sctrial_did"]
         # Every other method's fold-change vs sctrial, slowest first. NEBULA is
@@ -455,12 +456,15 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
                         key=lambda kv: kv[1], reverse=True)
         for mth, r in ratios:
             lines.append(f"  {_BENCH_METHOD_LABELS[mth]}: {r:.0f}x")
-        # Lower-right corner: empty at the largest tested-set size (all lines are
-        # high there), so the ratio box never collides with the upper-left legend.
-        ax.text(0.97, 0.03, "\n".join(lines), transform=ax.transAxes,
-                fontsize=(6.0 if composite else 7.5), va="bottom", ha="right",
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                          edgecolor="#cccccc", alpha=0.9))
+            fold[mth] = r
+        if not composite:
+            # Lower-right corner: empty at the largest tested-set size (all lines are
+            # high there). A composite cell is too short for the box; there the ratios
+            # ride in the key (below).
+            ax.text(0.97, 0.03, "\n".join(lines), transform=ax.transAxes,
+                    fontsize=7.5, va="bottom", ha="right",
+                    bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                              edgecolor="#cccccc", alpha=0.9))
 
     ax.set_yscale("log")
     ax.set_xticks(x_positions)
@@ -473,9 +477,15 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
     # Canonical legend order (sctrial, Wilcoxon, limma-voom, dreamlet, NEBULA),
     # not the draw order, so every panel's legend reads the same.
     if composite:
+        # Each method's key entry carries its runtime relative to sctrial at the largest
+        # tested-set size; the caller places the key below the axes, off the curves.
+        handles = _bench_legend_handles()
+        labels = [h.get_label() + (f" ({fold[m]:.0f}×)" if m in fold else "")
+                  for h, m in zip(handles, _LEGEND_ORDER)]
         ax.legend(
-            handles=_bench_legend_handles(), loc="upper left",
-            bbox_to_anchor=(0.02, 1.04),
+            handles=handles, labels=labels, loc="upper left",
+            title=(f"Runtime at {max(_PANEL_SIZES):,} genes relative to sctrial"
+                   if fold else None), title_fontsize=_leg_fs,
             frameon=True, framealpha=0.95, edgecolor="#cccccc", fontsize=_leg_fs,
             markerscale=0.52, handlelength=1.0,
         )
@@ -1050,7 +1060,8 @@ def _panel_bench_typeI_main(fig, core_df, *, composite: bool = False, gs_parent=
         ax_main.set_xticks(range(len(n_vals)))
         ax_main.set_xticklabels(n_vals)
         ax_main.set_xlim(-0.4, len(n_vals) - 0.6)
-        ax_main.set_yticks([0.0, 0.02, 0.04, 0.06, 0.08, 0.10])
+        # In a composite cell the main axis' top tick sits against the strip's lowest tick.
+        ax_main.set_yticks([0.0, 0.04, 0.08] if composite else [0.0, 0.02, 0.04, 0.06, 0.08, 0.10])
         ax_strip.set_yticks([0.7, 0.8])
         xlabel = "Participants per arm" if design == "two_arm" else "Paired participants"
         ax_main.set_xlabel(xlabel, fontsize=_ax)

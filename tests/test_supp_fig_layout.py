@@ -231,3 +231,16 @@ def test_size_key_matches_dot_areas(sf2, scale):
     for upper, lower in zip(marks, marks[1:]):  # rows far enough apart that circles do not touch
         assert upper.y0 - lower.y1 >= 0
     plt.close(fig)
+
+
+def test_key_below_axes_keeps_title_only_when_asked(load_figure_module):
+    load_figure_module("supp/supp_fig2_annotation_baseline")
+    import manuscript_figures._shared as sh
+
+    for keep in (False, True):
+        fig, ax = plt.subplots(figsize=(3, 2))
+        ax.plot([0, 1], [0, 1], label="a")
+        ax.legend(title="Runtime relative to sctrial")
+        leg = sh.key_below_axes(ax, ncol=1, keep_title=keep)
+        assert leg.get_title().get_text() == ("Runtime relative to sctrial" if keep else "")
+        plt.close(fig)

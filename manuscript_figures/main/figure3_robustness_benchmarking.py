@@ -730,7 +730,7 @@ def _label_panel_a(ax, points, *, composite: bool = False) -> None:
     names, xs, ys = points
     n = len(names)
     priority = np.argsort(-np.abs(np.asarray(ys) - np.asarray(xs)), kind="stable")
-    steps = (16, 12, 10, 8) if composite else (n - 4, n - 8)
+    steps = (16, 12, 10, 8, 6, 5, 4, 3) if composite else (n - 4, n - 8)
     labelled = label_points(ax, names, xs, ys, _PANEL_A_MARKER_S,
                             fontsize=4.5 if composite else 6.5, fontweight="normal",
                             color="#1a1a1a", priority=priority,
@@ -1263,15 +1263,16 @@ def generate() -> None:
     #   E realised FDR after BH  | F marginal detection (beta = 0.5)
     #   G runtime  +  H pure-null calibration (lambda_GC)   | I cross-dataset forest
     # Laid out at the resolution it is written at, so measured placements hold in the file.
-    fig_c = plt.figure(figsize=(180 * _mm, 225 * _mm), dpi=output_dpi())
+    fig_c = plt.figure(figsize=(180 * _mm, 233 * _mm), dpi=output_dpi())
     # lambda_GC (old panel H) removed. Bottom row places G (runtime) and H
     # (cross-dataset forest) SIDE BY SIDE so neither is over-wide; the forest gets
     # the wider column. Letters are consecutive A-H.
     outer = fig_c.add_gridspec(
         9, 1,
         # The bottom row holds the 30-row forest (H) at 4.5 pt row labels.
-        height_ratios=[0.80, 0.40, 0.48, 0.46, 0.60, 0.72, 0.72, 0.68, 2.25],
-        hspace=0.0, left=0.085, right=0.965, top=0.980, bottom=0.040,
+        # Row 1 holds panel A's x labels and r/p keys and panel B's titles.
+        height_ratios=[0.80, 0.58, 0.48, 0.46, 0.60, 0.72, 0.72, 0.68, 2.25],
+        hspace=0.0, left=0.100, right=0.965, top=0.972, bottom=0.040,
     )
 
     gs_a = outer[0].subgridspec(1, 2, wspace=0.42)
@@ -1291,8 +1292,10 @@ def generate() -> None:
     fig_c.add_subplot(outer[7]).set_axis_off()
 
     # Bottom row: G runtime (left) | H cross-dataset forest (right, wider column).
-    gs_gh = outer[8].subgridspec(1, 2, width_ratios=[1.0, 1.32], wspace=0.40)
-    ax_rt = fig_c.add_subplot(gs_gh[0])
+    gs_gh = outer[8].subgridspec(1, 2, width_ratios=[1.0, 1.32], wspace=0.52)
+    # G's method key goes below its axes, inside the row (H's forest is taller).
+    ax_rt = fig_c.add_subplot(gs_gh[0].subgridspec(2, 1, height_ratios=[0.80, 0.20],
+                                                   hspace=0.0)[0])
     ax_forest = fig_c.add_subplot(gs_gh[1])
 
     # Benchmark panels (embedded via gs_parent / ax).
@@ -1342,6 +1345,7 @@ def generate() -> None:
         _label_panel_a(ax_, pts, composite=True)
     for ax_ in (ax_a_bot, ax_a_top):
         key_below_axes(ax_, ncol=1, clear_of=[ax_a_bot, ax_a_top])
+    key_below_axes(ax_rt, ncol=2, keep_title=True)  # off the runtime curves
 
     # Compact corner titles for the four half-width benchmark panels (composite
     # suppresses their standalone titles), raised above their internal titles.
@@ -1377,7 +1381,9 @@ def generate() -> None:
                             methods=[m for m in _LEGEND_ORDER if m != "nebula"],
                             fontsize=_leg_fs, y_pad=_leg_pad, short=True)
     if bench_df is not None:
-        _bench_legend_below(fig_c, gs_cd[1], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
+        # D's common x label is figure text, below the axes' own text: clear it too.
+        _bench_legend_below(fig_c, gs_cd[1], fontsize=_leg_fs, y_pad=_leg_pad + 0.006,
+                            short=True)
         _bench_legend_below(fig_c, gs_ef[0], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
 
     # Panel letters A-H at each cell's upper-left corner (forest is now H).
