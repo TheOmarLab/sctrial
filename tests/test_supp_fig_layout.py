@@ -130,6 +130,14 @@ def test_family_tick_labels_grouped_in_a_composite_cell(load_figure_module):
     plt.close(fig)
 
 
+def test_runtime_ratio_keeps_one_decimal_below_ten(load_figure_module):
+    load_figure_module("supp/supp_fig6_benchmark_calibration")
+    import manuscript_figures._benchmark as bm
+
+    assert [bm._fold_label(r) for r in (1.0, 1.43, 5.83, 9.94, 9.96, 70.4, 87.2)] == [
+        "1.0×", "1.4×", "5.8×", "9.9×", "10×", "70×", "87×"]
+
+
 def test_figure3_bootstrap_labels_are_reproducible(load_figure_module):
     fig3 = load_figure_module("main/figure3_robustness_benchmarking")
     rng = np.random.default_rng(1)

@@ -393,6 +393,11 @@ def _panel_bench_lambda_gc(ax, bench_df: pd.DataFrame, *, composite: bool = Fals
     _style_axis(ax)
 
 
+def _fold_label(ratio: float) -> str:
+    """A runtime ratio as printed: one decimal below 10x (1.4x), whole numbers above (71x)."""
+    return f"{ratio:.1f}×" if ratio < 9.95 else f"{ratio:.0f}×"
+
+
 def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False) -> None:
     """Per-iteration runtime by method × panel size (log y).
 
@@ -455,7 +460,7 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
         ratios = sorted(((m, big[m] / base) for m in big.index if m != "sctrial_did"),
                         key=lambda kv: kv[1], reverse=True)
         for mth, r in ratios:
-            lines.append(f"  {_BENCH_METHOD_LABELS[mth]}: {r:.0f}x")
+            lines.append(f"  {_BENCH_METHOD_LABELS[mth]}: {_fold_label(r)}")
             fold[mth] = r
         if not composite:
             # Lower-right corner: empty at the largest tested-set size (all lines are
@@ -480,7 +485,7 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
         # Each method's key entry carries its runtime relative to sctrial at the largest
         # tested-set size; the caller places the key below the axes, off the curves.
         handles = _bench_legend_handles()
-        labels = [h.get_label() + (f" ({fold[m]:.0f}×)" if m in fold else "")
+        labels = [h.get_label() + (f" ({_fold_label(fold[m])})" if m in fold else "")
                   for h, m in zip(handles, _LEGEND_ORDER)]
         ax.legend(
             handles=handles, labels=labels, loc="upper left",
