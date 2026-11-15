@@ -104,7 +104,7 @@ _PANEL_SIZES = [50, 200, 500, 2000]
 _SIGNAL_FRACTIONS = [2, 4, 10, 20]
 
 
-def _load_benchmark_data(architectures=("balanced", "heterogeneous")) -> pd.DataFrame:
+def _load_benchmark_data(architectures=("balanced",)) -> pd.DataFrame:
     from sctrial.benchmark.paths import require_layout
 
     layout = require_layout(_RESULTS_ROOT, _frozen_manifest_sha())
@@ -393,6 +393,25 @@ def _panel_bench_lambda_gc(ax, bench_df: pd.DataFrame, *, composite: bool = Fals
     _style_axis(ax)
 
 
+def _runtime_summary(bench_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Runtime per method and tested-set size, as Figure 3G draws it and the summary reports it.
+
+    Every gene row of one fitted dataset carries the same runtime, so the first value per
+    (method, scenario, size, replicate) is that dataset's runtime. The median over replicates
+    within each scenario is then summarised equal-weight across scenarios (median and IQR), so
+    scenarios count equally whatever their replicate count. Returns the scenario medians and
+    the summary (columns ``med``, ``q25``, ``q75``).
+    """
+    per_iter = (bench_df.groupby(["method", "scenario", "n_genes", "iteration"])
+                ["runtime_seconds"].first().reset_index())
+    scen_med = (per_iter.groupby(["method", "scenario", "n_genes"])["runtime_seconds"]
+                .median().reset_index())
+    summary = (scen_med.groupby(["method", "n_genes"])["runtime_seconds"]
+               .agg(med="median", q25=lambda s: s.quantile(0.25),
+                    q75=lambda s: s.quantile(0.75)).reset_index())
+    return scen_med, summary
+
+
 def _fold_label(ratio: float) -> str:
     """A runtime ratio as printed: one decimal below 10x (1.4x), whole numbers above (71x)."""
     return f"{ratio:.1f}×" if ratio < 9.95 else f"{ratio:.0f}×"
@@ -404,18 +423,9 @@ def _panel_bench_runtime(ax, bench_df: pd.DataFrame, *, composite: bool = False)
     X-axis uses evenly-spaced categorical positions so the 4 panel sizes
     are ticked at equal intervals, independent of their raw values.
     """
-    # Aggregation, as specified: median runtime over replicates WITHIN each
-    # scenario, then an equal-weight summary (median + IQR) of the scenario
-    # medians within a tested-set size, so scenarios are weighted equally rather
-    # than by their replicate count. Individual scenario medians are shown as
-    # points, the equal-weight median as the line, and the IQR as a band.
-    per_iter = (bench_df.groupby(["method", "scenario", "n_genes", "iteration"])
-                ["runtime_seconds"].first().reset_index())
-    scen_med = (per_iter.groupby(["method", "scenario", "n_genes"])["runtime_seconds"]
-                .median().reset_index())
-    summary = (scen_med.groupby(["method", "n_genes"])["runtime_seconds"]
-               .agg(med="median", q25=lambda s: s.quantile(0.25),
-                    q75=lambda s: s.quantile(0.75)).reset_index())
+    # Individual scenario medians are shown as points, the equal-weight median as
+    # the line, and the IQR as a band.
+    scen_med, summary = _runtime_summary(bench_df)
     x_positions = np.arange(len(_PANEL_SIZES), dtype=float)
     n_to_x = dict(zip(_PANEL_SIZES, x_positions))
 

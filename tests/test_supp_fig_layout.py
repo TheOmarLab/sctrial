@@ -252,3 +252,16 @@ def test_key_below_axes_keeps_title_only_when_asked(load_figure_module):
         leg = sh.key_below_axes(ax, ncol=1, keep_title=keep)
         assert leg.get_title().get_text() == ("Runtime relative to sctrial" if keep else "")
         plt.close(fig)
+
+
+def test_runtime_summary_is_median_of_scenario_medians(load_figure_module):
+    load_figure_module("supp/supp_fig6_benchmark_calibration")
+    import manuscript_figures._benchmark as bm
+
+    rows = [("s1", 1, 1.0), ("s1", 1, 100.0), ("s1", 2, 2.0), ("s1", 3, 9.0),
+            ("s2", 1, 4.0), ("s2", 2, 6.0)]
+    bench = pd.DataFrame([{"method": "sctrial_did", "scenario": sc, "n_genes": 50,
+                           "iteration": it, "runtime_seconds": rt} for sc, it, rt in rows])
+    scen_med, summary = bm._runtime_summary(bench)
+    assert scen_med.set_index("scenario")["runtime_seconds"].to_dict() == {"s1": 2.0, "s2": 5.0}
+    assert summary[["med", "q25", "q75"]].iloc[0].tolist() == [3.5, 2.75, 4.25]
