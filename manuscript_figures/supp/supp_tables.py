@@ -121,26 +121,37 @@ def table1_gene_signatures() -> pd.DataFrame:
 
 _KEEP_COLS = [
     "dataset", "estimand", "label", "feature",
-    "effect", "se", "pvalue", "FDR", "ci_lower", "ci_upper",
+    "effect", "se", "se_bootstrap", "pvalue", "FDR", "ci_lower", "ci_upper", "inference",
     "n_units", "cov_type_used",
 ]
 
 _COL_MAP = {
     "beta_time": "effect",
     "se_time": "se",
+    "se_time_boot": "se_bootstrap",
     "p_time": "pvalue",
     "FDR_time": "FDR",
     "ci_lo_time": "ci_lower",
     "ci_hi_time": "ci_upper",
     "beta_DiD": "effect",
     "se_DiD": "se",
+    "se_DiD_boot": "se_bootstrap",
     "p_DiD": "pvalue",
     "FDR_DiD": "FDR",
 }
 
+_INFERENCE_BOOTSTRAP = "wild cluster bootstrap"
+_INFERENCE_ANALYTICAL = "analytical"
+
 
 def _harmonise(df: pd.DataFrame, dataset: str, estimand: str) -> pd.DataFrame:
-    """Rename columns to a common schema and tag with dataset/estimand."""
+    """Rename columns to a common schema and tag with dataset/estimand.
+
+    A row's p-value and interval come from one procedure, named in ``inference``: the wild
+    cluster bootstrap where it was run (the interval inverts the bootstrap test), otherwise
+    the model's analytical interval, or effect ± 1.96 SE where the model reports none.
+    ``se`` is always the analytical standard error and ``se_bootstrap`` the bootstrap one.
+    """
     out = df.rename(columns=_COL_MAP).copy()
     # Drop any duplicate columns created by rename
     out = out.loc[:, ~out.columns.duplicated()]
@@ -148,20 +159,22 @@ def _harmonise(df: pd.DataFrame, dataset: str, estimand: str) -> pd.DataFrame:
     out["estimand"] = estimand
     if "label" not in out.columns:
         out["label"] = out["feature"].apply(sig_display)
+
+    for col in ("ci_lower", "ci_upper"):
+        if col not in out.columns:
+            out[col] = np.nan
+    no_interval = out["ci_lower"].isna() | out["ci_upper"].isna()
+    out.loc[no_interval, "ci_lower"] = out["effect"] - 1.96 * out["se"]
+    out.loc[no_interval, "ci_upper"] = out["effect"] + 1.96 * out["se"]
+    out["inference"] = _INFERENCE_ANALYTICAL
+    if {"ci_lo_boot", "ci_hi_boot"} <= set(out.columns):
+        boot = out["ci_lo_boot"].notna() & out["ci_hi_boot"].notna()
+        out.loc[boot, "ci_lower"] = out["ci_lo_boot"]
+        out.loc[boot, "ci_upper"] = out["ci_hi_boot"]
+        out.loc[boot, "inference"] = _INFERENCE_BOOTSTRAP
+
     avail = [c for c in _KEEP_COLS if c in out.columns]
-    result = out[avail].reset_index(drop=True)
-
-    # Fill missing CIs from effect ± 1.96 × SE (normal approximation)
-    if "ci_lower" in result.columns and "ci_upper" in result.columns:
-        mask = result["ci_lower"].isna() & result["effect"].notna() & result["se"].notna()
-        if mask.any():
-            result.loc[mask, "ci_lower"] = result.loc[mask, "effect"] - 1.96 * result.loc[mask, "se"]
-            result.loc[mask, "ci_upper"] = result.loc[mask, "effect"] + 1.96 * result.loc[mask, "se"]
-    elif "effect" in result.columns and "se" in result.columns:
-        result["ci_lower"] = result["effect"] - 1.96 * result["se"]
-        result["ci_upper"] = result["effect"] + 1.96 * result["se"]
-
-    return result
+    return out[avail].reset_index(drop=True)
 
 
 def _single_arm_design(pid_col: str = "participant_id") -> TrialDesign:
@@ -342,6 +355,7 @@ def table2_all_results(datasets: Collection[str] | None = None) -> pd.DataFrame:
             res = within_arm_comparison(
                 adata, arm="All", features=all_sig_cols,
                 design=design, visits=visits, standardize=True,
+                use_bootstrap=True, n_boot=999, seed=42,
             )
             res["label"] = res["feature"].apply(sig_display)
             all_results.append(_harmonise(res, ds_name, "within-arm Δ"))
