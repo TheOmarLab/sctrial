@@ -19,7 +19,7 @@ else:
 
 from ..adata_tools import subset_primary
 from ..design import TrialDesign
-from ..utils import wild_cluster_bootstrap_t
+from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
 from ._utils import apply_fdr, encode_visit, standardize_series
 
 # Minimum number of clusters for reliable cluster-robust standard errors
@@ -468,8 +468,9 @@ def did_fit(
     # (a) participant fixed effects already absorb within-cluster correlation,
     # (b) with only 2 obs per cluster, heteroskedasticity cannot be estimated
     #     within clusters anyway, and
-    # (c) the Rademacher sign-flip at the cluster level still provides valid
-    #     finite-sample inference (Webb 2023, J. Econometrics).
+    # (c) the bootstrap statistic is studentized with the same variance estimator
+    #     as the observed one, so the sign-flip reference distribution is that of
+    #     the statistic actually reported.
     effective_cov_type = cov_type
     if cov_type == "cluster" and (not np.isfinite(se_did) or not np.isfinite(p_did)):
         warnings.warn(
@@ -676,6 +677,7 @@ def did_table(
         rows.append(row)
     res = pd.DataFrame(rows).sort_values("p_DiD")
     res = apply_fdr(res, p_col="p_DiD", fdr_col="FDR_DiD")
+    warn_unbounded_bootstrap_intervals(res)
     return res.reset_index(drop=True)
 
 
@@ -866,6 +868,7 @@ def did_table_parallel(
 
     res = pd.DataFrame(rows).sort_values("p_DiD")
     res = apply_fdr(res, p_col="p_DiD", fdr_col="FDR_DiD")
+    warn_unbounded_bootstrap_intervals(res)
     return res.reset_index(drop=True)
 
 

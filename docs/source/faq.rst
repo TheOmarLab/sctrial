@@ -162,13 +162,17 @@ safeguard when:
        seed=42      # For reproducibility
    )
 
-**Mathematical note**: Bootstrap resamples at the participant level:
+**Mathematical note**: the bootstrap is the restricted wild cluster bootstrap. To test
+:math:`\beta = \beta_0`, the model is refitted without the tested term on
+:math:`y - \beta_0 x`, the restricted residuals of each participant are multiplied by one
+random sign, the full model is fitted to the resulting outcome, and
 
 .. math::
 
-   \hat{t}_b^* = \frac{\hat{\beta}^* - \hat{\beta}}{\text{SE}(\hat{\beta}^*)}
+   \hat{t}_b^* = \frac{\hat{\beta}_b^* - \beta_0}{\text{SE}(\hat{\beta}_b^*)}
 
-where :math:`\hat{\beta}^*` is the bootstrap estimate.
+is compared with the observed :math:`(\hat{\beta} - \beta_0) / \text{SE}(\hat{\beta})`.
+The p-value tests :math:`\beta_0 = 0`.
 
 .. _faq-sample-size:
 
@@ -340,10 +344,16 @@ When enabled, the output DataFrame includes additional columns:
 
 - ``p_DiD_boot``: bootstrap p-value
 - ``se_DiD_boot``: bootstrap standard error
-- ``ci_lo_boot`` / ``ci_hi_boot``: bootstrap-t confidence interval
+- ``ci_lo_boot`` / ``ci_hi_boot``: confidence interval from inverting the bootstrap test
 
-The CI uses the bootstrap-t method (Hall, 1992), which applies quantiles of the
-bootstrap *t*-distribution to the observed point estimate and standard error.
+The interval is the set of values :math:`\beta_0` that the bootstrap test does not reject,
+so it excludes zero exactly when the bootstrap p-value is below 0.05. The standard error is
+the standard deviation of the unrestricted bootstrap estimates, which equals the
+cluster-robust standard error without small-sample correction. With nine or fewer
+participants (at the default 999 draws) every sign assignment is enumerated, so the result
+is exact and does not depend on the seed. An enumerated p-value cannot fall below
+:math:`2^{1-G}` for :math:`G` participants; with five or fewer the test therefore cannot
+reject at the 5% level, and the interval is reported as unbounded.
 
 How do I interpret beta_DiD?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

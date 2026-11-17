@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import warnings
 from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -21,6 +22,7 @@ __all__ = [
     "looks_like_counts",
     "get_counts_matrix",
     "wild_cluster_bootstrap_t",
+    "warn_unbounded_bootstrap_intervals",
     "permutation_pvalue",
     "permutation_pvalue_paired",
     "resolve_feature",
@@ -33,15 +35,16 @@ class BootstrapResult(NamedTuple):
     Attributes
     ----------
     p_boot : float
-        Two-sided bootstrap p-value.
+        Two-sided p-value of the restricted wild cluster bootstrap-t test of a zero coefficient.
     se_boot : float
-        Bootstrap standard error (SD of bootstrap coefficient distribution).
+        Bootstrap standard error (SD of the unrestricted bootstrap coefficient estimates).
     ci_lo : float
-        Lower bound of the bootstrap-t confidence interval.
+        Lower bound of the confidence interval obtained by inverting the bootstrap test
+        (``-inf`` when the test cannot reject at the requested level).
     ci_hi : float
-        Upper bound of the bootstrap-t confidence interval.
+        Upper bound of that interval (``inf`` when the test cannot reject).
     boot_distribution : np.ndarray
-        Array of bootstrap coefficient estimates (valid draws only).
+        Unrestricted bootstrap coefficient estimates, centred on the point estimate.
     """
 
     p_boot: float
@@ -178,6 +181,33 @@ def get_counts_matrix(adata: AnnData) -> tuple[np.ndarray | None, str | None]:
     return None, None
 
 
+def warn_unbounded_bootstrap_intervals(
+    res: pd.DataFrame, lo_col: str = "ci_lo_boot", hi_col: str = "ci_hi_boot"
+) -> None:
+    """Warn once when a results table holds unbounded bootstrap intervals."""
+    if lo_col not in res.columns or hi_col not in res.columns:
+        return
+    unbounded = np.isinf(res[lo_col].to_numpy(dtype=float)) | np.isinf(
+        res[hi_col].to_numpy(dtype=float)
+    )
+    if unbounded.any():
+        warnings.warn(
+            f"{int(unbounded.sum())} of {len(res)} bootstrap confidence intervals are unbounded: "
+            "with this few participants the sign-flip bootstrap cannot reject at the 5% level.",
+            UserWarning,
+            stacklevel=3,
+        )
+
+
+_BOOT_COV_TYPES = ("cluster", "nonrobust")
+_BOOT_CI_MAX_RADIUS_SE = 1e4
+
+
+def _sum_by_cluster(values: np.ndarray, order: np.ndarray, starts: np.ndarray) -> np.ndarray:
+    """Sum the rows of ``values`` within each cluster (rows of the result follow cluster order)."""
+    return np.add.reduceat(values[order], starts, axis=0)
+
+
 def wild_cluster_bootstrap_t(
     fit: RegressionResultsWrapper,
     X: np.ndarray,
@@ -188,43 +218,62 @@ def wild_cluster_bootstrap_t(
     cov_type: str = "cluster",
     ci_level: float = 0.95,
 ) -> BootstrapResult:
-    r"""Wild cluster bootstrap (Rademacher) for one coefficient.
+    r"""Restricted wild cluster bootstrap (Rademacher) for one coefficient.
 
     Notes
     -----
-    Implements a **wild cluster bootstrap-t** using Rademacher weights at the
-    cluster level. This is recommended when the number of clusters is small
-    and standard cluster-robust inference may be unreliable.
+    Tests :math:`H_0: \beta_j = \beta_0` with the restricted wild cluster bootstrap-t
+    (WCR; Cameron, Gelbach and Miller 2008). For each hypothesised value the model is
+    **refitted under the null**: the tested regressor is removed, the outcome
+    :math:`y - \beta_0 x_j` is regressed on the remaining regressors, and the
+    restricted fitted values and restricted residuals define the bootstrap
+    data-generating process. Each draw multiplies the restricted residuals of every
+    cluster by one Rademacher weight (±1 with equal probability), the unrestricted
+    model is fitted to the bootstrap outcome, and the statistic
+    :math:`t^* = (\hat\beta^*_j - \beta_0) / \mathrm{se}^*` is formed with the same
+    variance estimator as the observed statistic. The model is refitted in closed
+    form, so no regression is re-run per draw.
 
-    Each bootstrap draw perturbs the **restricted** residuals (imposing
-    H0: beta_j = 0) with cluster-level Rademacher weights (±1 with equal
-    probability), re-fits the full model via OLS (or WLS when the
-    original fit used non-uniform weights) with **per-iteration cluster-robust SE**,
-    and forms a bootstrap t-statistic.  The two-sided p-value is the
-    fraction of bootstrap \|t*\| values that exceed the observed \|t\|.
+    When the clusters admit no more than ``B`` distinct sign assignments
+    (:math:`2^G \le B`), all of them are enumerated instead of sampled, which makes
+    the test exact and independent of ``seed``; the two-sided p-value for
+    :math:`\beta_0 = 0` is then the fraction of assignments with
+    :math:`|t^*| \ge |t|`. Otherwise ``B`` assignments are drawn and the p-value is
+    :math:`(1 + \#\{|t^*| \ge |t|\}) / (1 + B)`. Neither depends on which level of a
+    binary regressor is coded as 1.
 
-    Bootstrap confidence intervals use the bootstrap-t (studentized) method:
-    quantiles of the bootstrap t-distribution are applied to the observed
-    point estimate and SE, yielding asymmetry-respecting CIs that are
-    approximately consistent with the bootstrap p-value (Hall, 1992).
-    Note: this is not exact test-inversion; a full inversion CI would
-    require re-running the bootstrap at every candidate null, which is
-    computationally prohibitive.  The bootstrap-t is the standard
-    practical approach recommended by Cameron et al. (2008).
+    The confidence interval is obtained by **inverting the bootstrap test**: it is the
+    set of values :math:`\beta_0` around the estimate whose bootstrap p-value is at
+    least ``1 - ci_level``, found with the same bootstrap weights for every
+    :math:`\beta_0`. The interval therefore excludes zero exactly when the p-value is
+    below ``1 - ci_level``. The two assignments that keep or flip every cluster
+    reproduce the observed statistic, so under enumeration the p-value cannot fall
+    below :math:`2^{1-G}`. With five or fewer clusters (enumerated whenever
+    ``B >= 32``) that floor exceeds 0.05, the test cannot reject at the 5% level, and
+    the interval is unbounded (``-inf``, ``inf``).
 
-    Reference:
-    Cameron, A.C., Gelbach, J.B., & Miller, D.L. (2008).
-    Bootstrap-based improvements for inference with clustered errors.
-    The Review of Economics and Statistics, 90(3), 414–427.
+    The bootstrap standard error is that of the **unrestricted** wild cluster
+    bootstrap (unrestricted fitted values plus sign-flipped unrestricted residuals),
+    because a standard error must not depend on the hypothesis being tested. With
+    Rademacher weights it has a closed form, the square root of the sum of squared
+    cluster scores, which is the cluster-robust standard error without a small-sample
+    correction; it is returned exactly, not estimated from the draws.
+    ``boot_distribution`` holds the unrestricted estimates for the same assignments.
+
+    References
+    ----------
+    Cameron, A.C., Gelbach, J.B., & Miller, D.L. (2008). Bootstrap-based improvements
+    for inference with clustered errors. The Review of Economics and Statistics,
+    90(3), 414–427.
 
     Parameters
     ----------
     fit
-        Statsmodels regression results (with cluster-robust SE).
+        Statsmodels OLS or WLS results for the unrestricted model.
     X
-        Design matrix (fit.model.exog).
+        Design matrix (``fit.model.exog``).
     clusters
-        Array of cluster IDs.
+        Array of cluster IDs, one per row of ``X``.
     term_name
         Name of the coefficient to test.
     B
@@ -232,12 +281,12 @@ def wild_cluster_bootstrap_t(
     seed
         Random seed.
     cov_type
-        Covariance type for bootstrap refits. Default ``"cluster"`` uses
-        cluster-robust SE (Cameron et al. 2008). Use ``"nonrobust"`` when
-        participant fixed effects already absorb within-cluster correlation
-        (e.g. participant_visit aggregation with 2 obs per cluster).
+        Variance estimator used to studentize the observed and the bootstrap
+        statistics: ``"cluster"`` (cluster-robust, as statsmodels computes it) or
+        ``"nonrobust"`` (homoskedastic; used when participant fixed effects leave two
+        observations per cluster and the cluster-robust estimate is degenerate).
     ci_level
-        Confidence level for the bootstrap-t CI (default 0.95 → 95 % CI).
+        Confidence level of the interval (default 0.95).
 
     Returns
     -------
@@ -245,6 +294,11 @@ def wild_cluster_bootstrap_t(
         Named tuple with ``p_boot``, ``se_boot``, ``ci_lo``, ``ci_hi``,
         and ``boot_distribution``.
     """
+    if cov_type not in _BOOT_COV_TYPES:
+        raise ValueError(f"cov_type must be one of {_BOOT_COV_TYPES}, got {cov_type!r}.")
+    if not 0.0 < ci_level < 1.0:
+        raise ValueError("ci_level must be strictly between 0 and 1.")
+
     _nan_result = BootstrapResult(
         p_boot=np.nan,
         se_boot=np.nan,
@@ -253,100 +307,142 @@ def wild_cluster_bootstrap_t(
         boot_distribution=np.array([], dtype=float),
     )
 
-    rng = np.random.default_rng(seed)
     coef_names = fit.model.exog_names
     if term_name not in coef_names:
         return _nan_result
-
     j = coef_names.index(term_name)
-    beta_hat = fit.params.iloc[j]
-    se_hat = fit.bse.iloc[j]
 
-    if not np.isfinite(se_hat) or se_hat == 0:
-        return _nan_result
+    y = np.asarray(fit.model.endog, dtype=float)
+    X = np.asarray(X, dtype=float)
+    n_obs, k_params = X.shape
 
-    t_obs = beta_hat / se_hat
-    uniq_cl = np.unique(clusters)
-    G = len(uniq_cl)
-
-    # Refit with the same estimator as the original fit. statsmodels' OLS is a
-    # subclass of WLS whose ``weights`` are all ones, so presence of the attribute
-    # does not distinguish the two; uniform weights do.
+    # WLS is OLS on the outcome and regressors scaled by the square root of the weights,
+    # and a cluster-level sign flip commutes with that scaling.
     weights = getattr(fit.model, "weights", None)
-    w_arr = np.atleast_1d(np.asarray(weights, dtype=float)) if weights is not None else None
-    use_wls = w_arr is not None and not np.allclose(w_arr, w_arr[0])
+    if weights is not None:
+        root_w = np.sqrt(np.broadcast_to(np.asarray(weights, dtype=float), y.shape))
+        y = y * root_w
+        X = X * root_w[:, None]
 
-    import statsmodels.api as sm
+    uniq_cl, cluster_idx = np.unique(np.asarray(clusters), return_inverse=True)
+    n_clusters = len(uniq_cl)
+    df_resid = float(fit.df_resid)
+    if n_clusters < 2 or df_resid <= 0:
+        return _nan_result
+    order = np.argsort(cluster_idx, kind="stable")
+    starts = np.flatnonzero(np.r_[True, np.diff(cluster_idx[order]) != 0])
 
-    # Restricted residuals: impose H0 (beta_j = 0) by subtracting only the
-    # non-null components of the fit.
-    restricted_fitted = fit.fittedvalues - beta_hat * X[:, j]
-    resid_r = fit.model.endog - restricted_fitted
+    pinv_x = np.linalg.pinv(X)
+    a = pinv_x[j]
+    beta_hat = float(a @ y)
+    resid_u = y - X @ (pinv_x @ y)
 
-    t_boot = np.empty(B, dtype=float)
-    beta_boot = np.empty(B, dtype=float)
+    x_j = X[:, j]
+    X_r = np.delete(X, j, axis=1)
+    pinv_r = np.linalg.pinv(X_r)
+    resid_r_y = y - X_r @ (pinv_r @ y)
+    resid_r_x = x_j - X_r @ (pinv_r @ x_j)
 
-    for b in range(B):
-        w_g = rng.choice([-1, 1], size=G)
-        w_map = dict(zip(uniq_cl, w_g))
-        w_i = np.array([w_map[g] for g in clusters])
+    enumerate_all = n_clusters < 31 and (1 << n_clusters) <= B
+    if enumerate_all:
+        codes = np.arange(1 << n_clusters)
+        flips = (codes[:, None] >> np.arange(n_clusters)) & 1
+    else:
+        flips = np.random.default_rng(seed).integers(0, 2, size=(B, n_clusters))
+    signs = flips.astype(float) * 2.0 - 1.0
+    # Keeping or flipping every cluster reproduces the observed statistic for every hypothesised
+    # value, so those draws are ties by construction and are counted without a comparison.
+    is_tie = np.all(signs == signs[:, :1], axis=1)
+    n_ties = int(is_tie.sum())
 
-        e_star = resid_r * w_i
-        y_star = restricted_fitted + e_star
+    # A draw's outcome is the restricted fit plus sign-flipped restricted residuals, and the
+    # restricted fit has no component along the tested regressor. The bootstrap coefficients,
+    # residual sum of squares and cluster scores are therefore linear or quadratic forms in the
+    # cluster signs, with per-cluster sums computed once.
+    ax_by_cluster = _sum_by_cluster(X * a[:, None], order, starts)
 
-        cov_kwds = {"groups": clusters} if cov_type == "cluster" else None
-        if use_wls:
-            fit_b = sm.WLS(y_star, X, weights=weights).fit(cov_type=cov_type, cov_kwds=cov_kwds)
-        else:
-            fit_b = sm.OLS(y_star, X).fit(cov_type=cov_type, cov_kwds=cov_kwds)
+    def _draw_terms(resid: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        coef = signs @ _sum_by_cluster(pinv_x.T * resid[:, None], order, starts)
+        xty = signs @ _sum_by_cluster(X * resid[:, None], order, starts)
+        score = signs * _sum_by_cluster(a * resid, order, starts)[None, :] - coef @ ax_by_cluster.T
+        return coef, xty, score
 
-        beta_b = fit_b.params.iloc[j]
-        se_b = fit_b.bse.iloc[j]
-        beta_boot[b] = beta_b
-        if np.isfinite(se_b) and se_b > 0:
-            t_boot[b] = beta_b / se_b
-        else:
-            t_boot[b] = np.nan
+    coef_y, xty_y, score_y = _draw_terms(resid_r_y)
+    coef_x, xty_x, score_x = _draw_terms(resid_r_x)
+    num_y, num_x = coef_y[:, j], coef_x[:, j]
+    score_u = _sum_by_cluster(a * resid_u, order, starts)
 
-    # Drop failed draws (non-finite SE → NaN t) before computing p-value.
-    # Use the same mask for beta so that se_boot/distribution are based on
-    # exactly the draws that contributed to the p-value and CI.
-    valid_mask = np.isfinite(t_boot)
-    valid_t = t_boot[valid_mask]
-    valid_beta = beta_boot[valid_mask]
+    if cov_type == "nonrobust":
+        var_scale = float((pinv_x @ pinv_x.T)[j, j]) / df_resid
+        q_yy = float(resid_r_y @ resid_r_y) - np.einsum("bk,bk->b", coef_y, xty_y)
+        q_xy = float(resid_r_y @ resid_r_x) - np.einsum("bk,bk->b", coef_y, xty_x)
+        q_xx = float(resid_r_x @ resid_r_x) - np.einsum("bk,bk->b", coef_x, xty_x)
+        var_obs = var_scale * float(resid_u @ resid_u)
+    else:
+        if n_obs <= k_params:
+            return _nan_result
+        var_scale = n_clusters / (n_clusters - 1.0) * (n_obs - 1.0) / (n_obs - k_params)
+        q_yy = np.einsum("bg,bg->b", score_y, score_y)
+        q_xy = np.einsum("bg,bg->b", score_y, score_x)
+        q_xx = np.einsum("bg,bg->b", score_x, score_x)
+        var_obs = var_scale * float(score_u @ score_u)
 
-    if len(valid_t) == 0:
+    if not np.isfinite(var_obs) or var_obs <= 0:
+        return _nan_result
+    se_obs = float(np.sqrt(var_obs))
+
+    def _p_value(beta_null: float) -> float:
+        var_star = var_scale * (q_yy - 2.0 * beta_null * q_xy + beta_null**2 * q_xx)
+        valid = np.isfinite(var_star) & (var_star > 0) & ~is_tie
+        n_valid = int(valid.sum()) + n_ties
+        if n_valid == 0:
+            return np.nan
+        t_star = (num_y[valid] - beta_null * num_x[valid]) / np.sqrt(var_star[valid])
+        n_extreme = np.count_nonzero(np.abs(t_star) >= abs(beta_hat - beta_null) / se_obs)
+        if enumerate_all:
+            return float((n_extreme + n_ties) / n_valid)
+        return float((n_extreme + n_ties + 1) / (n_valid + 1))
+
+    p_boot = _p_value(0.0)
+    if not np.isfinite(p_boot):
         return _nan_result
 
-    # +1 correction (same as permutation_pvalue) to avoid p=0 and ensure
-    # the observed statistic is included in the reference distribution.
-    count = np.sum(np.abs(valid_t) >= np.abs(t_obs))
-    p_boot = float((count + 1) / (len(valid_t) + 1))
+    # 1 - 0.95 is 0.05000000000000004 in floating point; a p-value of exactly 0.05 must not
+    # count as below the level.
+    alpha = float(np.round(1.0 - ci_level, 12))
 
-    # Bootstrap SE: standard deviation of bootstrap coefficient estimates
-    se_boot = float(np.std(valid_beta, ddof=1)) if len(valid_beta) > 1 else np.nan
+    def _bound(direction: float) -> float:
+        accepted = 0.0
+        rejected = np.nan
+        distance = 0.0
+        step = 0.25 * se_obs
+        while distance <= _BOOT_CI_MAX_RADIUS_SE * se_obs:
+            distance = distance + step if distance < 10.0 * se_obs else 2.0 * distance
+            if _p_value(beta_hat + direction * distance) >= alpha:
+                accepted = distance
+            else:
+                rejected = distance
+                break
+        if not np.isfinite(rejected):
+            return direction * np.inf
+        for _ in range(80):
+            if rejected - accepted <= 1e-10 * se_obs:
+                break
+            mid = 0.5 * (accepted + rejected)
+            if _p_value(beta_hat + direction * mid) >= alpha:
+                accepted = mid
+            else:
+                rejected = mid
+        return beta_hat + direction * accepted
 
-    # Bootstrap-t confidence interval (Hall 1992):
-    # Use quantiles of the bootstrap t-distribution to construct CI around
-    # the point estimate. This is the "bootstrap-t" or "studentized bootstrap"
-    # CI, which respects the same pivotal quantity used for p-value computation.
-    #   CI = [beta_hat - t*(1-alpha/2) * se_hat, beta_hat - t*(alpha/2) * se_hat]
-    # Note the reversal of quantiles (standard bootstrap-t construction).
-    alpha = 1.0 - ci_level
-    if len(valid_t) >= 2:
-        t_lo = float(np.percentile(valid_t, 100 * alpha / 2))
-        t_hi = float(np.percentile(valid_t, 100 * (1 - alpha / 2)))
-        ci_lo = float(beta_hat - t_hi * se_hat)
-        ci_hi = float(beta_hat - t_lo * se_hat)
-    else:
-        ci_lo, ci_hi = np.nan, np.nan
+    ci_lo, ci_hi = _bound(-1.0), _bound(1.0)
 
     return BootstrapResult(
         p_boot=p_boot,
-        se_boot=se_boot,
-        ci_lo=ci_lo,
-        ci_hi=ci_hi,
-        boot_distribution=valid_beta,
+        se_boot=float(np.sqrt(score_u @ score_u)),
+        ci_lo=float(ci_lo),
+        ci_hi=float(ci_hi),
+        boot_distribution=beta_hat + signs @ score_u,
     )
 
 

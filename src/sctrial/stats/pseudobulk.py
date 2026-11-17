@@ -12,6 +12,7 @@ from scipy.stats import wilcoxon
 from statsmodels.stats.multitest import multipletests
 
 from ..design import TrialDesign
+from ..utils import warn_unbounded_bootstrap_intervals
 from ._utils import apply_fdr, encode_visit
 from .did import did_fit
 
@@ -359,6 +360,7 @@ def pseudobulk_did(
                     sub.loc[m, "p_DiD"], method="fdr_bh"
                 )[1]
 
+    warn_unbounded_bootstrap_intervals(res)
     return res.reset_index(drop=True)
 
 

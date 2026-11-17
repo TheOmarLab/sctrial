@@ -190,10 +190,10 @@ For **n < 15 paired participants**, use Wild Cluster Bootstrap:
    )
 
    # Bootstrap adds extra columns to the result DataFrame:
-   #   p_DiD_boot   — bootstrap p-value
-   #   se_DiD_boot  — bootstrap standard error
-   #   ci_lo_boot   — lower bound of bootstrap-t 95% CI
-   #   ci_hi_boot   — upper bound of bootstrap-t 95% CI
+   #   p_DiD_boot   : bootstrap p-value
+   #   se_DiD_boot  : bootstrap standard error
+   #   ci_lo_boot   : lower bound of the 95% CI (inverted bootstrap test)
+   #   ci_hi_boot   : upper bound of the 95% CI (inverted bootstrap test)
 
 Multiple Testing Correction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -337,34 +337,25 @@ class TestWeighting:
         expected = delta[arm == 1].mean() - delta[arm == 0].mean()
         assert self._fit(df)["beta_DiD"] == pytest.approx(expected, abs=1e-10)
 
-    def test_bootstrap_refits_with_the_estimator_of_the_original_fit(self, monkeypatch):
-        """OLS fits must be bootstrapped with OLS, WLS fits with WLS.
+    def test_bootstrap_uses_the_estimator_of_the_original_fit(self):
+        """An OLS fit is bootstrapped unweighted and a cell-count-weighted fit weighted.
 
-        statsmodels' OLS is a WLS subclass carrying all-ones weights, so the mere
-        presence of ``model.weights`` cannot tell them apart.
+        With participant fixed effects, two visits and weights constant within a participant,
+        each unrestricted draw is the difference of the arms' (weighted) mean sign-flipped
+        residual changes, so both bootstrap standard errors are known exactly for these four
+        participants, whose residual changes are -0.5, 0.5, 0.05 and -0.05.
         """
-        import statsmodels.api as sm
-
-        real_ols, real_wls = sm.OLS, sm.WLS
-        used: list[str] = []
-
-        def _ols(*a, **k):
-            used.append("OLS")
-            return real_ols(*a, **k)
-
-        def _wls(*a, **k):
-            used.append("WLS")
-            return real_wls(*a, **k)
-
-        monkeypatch.setattr(sm, "OLS", _ols)
-        monkeypatch.setattr(sm, "WLS", _wls)
-
-        self._fit(self._pv_frame(), use_bootstrap=True, n_boot=20, seed=1)
-        assert used and set(used) == {"OLS"}, used
-
-        used.clear()
-        self._fit(self._pv_frame(), use_bootstrap=True, n_boot=20, seed=1, weight_col="n_cells")
-        assert used and set(used) == {"WLS"}, used
+        ols = self._fit(self._pv_frame(), use_bootstrap=True, seed=1)
+        wls = self._fit(self._pv_frame(), use_bootstrap=True, seed=1, weight_col="n_cells")
+        # OLS residual changes: treated +-0.5, control +-0.05; each arm mean has weights 1/2.
+        expected_ols = np.sqrt(2 * 0.25 * 0.5**2 + 2 * 0.25 * 0.05**2)
+        # WLS (weights 100 and 10): treated residual changes -1/11 and 10/11, control 1/110 and -1/11.
+        w = np.array([100.0, 10.0]) / 110.0
+        expected_wls = np.sqrt(
+            (w[0] * 1 / 11) ** 2 + (w[1] * 10 / 11) ** 2 + (w[0] * 1 / 110) ** 2 + (w[1] * 1 / 11) ** 2
+        )
+        assert ols["se_DiD_boot"] == pytest.approx(expected_ols, rel=1e-9)
+        assert wls["se_DiD_boot"] == pytest.approx(expected_wls, rel=1e-9)
 
     def test_did_table_and_its_variants_forward_the_weighting(self):
         adata, design = self._cell_adata()

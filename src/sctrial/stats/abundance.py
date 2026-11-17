@@ -9,7 +9,7 @@ from anndata import AnnData
 
 from ..adata_tools import subset_primary
 from ..design import TrialDesign
-from ..utils import wild_cluster_bootstrap_t
+from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
 from ._utils import apply_fdr, encode_visit
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE
 
@@ -375,4 +375,5 @@ def abundance_did(
 
     res = pd.DataFrame(rows).sort_values("p_DiD")
     res = apply_fdr(res, p_col="p_DiD", fdr_col="FDR_DiD")
+    warn_unbounded_bootstrap_intervals(res)
     return res.reset_index(drop=True)

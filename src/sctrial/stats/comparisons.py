@@ -13,7 +13,7 @@ from scipy.stats import t as t_dist
 
 from ..adata_tools import subset_cells
 from ..design import TrialDesign
-from ..utils import wild_cluster_bootstrap_t
+from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
 from ._utils import apply_fdr, encode_visit, standardize_series
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE, AggregateFunc, AggregateMode, _ensure_paired
 
@@ -455,8 +455,8 @@ def within_arm_comparison(
         When ``use_bootstrap=True``, additional columns are included:
 
         - **p_time_boot** : Bootstrap p-value.
-        - **se_time_boot** : Bootstrap SE from coefficient distribution.
-        - **ci_lo_boot** / **ci_hi_boot** : Bootstrap-t 95 % CI.
+        - **se_time_boot** : Bootstrap SE (unrestricted bootstrap estimates).
+        - **ci_lo_boot** / **ci_hi_boot** : 95 % CI from inverting the bootstrap test.
     """
     # Subset to arm and visits
     ad = subset_cells(adata, design, arm=arm, exclude_crossovers=False)
@@ -648,6 +648,7 @@ def within_arm_comparison(
 
     res = pd.DataFrame(rows)
     res = apply_fdr(res, p_col="p_time", fdr_col="FDR_time")
+    warn_unbounded_bootstrap_intervals(res)
     return res
 
 
