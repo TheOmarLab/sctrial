@@ -280,4 +280,4 @@ __all__ = [
 try:
     __version__ = _pkg_version("sctrial")
 except (PackageNotFoundError, ValueError):  # pragma: no cover
-    __version__ = "0.3.0"
+    __version__ = "0+unknown"

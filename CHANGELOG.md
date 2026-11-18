@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-18
+
 ### Added
 - `is_ribosomal_gene()`: the anchored ribosomal-protein test already used by `flag_artifact_genes()`, exposed so callers stop matching the `RPS`/`RPL` prefix, which also catches the RPS6K kinases, read-through transcripts and ribosomal pseudogenes.
 - `get_between_arm_aggregated_df()` and `between_arm_fit_beta()`: the frame and estimator of `between_arm_comparison()`, for permutation tests, mirroring `get_within_arm_aggregated_df()` and `within_arm_fit_beta()`.
