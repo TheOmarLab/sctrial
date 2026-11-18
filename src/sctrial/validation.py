@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from anndata import AnnData
 
+from .adata_tools import subset_arms
 from .datasets import count_paired
 from .design import TrialDesign
 from .utils import get_counts_matrix
@@ -392,6 +393,7 @@ def check_covariate_balance(
     obs = obs[obs[design.visit_col] == visit].copy()
     if obs.empty:
         raise ValueError(f"No observations found for visit '{visit}'.")
+    obs = subset_arms(obs, design, stacklevel=3)
 
     # collapse to participant-level to avoid pseudoreplication
     group_cols = [design.participant_col, design.arm_col]

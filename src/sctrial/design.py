@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -134,12 +135,20 @@ class TrialDesign:
         Returns
         -------
         None
+
         Raises
         ------
         KeyError
             If required columns are missing.
         ValueError
             If arm labels are not found in ``adata.obs[self.arm_col]``.
+
+        Warns
+        -----
+        UserWarning
+            If ``adata.obs[self.arm_col]`` holds labels other than the two named
+            arms, or missing labels. Two-arm analyses exclude those rows (see
+            :func:`sctrial.subset_arms`).
         """
         obs = adata.obs
         missing = [
@@ -162,7 +171,8 @@ class TrialDesign:
                     f"between-arm analyses, got {self.arm_treated!r} for both. "
                     f"For single-arm studies, use check_arm_labels=False."
                 )
-            arms = set(pd.Series(obs[self.arm_col]).dropna().unique().tolist())
+            labels = pd.Series(obs[self.arm_col])
+            arms = set(labels.dropna().unique().tolist())
             if (self.arm_treated not in arms) or (self.arm_control not in arms):
                 raise ValueError(
                     f"Arm labels not found in obs['{self.arm_col}']. "
@@ -170,20 +180,27 @@ class TrialDesign:
                     f"Observed arms: {sorted(arms)}"
                 )
             extra = arms - {self.arm_treated, self.arm_control}
-            if extra:
-                import warnings
-
+            n_missing = int(labels.isna().sum())
+            if extra or n_missing:
+                found = []
+                if extra:
+                    found.append(f"arms beyond treated/control: {sorted(extra)}")
+                if n_missing:
+                    found.append(f"{n_missing} rows with a missing arm label")
                 warnings.warn(
-                    f"obs['{self.arm_col}'] contains arms beyond treated/control: "
-                    f"{sorted(extra)}. These participants will be treated as "
-                    f"control in arm_bin(). Consider subsetting your data to "
-                    f"only the two arms of interest.",
+                    f"obs['{self.arm_col}'] contains {' and '.join(found)}. Two-arm "
+                    f"analyses use only '{self.arm_treated}' and '{self.arm_control}' and "
+                    f"exclude these rows.",
                     UserWarning,
                     stacklevel=2,
                 )
 
     def arm_bin(self, obs: pd.DataFrame) -> pd.Series:
         """Return 0/1 treated indicator aligned to obs.index.
+
+        The indicator is 1 for ``arm_treated`` and 0 for ``arm_control``. It is
+        defined for those two arms only, so rows with any other label, or with a
+        missing label, must be removed first (:func:`sctrial.subset_arms`).
 
         Parameters
         ----------
@@ -194,10 +211,12 @@ class TrialDesign:
         -------
         pd.Series
             A Series with 0/1 indicator of treated status.
+
         Raises
         ------
         ValueError
-            If arm_treated and arm_control are the same.
+            If arm_treated and arm_control are the same, or if ``obs`` holds rows
+            whose arm is neither of them.
         KeyError
             If arm_col is not in obs.columns.
         """
@@ -213,4 +232,18 @@ class TrialDesign:
             )
         if self.arm_col not in obs.columns:
             raise KeyError(f"arm_col '{self.arm_col}' not in obs.")
-        return (obs[self.arm_col] == self.arm_treated).astype(int)
+        arm = obs[self.arm_col]
+        treated = arm.isin([self.arm_treated])
+        outside = ~(treated | arm.isin([self.arm_control]))
+        if outside.any():
+            other = sorted(str(v) for v in pd.unique(arm[outside].dropna()))
+            n_missing = int(arm[outside].isna().sum())
+            found = ([f"labels {other}"] if other else []) + (
+                [f"{n_missing} missing labels"] if n_missing else []
+            )
+            raise ValueError(
+                f"arm_bin() is defined for '{self.arm_treated}' and '{self.arm_control}' only, "
+                f"but obs['{self.arm_col}'] also holds {' and '.join(found)}. Remove those "
+                f"rows first, for example with sctrial.subset_arms(obs, design)."
+            )
+        return treated.astype(int)

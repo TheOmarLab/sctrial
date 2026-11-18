@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Sequence
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
@@ -11,6 +12,7 @@ from anndata import AnnData
 from scipy.stats import wilcoxon
 from statsmodels.stats.multitest import multipletests
 
+from ..adata_tools import subset_arms
 from ..design import TrialDesign
 from ._utils import encode_visit
 
@@ -29,6 +31,12 @@ def _map_pool(celltype: str, pool_map: dict[str, Sequence[str]] | None) -> str |
         if celltype in labels:
             return pool
     return None
+
+
+def _stripped_labels(labels: pd.Series) -> pd.Series:
+    """Arm labels as strings without surrounding whitespace; missing labels stay missing."""
+    labels = labels.astype(object)
+    return labels.where(labels.isna(), labels.astype(str).str.strip())
 
 
 def module_score_pseudobulk(
@@ -95,8 +103,9 @@ def module_score_pseudobulk(
 
     # Build column lists conditionally — arm_col may be None for single-arm
     id_cols = [design.participant_col, design.visit_col]
+    df = df.dropna(subset=[design.participant_col])
     if design.arm_col is not None:
-        df[design.arm_col] = df[design.arm_col].astype(str).str.strip()
+        df[design.arm_col] = _stripped_labels(df[design.arm_col])
         id_cols.append(design.arm_col)
 
     # Long format: participant × visit × [arm] × pool × module
@@ -114,13 +123,16 @@ def module_score_pseudobulk(
         long_df.groupby(
             melt_id + ["module"],
             observed=True,
+            dropna=False,
         )["module_score"]
         .mean()
         .reset_index()
     )
     pb = pb[pb["module_score"].notna()].copy()
 
-    counts = df.groupby(id_cols + ["pool"], observed=True).size().reset_index(name="n_cells")
+    counts = (
+        df.groupby(id_cols + ["pool"], observed=True, dropna=False).size().reset_index(name="n_cells")
+    )
 
     pb = pb.merge(
         counts,
@@ -226,14 +238,25 @@ def module_score_did_by_pool(
         When *fdr_within* is set and *fdr_global* is True, an additional
         ``FDR_DiD_global`` column contains the globally-corrected q-values.
     """
+    if design.arm_col is None:
+        raise ValueError(
+            "module_score_did_by_pool requires a two-arm design (arm_col must not be None); "
+            "for one arm use module_score_within_arm_by_pool."
+        )
     rows: list[dict[str, Any]] = []
     arm_treated = str(design.arm_treated).strip()
     arm_control = str(design.arm_control).strip()
 
+    # The two visits and the two named arms; arm labels are compared after stripping
+    # surrounding whitespace.
+    pb = pb[pb[design.visit_col].isin(visits)].copy()
+    pb[design.arm_col] = _stripped_labels(pb[design.arm_col])
+    pb = subset_arms(
+        pb, replace(design, arm_treated=arm_treated, arm_control=arm_control), stacklevel=3
+    )
+
     for (pool, module), sub in pb.groupby(["pool", "module"], observed=True):
-        sub = sub[sub[design.visit_col].isin(visits)].copy()
-        sub[design.arm_col] = sub[design.arm_col].astype(str).str.strip()
-        sub = sub[sub[design.arm_col].isin([arm_treated, arm_control])].copy()
+        sub = sub.copy()
         if sub[design.visit_col].nunique() < 2 or sub[design.arm_col].nunique() < 2:
             continue
 

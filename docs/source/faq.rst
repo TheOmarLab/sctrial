@@ -580,6 +580,27 @@ Not directly with DiD. Options:
 2. **Treat dose as numeric covariate**: Include in ``covariates`` parameter
 3. **Post-hoc trend test**: Use external tools on DiD estimates
 
+What if my study has more than two arms?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A two-arm analysis compares ``arm_treated`` with ``arm_control``. Rows whose arm is
+any other label, or is missing, are excluded, and one warning names the excluded
+labels and counts their participants. They are not counted as control. When one of
+the two named arms then has no rows, the design does not match the labels of the
+data and a ``ValueError`` is raised.
+
+Run one analysis per comparison:
+
+.. code-block:: python
+
+   for dose in ("LowDose", "HighDose"):
+       design = st.TrialDesign(arm_col="arm", arm_treated=dose, arm_control="Placebo")
+       res = st.did_table(adata, features=features, design=design, visits=("V1", "V2"))
+
+``st.subset_arms(adata, design)`` returns the data restricted to the two arms of a
+design. To pool arms into one group, write the pooled label into a new ``obs``
+column and name that column in ``arm_col``.
+
 What if I have crossover design?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -727,6 +748,8 @@ Common causes:
 2. **Zero variance** in feature
 3. **Missing data** in required columns
 4. **Wrong visit labels**
+5. **One arm without participants in the model** (for example a cell type found in
+   one arm only)
 
 Run diagnostics:
 

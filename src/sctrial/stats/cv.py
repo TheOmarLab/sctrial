@@ -52,7 +52,7 @@ import numpy as np
 import pandas as pd
 from anndata import AnnData
 
-from ..adata_tools import subset_primary
+from ..adata_tools import subset_arms, subset_primary
 from ..design import TrialDesign
 from .did import AggregateMode, did_table
 
@@ -116,9 +116,15 @@ def loo_cv_did(
     >>> influential = loo[loo["influence"] > 1.0]
     >>> print(f"Influential participants: {influential['excluded'].unique()}")
     """
-    # Get paired participants
-    ad = subset_primary(adata, design, visits, exclude_crossovers=exclude_crossovers)
-    participants = ad.obs[design.participant_col].unique().tolist()
+    # The two visits and the two named arms. Restricting here reports excluded rows
+    # once. A design that does not match the labels of the data raises here; raised by
+    # did_table inside the loop it would be caught and recorded as a failed fit.
+    adata = subset_arms(
+        subset_primary(adata, design, visits, exclude_crossovers=exclude_crossovers),
+        design,
+        stacklevel=3,
+    )
+    participants = adata.obs[design.participant_col].unique().tolist()
 
     # Full-sample estimates for comparison
     full_res = did_table(
@@ -256,9 +262,16 @@ def kfold_cv_did(
     """
     rng = np.random.default_rng(seed)
 
-    # Get paired participants
-    ad = subset_primary(adata, design, visits, exclude_crossovers=exclude_crossovers)
-    participants = ad.obs[design.participant_col].unique().tolist()
+    # The two visits and the two named arms. Restricting here reports excluded rows once
+    # and keeps other arms out of the fold assignment. A design that does not match the
+    # labels of the data raises here; raised by did_table inside the loop it would be
+    # caught and counted as a failed fold.
+    adata = subset_arms(
+        subset_primary(adata, design, visits, exclude_crossovers=exclude_crossovers),
+        design,
+        stacklevel=3,
+    )
+    participants = adata.obs[design.participant_col].unique().tolist()
     n_participants = len(participants)
 
     if n_participants < k:
@@ -276,7 +289,7 @@ def kfold_cv_did(
 
     # Build a mapping from participant to arm for stratified assignment
     _arm_map = (
-        ad.obs[[design.participant_col, design.arm_col]]
+        adata.obs[[design.participant_col, design.arm_col]]
         .drop_duplicates(subset=[design.participant_col])
         .set_index(design.participant_col)[design.arm_col]
     )

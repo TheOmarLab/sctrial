@@ -152,9 +152,9 @@ def _by_signature_set(run, immune: list[str], clinical: list[str]) -> pd.DataFra
 def _paired_group_sizes(adata, design: TrialDesign, visits: tuple[str, str]) -> tuple[int, int]:
     """Participants with both visits in the focal and in the reference group.
 
-    ``did_table`` contrasts the focal group with every other paired participant, so a
-    paired participant carrying neither group label would enter its reference group
-    unnoticed. That case raises here instead of being counted.
+    ``did_table`` excludes a participant that carries neither group label, with a
+    warning. The table reports the group sizes of the cohort, so an unexpected label
+    among the paired participants raises here.
     """
     obs = adata.obs[adata.obs[design.visit_col].isin(visits)]
     pid = design.participant_col

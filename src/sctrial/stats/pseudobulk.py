@@ -11,6 +11,7 @@ from anndata import AnnData
 from scipy.stats import wilcoxon
 from statsmodels.stats.multitest import multipletests
 
+from ..adata_tools import subset_arms
 from ..design import TrialDesign
 from ..utils import warn_unbounded_bootstrap_intervals
 from ._utils import apply_fdr, encode_visit
@@ -290,11 +291,12 @@ def pseudobulk_did(
     if pb.empty:
         return pd.DataFrame()
 
+    pb = pb[pb[design.visit_col].isin(visits)].copy()
+    pb = subset_arms(pb, design, stacklevel=3)
     if "n_cells" in pb.columns:
         pb = pb[pb["n_cells"] >= min_cells_per_group].copy()
 
-    pb = pb[pb[design.visit_col].isin(visits)].copy()
-    pb["arm_bin"] = (pb[design.arm_col] == design.arm_treated).astype(int)
+    pb["arm_bin"] = design.arm_bin(pb)
     pb = encode_visit(pb, design.visit_col, visits)
 
     rows = []

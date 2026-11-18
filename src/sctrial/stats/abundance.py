@@ -7,7 +7,7 @@ import pandas as pd
 import statsmodels.formula.api as smf
 from anndata import AnnData
 
-from ..adata_tools import subset_primary
+from ..adata_tools import subset_arms, subset_primary
 from ..design import TrialDesign
 from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
 from ._utils import apply_fdr, drop_unused_levels, encode_visit
@@ -99,6 +99,7 @@ def abundance_did(
         raise ValueError("celltype_col is required for abundance_did")
 
     ad = subset_primary(adata, design, visits=visits, exclude_crossovers=exclude_crossovers)
+    ad = subset_arms(ad, design, stacklevel=3)
     obs = ad.obs.copy()
 
     # counts per unit×visit×arm×celltype

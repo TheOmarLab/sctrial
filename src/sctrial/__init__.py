@@ -5,7 +5,7 @@ from __future__ import annotations
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 
-from .adata_tools import profile_features, subset_cells, subset_primary
+from .adata_tools import profile_features, subset_arms, subset_cells, subset_primary
 from .analysis import DiDAnalyzer
 from .convenience import auto_detect_design, quick_did
 from .datasets import (
@@ -153,6 +153,7 @@ __all__ = [
     "ScoreMethod",
     # Data tools
     "subset_primary",
+    "subset_arms",
     "subset_cells",
     "profile_features",
     "resolve_feature",

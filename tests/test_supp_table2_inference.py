@@ -130,7 +130,7 @@ def test_group_sizes_refuse_a_paired_participant_outside_both_groups(load_figure
     adata = _two_arm_adata(3, 4, ["sig_0"])
     assert tables._paired_group_sizes(adata, design, ("Pre", "Post")) == (3, 4)
 
-    # did_table would put this participant in the reference group
+    # did_table excludes this participant with a warning; the table refuses to count around it
     adata.obs["arm"] = adata.obs["arm"].astype(str)
     adata.obs.loc[adata.obs["participant_id"] == "C0", "arm"] = "Other"
     with pytest.raises(ValueError, match="neither"):

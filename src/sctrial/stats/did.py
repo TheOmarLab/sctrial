@@ -17,7 +17,7 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import NotRequired
 
-from ..adata_tools import subset_primary
+from ..adata_tools import subset_arms, subset_primary
 from ..design import TrialDesign
 from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
 from ._utils import apply_fdr, drop_unused_levels, encode_visit, standardize_series
@@ -103,12 +103,13 @@ def _prepare_did_obs(
     celltype: str | None,
     exclude_crossovers: bool,
 ) -> tuple[AnnData, pd.DataFrame]:
-    """Prepare the data for DiD analysis."""
+    """Prepare the data for DiD analysis: the two visits and the two named arms."""
     ad = subset_primary(adata, design, visits=visits, exclude_crossovers=exclude_crossovers)
+    ad = subset_arms(ad, design, stacklevel=4)
     if celltype is not None and design.celltype_col:
         ad = ad[ad.obs[design.celltype_col] == celltype].copy()
     obs = encode_visit(ad.obs.copy(), design.visit_col, visits)
-    obs["arm_bin"] = (obs[design.arm_col] == design.arm_treated).astype(int)
+    obs["arm_bin"] = design.arm_bin(obs)
     return ad, obs
 
 
@@ -403,7 +404,9 @@ def did_fit(
 
     tmp = drop_unused_levels(df[cols].dropna().copy().reset_index(drop=True))
     n_units = tmp[unit].nunique()
-    if n_units < 4:
+    # Fewer than four participants, or one arm without any participant in the model:
+    # the interaction is not estimable.
+    if n_units < 4 or tmp[arm_bin].nunique() < 2:
         return {
             "beta_DiD": np.nan,
             "se_DiD": np.nan,
@@ -923,6 +926,14 @@ def did_table_by_celltype(
 
     if celltypes is None:
         celltypes = sorted(adata.obs[design.celltype_col].dropna().unique())
+
+    # Restrict once, so that rows outside the two arms are reported once and a design
+    # without two arms in the data is an error here, not one warning per cell type.
+    adata = subset_arms(
+        subset_primary(adata, design, visits=visits, exclude_crossovers=exclude_crossovers),
+        design,
+        stacklevel=3,
+    )
 
     all_res = []
     for ct in celltypes:

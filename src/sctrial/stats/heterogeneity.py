@@ -93,7 +93,6 @@ def test_treatment_heterogeneity(
         raise KeyError(f"biomarker_col '{biomarker_col}' not found in adata.obs")
 
     ad, obs = _prepare_did_obs(adata, design, visits, celltype=None, exclude_crossovers=True)
-    obs["arm_bin"] = (obs[design.arm_col] == design.arm_treated).astype(int)
 
     biomarker = adata.obs.loc[obs.index, biomarker_col]
     if pd.api.types.is_bool_dtype(biomarker) or set(pd.unique(biomarker.dropna())) <= {0, 1}:

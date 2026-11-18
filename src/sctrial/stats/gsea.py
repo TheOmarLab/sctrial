@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from anndata import AnnData
 
+from ..adata_tools import subset_arms
 from ..design import TrialDesign
 from .comparisons import between_arm_comparison, within_arm_comparison
 from .did import did_table
@@ -382,6 +383,13 @@ def run_gsea_did(
     return pre_res
 
 
+def _two_arm_rows(adata: AnnData, design: TrialDesign, visits: tuple[str, str]) -> AnnData:
+    """The rows of the two visits and the two named arms, for wrappers that loop over
+    ``run_gsea_did``: excluded rows are reported once, not once per iteration."""
+    in_visits = adata.obs[design.visit_col].isin(list(visits)).to_numpy()
+    return subset_arms(adata[in_visits], design, stacklevel=4)
+
+
 def run_gsea_did_multi(
     adata: AnnData,
     gene_sets: dict[str, str | dict[str, list[str]]],
@@ -411,6 +419,7 @@ def run_gsea_did_multi(
         Dictionary of GSEA results.
     """
     _ensure_gseapy()
+    adata = _two_arm_rows(adata, design, visits)
     results: dict[str, pd.DataFrame | gp.Prerank] = {}
     for label, gs in gene_sets.items():
         results[label] = run_gsea_did(
@@ -459,6 +468,7 @@ def run_gsea_did_by_celltype(
     if celltypes is None:
         celltypes = sorted(adata.obs[design.celltype_col].dropna().unique())
 
+    adata = _two_arm_rows(adata, design, visits)
     results: dict[str, pd.DataFrame | gp.Prerank] = {}
     for ct in celltypes:
         results[ct] = run_gsea_did(

@@ -238,7 +238,7 @@ class TestValidateExtraArms:
         user_warnings = [x for x in w if issubclass(x.category, UserWarning)]
         assert len(user_warnings) == 1
         assert "Placebo" in str(user_warnings[0].message)
-        assert "treated as control" in str(user_warnings[0].message)
+        assert "exclude these rows" in str(user_warnings[0].message)
 
     def test_multiple_extra_arms_warns(self):
         adata = _make_adata(arms=["Treated", "Control", "LowDose", "HighDose"])
@@ -278,14 +278,12 @@ class TestArmBin:
         with pytest.raises(KeyError, match="nonexistent"):
             d.arm_bin(adata.obs)
 
-    def test_multi_arm_collapses_to_binary(self):
-        """Extra arms beyond treated get 0 — verify this is the behavior."""
+    def test_a_third_arm_is_not_coded_as_control(self):
+        """arm_bin is defined for the two named arms; a third arm is an error, not 0."""
         adata = _make_adata(arms=["Treated", "Control", "Placebo"])
         d = TrialDesign()
-        result = d.arm_bin(adata.obs)
-        # Placebo participants should map to 0
-        placebo_mask = adata.obs["arm"] == "Placebo"
-        assert (result[placebo_mask] == 0).all()
+        with pytest.raises(ValueError, match="Placebo"):
+            d.arm_bin(adata.obs)
 
     def test_index_alignment(self):
         """arm_bin result should be aligned to the input obs index."""

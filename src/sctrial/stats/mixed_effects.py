@@ -87,6 +87,8 @@ def did_mixed(
     random_slope: bool = False,
     covariates: Sequence[str] | None = None,
     visits: tuple[str, str] | None = None,
+    *,
+    arm_control: str | None = None,
 ) -> dict:
     """Fit a single DiD mixed effects model.
 
@@ -114,6 +116,17 @@ def did_mixed(
         If True, include random slope for time.
     covariates
         Additional covariates to include as fixed effects.
+    visits
+        (baseline, follow-up) labels of ``time_col``. If None, the two labels are
+        sorted.
+    arm_control
+        Label for the control arm. When given, the table is restricted to the two
+        arms as by :func:`sctrial.subset_arms`: rows whose arm is neither
+        ``arm_treated`` nor ``arm_control`` are excluded with a warning, and a
+        ``ValueError`` is raised when such rows exist and one of the two arms has
+        none. When None, every row that is not ``arm_treated`` forms the reference
+        group; a warning is raised if that group holds more than one label or
+        missing labels.
 
     Returns
     -------
@@ -135,8 +148,37 @@ def did_mixed(
 
     df = df.copy()
 
+    if arm_control is not None:
+        from ..adata_tools import subset_arms
+
+        df = subset_arms(
+            df,
+            TrialDesign(
+                participant_col=participant_col,
+                arm_col=arm_col,
+                arm_treated=arm_treated,
+                arm_control=arm_control,
+            ),
+            stacklevel=3,
+        )
+    else:
+        reference = df.loc[~df[arm_col].isin([arm_treated]), arm_col]
+        labels = sorted(str(v) for v in pd.unique(reference.dropna()))
+        n_missing = int(reference.isna().sum())
+        if len(labels) > 1 or n_missing:
+            found = ([f"labels {labels}"] if labels else []) + (
+                [f"{n_missing} rows with a missing label"] if n_missing else []
+            )
+            warnings.warn(
+                f"The reference group of did_mixed pools every row that is not "
+                f"{arm_treated!r}: {' and '.join(found)} in {arm_col!r}. Pass "
+                f"arm_control to compare two arms only.",
+                UserWarning,
+                stacklevel=2,
+            )
+
     # Encode binary variables
-    df["arm_bin"] = (df[arm_col] == arm_treated).astype(int)
+    df["arm_bin"] = df[arm_col].isin([arm_treated]).astype(int)
 
     # Ensure time is numeric
     time_vals = df[time_col].unique()
@@ -343,15 +385,17 @@ def did_table_mixed(
     did_table : Fixed effects version (recommended for most applications).
     compare_fixed_vs_mixed : Compare both approaches.
     """
-    from ..adata_tools import subset_primary
+    from ..adata_tools import subset_arms, subset_primary
     from ._extract import extract_gene_matrix
 
-    # Subset to analysis population
-    ad = subset_primary(adata, design, visits, exclude_crossovers=exclude_crossovers)
-
-    # Build dataframe
     if design.arm_col is None:
         raise ValueError("mixed-effects DiD requires a two-arm design (arm_col must not be None)")
+
+    # Subset to analysis population: the two visits and the two named arms
+    ad = subset_primary(adata, design, visits, exclude_crossovers=exclude_crossovers)
+    ad = subset_arms(ad, design, stacklevel=3)
+
+    # Build dataframe
     obs = ad.obs.copy()
     cols = [design.participant_col, design.visit_col, design.arm_col]
     if design.celltype_col is not None:
@@ -488,7 +532,15 @@ def compare_fixed_vs_mixed(
     >>> # Check agreement
     >>> print(f"Methods agree: {comparison['agreement'].mean():.0%}")
     """
+    from ..adata_tools import subset_arms
     from .did import did_table
+
+    if design.arm_col is None:
+        raise ValueError("compare_fixed_vs_mixed requires a two-arm design (arm_col must not be None)")
+    # Restrict once, so that both fits use the same rows and report excluded rows once.
+    adata = subset_arms(
+        adata[adata.obs[design.visit_col].isin(list(visits)).to_numpy()], design, stacklevel=3
+    )
 
     # Split kwargs: 'random_slope' is mixed-only and would cause TypeError in did_table
     _MIXED_ONLY_KEYS = {"random_slope"}

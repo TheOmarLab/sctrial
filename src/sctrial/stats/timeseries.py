@@ -54,6 +54,7 @@ import numpy as np
 import pandas as pd
 from anndata import AnnData
 
+from ..adata_tools import subset_arms
 from ..design import TrialDesign
 from ._utils import apply_fdr, drop_unused_levels
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE, AggregateMode
@@ -77,7 +78,7 @@ def _prepare_longitudinal_data(
     layer: str | None = None,
     exclude_crossovers: bool = True,
 ) -> pd.DataFrame:
-    """Prepare data for longitudinal analysis."""
+    """Prepare data for a two-arm longitudinal analysis: the visits and the two named arms."""
     from ._extract import extract_gene_matrix
 
     # Filter to specified visits
@@ -85,7 +86,7 @@ def _prepare_longitudinal_data(
     if exclude_crossovers and design.crossover_col:
         mask &= ~adata.obs[design.crossover_col].astype(bool)
 
-    ad = adata[mask].copy()
+    ad = subset_arms(adata[mask].copy(), design, stacklevel=4)
 
     # Build dataframe
     df = ad.obs[[design.participant_col, design.visit_col, design.arm_col]].copy()
@@ -195,7 +196,7 @@ def trend_interaction(
 
     # Add numeric time
     df["time_num"] = df[design.visit_col].map(time_map).astype(float)
-    df["arm_bin"] = (df[design.arm_col] == design.arm_treated).astype(int)
+    df["arm_bin"] = design.arm_bin(df)
 
     # Aggregate to participant-visit level
     if aggregate == "participant_visit":
@@ -355,6 +356,12 @@ def event_study_did(
     if reference_visit not in visits:
         raise ValueError(f"Reference visit '{reference_visit}' not in visits list")
 
+    # Restrict once, so that rows outside the two arms are reported once and a design
+    # without two arms in the data is an error here, not an error row per visit.
+    adata = subset_arms(
+        adata[adata.obs[design.visit_col].isin(list(visits)).to_numpy()], design, stacklevel=3
+    )
+
     # Run DiD for each post-baseline visit
     all_results = []
     post_visits = [v for v in visits if v != reference_visit]
@@ -450,7 +457,7 @@ def polynomial_trend(
     df = drop_unused_levels(df.groupby(grp_cols, observed=True)[[feature]].mean().reset_index())
 
     df["time_num"] = df[design.visit_col].map(time_map).astype(float)
-    df["arm_bin"] = (df[design.arm_col] == design.arm_treated).astype(int)
+    df["arm_bin"] = design.arm_bin(df)
     df["outcome_std"] = df[feature].astype(float)
 
     # Build polynomial terms

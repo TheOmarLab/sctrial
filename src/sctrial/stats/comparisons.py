@@ -11,7 +11,7 @@ from anndata import AnnData
 from scipy.stats import mannwhitneyu
 from scipy.stats import t as t_dist
 
-from ..adata_tools import subset_cells
+from ..adata_tools import subset_arms, subset_cells
 from ..design import TrialDesign
 from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
 from ._utils import apply_fdr, drop_unused_levels, encode_visit, standardize_series
@@ -70,10 +70,11 @@ def _prepare_between_arm_df(
     agg: AggregateFunc,
     covariates: list[str] | None,
 ) -> pd.DataFrame:
-    """Prepare the data for between-arm comparison."""
+    """Prepare the data for between-arm comparison: one visit and the two named arms."""
     ad = subset_cells(adata, design, visit=visit, exclude_crossovers=False)
+    ad = subset_arms(ad, design, stacklevel=4)
     obs = ad.obs.copy()
-    obs["arm_bin"] = (obs[design.arm_col] == design.arm_treated).astype(int)
+    obs["arm_bin"] = design.arm_bin(obs)
 
     cols = [design.participant_col, "arm_bin", design.arm_col]
     if covariates:
@@ -160,6 +161,18 @@ def _ols_between_arm(
     formula = "outcome_std ~ arm_bin"
     if covariates:
         formula += " + " + " + ".join(covariates)
+    in_model = df_feat[["outcome_std", "arm_bin", *(covariates or [])]].notna().all(axis=1)
+    if df_feat.loc[in_model, "arm_bin"].nunique() < 2:
+        # One arm has no participant in the model: the arm difference is not estimable.
+        return {
+            "feature": feat,
+            "beta_arm": np.nan,
+            "se_arm": np.nan,
+            "ci_lo_arm": np.nan,
+            "ci_hi_arm": np.nan,
+            "p_arm": np.nan,
+            "n_units": int(df_feat.loc[in_model, design.participant_col].nunique()),
+        }
     model = smf.ols(formula, data=df_feat)
     fit = model.fit()
 
