@@ -100,6 +100,7 @@ from .._shared import (
     group_axis_labels,
     harmonize_response,
     key_below_axes,
+    key_below_row,
     output_dpi,
     report_layout_problems,
     save_panel,
@@ -1200,9 +1201,9 @@ def generate() -> None:
 
     _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
 
-    # Panel A: the keys go below the axes once fonts and geometry are final.
-    for ax_ in (ax_a_bot, ax_a_top):
-        key_below_axes(ax_, ncol=2, clear_of=[ax_a_bot, ax_a_top])
+    # Panel A: both cohorts share one key, in a single row under the row of axes, placed
+    # once fonts and geometry are final. Two keys of two rows reached panel B's titles.
+    key_below_row([ax_a_top, ax_a_bot], ncol=4)
     key_below_axes(ax_rt, ncol=2, keep_title=True)  # off the runtime curves
 
     # Compact corner titles for the four half-width benchmark panels (composite

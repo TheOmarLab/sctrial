@@ -636,6 +636,40 @@ def key_below_axes(ax, *, ncol: int, fontsize: float | None = None, gap_pt: floa
     )
 
 
+def key_below_row(axes, *, ncol: int, fontsize: float | None = None, gap_pt: float = 2.0):
+    """One key for a row of axes that share it, centred under the row.
+
+    Axes that show the same series repeat one key. The handles are taken from the first
+    axes' legend, the legends of all the axes are removed, and a single key is placed
+    ``gap_pt`` below the lowest x-axis text of the row, measured after a draw. Call it once
+    the row's fonts are final. Returns the new legend, or None when the first axes has none.
+    """
+    leg = axes[0].get_legend()
+    if leg is None:
+        return None
+    handles = leg.legend_handles
+    labels = [t.get_text() for t in leg.get_texts()]
+    if fontsize is None:
+        fontsize = leg.get_texts()[0].get_fontsize() if labels else plt.rcParams["legend.fontsize"]
+    for a in axes:
+        if a.get_legend() is not None:
+            a.get_legend().remove()
+    fig = axes[0].figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    extents = [a.get_window_extent(renderer) for a in axes]
+    boxes = [a.xaxis.get_tightbbox(renderer) for a in axes]
+    bottom = min([e.y0 for e in extents] + [b.y0 for b in boxes if b is not None])
+    centre = 0.5 * (min(e.x0 for e in extents) + max(e.x1 for e in extents))
+    anchor = fig.transFigure.inverted().transform((centre, bottom - gap_pt * fig.dpi / 72))
+    return axes[0].legend(
+        handles=handles, labels=labels, loc="upper center", bbox_to_anchor=tuple(anchor),
+        bbox_transform=fig.transFigure, ncol=ncol, fontsize=fontsize, frameon=True,
+        framealpha=0.9, edgecolor="#CCCCCC", borderpad=0.3, columnspacing=0.8,
+        handlelength=0.8, handletextpad=0.3, labelspacing=0.2,
+    )
+
+
 def letter_left_of_band(fig, letter: str, *, fontsize: float, left: float, top: float,
                         boxes, gap_pt: float = 2.5) -> tuple[float, float]:
     """Figure coordinates for a bold letter whose top is at display y ``top``.

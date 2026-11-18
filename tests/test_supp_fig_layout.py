@@ -195,6 +195,53 @@ def test_figure3_relabeling_panels_share_one_x_scale(load_figure_module):
     plt.close(fig)
 
 
+def test_key_below_row_places_one_single_row_key_under_the_row(load_figure_module):
+    """Figure 3A: two axes with the same four series share one key instead of two."""
+    fig3 = load_figure_module("main/figure3_robustness_benchmarking")
+    import manuscript_figures._shared as sh
+
+    def row():
+        fig, axes = plt.subplots(1, 2, figsize=(7.1, 1.6))
+        fig3._panel_a(axes[1], axes[0], {"relabel": _relabel_table(seed=1)},
+                      {"relabel": _relabel_table(seed=2)}, composite=True)
+        fig.subplots_adjust(bottom=0.45, top=0.85)
+        return fig, axes
+
+    fig, axes = row()
+    assert all(ax.get_legend() is not None for ax in axes)
+    leg = sh.key_below_row(list(axes), ncol=4)
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    box = leg.get_window_extent(renderer)
+    assert axes[1].get_legend() is None and len(fig.legends) == 0
+    assert len(leg.get_texts()) == 4
+    baselines = {round(t.get_window_extent(renderer).y0) for t in leg.get_texts()}
+    assert len(baselines) == 1  # one row
+    x_text = [ax.xaxis.get_tightbbox(renderer) for ax in axes]
+    assert box.y1 < min(b.y0 for b in x_text)  # below the x labels of both axes
+    extents = [ax.get_window_extent(renderer) for ax in axes]
+    row_centre = 0.5 * (min(e.x0 for e in extents) + max(e.x1 for e in extents))
+    assert abs(0.5 * (box.x0 + box.x1) - row_centre) < 1.0
+    assert box.x0 > 0 and box.x1 < fig.bbox.width
+    one_row = box.height
+    plt.close(fig)
+
+    # the two keys of two rows it replaces reach further down, by a line of text
+    fig, axes = row()
+    for ax in axes:
+        sh.key_below_axes(ax, ncol=2, clear_of=list(axes))
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    two_rows = axes[0].get_legend().get_window_extent(renderer).height
+    font_px = axes[0].get_legend().get_texts()[0].get_fontsize() * fig.dpi / 72
+    assert two_rows - one_row > 0.8 * font_px
+    plt.close(fig)
+
+    fig, axes = plt.subplots(1, 2)
+    assert sh.key_below_row(list(axes), ncol=2) is None
+    plt.close(fig)
+
+
 def test_figure3_forest_rows_grouped_and_clear(load_figure_module):
     fig3 = load_figure_module("main/figure3_robustness_benchmarking")
     import manuscript_figures._shared as sh
