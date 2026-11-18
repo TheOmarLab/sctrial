@@ -952,7 +952,7 @@ def _panel_i_individual_trajectories(ax: plt.Axes, data: dict) -> None:
     ax.set_xticks([0, 1])
     ax.set_xticklabels(["Pre", "Post"])
     ax.set_ylabel(f"{sig_display(target)} Score")
-    ax.set_title(f"Individual Trajectories — {sig_display(target)}", fontsize=10,
+    ax.set_title(f"Individual Trajectories ({sig_display(target)})", fontsize=10,
                  fontweight="bold")
 
     handles = [

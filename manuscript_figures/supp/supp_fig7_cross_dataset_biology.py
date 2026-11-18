@@ -206,7 +206,7 @@ def panel_B(ax, data: dict):
     ax.set_yticklabels(selected["feature"].values, fontsize=4)
 
     ax.set_xlabel(r"Effect size ($\beta_{\mathrm{DiD}}$)")
-    ax.set_title("Top Genes by Effect Size — Melanoma DiD", fontsize=11,
+    ax.set_title("Top Genes by Effect Size (Melanoma DiD)", fontsize=11,
                  fontweight="bold")
 
     legend_handles = [
@@ -1455,6 +1455,12 @@ def _panel_enrichment_heatmap(ax, data: dict[str, dict]):
     group_axis_labels(ax, groups, fontsize=3.5)
 
 
+def _melanoma_title(title: str) -> str:
+    """Composite title of a melanoma panel: the panel's own title with the cohort in parentheses."""
+    base = title.replace("Melanoma", "").strip(" -").replace(" (Top Genes)", " of Top Genes")
+    return f"{base} (Melanoma)"
+
+
 def _build_composite(data_mel: dict, data: dict[str, dict]) -> None:
     """Build and save the combined A–M artboard from the prepared melanoma and cross-dataset data."""
     # ==================================================================
@@ -1544,8 +1550,7 @@ def _build_composite(data_mel: dict, data: dict[str, dict]) -> None:
     if _b_lbls:
         ax_b.set_yticklabels(_b_lbls, fontsize=2.5)
     panel_C(ax_c, data_mel)
-    ax_c.set_title(ax_c.get_title().replace("Melanoma", "").strip(" —–-") +
-                   " — Melanoma", fontsize=5.0, fontweight="bold")
+    ax_c.set_title(_melanoma_title(ax_c.get_title()), fontsize=5.0, fontweight="bold")
     ax_c.tick_params(axis='y', labelsize=3.5)
     ax_c.set_xticks([-2, 0, 2])
 
@@ -1558,8 +1563,7 @@ def _build_composite(data_mel: dict, data: dict[str, dict]) -> None:
 
     panel_D(ax_d, data_mel, composite=True)
     _swap_leading_edge_axes(ax_d)
-    ax_d.set_title(ax_d.get_title().replace("Melanoma", "").strip(" —–-") +
-                   " — Melanoma", fontsize=5.0, fontweight="bold")
+    ax_d.set_title(_melanoma_title(ax_d.get_title()), fontsize=5.0, fontweight="bold")
     ax_d.tick_params(axis='y', labelsize=4)
     for _t in ax_d.get_xticklabels():  # one gene per column: vertical names cannot collide
         _t.set_rotation(90)
@@ -1572,8 +1576,7 @@ def _build_composite(data_mel: dict, data: dict[str, dict]) -> None:
     for _cb_ax in set(fig_c.get_axes()) - _axes_before_e - {ax_e}:
         _cb_ax.tick_params(labelsize=4.0)
         _cb_ax.yaxis.label.set_fontsize(4.5)
-    ax_e.set_title(ax_e.get_title().replace("Melanoma", "").strip(" —–-") +
-                   " — Melanoma", fontsize=5.0, fontweight="bold")
+    ax_e.set_title(_melanoma_title(ax_e.get_title()), fontsize=5.0, fontweight="bold")
     ax_e.tick_params(axis='x', labelsize=3.5)
     ax_e.tick_params(axis='y', labelsize=4)
 
