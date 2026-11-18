@@ -7,7 +7,13 @@ the homoskedastic covariance. Under reassignment the null hypothesis holds, so a
 test rejects at its nominal level. With ``--bootstrap`` the wild cluster bootstrap p-value
 (999 draws) is added.
 
-The result is the evidence behind ``MELANOMA_GENE_LEVEL_COV_TYPE`` in
+Relabeling makes the two groups exchangeable, so it cannot show whether the changes vary
+equally in the two observed groups, which the homoskedastic test assumes. The script
+therefore also compares, gene by gene, the variance of the participant changes in the
+responder and the non-responder group with its distribution under equal variances, and the
+homoskedastic test with the Welch test on the same changes.
+
+The results are the evidence behind ``MELANOMA_GENE_LEVEL_COV_TYPE`` in
 ``manuscript_figures/_shared.py``.
 
 Run from the repository root on a compute node, with ``SCTRIAL_MANUSCRIPT_DIR`` set:
@@ -25,9 +31,50 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 ROOT = Path(__file__).resolve().parents[1]
 ALPHAS = (0.05, 0.01, 0.001, 1e-4, 1e-5)
+
+
+def variance_comparison(frame: pd.DataFrame, unit: str, time: str, arm_bin: str,
+                        genes: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Variance of the participant changes by group, with the pooled and the Welch test."""
+    ordered = frame.sort_values([unit, time])
+    pre = ordered[ordered[time] == 0].set_index(unit)
+    post = ordered[ordered[time] == 1].set_index(unit)
+    if list(pre.index) != list(post.index):
+        raise ValueError("participants of the two visits do not match")
+    change = post[genes].to_numpy(dtype=float) - pre[genes].to_numpy(dtype=float)
+    focal = pre[arm_bin].to_numpy() == 1
+    first, second = change[focal], change[~focal]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio = first.var(axis=0, ddof=1) / second.var(axis=0, ddof=1)
+    per_gene = pd.DataFrame({
+        "gene": genes,
+        "variance_ratio": ratio,
+        "p_pooled": stats.ttest_ind(first, second, equal_var=True).pvalue,
+        "p_welch": stats.ttest_ind(first, second, equal_var=False).pvalue,
+    })
+    usable = per_gene[np.isfinite(per_gene["variance_ratio"]) & (per_gene["variance_ratio"] > 0)]
+    reference = stats.f(len(first) - 1, len(second) - 1)
+    flagged = usable[usable["p_pooled"] < 0.05]
+    summary = pd.DataFrame([{
+        "n_genes": len(per_gene),
+        "n_genes_both_variances_positive": len(usable),
+        "median_variance_ratio": float(usable["variance_ratio"].median()),
+        "median_under_equal_variances": float(reference.median()),
+        "pct_ratio_above_4": 100 * float((usable["variance_ratio"] > 4).mean()),
+        "pct_above_4_under_equal_variances": 100 * float(reference.sf(4)),
+        "pct_ratio_below_quarter": 100 * float((usable["variance_ratio"] < 0.25).mean()),
+        "pct_below_quarter_under_equal_variances": 100 * float(reference.cdf(0.25)),
+        "n_p05_pooled": int((per_gene["p_pooled"] < 0.05).sum()),
+        "n_p05_welch": int((per_gene["p_welch"] < 0.05).sum()),
+        "n_p05_both": int(((per_gene["p_pooled"] < 0.05) & (per_gene["p_welch"] < 0.05)).sum()),
+        "median_variance_ratio_of_pooled_p05": float(flagged["variance_ratio"].median()),
+        "pct_ratio_above_4_of_pooled_p05": 100 * float((flagged["variance_ratio"] > 4).mean()),
+    }])
+    return per_gene, summary
 
 
 def main() -> None:
@@ -81,6 +128,10 @@ def main() -> None:
         f"assignments {len(assignments)} (groups of {len(observed_first)} and "
         f"{len(units) - len(observed_first)})"
     )
+    per_gene, variance_summary = variance_comparison(frame, unit, time, arm_bin, tested)
+    per_gene.to_csv(args.out_dir / "melanoma_gene_variance_ratio.csv", index=False)
+    variance_summary.to_csv(args.out_dir / "melanoma_gene_variance_ratio_summary.csv", index=False)
+    print(variance_summary.T.to_string())
     base = frame[[unit, time, *tested]]
     tests = ("cluster", "nonrobust", "bootstrap") if args.bootstrap else ("cluster", "nonrobust")
 

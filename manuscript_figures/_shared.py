@@ -76,13 +76,21 @@ STATS_FINGERPRINT = _stats_fingerprint()
 # Covariance of the analytical gene-level DiD tests in the melanoma cohort, and of the
 # t-statistic that ranks its genes for GSEA. The responder group holds three paired
 # participants. The cluster-robust variance of the group-by-time coefficient is estimated
-# within each group, so in this cohort it rests on three participants: over all 165
-# reassignments of the participants to groups of three and eight it rejects 0.8% of the
-# 1,632 variable genes at p < 0.05 and 27 times the nominal share at p < 1e-5. The pooled
-# (homoskedastic) variance uses all eleven participants and rejects 2.8% at p < 0.05 and
-# 0.06% at p < 0.001 (scripts/melanoma_gene_level_calibration.py). Signature-level
-# inference in this cohort uses the wild cluster bootstrap and is not affected by this
-# setting.
+# within each group, so here it rests on three participants, and its p-value uses a normal
+# reference. Over all 165 reassignments of the participants to groups of three and eight
+# it rejects 0.8% of the 1,632 variable genes at p < 0.05 and 27 times the nominal share at
+# p < 1e-5. The pooled (homoskedastic) variance uses all eleven participants and rejects
+# 2.8% at p < 0.05, 0.06% at p < 0.001 and 6.7 times the nominal share at p < 1e-5.
+# It assumes that the changes vary equally in the two groups, which does not hold for every
+# gene: among the 1,022 genes with a positive variance in both groups, the responder variance
+# is more than four times the non-responder variance in 24% (7% expected under equal
+# variances), and in 44% of those with a pooled p < 0.05, where the pooled p-value is too
+# small. Of the 58 genes with a pooled p < 0.05, 10 have a Welch p < 0.05. Under either
+# variance the number of genes with p < 0.05 lies within the range obtained under
+# reassignment. These p-values therefore describe and rank; they do not establish single
+# genes.
+# Numbers: scripts/melanoma_gene_level_calibration.py. Signature-level inference in this
+# cohort uses the wild cluster bootstrap and is not affected by this setting.
 MELANOMA_GENE_LEVEL_COV_TYPE = "nonrobust"
 
 # ---------------------------------------------------------------------------
