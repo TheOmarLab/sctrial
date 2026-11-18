@@ -16,6 +16,7 @@ from .did import (
     AggregateFunc,
     AggregateMode,
     _add_feature_columns,
+    _ensure_paired,
     _prepare_did_obs,
 )
 
@@ -43,6 +44,12 @@ def test_treatment_heterogeneity(
     The coefficient of the 3-way interaction (visit:arm:biomarker) tests whether
     the DiD effect differs by biomarker subgroup.
 
+    The model uses the participants observed at both visits. The biomarker is a
+    participant attribute: a participant's value is the mean of ``biomarker_col``
+    over its cells, and participants without a value are excluded. The interaction
+    needs at least two participants in each arm by biomarker group; when a group
+    is smaller, a warning is raised and the coefficient and p-value are NaN.
+
     Parameters
     ----------
     adata
@@ -57,8 +64,9 @@ def test_treatment_heterogeneity(
         Column in `adata.obs` for stratification.
     threshold
         If provided, biomarker_high = biomarker > threshold.
-        If None, median split is used for numeric biomarkers. For binary
-        biomarkers (0/1 or True/False), values are used directly.
+        If None, numeric biomarkers are split at the median over the participants
+        in the model. For binary biomarkers (0/1 or True/False), values are used
+        directly.
     aggregate
         Aggregation mode (default: participant_visit).
     layer
@@ -93,23 +101,24 @@ def test_treatment_heterogeneity(
         raise KeyError(f"biomarker_col '{biomarker_col}' not found in adata.obs")
 
     ad, obs = _prepare_did_obs(adata, design, visits, celltype=None, exclude_crossovers=True)
+    unit = design.participant_col
+    time = "visit_num"
+    arm_bin = "arm_bin"
 
-    biomarker = adata.obs.loc[obs.index, biomarker_col]
-    if pd.api.types.is_bool_dtype(biomarker) or set(pd.unique(biomarker.dropna())) <= {0, 1}:
-        biomarker_high = biomarker.astype(int)
+    raw = adata.obs.loc[obs.index, biomarker_col]
+    if pd.api.types.is_bool_dtype(raw):
+        values = raw.astype(float)
     else:
-        biomarker = pd.to_numeric(biomarker, errors="coerce")
-        if biomarker.isna().any():
+        values = pd.to_numeric(raw.astype(object), errors="coerce")
+        n_coerced = int((values.isna() & raw.notna()).sum())
+        if n_coerced:
             warnings.warn(
-                f"biomarker_col '{biomarker_col}' contained non-numeric values that were coerced to NaN.",
+                f"biomarker_col '{biomarker_col}' has {n_coerced} non-numeric values, "
+                "which are treated as missing.",
                 UserWarning,
                 stacklevel=2,
             )
-        if threshold is None:
-            threshold = float(np.nanmedian(biomarker))
-        biomarker_high = (biomarker > threshold).astype(int)
-
-    obs["biomarker_high"] = biomarker_high.values
+    obs["_biomarker"] = values.to_numpy(dtype=float)
 
     # Add feature columns (genes or obs)
     obs_feat, final_features = _add_feature_columns(obs.copy(), ad, list(features), layer)
@@ -117,16 +126,59 @@ def test_treatment_heterogeneity(
     if aggregate != "participant_visit":
         raise ValueError("test_treatment_heterogeneity supports participant_visit only.")
 
-    grp_cols = [design.participant_col, design.visit_col, design.arm_col]
-    use_cols = list(final_features) + ["biomarker_high", "arm_bin"]
+    grp_cols = [unit, design.visit_col, design.arm_col]
+    use_cols = list(final_features) + [arm_bin]
     df_use = (
         obs_feat.groupby(grp_cols, observed=True)[use_cols].mean(numeric_only=True).reset_index()
     )
+    df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
+    df_use[unit] = df_use[unit].astype(object)
+
+    # The biomarker is a participant attribute: one value per participant, and the
+    # median split is taken over the participants that enter the model.
+    per_participant = obs.groupby(obs[unit].astype(object))["_biomarker"].mean()
+    per_participant = per_participant.reindex(pd.unique(df_use[unit]))
+    n_missing = int(per_participant.isna().sum())
+    if n_missing:
+        warnings.warn(
+            f"{n_missing} of {len(per_participant)} paired participants have no value of "
+            f"'{biomarker_col}' and are excluded.",
+            UserWarning,
+            stacklevel=2,
+        )
+    per_participant = per_participant.dropna()
+    if set(per_participant.unique()) <= {0.0, 1.0}:
+        high = per_participant.astype(int)
+    else:
+        if threshold is None:
+            threshold = float(per_participant.median())
+        high = (per_participant > threshold).astype(int)
+
+    df_use = df_use[df_use[unit].isin(high.index)].copy()
+    df_use["biomarker_high"] = df_use[unit].map(high).astype(int)
+    df_use[arm_bin] = df_use[arm_bin].round().astype(int)
     df_use = encode_visit(df_use, design.visit_col, visits)
-    unit = design.participant_col
-    time = "visit_num"
-    arm_bin = "arm_bin"
     obs_feat = df_use
+
+    # The interaction contrasts the change over time across the four arm by biomarker
+    # groups. A group with one participant fits that participant exactly and adds
+    # nothing to the cluster-robust variance, so each group needs at least two.
+    group_sizes = df_use.drop_duplicates(unit).groupby([arm_bin, "biomarker_high"]).size()
+    counts = {
+        f"{arm_name}/{level_name}": int(group_sizes.get((a, b), 0))
+        for a, arm_name in ((0, "control"), (1, "treated"))
+        for b, level_name in ((0, "low"), (1, "high"))
+    }
+    estimable = min(counts.values()) >= 2
+    if not estimable:
+        warnings.warn(
+            "The arm by visit by biomarker interaction is not estimable: it needs at least "
+            "2 paired participants in each arm by biomarker group, found "
+            + ", ".join(f"{name}={n}" for name, n in counts.items())
+            + ".",
+            UserWarning,
+            stacklevel=2,
+        )
 
     rows = []
     for feat in final_features:
@@ -159,7 +211,16 @@ def test_treatment_heterogeneity(
 
         df = drop_unused_levels(tmp.dropna(subset=["outcome_std"]).reset_index(drop=True))
 
-        if df["biomarker_high"].nunique() < 2:
+        if not estimable:
+            rows.append(
+                {
+                    "feature": feat,
+                    "beta_heterogeneity": np.nan,
+                    "p_heterogeneity": np.nan,
+                    "n_units": int(df[unit].nunique()),
+                    "threshold": threshold,
+                }
+            )
             continue
 
         formula = (

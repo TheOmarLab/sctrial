@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 from anndata import AnnData
 
 import sctrial as st
@@ -88,3 +89,100 @@ def test_treatment_heterogeneity_numeric_biomarker():
         threshold=0.0,
     )
     assert "beta_heterogeneity" in res.columns
+
+
+def _heterogeneity_fixture(n=16, cells=None, seed=0):
+    rng = np.random.default_rng(seed)
+    rows = []
+    for pid in range(n):
+        arm = "Treated" if pid < n // 2 else "Control"
+        biomarker = float(rng.normal())
+        n_cells = 3 if cells is None else cells[pid]
+        for visit in ("V1", "V2"):
+            for _ in range(n_cells):
+                rows.append(
+                    {
+                        "participant_id": f"P{pid:02d}",
+                        "visit": visit,
+                        "arm": arm,
+                        "bmk": biomarker,
+                        "sig1": float(rng.normal()),
+                    }
+                )
+    obs = pd.DataFrame(rows)
+    obs.index = obs.index.astype(str)
+    adata = AnnData(X=np.zeros((len(obs), 1)), obs=obs)
+    design = st.TrialDesign(
+        participant_col="participant_id",
+        visit_col="visit",
+        arm_col="arm",
+        arm_treated="Treated",
+        arm_control="Control",
+    )
+    return adata, design
+
+
+def _heterogeneity(adata, design, **kwargs):
+    return st.test_treatment_heterogeneity(
+        adata, features=["sig1"], design=design, visits=("V1", "V2"), biomarker_col="bmk", **kwargs
+    )
+
+
+def test_heterogeneity_excludes_participants_without_biomarker():
+    adata, design = _heterogeneity_fixture()
+    missing = ["P03", "P11"]
+    adata.obs.loc[adata.obs["participant_id"].isin(missing), "bmk"] = np.nan
+
+    with pytest.warns(UserWarning, match="2 of 16 paired participants have no value"):
+        res = _heterogeneity(adata, design)
+    kept = adata[~adata.obs["participant_id"].isin(missing)].copy()
+    ref = _heterogeneity(kept, design)
+
+    assert res["n_units"].iloc[0] == 14
+    for col in ("beta_heterogeneity", "p_heterogeneity", "threshold"):
+        assert res[col].iloc[0] == pytest.approx(ref[col].iloc[0], rel=1e-12)
+
+
+def test_heterogeneity_uses_paired_participants_only():
+    adata, design = _heterogeneity_fixture()
+    drop = adata.obs["participant_id"].isin(["P02", "P12"]) & (adata.obs["visit"] == "V2")
+    one_visit = adata[~drop.to_numpy()].copy()
+    paired = adata[~adata.obs["participant_id"].isin(["P02", "P12"])].copy()
+
+    res = _heterogeneity(one_visit, design)
+    ref = _heterogeneity(paired, design)
+
+    assert res["n_units"].iloc[0] == 14
+    for col in ("beta_heterogeneity", "p_heterogeneity", "threshold"):
+        assert res[col].iloc[0] == pytest.approx(ref[col].iloc[0], rel=1e-12)
+
+
+def test_heterogeneity_median_is_over_participants():
+    cells = [1, 9, 2, 8, 1, 7, 3, 9, 2, 9, 1, 8, 2, 7, 1, 9]
+    adata, design = _heterogeneity_fixture(cells=cells)
+    per_participant = adata.obs.groupby("participant_id", observed=True)["bmk"].first()
+    participant_median = float(per_participant.median())
+    assert participant_median != pytest.approx(float(adata.obs["bmk"].median()))
+
+    res = _heterogeneity(adata, design)
+    explicit = _heterogeneity(adata, design, threshold=participant_median)
+
+    assert res["threshold"].iloc[0] == pytest.approx(participant_median)
+    assert res["beta_heterogeneity"].iloc[0] == pytest.approx(explicit["beta_heterogeneity"].iloc[0])
+    assert res["p_heterogeneity"].iloc[0] == pytest.approx(explicit["p_heterogeneity"].iloc[0])
+
+
+def test_heterogeneity_reports_non_estimable_interaction():
+    adata, design = _heterogeneity_fixture()
+    treated = adata.obs["arm"] == "Treated"
+    adata.obs.loc[treated, "bmk"] = 5.0
+    adata.obs.loc[adata.obs["participant_id"] == "P00", "bmk"] = -5.0
+
+    with pytest.warns(UserWarning, match="not estimable.*treated/low=1"):
+        res = _heterogeneity(adata, design, threshold=0.0)
+
+    assert len(res) == 1
+    assert np.isnan(res["beta_heterogeneity"].iloc[0])
+    assert np.isnan(res["p_heterogeneity"].iloc[0])
+    assert np.isnan(res["FDR_heterogeneity"].iloc[0])
+    assert res["n_units"].iloc[0] == 16

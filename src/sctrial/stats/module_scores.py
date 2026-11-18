@@ -465,10 +465,13 @@ def module_score_within_arm_by_pool(
         pre = wide[visits[0]].to_numpy(dtype=float)
         post = wide[visits[1]].to_numpy(dtype=float)
         delta = post - pre
-        try:
-            _, p_val = wilcoxon(delta)
-        except (ValueError, TypeError):
+        if np.allclose(delta, 0):
             p_val = np.nan
+        else:
+            try:
+                _, p_val = wilcoxon(delta)
+            except (ValueError, TypeError):
+                p_val = np.nan
 
         rows.append(
             {

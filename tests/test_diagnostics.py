@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
@@ -80,3 +82,60 @@ def test_pseudobulk_export():
     )
     assert pb.n_obs == 4
     assert pb.n_vars == 2
+
+
+def _pseudobulk_fixture(n_participants=6):
+    rng = np.random.default_rng(3)
+    rows = []
+    for pid in range(n_participants):
+        for visit in ("V1", "V2"):
+            for _ in range(4):
+                rows.append(
+                    {"participant_id": f"P{pid}", "visit": visit, "arm": "Treated", "cell_type": "A"}
+                )
+    obs = pd.DataFrame(rows)
+    obs.index = obs.index.astype(str)
+    counts = rng.poisson(5, size=(len(obs), 3)).astype(float)
+    counts[:, 2] = 0.0
+    adata = AnnData(X=counts, obs=obs)
+    adata.var_names = ["G1", "G2", "SILENT"]
+    adata.layers["counts"] = adata.X.copy()
+    return adata
+
+
+def test_pseudobulk_export_has_string_index_without_warning():
+    adata = _pseudobulk_fixture(2)
+    design = st.TrialDesign(
+        participant_col="participant_id",
+        visit_col="visit",
+        arm_col="arm",
+        arm_treated="Treated",
+        arm_control="Control",
+        celltype_col="cell_type",
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        pb = st.pseudobulk_export(
+            adata, genes=["G1"], design=design, visits=("V1", "V2"), celltype_col="cell_type"
+        )
+    assert all(isinstance(name, str) for name in pb.obs_names)
+
+
+def test_pseudobulk_within_arm_gives_no_p_value_for_constant_gene():
+    adata = _pseudobulk_fixture()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        res, _ = st.pseudobulk_within_arm(
+            adata,
+            genes=["G1", "G2", "SILENT"],
+            participant_col="participant_id",
+            visit_col="visit",
+            visits=("V1", "V2"),
+            celltype_col="cell_type",
+            counts_layer="counts",
+            min_paired=4,
+        )
+    by_gene = res.set_index("feature")
+    assert np.isnan(by_gene.loc["SILENT", "p_time"])
+    assert by_gene.loc["SILENT", "mean_delta"] == 0
+    assert 0 < by_gene.loc["G1", "p_time"] <= 1

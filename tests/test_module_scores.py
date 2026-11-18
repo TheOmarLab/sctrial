@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 from anndata import AnnData
@@ -80,3 +82,25 @@ def test_module_score_pseudobulk_and_did():
     assert not res_within.empty
     res_within_a = res_within[res_within["module"] == "ms_A"]
     assert (res_within_a["mean_delta"] > 0).all()
+
+
+def test_within_arm_by_pool_gives_no_p_value_for_constant_module():
+    rng = np.random.default_rng(5)
+    rows = []
+    for pid in range(6):
+        for visit in ("V1", "V2"):
+            rows.append({"participant_id": f"P{pid}", "visit": visit, "pool": "T", "module": "flat",
+                         "module_score": 0.25})
+            rows.append({"participant_id": f"P{pid}", "visit": visit, "pool": "T", "module": "moving",
+                         "module_score": float(rng.normal()) + (visit == "V2")})
+    pb = pd.DataFrame(rows)
+    design = st.TrialDesign(participant_col="participant_id", visit_col="visit", arm_col=None)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        res = st.module_score_within_arm_by_pool(pb, design, visits=("V1", "V2"), min_paired=3)
+
+    by_module = res.set_index("module")
+    assert np.isnan(by_module.loc["flat", "p_time"])
+    assert by_module.loc["flat", "mean_delta"] == 0
+    assert 0 < by_module.loc["moving", "p_time"] <= 1

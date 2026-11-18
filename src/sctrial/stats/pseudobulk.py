@@ -208,6 +208,7 @@ def pseudobulk_export(
 
     X = df_sum[available_genes].to_numpy(dtype=float)
     obs = df_sum[groupby].copy()
+    obs.index = obs.index.astype(str)
     pb = AnnData(X=X, obs=obs)
     pb.var_names = list(available_genes)
     return pb
@@ -444,7 +445,7 @@ def pseudobulk_within_arm(
                         "delta": float(dv),
                     }
                 )
-            if len(delta) < min_paired:
+            if len(delta) < min_paired or np.allclose(delta.values, 0):
                 p_val = np.nan
             else:
                 try:
