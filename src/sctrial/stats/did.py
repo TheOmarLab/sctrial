@@ -56,6 +56,9 @@ class DiDConfig:
     weight_col: str | None = None
     """Column to use as WLS weights. None (default) fits OLS, weighting every
     participant-visit aggregate equally. See ``did_fit`` for why."""
+    cov_type: str = "cluster"
+    """Covariance of the analytical test: ``"cluster"`` (by participant) or
+    ``"nonrobust"`` (homoskedastic). See ``did_fit``."""
 
 
 def _validate_did_fit_inputs(df: pd.DataFrame, cols: list[str]) -> None:
@@ -366,7 +369,15 @@ def did_fit(
     covariates : list of str, optional
         Additional covariate columns to include as fixed effects.
     cov_type : str
-        Covariance type for standard errors ('cluster' recommended).
+        Covariance of the analytical standard error and p-value, and of the
+        statistic the wild cluster bootstrap studentizes. ``"cluster"`` (default)
+        is cluster-robust by participant. ``"nonrobust"`` is the homoskedastic
+        estimate; with two visits and participant fixed effects it is the pooled
+        two-sample t-test on the within-participant changes. The cluster-robust
+        variance of the interaction is estimated separately within each arm, so
+        it is unstable when an arm holds very few participants; the pooled
+        variance uses the participants of both arms and assumes that the changes
+        vary equally in the two arms.
     standardize : bool
         If True, z-score the outcome before fitting (recommended for
         interpretable effect sizes).
@@ -537,6 +548,7 @@ def did_table(
     seed: int = 42,
     config: DiDConfig | None = None,
     weight_col: str | None = None,
+    cov_type: str = "cluster",
 ) -> pd.DataFrame:
     """Run Difference-in-Differences (DiD) for a list of features.
 
@@ -565,7 +577,7 @@ def did_table(
     config
         Optional DiDConfig object. If provided, its values override the corresponding
         keyword arguments (aggregate, layer, standardize, agg, covariates, bootstrap,
-        seed, and exclude_crossovers).
+        seed, weight_col, cov_type and exclude_crossovers).
     celltype
         If provided, subsets the analysis to a specific cell type.
     aggregate
@@ -601,6 +613,12 @@ def did_table(
         ``aggregate="participant_visit"``). ``None`` (default) fits OLS, so each
         participant-visit aggregate counts equally regardless of how many cells it
         averages. See ``did_fit`` for the rationale.
+    cov_type
+        Covariance of the analytical test: ``"cluster"`` (default, cluster-robust by
+        participant) or ``"nonrobust"`` (homoskedastic; with two visits, the pooled
+        two-sample t-test on the within-participant changes). The column
+        ``cov_type_used`` of the result records the estimate each row reports. See
+        ``did_fit`` for when each applies.
 
     Returns
     -------
@@ -624,6 +642,7 @@ def did_table(
         n_boot = config.n_boot
         seed = config.seed
         weight_col = config.weight_col
+        cov_type = config.cov_type
         exclude_crossovers = config.exclude_crossovers
 
     ad, obs = _prepare_did_obs(adata, design, visits, celltype, exclude_crossovers)
@@ -661,6 +680,7 @@ def did_table(
             time=time,
             arm_bin=arm_bin,
             covariates=covariates,
+            cov_type=cov_type,
             standardize=standardize,
             use_bootstrap=use_bootstrap,
             n_boot=n_boot,
@@ -756,6 +776,7 @@ def did_table_parallel(
     batch_size: int | None = None,
     config: DiDConfig | None = None,
     weight_col: str | None = None,
+    cov_type: str = "cluster",
 ) -> pd.DataFrame:
     """Parallelized DiD across features using joblib.
 
@@ -770,6 +791,8 @@ def did_table_parallel(
         Joblib backend ("loky", "multiprocessing", or "threading").
     batch_size
         Optional joblib batch size. If None, joblib chooses.
+    cov_type
+        Covariance of the analytical test, as in `did_table`.
     """
     if n_jobs == 1:
         return did_table(
@@ -789,6 +812,7 @@ def did_table_parallel(
             seed=seed,
             config=config,
             weight_col=weight_col,
+            cov_type=cov_type,
         )
 
     try:
@@ -806,6 +830,7 @@ def did_table_parallel(
         n_boot = config.n_boot
         seed = config.seed
         weight_col = config.weight_col
+        cov_type = config.cov_type
         exclude_crossovers = config.exclude_crossovers
 
     ad, obs = _prepare_did_obs(adata, design, visits, celltype, exclude_crossovers)
@@ -846,6 +871,7 @@ def did_table_parallel(
             time=time,
             arm_bin=arm_bin,
             covariates=covariates,
+            cov_type=cov_type,
             standardize=standardize,
             use_bootstrap=use_bootstrap,
             n_boot=n_boot,

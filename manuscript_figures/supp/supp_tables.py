@@ -33,6 +33,7 @@ from .._relabeling import (
 from .._shared import (
     CLINICAL_SIGNATURES,
     GENE_SIGNATURES,
+    MELANOMA_GENE_LEVEL_COV_TYPE,
     SCTRIAL_AVAILABLE,
     SIGNATURE_DISPLAY_NAMES,
     STATS_FINGERPRINT,
@@ -506,6 +507,7 @@ def table3_gsea_results(datasets: Collection[str] | None = None) -> dict[str, pd
             )
             res = load_or_run_gsea_did(
                 adata_sf, design_sf, ("Pre", "Post"), "log1p_tpm", "Melanoma",
+                cov_type=MELANOMA_GENE_LEVEL_COV_TYPE,
             )
             if res is not None:
                 sheets["Melanoma"] = res
@@ -951,6 +953,7 @@ def table7_gene_level_results() -> pd.DataFrame:
             adata_sf, features=all_genes, design=design,
             visits=("Pre", "Post"), layer="log1p_tpm",
             standardize=True, aggregate="participant_visit",
+            cov_type=MELANOMA_GENE_LEVEL_COV_TYPE,
         )
         # Add CIs from effect ± 1.96 × SE
         if "beta_DiD" in res.columns and "se_DiD" in res.columns:

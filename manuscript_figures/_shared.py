@@ -73,6 +73,18 @@ def _stats_fingerprint() -> str:
 
 STATS_FINGERPRINT = _stats_fingerprint()
 
+# Covariance of the analytical gene-level DiD tests in the melanoma cohort, and of the
+# t-statistic that ranks its genes for GSEA. The responder group holds three paired
+# participants. The cluster-robust variance of the group-by-time coefficient is estimated
+# within each group, so in this cohort it rests on three participants: over all 165
+# reassignments of the participants to groups of three and eight it rejects 0.8% of the
+# 1,632 variable genes at p < 0.05 and 27 times the nominal share at p < 1e-5. The pooled
+# (homoskedastic) variance uses all eleven participants and rejects 2.8% at p < 0.05 and
+# 0.06% at p < 0.001 (scripts/melanoma_gene_level_calibration.py). Signature-level
+# inference in this cohort uses the wild cluster bootstrap and is not affected by this
+# setting.
+MELANOMA_GENE_LEVEL_COV_TYPE = "nonrobust"
+
 # ---------------------------------------------------------------------------
 # Style
 # ---------------------------------------------------------------------------
@@ -1480,18 +1492,22 @@ def _gsea_fingerprint_path(cache_csv: Path) -> Path:
     return cache_csv.with_name("stats_fingerprint.txt")
 
 
-def _gsea_did_cache_fresh(cache_csv: Path) -> bool:
+def _gsea_did_stamp(cov_type: str) -> str:
+    return f"{STATS_FINGERPRINT}:{cov_type}"
+
+
+def _gsea_did_cache_fresh(cache_csv: Path, cov_type: str) -> bool:
     """A DiD-ranked GSEA cache is usable only if it was built by the current estimator.
 
-    The ranking comes from ``did_table``, so results built by a different estimator
-    are stale even though the file path is unchanged. A missing or mismatched
-    fingerprint is treated as a cache miss.
+    The ranking comes from ``did_table``, so results built by a different estimator,
+    or with another covariance of the ranking statistic, are stale even though the
+    file path is unchanged. A missing or mismatched stamp is treated as a cache miss.
     """
     stamp = _gsea_fingerprint_path(cache_csv)
     return (
         cache_csv.exists()
         and stamp.exists()
-        and stamp.read_text().strip() == STATS_FINGERPRINT
+        and stamp.read_text().strip() == _gsea_did_stamp(cov_type)
     )
 
 
@@ -1502,6 +1518,7 @@ def load_or_run_gsea_did(
     layer: str | None,
     dataset_name: str,
     *,
+    cov_type: str = "cluster",
     force: bool = False,
 ) -> object:
     """Load cached GSEA results for *dataset_name* or run fresh.
@@ -1509,6 +1526,7 @@ def load_or_run_gsea_did(
     Results are saved per-library under ``manuscript/GSEA/{dataset}/{lib}/``.
     If cached CSV files exist and *force* is False, they are loaded directly.
     Otherwise ``run_gsea_did`` is called for each library and results are saved.
+    *cov_type* is the covariance of the standard error in the ranking t-statistic.
 
     Returns a combined DataFrame (all libraries) sorted by |NES|, or None.
     """
@@ -1527,7 +1545,7 @@ def load_or_run_gsea_did(
         cache_csv = _gsea_cache_path(dataset_name, short_name, method="did")
 
         # Try loading from cache
-        if not force and _gsea_did_cache_fresh(cache_csv):
+        if not force and _gsea_did_cache_fresh(cache_csv, cov_type):
             df = pd.read_csv(cache_csv)
             if len(df) > 0:
                 df["Library"] = short_name
@@ -1541,14 +1559,14 @@ def load_or_run_gsea_did(
         try:
             res = _run_gsea(
                 adata, gene_sets=lib_name, design=design, visits=visits,
-                layer=layer, rank_by="tstat",
+                layer=layer, rank_by="tstat", cov_type=cov_type,
                 min_size=10, max_size=500, permutation_num=1000,
                 outdir=outdir, no_plot=True,
             )
             if isinstance(res, pd.DataFrame) and len(res) > 0:
                 res["Library"] = short_name
                 res.to_csv(cache_csv, index=False)
-                _gsea_fingerprint_path(cache_csv).write_text(STATS_FINGERPRINT)
+                _gsea_fingerprint_path(cache_csv).write_text(_gsea_did_stamp(cov_type))
                 frames.append(res)
                 print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
             else:

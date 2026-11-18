@@ -291,6 +291,7 @@ def run_gsea_did(
     n_boot: int = 999,
     min_units: int = 4,
     return_obj: bool = False,
+    cov_type: str = "cluster",
     **kwargs,
 ) -> pd.DataFrame | gp.Prerank:
     """Perform Gene Set Enrichment Analysis (GSEA) on trial-aware rankings.
@@ -335,6 +336,10 @@ def run_gsea_did(
     return_obj
         Whether to return the full gseapy object. If False (default),
         returns the results DataFrame (`res2d`).
+    cov_type
+        Covariance of the gene-level standard error and p-value that enter the
+        ranking (``'tstat'`` and ``'signed_confidence'``): ``'cluster'`` (default)
+        or ``'nonrobust'``, as in `did_table`.
     **kwargs
         Additional parameters passed to `gseapy.prerank` (e.g., `permutation_num`,
         `outdir`, `min_size`, `max_size`).
@@ -365,6 +370,7 @@ def run_gsea_did(
         aggregate="participant_visit",
         use_bootstrap=use_bootstrap,
         n_boot=n_boot,
+        cov_type=cov_type,
     )
 
     # 2. Filter genes with insufficient data

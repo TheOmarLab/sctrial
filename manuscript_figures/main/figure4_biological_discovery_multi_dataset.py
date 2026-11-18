@@ -56,6 +56,7 @@ from .._shared import (
     COLORS,
     GSEA_OUTPUT,
     MAIN_OUTPUT,
+    MELANOMA_GENE_LEVEL_COV_TYPE,
     STATS_FINGERPRINT,
     TrialDesign,
     add_log1p_cpm_layer,
@@ -109,7 +110,9 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
     _code_hash = hashlib.md5(  # noqa: S324 — not security, just cache tag
         Path(__file__).read_bytes()
     ).hexdigest()[:8]
-    cache_key = f"figure5_sade_feldman_v5_{_code_hash}_{STATS_FINGERPRINT}"
+    cache_key = (
+        f"figure5_sade_feldman_v5_{_code_hash}_{STATS_FINGERPRINT}_{MELANOMA_GENE_LEVEL_COV_TYPE}"
+    )
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     if use_cache and cache_path.exists():
@@ -163,6 +166,7 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
     # Each library's own GSEApy permutation FDR, as in Supplementary Table 3 and Figure 4C/4N.
     gsea_results = load_or_run_gsea_did(
         adata, design, visits, "log1p_tpm", "Melanoma",
+        cov_type=MELANOMA_GENE_LEVEL_COV_TYPE,
     )
     if gsea_results is not None and len(gsea_results) == 0:
         gsea_results = None
@@ -183,11 +187,8 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
         ].tolist()
         print(f"  Sade-Feldman: {len(top_genes)} variable genes selected")
 
-        # Use analytical (nonrobust) SEs for gene-level volcano.
-        # Bootstrap is used for signature-level inference (Panel D) where
-        # formal hypothesis tests matter; for the volcano (Panel E) we use
-        # analytical SEs to provide a richer visualisation of effect-size
-        # patterns across ~2000 genes.
+        # Gene-level tests are analytical; the bootstrap is used for the
+        # signature-level tests. See MELANOMA_GENE_LEVEL_COV_TYPE for the variance.
         gene_results = did_table(
             adata_genes,
             features=top_genes,
@@ -196,12 +197,11 @@ def _prepare_bio_discovery_data(*, use_cache: bool = True) -> dict:
             layer="log1p_tpm",
             standardize=True,
             aggregate="participant_visit",
+            cov_type=MELANOMA_GENE_LEVEL_COV_TYPE,
         )
 
-        # Fix #1: Handle degenerate gene-level fits.
-        # With n=10 clusters (5 participants × 2 visits), cluster-robust
-        # SEs often fail for some genes, producing NaN in se_DiD/p_DiD.
-        # We drop these explicitly and log the count.
+        # Genes without a finite standard error or p-value (constant after
+        # aggregation) are dropped and counted.
         n_total = len(gene_results)
         n_degenerate = gene_results["p_DiD"].isna().sum()
         if n_degenerate > 0:
@@ -494,6 +494,7 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
             )
             sf_results = load_or_run_gsea_did(
                 sf, sf_design, ("Pre", "Post"), "log1p_tpm", "Melanoma",
+                cov_type=MELANOMA_GENE_LEVEL_COV_TYPE,
             )
             if sf_results is not None and len(sf_results) > 0:
                 sf_results["dataset"] = "Melanoma"
