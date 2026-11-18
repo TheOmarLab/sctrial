@@ -7,6 +7,8 @@ instead of by value. The last tests pin a permutation null to the same estimand 
 the observed statistic.
 """
 
+import itertools
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -154,24 +156,25 @@ def test_table4_covid_null_permutes_the_observed_statistic(load_figure_module, m
     adata = _covid_cells()
     tables = _tables_with(load_figure_module, monkeypatch, tmp_path, get_stephenson=lambda: adata)
     monkeypatch.setattr(tables, "score_signatures", lambda ad, layer=None: (ad, [SIG]))
-    n_perm = 40
-    out = tables.table4_permutation_results(n_permutations=n_perm, n_jobs=1,
-                                            datasets=("COVID-19",))
+    monkeypatch.setenv("SLURM_CPUS_PER_TASK", "1")
+    out = tables.table4_permutation_results(datasets=("COVID-19",))
     row = out.loc[out["dataset"] == "COVID-19"].iloc[0]
 
     df = st.get_between_arm_aggregated_df(adata, [SIG], COVID_DESIGN, "DFO_8-14", layer="log1p_cpm")
     observed = st.between_arm_fit_beta(df, SIG, COVID_DESIGN)
     assert row["observed_beta"] == pytest.approx(observed, abs=1e-12)
 
-    seed = np.random.default_rng(42).integers(0, 2**31)
+    # Four severe and five mild participants: all 126 reassignments, the observed one included.
     null = []
-    for i in range(n_perm):
+    for severe in itertools.combinations(range(len(df)), int(df["arm_bin"].sum())):
         perm = df.copy()
-        perm["arm_bin"] = np.random.default_rng(seed + i).permutation(perm["arm_bin"].values)
+        perm["arm_bin"] = 0
+        perm.iloc[list(severe), perm.columns.get_loc("arm_bin")] = 1
         null.append(st.between_arm_fit_beta(perm, SIG, COVID_DESIGN))
     null = np.asarray(null)
-    expected_p = (np.sum(np.abs(null) >= abs(observed)) + 1) / (n_perm + 1)
-    assert row["permutation_p"] == pytest.approx(expected_p)
+    assert row["n_permutations"] == len(null) == 126
+    assert bool(row["exact"])
+    assert row["permutation_p"] == pytest.approx(np.mean(np.abs(null) >= abs(observed) - 1e-12))
     assert row["null_mean"] == pytest.approx(null.mean())
 
 

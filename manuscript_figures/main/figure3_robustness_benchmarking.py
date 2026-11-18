@@ -1,39 +1,26 @@
 """
-Figure 3 — Statistical Robustness & Method Benchmarking
+Figure 3: Statistical robustness and method benchmarking
 ========================================================
-
-Seven-panel figure combining bootstrap validation, leave-one-out
-sensitivity, NatMeth signal-fraction benchmark summaries (null-gene FPR
-curves, signal-gene effect-size RMSE, genomic inflation λ_GC), and
-real-data precision / effect-size panels.
 
 Panels
 ------
-A   Bootstrap vs analytical SE (Sade–Feldman, top) and TNBC (bottom).
-B   Leave-one-out participant sensitivity (Sade–Feldman, top) and TNBC (bottom).
-C   Effect-size bias and RMSE on signal genes (simulator benchmark). Combined artboard:
-    left column, benchmark top row (faceted bias/RMSE grid).
-D   Null-gene p-value calibration: QQ plots (top) + % outside 95% CI heatmap (bottom);
-    right column spanning benchmark rows 3–4 (from Supp Fig 5 panel I).
-E   Genomic inflation λ_GC under pure null (simulator benchmark). Combined artboard:
-    left column, benchmark bottom row.
-F   Computational cost: median runtime per iteration by method and panel size
-    (simulator benchmark). Combined artboard: left column, benchmark bottom row.
-G   Standard-error comparison (cell vs participant level): Sade–Feldman (top)
-    and TNBC (bottom).
-H   Cross-dataset signed Cohen's d forest (pre-specified endpoints), now
-    including TNBC as a sixth dataset group.
-
-Null-gene FPR vs signal fraction (former panel C) moved to Supp Fig 5 panel H.
-Cell-vs-participant effect-size scatter and p-value comparison moved
-to Figure 2 panels B–C.
+A   False-positive rate of the participant-level tests under relabeling: every
+    reassignment of the participants to the two groups is refitted, and the share of
+    rejections at p < 0.05 is shown per signature for the analytical cluster-robust
+    test and the wild cluster bootstrap (TNBC and melanoma).
+B   Leave-one-out participant sensitivity (TNBC and melanoma).
+C   Pure-null Type I error against biological sample size (simulation benchmark).
+D   Mixed-signal null-gene false positive rate (simulation benchmark).
+E   Realized FDR after Benjamini-Hochberg correction (simulation benchmark).
+F   Marginal detection probability (simulation benchmark).
+G   Runtime by number of tested genes (simulation benchmark).
+H   Cross-dataset standardized effects for five pre-specified endpoints.
 """
 
 from __future__ import annotations
 
 import gc
 import hashlib
-import time
 import warnings
 from pathlib import Path
 
@@ -92,13 +79,15 @@ from .._benchmark import (  # noqa: F401
     _plot_offscale,
     _style_axis,
 )
+from .._relabeling import calibration_rates, did_relabeling_cached
+from .._runtime import check_recorded as check_recorded_runtime
+from .._runtime import load_recorded as load_recorded_runtime
 from .._shared import (
     COLORS,
     MAIN_OUTPUT,
     STATS_FINGERPRINT,
     TrialDesign,
     apply_style,
-    between_arm_comparison,
     clear_cache,
     despine,
     did_table,
@@ -111,13 +100,11 @@ from .._shared import (
     group_axis_labels,
     harmonize_response,
     key_below_axes,
-    label_points,
     output_dpi,
     report_layout_problems,
     save_panel,
     score_signatures,
     sig_display,
-    within_arm_comparison,
 )
 
 warnings.filterwarnings("ignore")
@@ -158,14 +145,7 @@ TNBC_DESIGN = TrialDesign(
 )
 TNBC_VISITS: tuple[str, str] = ("Pre", "Post")
 
-N_BENCHMARK_REPLICATES = 5
-_CODE_VERSION = "v15"
-
-_METHOD_FAMILY: dict[str, str] = {
-    "two_arm_did": "did_table",
-    "paired": "did_table",
-    "cross_sectional": "between_arm",
-}
+_CODE_VERSION = "v16"
 
 DatasetInfo = tuple[str, object, object, tuple, list[str], str]
 
@@ -235,7 +215,10 @@ def _save_analysis_cache(tag: str, data: dict) -> None:
     for key in frame_keys:
         df = data.get(key)
         if df is not None and not df.empty:
-            df.to_json(_CACHE_DIR / f"{tag}_{key}.json", orient="records", indent=2)
+            df.to_json(_CACHE_DIR / f"{tag}_{key}.json", orient="records", indent=2,
+                       double_precision=15)
+    # JSON has no infinity, and a bootstrap interval can be unbounded.
+    data["relabel"].to_pickle(_CACHE_DIR / f"{tag}_relabel.pkl")
     sig_path = _CACHE_DIR / f"{tag}_sig_cols.json"
     sig_path.write_text(json.dumps(data.get("sig_cols", [])))
 
@@ -245,6 +228,10 @@ def _load_analysis_cache(tag: str) -> dict | None:
     import json
     frame_keys = ("df_cell", "df_part", "df_boot", "loo_records")
     result: dict = {}
+    relabel_path = _CACHE_DIR / f"{tag}_relabel.pkl"
+    if not relabel_path.exists():
+        return None
+    result["relabel"] = pd.read_pickle(relabel_path)  # noqa: S301 (written by this module)
     for key in frame_keys:
         path = _CACHE_DIR / f"{tag}_{key}.json"
         if not path.exists():
@@ -297,10 +284,12 @@ def _prepare_sf_data() -> dict:
     )
     print("  Running leave-one-out analysis ...")
     loo_records = _run_loo(adata, sig_cols, common_kw)
+    relabel = did_relabeling_cached(adata, sig_cols, DESIGN, VISITS, layer="log1p_tpm",
+                                    tag="melanoma", n_boot=N_BOOT)
 
     result = {
         "df_cell": df_cell, "df_part": df_part, "df_boot": df_boot,
-        "loo_records": loo_records, "sig_cols": sig_cols, "adata": adata,
+        "loo_records": loo_records, "relabel": relabel, "sig_cols": sig_cols, "adata": adata,
     }
     _save_analysis_cache(_tag, result)
     return result
@@ -334,10 +323,12 @@ def _prepare_tnbc_data() -> dict:
     )
     print("  [TNBC] Running leave-one-out analysis ...")
     loo_records = _run_loo(adata, sig_cols, common_kw)
+    relabel = did_relabeling_cached(adata, sig_cols, TNBC_DESIGN, TNBC_VISITS, layer="log1p_norm",
+                                    tag="tnbc", n_boot=N_BOOT)
 
     result = {
         "df_cell": df_cell, "df_part": df_part, "df_boot": df_boot,
-        "loo_records": loo_records, "sig_cols": sig_cols, "adata": adata,
+        "loo_records": loo_records, "relabel": relabel, "sig_cols": sig_cols, "adata": adata,
     }
     _save_analysis_cache(_tag, result)
     return result
@@ -376,78 +367,6 @@ SF_DESIGN = TrialDesign(
     arm_control="Non-responder",
 )
 SF_VISITS: tuple[str, str] = ("Pre", "Post")
-
-
-def _run_scalability_benchmark(datasets: list[DatasetInfo]) -> tuple[pd.DataFrame, pd.DataFrame]:
-    cache_tag = "benchmark_" + _cache_key(
-        *[f"{n}:{a.n_obs}" for n, a, *_ in datasets],
-        str(N_BENCHMARK_REPLICATES),
-    )
-    cached_t = _load_cache(cache_tag + "_time")
-    cached_m = _load_cache(cache_tag + "_mem")
-    if cached_t is not None and cached_m is not None:
-        print("  Scalability benchmarks (cached)")
-        return cached_t, cached_m
-
-    print(f"  Running scalability benchmarks ({N_BENCHMARK_REPLICATES} replicates per dataset) ...")
-    timings: list[dict] = []
-    mem_usage: list[dict] = []
-
-    for name, adata, design, visits, sigs, dtype in datasets:
-        n_cells = adata.n_obs
-        n_features = len(sigs)
-        pid_col = design.participant_col
-        n_pids = adata.obs[pid_col].nunique()
-        method = _METHOD_FAMILY.get(dtype, "did_table")
-        print(f"    {name} ({n_pids} ppts × {n_features} features, {n_cells:,} cells, {dtype}) ... ", end="", flush=True)
-
-        run_times = []
-        run_peaks = []
-        for rep in range(N_BENCHMARK_REPLICATES):
-            gc.collect()
-            import tracemalloc
-            tracemalloc.start()
-            t0 = time.perf_counter()
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                if dtype == "cross_sectional":
-                    between_arm_comparison(
-                        adata, visit=visits[0], features=sigs, design=design,
-                        aggregate="participant_visit", standardize=True,
-                    )
-                elif dtype == "paired":
-                    within_arm_comparison(
-                        adata, arm="All", features=sigs, design=design,
-                        visits=visits, aggregate="participant_visit", standardize=True,
-                    )
-                else:
-                    did_table(
-                        adata, features=sigs, design=design, visits=visits,
-                        aggregate="participant_visit", standardize=True,
-                    )
-            elapsed = time.perf_counter() - t0
-            _, peak = tracemalloc.get_traced_memory()
-            tracemalloc.stop()
-            run_times.append(elapsed)
-            run_peaks.append(peak / 1024**2)
-
-            shared = {
-                "n_cells": n_cells, "n_participants": n_pids, "n_features": n_features,
-                "dataset": name, "design_type": dtype, "method": method, "replicate": rep,
-            }
-            timings.append({**shared, "time_s": elapsed})
-            mem_usage.append({**shared, "peak_mb": peak / 1024**2})
-            gc.collect()
-
-        med_t = np.median(run_times)
-        med_m = np.median(run_peaks)
-        print(f"median {med_t:.2f}s, {med_m:.1f} MB")
-
-    timing_df = pd.DataFrame(timings)
-    memory_df = pd.DataFrame(mem_usage)
-    _save_cache(cache_tag + "_time", timing_df)
-    _save_cache(cache_tag + "_mem", memory_df)
-    return timing_df, memory_df
 
 
 def _paired_cohens_d(participant_deltas: np.ndarray) -> tuple[float, float, float]:
@@ -611,141 +530,130 @@ def _load_tnbc() -> DatasetInfo:
 
 
 def _prepare_scalability_data() -> dict:
+    """Cross-dataset effect sizes, and the size of each dataset as it was loaded."""
     print("  Loading and processing datasets one at a time ...")
-    timing_frames: list[pd.DataFrame] = []
-    memory_frames: list[pd.DataFrame] = []
     effect_frames: list[pd.DataFrame] = []
+    sizes: dict[str, dict] = {}
 
     for idx in range(6):
         ds = _load_dataset_by_index(idx)
         if ds is None:
             continue
-        name = ds[0]
-        print(f"  {name}: {ds[1].n_obs:,} cells, {ds[1].n_vars:,} genes")
-        try:
-            t_df, m_df = _run_scalability_benchmark([ds])
-            if t_df is not None and not t_df.empty:
-                timing_frames.append(t_df)
-            if m_df is not None and not m_df.empty:
-                memory_frames.append(m_df)
-        except Exception as exc:
-            print(f"    Runtime benchmark failed for {name}: {exc}")
+        name, adata, design, _visits, sigs, _dtype = ds
+        print(f"  {name}: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+        sizes[name] = {"n_cells": int(adata.n_obs), "n_features": len(sigs),
+                       "n_participants": int(adata.obs[design.participant_col].nunique())}
         edf = _compute_effect_sizes_across_datasets([ds])
         if edf is not None and not edf.empty:
             effect_frames.append(edf)
-        del ds
+        del ds, adata
         gc.collect()
 
     return {
-        "timing_df": pd.concat(timing_frames, ignore_index=True) if timing_frames else pd.DataFrame(),
-        "memory_df": pd.concat(memory_frames, ignore_index=True) if memory_frames else pd.DataFrame(),
+        "sizes": sizes,
         "effect_df": pd.concat(effect_frames, ignore_index=True) if effect_frames else pd.DataFrame(),
     }
 
 
+def _check_runtime_recording(sizes: dict[str, dict]) -> None:
+    """Fail when the recorded runtime table (Supp Fig 4I) was made on other dataset versions."""
+    recorded = load_recorded_runtime()
+    for name, size in sizes.items():
+        check_recorded_runtime(recorded, name, **size)
+
+
 
 # ======================================================================
-# Panel A: Bootstrap vs Analytical SE
+# Panel A: false-positive rate of the participant-level tests under relabeling
 # ======================================================================
 
-_PANEL_A_MARKER_S = 22  # pt^2, the scatter markers and their label obstacles
+# (column of calibration_rates, tick label, key label, color), drawn bottom to top
+PANEL_A_TESTS = (
+    ("reject_analytic", "Analytical", "Analytical cluster-robust test", COLORS["control"]),
+    ("reject_boot", "Bootstrap", "Wild cluster bootstrap", COLORS["treated"]),
+)
+PANEL_A_NOMINAL = 5.0  # percent
 
-def _panel_a_single(
-    ax, data: dict, *, title: str = "Bootstrap vs Analytical SE",
-    composite: bool = False, dataset: str = "melanoma",
-):
-    """Bootstrap SE against analytical SE, one point per signature.
 
-    Draws the points, the identity line and a key holding Pearson r and its p value.
-    Returns ``(names, analytical, bootstrap)`` for ``_label_panel_a``, which names the
-    points once the axes geometry is final, or None when there is nothing to label.
+def _panel_a_rates(data: dict) -> pd.DataFrame | None:
+    """Per-signature rejection rates (percent) under relabeling, or None without data."""
+    relabel = data.get("relabel")
+    if relabel is None or len(relabel) == 0:
+        return None
+    rates = calibration_rates(relabel, alpha=PANEL_A_NOMINAL / 100)
+    for col, *_ in PANEL_A_TESTS:
+        rates[col] = 100.0 * rates[col]
+    return rates
+
+
+def _panel_a_x_max(rates_list) -> float:
+    """Common x-axis maximum (percent) that holds every signature of every cohort."""
+    top = max(float(r[[t[0] for t in PANEL_A_TESTS]].to_numpy().max()) for r in rates_list)
+    return max(8.0, 1.12 * top)
+
+
+def _panel_a_single(ax, data: dict, *, title: str, composite: bool = False,
+                    x_max: float | None = None) -> None:
+    """Share of relabelings in which each test rejects at p < 0.05.
+
+    Every reassignment of the participants to the two groups is refitted, so the null
+    hypothesis holds by construction and the share of rejections is the false-positive
+    rate of the test on this cohort. One point per signature, a diamond at their mean
+    (its value is written right of the axes), and a dashed line at the nominal 5%.
     """
     from matplotlib.lines import Line2D
 
-    df_boot = data["df_boot"]
-
-    if df_boot is None or len(df_boot) == 0:
+    rates = _panel_a_rates(data)
+    _ttl_fs = 7.0 if composite else 10
+    if rates is None:
         ax.text(0.5, 0.5, "Data unavailable", ha="center", va="center", transform=ax.transAxes)
-        ax.set_title(title, fontsize=10, fontweight="bold")
+        ax.set_title(title, fontsize=_ttl_fs, fontweight="bold")
         despine(ax)
-        return None
+        return
 
-    feats, analytical, bootstrap = [], [], []
-    for _, row in df_boot.iterrows():
-        se_an = row["se_DiD"]
-        se_bt = row.get("se_DiD_boot", np.nan)
-        if np.isfinite(se_an) and np.isfinite(se_bt):
-            feats.append(row["feature"])
-            analytical.append(se_an)
-            bootstrap.append(se_bt)
+    rng = np.random.default_rng(42)
+    for row, (col, _tick, _key, color) in enumerate(PANEL_A_TESTS):
+        vals = rates[col].to_numpy(float)
+        ax.scatter(vals, row + rng.uniform(-0.18, 0.18, len(vals)), s=14 if composite else 26,
+                   color=color, alpha=0.6, edgecolor="none", zorder=2)
+        ax.scatter(vals.mean(), row, s=30 if composite else 60, color=color, marker="D",
+                   edgecolor="black", linewidth=0.8, zorder=4)
+        ax.annotate(f"{vals.mean():.1f}%", xy=(1.0, row), xycoords=ax.get_yaxis_transform(),
+                    xytext=(3, 0), textcoords="offset points", ha="left", va="center",
+                    fontsize=5.0 if composite else 9, color=color, fontweight="bold")
+    ax.axvline(PANEL_A_NOMINAL, ls="--", color=COLORS["gray"], lw=1, zorder=1)
 
-    analytical = np.array(analytical)
-    bootstrap = np.array(bootstrap)
-
-    if len(analytical) == 0:
-        ax.text(0.5, 0.5, "Insufficient bootstrap data", ha="center", va="center", transform=ax.transAxes)
-        despine(ax)
-        return None
-
-    raw_lo = min(analytical.min(), bootstrap.min())
-    raw_hi = max(analytical.max(), bootstrap.max())
-    data_range = raw_hi - raw_lo
-    lo = raw_lo - 0.12 * data_range
-    hi = raw_hi + 0.12 * data_range
-    x_lo = lo - 0.08 * (hi - lo)
-    ax.plot([x_lo, hi], [x_lo, hi], ls="--", color=COLORS["gray"], lw=1, zorder=1)
-
-    ax.scatter(analytical, bootstrap, s=_PANEL_A_MARKER_S, color=COLORS["treated"],
-               edgecolor="white", linewidth=0.5, zorder=3)
-
-    _ax_fs = 5.2 if composite else 10
-    _ttl_fs_a = 7.0 if composite else 10
-    ax.set_xlabel("Analytical SE (cluster-robust)", fontsize=_ax_fs)
-    ax.set_ylabel("Bootstrap SE (wild cluster)", fontsize=_ax_fs)
-    ax.set_title(title, fontsize=_ttl_fs_a, fontweight="bold")
-    ax.set_xlim(x_lo, hi)
-    ax.set_ylim(lo, 2.0 if dataset == "melanoma" else 1.4)
+    if x_max is None:
+        x_max = _panel_a_x_max([rates])
+    ax.set_xlim(-0.03 * x_max, x_max)
+    ax.set_ylim(-0.6, len(PANEL_A_TESTS) - 0.4)
+    ax.set_yticks(range(len(PANEL_A_TESTS)))
+    ax.set_yticklabels([t[1] for t in PANEL_A_TESTS], fontsize=5 if composite else 9)
+    ax.set_xlabel("Relabelings rejected at p < 0.05 (%)", fontsize=5.2 if composite else 10)
+    ax.set_title(title, fontsize=_ttl_fs, fontweight="bold")
     despine(ax)
 
-    # Pearson r and p in a key, placed below the axes by the caller, clear of the labels.
-    r, p = stats.pearsonr(analytical, bootstrap)
-    ax.legend(handles=[Line2D([], [], linestyle="none", label=f"r = {r:.2f}, p = {p:.1e}")],
-              fontsize=5.5 if composite else 9, handlelength=0, handletextpad=0)
-    return [sig_display(f) for f in feats], analytical, bootstrap
+    _ms = 3.6 if composite else 5.5
+    handles = [
+        Line2D([], [], linestyle="none", marker="o", markersize=_ms, markerfacecolor=color,
+               markeredgecolor="none", alpha=0.7, label=key)
+        for _col, _tick, key, color in reversed(PANEL_A_TESTS)
+    ] + [
+        Line2D([], [], linestyle="none", marker="D", markersize=_ms, markerfacecolor=COLORS["gray"],
+               markeredgecolor="black", markeredgewidth=0.7, label="Mean of the signatures"),
+        Line2D([], [], linestyle="--", color=COLORS["gray"], lw=1, label="Nominal 5%"),
+    ]
+    ax.legend(handles=handles, fontsize=5.0 if composite else 8.5, handlelength=1.4)
 
 
-def _label_panel_a(ax, points, *, composite: bool = False) -> None:
-    """Name the points of a panel A scatter, clear of points, labels and identity line.
-
-    Signatures are named in order of how far their bootstrap SE departs from the
-    analytical SE (distance from the identity line), the ones a reader looks for. The
-    standalone panel names every signature unless that cannot be laid out without a
-    defect, then drops at most the eight closest to the line; a composite cell names as
-    many as fit. The axes limits, position and fonts must be final (see
-    ``label_points``). The dashed identity line is not an obstacle: a label may cross
-    it, which reads far better than labels pushed onto each other.
-    """
-    if points is None:
-        return
-    names, xs, ys = points
-    n = len(names)
-    priority = np.argsort(-np.abs(np.asarray(ys) - np.asarray(xs)), kind="stable")
-    steps = (16, 12, 10, 8, 6, 5, 4, 3) if composite else (n - 4, n - 8)
-    labelled = label_points(ax, names, xs, ys, _PANEL_A_MARKER_S,
-                            fontsize=4.5 if composite else 6.5, fontweight="normal",
-                            color="#1a1a1a", priority=priority,
-                            counts=[n] + [k for k in steps if 0 < k < n])
-    print(f"    {ax.get_title()}: {len(labelled)} of {n} signatures named")
-
-
-def _panel_a(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict, *, composite: bool = False):
-    """Both panel A scatters; returns their points for ``_label_panel_a``."""
-    return (
-        _panel_a_single(ax_top, data_sf, title="Bootstrap vs Analytical SE (Melanoma)",
-                        composite=composite, dataset="melanoma"),
-        _panel_a_single(ax_bottom, data_tnbc, title="Bootstrap vs Analytical SE (TNBC)",
-                        composite=composite, dataset="tnbc"),
-    )
+def _panel_a(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict, *, composite: bool = False) -> None:
+    """Both panel A strips on one x scale (melanoma on ``ax_top``, TNBC on ``ax_bottom``)."""
+    rates = [r for r in (_panel_a_rates(data_sf), _panel_a_rates(data_tnbc)) if r is not None]
+    x_max = _panel_a_x_max(rates) if rates else None
+    _panel_a_single(ax_top, data_sf, title="False-positive rate under relabeling (Melanoma)",
+                    composite=composite, x_max=x_max)
+    _panel_a_single(ax_bottom, data_tnbc, title="False-positive rate under relabeling (TNBC)",
+                    composite=composite, x_max=x_max)
 
 
 # ======================================================================
@@ -834,7 +742,7 @@ def _panel_b(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict, *, composite: bo
 
 
 # ======================================================================
-# Runtime scaling (exported for Supp Fig 3)
+# Recorded runtime per dataset (drawn in Supp Fig 4, panel I)
 # ======================================================================
 
 def _panel_c(ax, data: dict) -> None:
@@ -908,56 +816,7 @@ def _panel_c(ax, data: dict) -> None:
 
 
 # ======================================================================
-# Panel F: Standard-error comparison
-# ======================================================================
-
-def _panel_d_se_comparison_single(ax, data: dict, *, title: str = "Precision: Cell vs Participant Level") -> None:
-    df_cell = data.get("df_cell")
-    df_boot = data.get("df_boot")
-
-    if (df_cell is None or len(df_cell) == 0 or df_boot is None or len(df_boot) == 0
-            or "feature" not in df_cell.columns or "se_DiD" not in df_cell.columns
-            or "feature" not in df_boot.columns):
-        ax.text(0.5, 0.5, "Data unavailable", ha="center", va="center", transform=ax.transAxes)
-        ax.set_title(title, fontsize=10, fontweight="bold")
-        despine(ax)
-        return
-
-    se_cell = df_cell[["feature", "se_DiD"]].copy().rename(columns={"se_DiD": "se_cell"})
-    se_part = df_boot[["feature"]].copy()
-    se_part["se_part"] = df_boot.get("se_DiD_boot", df_boot["se_DiD"])
-    merged = se_cell.merge(se_part, on="feature")
-
-    if merged.empty:
-        ax.text(0.5, 0.5, "No overlapping features", ha="center", va="center", transform=ax.transAxes)
-        ax.set_title(title, fontsize=10, fontweight="bold")
-        despine(ax)
-        return
-
-    merged["display"] = merged["feature"].apply(sig_display)
-    merged = merged.sort_values("se_part", ascending=True)
-    y_pos = np.arange(len(merged))
-    bar_h = 0.35
-
-    ax.barh(y_pos - bar_h / 2, merged["se_cell"].values, height=bar_h,
-            color=COLORS["highlight"], alpha=0.8, label="Cell-level SE", edgecolor="none")
-    ax.barh(y_pos + bar_h / 2, merged["se_part"].values, height=bar_h,
-            color=COLORS["treated"], alpha=0.8, label="Participant-level SE (bootstrap)", edgecolor="none")
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(merged["display"].values, fontsize=8)
-    ax.set_xlabel("Standard Error")
-    ax.set_title(title, fontsize=10, fontweight="bold")
-    ax.legend(fontsize=8, loc="lower right", frameon=True, framealpha=0.9)
-    despine(ax)
-
-
-def _panel_d_se_comparison(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict) -> None:
-    _panel_d_se_comparison_single(ax_top, data_sf, title="Precision: Cell vs Participant Level (Melanoma)")
-    _panel_d_se_comparison_single(ax_bottom, data_tnbc, title="Precision: Cell vs Participant Level (TNBC)")
-
-
-# ======================================================================
-# Panel G: Cross-dataset Cohen's d forest
+# Panel H: Cross-dataset Cohen's d forest
 # ======================================================================
 
 def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
@@ -1141,13 +1000,15 @@ def generate() -> None:
         print(f"  Warning: Could not prepare TNBC data for panels A/B/F: {exc}")
         data_tnbc = {"df_cell": pd.DataFrame(), "df_part": pd.DataFrame(),
                      "df_boot": pd.DataFrame(), "loo_records": pd.DataFrame(),
-                     "sig_cols": [], "adata": None}
+                     "relabel": pd.DataFrame(), "sig_cols": [], "adata": None}
 
     try:
         data["scale_data"] = _prepare_scalability_data()
     except Exception as exc:
         print(f"  Warning: Could not load multi-dataset effect sizes: {exc}")
         data["scale_data"] = None
+    if data["scale_data"] is not None:
+        _check_runtime_recording(data["scale_data"]["sizes"])
 
     bench_df, core_df = _load_verified_benchmark_data()
     if bench_df is not None:
@@ -1156,14 +1017,13 @@ def generate() -> None:
         print(f"  Core CSV: {len(core_df):,} rows, {core_df.scenario.nunique()} scenarios")
 
     # ── Individual panels ──────────────────────────────────────────────
-    fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
-    points = _panel_a(ax_top, ax_bottom, data, data_tnbc)
-    fig.tight_layout(h_pad=4.0, rect=(0, 0.04, 1, 1))  # room for each r/p key below
-    for ax_, pts in zip((ax_top, ax_bottom), points):
-        _label_panel_a(ax_, pts)
-        key_below_axes(ax_, ncol=1)
-    report_layout_problems(fig, "panel_A_bootstrap_validation")
-    save_panel(fig, "panel_A_bootstrap_validation", FIGURE_NAME, MAIN_OUTPUT)
+    fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 5.6))
+    _panel_a(ax_top, ax_bottom, data, data_tnbc)
+    fig.tight_layout(h_pad=5.0, rect=(0, 0.07, 0.94, 1))  # room for each key and the means
+    for ax_ in (ax_top, ax_bottom):
+        key_below_axes(ax_, ncol=2)
+    report_layout_problems(fig, "panel_A_relabeling_calibration")
+    save_panel(fig, "panel_A_relabeling_calibration", FIGURE_NAME, MAIN_OUTPUT)
 
     fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
     _panel_b(ax_top, ax_bottom, data, data_tnbc)
@@ -1270,7 +1130,7 @@ def generate() -> None:
     outer = fig_c.add_gridspec(
         9, 1,
         # The bottom row holds the 30-row forest (H) at 4.5 pt row labels.
-        # Row 1 holds panel A's x labels and r/p keys and panel B's titles.
+        # Row 1 holds panel A's x labels and keys and panel B's titles.
         height_ratios=[0.80, 0.58, 0.48, 0.46, 0.60, 0.72, 0.72, 0.68, 2.25],
         hspace=0.0, left=0.100, right=0.965, top=0.972, bottom=0.040,
     )
@@ -1313,7 +1173,7 @@ def generate() -> None:
         # rather than a below-legend, which would otherwise land on the forest.
 
     # Biological panels (A, B) and the cross-dataset forest (I).
-    points_a = _panel_a(ax_a_bot, ax_a_top, data, data_tnbc, composite=True)
+    _panel_a(ax_a_bot, ax_a_top, data, data_tnbc, composite=True)
     _panel_b(ax_b_bot, ax_b_top, data, data_tnbc, composite=True)
     _panel_e_cross_dataset(ax_forest, data, composite=True)
 
@@ -1322,7 +1182,7 @@ def generate() -> None:
     # Inside legends for the biological panels + forest.
     # Panel A: larger legend; panel H (forest): same treatment. Panel B draws its
     # own composite-sized legend inside _panel_b_single and is excluded here.
-    _inside = {ax_forest: "lower right"}  # panel A's r/p key goes below its axes
+    _inside = {ax_forest: "lower right"}  # panel A's key goes below its axes
     for ax_target, loc in _inside.items():
         leg = ax_target.get_legend()
         if leg:
@@ -1340,11 +1200,9 @@ def generate() -> None:
 
     _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
 
-    # Panel A: name the points once fonts and geometry are final, then the r/p keys.
-    for ax_, pts in zip((ax_a_bot, ax_a_top), points_a):
-        _label_panel_a(ax_, pts, composite=True)
+    # Panel A: the keys go below the axes once fonts and geometry are final.
     for ax_ in (ax_a_bot, ax_a_top):
-        key_below_axes(ax_, ncol=1, clear_of=[ax_a_bot, ax_a_top])
+        key_below_axes(ax_, ncol=2, clear_of=[ax_a_bot, ax_a_top])
     key_below_axes(ax_rt, ncol=2, keep_title=True)  # off the runtime curves
 
     # Compact corner titles for the four half-width benchmark panels (composite
@@ -1415,7 +1273,7 @@ def generate() -> None:
     del data_tnbc
     clear_cache()
     gc.collect()
-    print("  Figure 3 complete: 8 individual panels + combined (A–H); D=QQ(top+bottom), E=λ_GC, F=runtime")
+    print("  Figure 3 complete: 8 individual panels + combined (A to H)")
 
 
 if __name__ == "__main__":

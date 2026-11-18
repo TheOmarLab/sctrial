@@ -15,16 +15,21 @@ Table 8  Dataset metadata summary.
 from __future__ import annotations
 
 import gc
-import pickle as pkl
 import warnings
 from collections.abc import Collection
 from contextlib import contextmanager
 
 import numpy as np
 import pandas as pd
-from joblib import Parallel, delayed
 from statsmodels.stats.multitest import multipletests
 
+from .._relabeling import (
+    between_arm_nulls,
+    did_permutation_nulls,
+    did_relabeling_cached,
+    permutation_summary,
+    within_arm_nulls,
+)
 from .._shared import (
     CLINICAL_SIGNATURES,
     GENE_SIGNATURES,
@@ -37,12 +42,10 @@ from .._shared import (
     apply_style,
     between_arm_fit_beta,
     clear_cache,
-    did_fit,
     did_table,
     get_aml,
     get_between_arm_aggregated_df,
     get_cart,
-    get_did_aggregated_df,
     get_sade_feldman,
     get_stephenson,
     get_tnbc_zhang,
@@ -57,7 +60,6 @@ from .._shared import (
     score_signatures,
     sig_display,
     within_arm_comparison,
-    within_arm_fit_beta,
 )
 
 
@@ -120,10 +122,51 @@ def table1_gene_signatures() -> pd.DataFrame:
 # ======================================================================
 
 _KEEP_COLS = [
-    "dataset", "estimand", "label", "feature",
+    "dataset", "estimand", "label", "feature", "signature_set",
     "effect", "se", "se_bootstrap", "pvalue", "FDR", "ci_lower", "ci_upper", "inference",
-    "n_units", "cov_type_used",
+    "n_units", "n_focal", "n_reference", "cov_type_used",
 ]
+
+_SET_IMMUNE = "immune"
+_SET_CLINICAL = "clinical"
+
+
+def _by_signature_set(run, immune: list[str], clinical: list[str]) -> pd.DataFrame:
+    """Run ``run(features)`` once per signature set and stack the results.
+
+    The package functions correct for multiple testing over the features of one call,
+    so each set forms its own FDR family: the immune signatures, which are the family
+    of every figure, and the clinical signatures.
+    """
+    parts = []
+    for name, feats in ((_SET_IMMUNE, list(immune)),
+                        (_SET_CLINICAL, [f for f in clinical if f not in set(immune)])):
+        if not feats:
+            continue
+        res = run(feats)
+        res["signature_set"] = name
+        parts.append(res)
+    return pd.concat(parts, ignore_index=True)
+
+
+def _paired_group_sizes(adata, design: TrialDesign, visits: tuple[str, str]) -> tuple[int, int]:
+    """Participants with both visits in the focal and in the reference group.
+
+    ``did_table`` contrasts the focal group with every other paired participant, so a
+    paired participant carrying neither group label would enter its reference group
+    unnoticed. That case raises here instead of being counted.
+    """
+    obs = adata.obs[adata.obs[design.visit_col].isin(visits)]
+    pid = design.participant_col
+    n_visits = obs.groupby(pid, observed=True)[design.visit_col].nunique()
+    paired = obs[obs[pid].isin(n_visits[n_visits == 2].index)]
+    arm = paired.groupby(pid, observed=True)[design.arm_col].first().astype(str)
+    other = sorted(set(arm) - {design.arm_treated, design.arm_control})
+    if other:
+        raise ValueError(
+            f"paired participants with {design.arm_col} in {other}, neither "
+            f"{design.arm_treated!r} nor {design.arm_control!r}")
+    return int((arm == design.arm_treated).sum()), int((arm == design.arm_control).sum())
 
 _COL_MAP = {
     "beta_time": "effect",
@@ -229,6 +272,8 @@ def table2_all_results(datasets: Collection[str] | None = None) -> pd.DataFrame:
                 standardize=True, aggregate="participant_visit",
                 use_bootstrap=True, n_boot=999, seed=42,
             )
+            res["signature_set"] = _SET_IMMUNE
+            res["n_focal"], res["n_reference"] = _paired_group_sizes(adata_sf, design, ("Pre", "Post"))
             res["label"] = res["feature"].apply(sig_display)
             all_results.append(_harmonise(res, "Melanoma", "DiD"))
             print(f"    Melanoma: {len(res)} features (DiD)")
@@ -244,9 +289,8 @@ def table2_all_results(datasets: Collection[str] | None = None) -> pd.DataFrame:
             adata_tnbc, sig_cols_tnbc = score_signatures(adata_tnbc, layer="log1p_norm")
             try:
                 adata_tnbc, sig_cols_clin = score_clinical_signatures(adata_tnbc, layer="log1p_norm")
-                all_sig_cols_tnbc = list(dict.fromkeys(sig_cols_tnbc + sig_cols_clin))
             except Exception:
-                all_sig_cols_tnbc = sig_cols_tnbc
+                sig_cols_clin = []
             tnbc_design = TrialDesign(
                 participant_col="participant_id",
                 visit_col="visit",
@@ -254,12 +298,17 @@ def table2_all_results(datasets: Collection[str] | None = None) -> pd.DataFrame:
                 arm_treated="anti-PDL1+Chemo",
                 arm_control="Chemo",
             )
-            res = did_table(
-                adata_tnbc, features=all_sig_cols_tnbc, design=tnbc_design,
-                visits=("Pre", "Post"), layer="log1p_norm",
-                standardize=True, aggregate="participant_visit",
-                use_bootstrap=True, n_boot=999, seed=42,
+            res = _by_signature_set(
+                lambda feats: did_table(
+                    adata_tnbc, features=feats, design=tnbc_design,
+                    visits=("Pre", "Post"), layer="log1p_norm",
+                    standardize=True, aggregate="participant_visit",
+                    use_bootstrap=True, n_boot=999, seed=42,
+                ),
+                sig_cols_tnbc, sig_cols_clin,
             )
+            res["n_focal"], res["n_reference"] = _paired_group_sizes(
+                adata_tnbc, tnbc_design, ("Pre", "Post"))
             res["label"] = res["feature"].apply(sig_display)
             all_results.append(_harmonise(res, "TNBC", "DiD"))
             print(f"    TNBC: {len(res)} features (DiD)")
@@ -305,9 +354,11 @@ def table2_all_results(datasets: Collection[str] | None = None) -> pd.DataFrame:
                 se_g = np.sqrt((n1 + n2) / (n1 * n2) + g**2 / (2 * (n1 + n2)))
                 _, p = sp_stats.ttest_ind(x_sev, x_mild, equal_var=False)
                 g_rows.append({
-                    "feature": feat, "effect": g, "se": se_g, "pvalue": p,
+                    "feature": feat, "signature_set": _SET_IMMUNE,
+                    "effect": g, "se": se_g, "pvalue": p,
                     "ci_lower": g - 1.96 * se_g, "ci_upper": g + 1.96 * se_g,
-                    "n_units": n1 + n2, "cov_type_used": "hedges_g",
+                    "n_units": n1 + n2, "n_focal": n1, "n_reference": n2,
+                    "cov_type_used": "hedges_g",
                 })
             if g_rows:
                 res_covid = pd.DataFrame(g_rows)
@@ -345,17 +396,19 @@ def table2_all_results(datasets: Collection[str] | None = None) -> pd.DataFrame:
             adata, sig_cols_imm = score_signatures(adata)
             try:
                 adata, sig_cols_clin = score_clinical_signatures(adata)
-                all_sig_cols = list(dict.fromkeys(sig_cols_imm + sig_cols_clin))
             except Exception:
-                all_sig_cols = sig_cols_imm
+                sig_cols_clin = []
 
             visits = visits_override or _detect_visits(adata)
             design = _single_arm_design()
 
-            res = within_arm_comparison(
-                adata, arm="All", features=all_sig_cols,
-                design=design, visits=visits, standardize=True,
-                use_bootstrap=True, n_boot=999, seed=42,
+            res = _by_signature_set(
+                lambda feats, adata=adata, design=design, visits=visits: within_arm_comparison(
+                    adata, arm="All", features=feats,
+                    design=design, visits=visits, standardize=True,
+                    use_bootstrap=True, n_boot=999, seed=42,
+                ),
+                sig_cols_imm, sig_cols_clin,
             )
             res["label"] = res["feature"].apply(sig_display)
             all_results.append(_harmonise(res, ds_name, "within-arm Δ"))
@@ -573,65 +626,6 @@ def table3_gsea_results(datasets: Collection[str] | None = None) -> dict[str, pd
 # ======================================================================
 
 
-def _run_one_did_permutation(args: tuple) -> float | None:
-    """Worker for parallel DiD permutation: returns beta_DiD or None."""
-    perm_idx, df_bytes, feat, unit, time, arm_bin, pid_arm_bytes, rng_seed = args
-
-    df = pkl.loads(df_bytes)
-    pid_arm = pkl.loads(pid_arm_bytes)
-    rng = np.random.default_rng(rng_seed + perm_idx)
-    shuffled = pid_arm.copy()
-    shuffled["response_harmonized"] = rng.permutation(shuffled["response_harmonized"].values)
-    pid_to_arm = dict(zip(shuffled["participant_id"], shuffled["response_harmonized"]))
-    df_perm = df.copy()
-    df_perm["arm_bin"] = df_perm["participant_id"].map(
-        lambda x: 1 if pid_to_arm.get(x) == "Responder" else 0
-    )
-    try:
-        out = did_fit(df_perm, y=feat, unit=unit, time=time, arm_bin=arm_bin, standardize=True)
-        b = out.get("beta_DiD", np.nan)
-        return float(b) if np.isfinite(b) else None
-    except Exception:
-        return None
-
-
-def _run_one_between_arm_permutation(args: tuple) -> float | None:
-    """Worker for parallel between-arm permutation: returns beta_arm or None.
-
-    Shuffles the arm indicator across participants of a one-row-per-participant
-    frame and refits the same standardised OLS contrast as the observed statistic.
-    """
-    perm_idx, df_bytes, feat, design, rng_seed = args
-
-    df = pkl.loads(df_bytes)
-    rng = np.random.default_rng(rng_seed + perm_idx)
-    df_perm = df.copy()
-    df_perm["arm_bin"] = rng.permutation(df_perm["arm_bin"].values)
-    try:
-        b = between_arm_fit_beta(df_perm, feat, design)
-        return float(b) if np.isfinite(b) else None
-    except Exception:
-        return None
-
-
-def _run_one_within_arm_permutation(args: tuple) -> float | None:
-    """Worker for parallel within-arm permutation: returns beta_time or None."""
-    perm_idx, df_bytes, feat, unit, rng_seed = args
-
-    df = pkl.loads(df_bytes)
-    rng = np.random.default_rng(rng_seed + perm_idx)
-    df_perm = df.copy()
-    for pid in df_perm[unit].unique():
-        mask = df_perm[unit] == pid
-        visit_num = df_perm.loc[mask, "visit_num"].values
-        df_perm.loc[mask, "visit_num"] = rng.permutation(visit_num)
-    try:
-        b = within_arm_fit_beta(df_perm, feat, unit, standardize=True)
-        return float(b) if np.isfinite(b) else None
-    except Exception:
-        return None
-
-
 def _covid_target_visit(adata_st) -> str:
     """Days-from-onset bin used by every COVID-19 analysis (Figure 5, Supp Tables 2-4).
 
@@ -649,23 +643,32 @@ def _covid_target_visit(adata_st) -> str:
     return target_visit
 
 
-def table4_permutation_results(
-    n_permutations: int = 1000,
-    n_jobs: int = -1,
-    datasets: Collection[str] | None = None,
-) -> pd.DataFrame:
+def _permutation_rows(dataset: str, nulls: dict, observed: dict, exact: bool) -> list[dict]:
+    """One Supplementary Table 4 row per feature with a finite observed statistic."""
+    rows = []
+    for feat, null in nulls.items():
+        obs_beta = observed.get(feat, np.nan)
+        if not np.isfinite(obs_beta):
+            continue
+        rows.append({"dataset": dataset, "feature": feat, "label": sig_display(feat),
+                     "observed_beta": obs_beta,
+                     **permutation_summary(null, obs_beta, exact=exact)})
+    return rows
+
+
+def table4_permutation_results(datasets: Collection[str] | None = None) -> pd.DataFrame:
     """Permutation test results for all signatures across all datasets.
 
-    Uses pre-aggregated data and parallelization for efficiency with 1000+
-    permutations. For each dataset × signature, shuffles labels and re-runs
-    DiD/within-arm on the small aggregated df (no full AnnData copies).
+    Each dataset uses the routine of ``manuscript_figures._relabeling``, the one behind
+    Figure 5: group labels are reassigned across participants (melanoma, TNBC,
+    COVID-19) or the two visits are swapped within participants (vaccine, AML,
+    CAR-T). All assignments are enumerated when there are at most ``MAX_EXACT`` of
+    them, and the p-value is then exact; otherwise ``N_DRAWS`` seeded draws are used.
+    The column ``exact`` records which. The statistic is the standardized coefficient
+    of the participant-level model of each design.
 
     Parameters
     ----------
-    n_permutations : int
-        Number of label shuffles (default 1000).
-    n_jobs : int
-        Parallel jobs for permutation loop (-1 = all cores).
     datasets : collection of str, optional
         Datasets to include (default all). A selected dataset that fails raises.
     """
@@ -675,170 +678,56 @@ def table4_permutation_results(
         print("    Skipped: sctrial not available")
         return pd.DataFrame()
 
-    rng = np.random.default_rng(42)
-    rng_seed = rng.integers(0, 2**31)
     rows: list[dict] = []
 
-    # ── Sade-Feldman (two-arm DiD: shuffle response labels) ──────────
-    if _selected("Melanoma", datasets):
+    def _report(name: str, exact: bool, extra: str = "") -> None:
+        mine = [r for r in rows if r["dataset"] == name]
+        n_assign = mine[0]["n_permutations"] if mine else 0
+        print(f"    {name}{extra}: {len(mine)} features, {n_assign:,} assignments "
+              f"({'all enumerated' if exact else 'random draws'})")
+
+    # ── Two-group DiD: reassign the group labels across participants ──
+    two_group = [
+        ("Melanoma", "melanoma", "log1p_tpm", TrialDesign(
+            participant_col="participant_id", visit_col="visit",
+            arm_col="response_harmonized", arm_treated="Responder",
+            arm_control="Non-responder")),
+        ("TNBC", "tnbc", "log1p_norm", TrialDesign(
+            participant_col="participant_id", visit_col="visit", arm_col="arm",
+            arm_treated="anti-PDL1+Chemo", arm_control="Chemo")),
+    ]
+    for ds_name, tag, layer, design in two_group:
+        if not _selected(ds_name, datasets):
+            continue
         try:
-            adata_sf = get_sade_feldman()
-            if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
-                adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
-            adata_sf, sig_cols = score_signatures(adata_sf, layer="log1p_tpm")
-            adata_sf = harmonize_response(adata_sf)
-
-            design = TrialDesign(
-                participant_col="participant_id",
-                visit_col="visit",
-                arm_col="response_harmonized",
-                arm_treated="Responder",
-                arm_control="Non-responder",
-            )
-            obs_res = did_table(
-                adata_sf, features=sig_cols, design=design,
-                visits=("Pre", "Post"), layer="log1p_tpm",
-                standardize=True, aggregate="participant_visit",
-            )
-            obs_betas = dict(zip(obs_res["feature"], obs_res["beta_DiD"]))
-
+            if ds_name == "Melanoma":
+                adata = get_sade_feldman()
+                if "log1p_tpm" not in adata.layers and "tpm" in adata.layers:
+                    adata.layers["log1p_tpm"] = np.log1p(adata.layers["tpm"])
+                adata, sig_cols = score_signatures(adata, layer=layer)
+                adata = harmonize_response(adata)
+            else:
+                adata = get_tnbc_zhang()
+                adata, sig_cols = score_signatures(adata, layer=layer)
             with _quiet():
-                df_use, unit, time, arm_bin = get_did_aggregated_df(
-                    adata_sf, sig_cols, design, ("Pre", "Post"),
-                    layer="log1p_tpm", aggregate="participant_visit",
-                )
-            pid_arm = (
-                adata_sf.obs[["participant_id", "response_harmonized"]]
-                .drop_duplicates("participant_id")
-            )
-            df_bytes = pkl.dumps(df_use)
-            pid_arm_bytes = pkl.dumps(pid_arm)
-
-            for feat in sig_cols:
-                obs_beta = obs_betas.get(feat, np.nan)
-                if not np.isfinite(obs_beta):
-                    continue
-                tasks = [
-                    (i, df_bytes, feat, unit, time, arm_bin, pid_arm_bytes, rng_seed)
-                    for i in range(n_permutations)
-                ]
-                with _quiet():
-                    null_betas = Parallel(n_jobs=n_jobs, backend="loky")(
-                        delayed(_run_one_did_permutation)(t) for t in tasks
-                    )
-                null_arr = np.array([b for b in null_betas if b is not None], dtype=float)
-                if len(null_arr) > 0:
-                    perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
-                    rows.append({
-                        "dataset": "Melanoma",
-                        "feature": feat,
-                        "label": sig_display(feat),
-                        "observed_beta": obs_beta,
-                        "permutation_p": perm_p,
-                        "n_permutations": len(null_arr),
-                        "null_mean": float(np.mean(null_arr)),
-                        "null_sd": float(np.std(null_arr)),
-                        "null_95_lo": float(np.percentile(null_arr, 2.5)),
-                        "null_95_hi": float(np.percentile(null_arr, 97.5)),
-                    })
-            print(f"    Melanoma: {len([r for r in rows if r['dataset'] == 'Melanoma'])} features")
-            del adata_sf, df_use, df_bytes, pid_arm_bytes
+                relabel = did_relabeling_cached(adata, sig_cols, design, ("Pre", "Post"),
+                                                layer=layer, tag=tag)
+            pairs = did_permutation_nulls(relabel)
+            rows.extend(_permutation_rows(
+                ds_name, {f: null for f, (null, _obs) in pairs.items()},
+                {f: obs for f, (_null, obs) in pairs.items()}, bool(relabel.attrs["exact"])))
+            _report(ds_name, bool(relabel.attrs["exact"]))
+            del adata
             gc.collect()
         except Exception as exc:
-            raise RuntimeError("Supplementary Table 4: Melanoma permutation failed") from exc
+            raise RuntimeError(f"Supplementary Table 4: {ds_name} permutation failed") from exc
 
-    # ── TNBC (two-arm DiD: permute arm labels) ───────────────────────
-    if _selected("TNBC", datasets):
-        try:
-            adata_tnbc = get_tnbc_zhang()
-            adata_tnbc, sig_cols_tnbc = score_signatures(adata_tnbc, layer="log1p_norm")
-
-            tnbc_design = TrialDesign(
-                participant_col="participant_id",
-                visit_col="visit",
-                arm_col="arm",
-                arm_treated="anti-PDL1+Chemo",
-                arm_control="Chemo",
-            )
-            obs_res_tnbc = did_table(
-                adata_tnbc, features=sig_cols_tnbc, design=tnbc_design,
-                visits=("Pre", "Post"), layer="log1p_norm",
-                standardize=True, aggregate="participant_visit",
-            )
-            obs_betas_tnbc = dict(zip(obs_res_tnbc["feature"], obs_res_tnbc["beta_DiD"]))
-
-            with _quiet():
-                df_use_tnbc, unit_tnbc, time_tnbc, arm_bin_tnbc = get_did_aggregated_df(
-                    adata_tnbc, sig_cols_tnbc, tnbc_design, ("Pre", "Post"),
-                    layer="log1p_norm", aggregate="participant_visit",
-                )
-            pid_arm_tnbc = (
-                adata_tnbc.obs[["participant_id", "arm"]]
-                .drop_duplicates("participant_id")
-            )
-            df_bytes_tnbc = pkl.dumps(df_use_tnbc)
-            pid_arm_tnbc_bytes = pkl.dumps(pid_arm_tnbc)
-
-            def _run_tnbc_perm(args: tuple) -> float | None:
-                perm_idx, db, ft, un, tm, ab, pa_bytes, rs = args
-                df = pkl.loads(db)
-                pa = pkl.loads(pa_bytes)
-                r = np.random.default_rng(rs + perm_idx)
-                shuf = pa.copy()
-                shuf["arm"] = r.permutation(shuf["arm"].values)
-                pid_to_arm = dict(zip(shuf["participant_id"], shuf["arm"]))
-                df_p = df.copy()
-                df_p["arm_bin"] = df_p["participant_id"].map(
-                    lambda x, m=pid_to_arm: 1 if m.get(x) == "anti-PDL1+Chemo" else 0
-                )
-                try:
-                    out = did_fit(df_p, y=ft, unit=un, time=tm, arm_bin=ab, standardize=True)
-                    b = out.get("beta_DiD", np.nan)
-                    return float(b) if np.isfinite(b) else None
-                except Exception:
-                    return None
-
-            for feat in sig_cols_tnbc:
-                obs_beta = obs_betas_tnbc.get(feat, np.nan)
-                if not np.isfinite(obs_beta):
-                    continue
-                tasks = [
-                    (i, df_bytes_tnbc, feat, unit_tnbc, time_tnbc, arm_bin_tnbc,
-                     pid_arm_tnbc_bytes, rng_seed)
-                    for i in range(n_permutations)
-                ]
-                with _quiet():
-                    null_betas_tnbc = Parallel(n_jobs=n_jobs, backend="loky")(
-                        delayed(_run_tnbc_perm)(t) for t in tasks
-                    )
-                null_arr = np.array([b for b in null_betas_tnbc if b is not None], dtype=float)
-                if len(null_arr) > 0:
-                    perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
-                    rows.append({
-                        "dataset": "TNBC",
-                        "feature": feat,
-                        "label": sig_display(feat),
-                        "observed_beta": obs_beta,
-                        "permutation_p": perm_p,
-                        "n_permutations": len(null_arr),
-                        "null_mean": float(np.mean(null_arr)),
-                        "null_sd": float(np.std(null_arr)),
-                        "null_95_lo": float(np.percentile(null_arr, 2.5)),
-                        "null_95_hi": float(np.percentile(null_arr, 97.5)),
-                    })
-            print(f"    TNBC: {len([r for r in rows if r['dataset'] == 'TNBC'])} features")
-            del adata_tnbc, df_use_tnbc, df_bytes_tnbc, pid_arm_tnbc_bytes
-            gc.collect()
-        except Exception as exc:
-            raise RuntimeError("Supplementary Table 4: TNBC permutation failed") from exc
-
-    # ── Stephenson (cross-sectional: permute Severe/Mild labels) ────
+    # ── Stephenson (cross-sectional: reassign Severe/Mild across participants) ────
     # The observed statistic and every null replicate are the same estimand: the
     # standardised between-arm OLS beta on participant-level means in the DFO_8-14
     # bin of the log1p_cpm layer (the bin and layer of Supp Tables 2-3). This beta is
     # not the Hedges' g that Supp Table 2 reports for COVID-19, so the two tables differ
-    # slightly for this dataset. Each replicate reshuffles severity across the
-    # participants sampled in that bin.
+    # slightly for this dataset.
     if _selected("COVID-19", datasets):
         try:
             adata_st = get_stephenson()
@@ -859,43 +748,17 @@ def table4_permutation_results(
             df_cs = get_between_arm_aggregated_df(
                 adata_st, sig_cols_st, design_st, target_visit, layer="log1p_cpm",
             )
-            df_bytes_st = pkl.dumps(df_cs)
-
-            for feat in sig_cols_st:
-                obs_beta = between_arm_fit_beta(df_cs, feat, design_st)
-                if not np.isfinite(obs_beta):
-                    continue
-                tasks = [
-                    (i, df_bytes_st, feat, design_st, rng_seed)
-                    for i in range(n_permutations)
-                ]
-                with _quiet():
-                    null_betas_st = Parallel(n_jobs=n_jobs, backend="loky")(
-                        delayed(_run_one_between_arm_permutation)(t) for t in tasks
-                    )
-                null_arr = np.array([b for b in null_betas_st if b is not None], dtype=float)
-                if len(null_arr) > 0:
-                    perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
-                    rows.append({
-                        "dataset": "COVID-19",
-                        "feature": feat,
-                        "label": sig_display(feat),
-                        "observed_beta": obs_beta,
-                        "permutation_p": perm_p,
-                        "n_permutations": len(null_arr),
-                        "null_mean": float(np.mean(null_arr)),
-                        "null_sd": float(np.std(null_arr)),
-                        "null_95_lo": float(np.percentile(null_arr, 2.5)),
-                        "null_95_hi": float(np.percentile(null_arr, 97.5)),
-                    })
-            print(f"    COVID-19 ({target_visit}, n={df_cs['participant_id'].nunique()}): "
-                  f"{len([r for r in rows if r['dataset'] == 'COVID-19'])} features")
-            del adata_st, df_cs, df_bytes_st
+            observed = {feat: between_arm_fit_beta(df_cs, feat, design_st) for feat in sig_cols_st}
+            with _quiet():
+                nulls, exact = between_arm_nulls(df_cs, sig_cols_st, design_st)
+            rows.extend(_permutation_rows("COVID-19", nulls, observed, exact))
+            _report("COVID-19", exact, f" ({target_visit}, n={df_cs['participant_id'].nunique()})")
+            del adata_st, df_cs
             gc.collect()
         except Exception as exc:
             raise RuntimeError("Supplementary Table 4: COVID-19 permutation failed") from exc
 
-    # ── Single-arm datasets: permute visit labels ────────────────────
+    # ── Single-arm datasets: swap the two visits within participants ──
     single_arm = [
         ("Vaccine", get_vaccine, ("Pre", "Post")),
         ("AML", get_aml, None),
@@ -914,41 +777,17 @@ def table4_permutation_results(
                 adata, arm="All", features=sig_cols_imm,
                 design=design, visits=visits, standardize=True,
             )
-            obs_betas = dict(zip(obs_res["feature"], obs_res["beta_time"]))
+            observed = dict(zip(obs_res["feature"], obs_res["beta_time"]))
 
             with _quiet():
                 df_use, unit = get_within_arm_aggregated_df(
                     adata, "All", sig_cols_imm, design, visits,
                     layer=None, aggregate="participant_visit",
                 )
-            df_bytes = pkl.dumps(df_use)
-
-            for feat in sig_cols_imm:
-                obs_beta = obs_betas.get(feat, np.nan)
-                if not np.isfinite(obs_beta):
-                    continue
-                tasks = [(i, df_bytes, feat, unit, rng_seed) for i in range(n_permutations)]
-                with _quiet():
-                    null_betas = Parallel(n_jobs=n_jobs, backend="loky")(
-                        delayed(_run_one_within_arm_permutation)(t) for t in tasks
-                    )
-                null_arr = np.array([b for b in null_betas if b is not None], dtype=float)
-                if len(null_arr) > 0:
-                    perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
-                    rows.append({
-                        "dataset": ds_name,
-                        "feature": feat,
-                        "label": sig_display(feat),
-                        "observed_beta": obs_beta,
-                        "permutation_p": perm_p,
-                        "n_permutations": len(null_arr),
-                        "null_mean": float(np.mean(null_arr)),
-                        "null_sd": float(np.std(null_arr)),
-                        "null_95_lo": float(np.percentile(null_arr, 2.5)),
-                        "null_95_hi": float(np.percentile(null_arr, 97.5)),
-                    })
-            print(f"    {ds_name}: {len([r for r in rows if r['dataset'] == ds_name])} features")
-            del adata, df_use, df_bytes
+                nulls, exact = within_arm_nulls(df_use, sig_cols_imm, unit)
+            rows.extend(_permutation_rows(ds_name, nulls, observed, exact))
+            _report(ds_name, exact)
+            del adata, df_use
             gc.collect()
         except Exception as exc:
             raise RuntimeError(f"Supplementary Table 4: {ds_name} permutation failed") from exc
@@ -958,11 +797,12 @@ def table4_permutation_results(
         return pd.DataFrame()
 
     df = pd.DataFrame(rows)
-    # Add FDR per dataset
+    # FDR within each dataset, over its signatures
+    df["permutation_FDR"] = np.nan
     for ds in df["dataset"].unique():
-        mask = df["dataset"] == ds
-        _, fdr, _, _ = multipletests(df.loc[mask, "permutation_p"], method="fdr_bh")
-        df.loc[mask, "permutation_FDR"] = fdr
+        valid = df.loc[df["dataset"] == ds, "permutation_p"].dropna()
+        if len(valid):
+            df.loc[valid.index, "permutation_FDR"] = multipletests(valid, method="fdr_bh")[1]
 
     path = SUPP_OUTPUT / "Supp_Table4_permutation_results.csv"
     df.to_csv(path, index=False)
@@ -976,8 +816,15 @@ def table4_permutation_results(
 
 
 def table5_power_analysis() -> pd.DataFrame:
-    """Power analysis for each dataset: observed power at current N,
-    minimum N for 80% power, minimum detectable effect at current N."""
+    """Power analysis for each dataset and signature, from the estimates of Table 2.
+
+    Each row uses the formula of its design. Two-group rows (the DiD cohorts and the
+    cross-sectional COVID-19 comparison) use the group sizes of the cohort, so an
+    unequal allocation is not treated as balanced; single-arm rows use the paired
+    formula. The standard deviation is the one that reproduces the observed standard
+    error at the observed sizes. The minimum N is the total number of participants
+    at the observed allocation.
+    """
     print("  Table 5: Power analysis results")
 
     if not SCTRIAL_AVAILABLE:
@@ -985,12 +832,12 @@ def table5_power_analysis() -> pd.DataFrame:
         return pd.DataFrame()
 
     from sctrial.stats.power import (
-        power_did,
         power_paired,
-        sample_size_did,
+        power_two_group,
         sample_size_paired,
-        sensitivity_analysis,
+        sample_size_two_group,
         sensitivity_paired,
+        sensitivity_two_group,
     )
 
     # Read observed results from Table 2, regenerating it unless it was written by
@@ -999,6 +846,8 @@ def table5_power_analysis() -> pd.DataFrame:
     stamp = _table2_fingerprint_path()
     fresh = (table2_path.exists() and stamp.exists()
              and stamp.read_text().strip() == STATS_FINGERPRINT)
+    if fresh and not {"n_focal", "n_reference"} <= set(pd.read_csv(table2_path, nrows=0).columns):
+        fresh = False
     if not fresh:
         print("    Table 2 missing or from other estimator code, generating first...")
         table2_all_results()
@@ -1012,74 +861,51 @@ def table5_power_analysis() -> pd.DataFrame:
         if not np.isfinite(effect) or not np.isfinite(se) or not np.isfinite(n_units):
             continue
 
-        dataset = row["dataset"]
         feature = row["feature"]
-        label = row.get("label", sig_display(feature))
-        estimand = row.get("estimand", "")
-        is_did = estimand == "DiD"
-
-        # Estimate sigma from SE.
-        # DiD:    SE ≈ σ√(4/n)  → σ ≈ SE√(n/4), n = 2×n_per_group
-        # Paired: SE ≈ σ√(2/n)  → σ ≈ SE√(n/2)
         n = int(n_units)
-        if is_did:
-            n_per_group = max(n // 2, 2)
-            sigma_est = max(se * np.sqrt(n / 4), 0.01)
-        else:
-            n_per_group = max(n, 2)
-            sigma_est = max(se * np.sqrt(n / 2), 0.01)
-
-        # Power at observed N and effect
+        n_focal, n_reference = row.get("n_focal", np.nan), row.get("n_reference", np.nan)
+        two_group = bool(np.isfinite(n_focal) and np.isfinite(n_reference))
         abs_effect = abs(effect)
-        if abs_effect < 1e-10:
-            pwr = 0.05  # no effect → power = α
-            min_n_val: float = np.inf
-        else:
-            try:
-                if is_did:
-                    pwr = power_did(n_per_group=n_per_group,
-                                    effect_size=abs_effect, sigma=sigma_est)
-                else:
-                    pwr = power_paired(n_participants=n_per_group,
-                                       effect_size=abs_effect, sigma=sigma_est)
-            except Exception:
-                pwr = np.nan
-            try:
-                if is_did:
-                    min_n_val = float(sample_size_did(
-                        effect_size=abs_effect, sigma=sigma_est, power=0.80))
-                else:
-                    min_n_val = float(sample_size_paired(
-                        effect_size=abs_effect, sigma=sigma_est, power=0.80))
-            except Exception:
-                min_n_val = np.nan
 
-        # Minimum detectable effect at current N
-        try:
-            if is_did:
-                mde = sensitivity_analysis(n_per_group=n_per_group,
-                                           sigma=sigma_est, power=0.80)
-            else:
-                mde = sensitivity_paired(n_participants=n_per_group,
-                                         sigma=sigma_est, power=0.80)
-        except Exception:
-            mde = np.nan
+        if two_group:
+            n1, n2 = int(n_focal), int(n_reference)
+            if n1 + n2 != n:
+                raise ValueError(f"{row['dataset']} {feature}: group sizes {n1} + {n2} != n_units {n}")
+            # SE = sigma * sqrt(1/n1 + 1/n2)
+            sigma_est = max(se / np.sqrt(1.0 / n1 + 1.0 / n2), 0.01)
+            pwr = power_two_group(n1, n2, abs_effect, sigma=sigma_est)
+            mde = sensitivity_two_group(n1, n2, sigma=sigma_est, power=0.80)
+            min_n = (sum(sample_size_two_group(abs_effect, sigma=sigma_est, power=0.80,
+                                               allocation_ratio=n1 / n2))
+                     if abs_effect >= 1e-10 else None)
+        else:
+            n1 = n2 = None
+            # SE = sigma * sqrt(2/n)
+            sigma_est = max(se * np.sqrt(n / 2), 0.01)
+            pwr = power_paired(n_participants=max(n, 2), effect_size=abs_effect, sigma=sigma_est)
+            mde = sensitivity_paired(n_participants=max(n, 2), sigma=sigma_est, power=0.80)
+            min_n = (sample_size_paired(effect_size=abs_effect, sigma=sigma_est, power=0.80)
+                     if abs_effect >= 1e-10 else None)
 
         rows.append({
-            "dataset": dataset,
+            "dataset": row["dataset"],
             "feature": feature,
-            "label": label,
-            "estimand": estimand,
+            "label": row.get("label", sig_display(feature)),
+            "estimand": row.get("estimand", ""),
             "observed_effect": effect,
             "observed_se": se,
             "n_participants": n,
+            "n_focal": n1,
+            "n_reference": n2,
             "sigma_estimated": sigma_est,
             "power_at_observed_N": pwr,
-            "min_N_for_80pct_power": int(min_n_val) if np.isfinite(min_n_val) else None,
+            "min_N_for_80pct_power": min_n,
             "min_detectable_effect_80pct": mde,
         })
 
     df = pd.DataFrame(rows)
+    for col in ("n_focal", "n_reference"):
+        df[col] = df[col].astype("Int64")
     path = SUPP_OUTPUT / "Supp_Table5_power_analysis.csv"
     df.to_csv(path, index=False)
     print(f"    Saved {path.name} ({len(df)} rows)")

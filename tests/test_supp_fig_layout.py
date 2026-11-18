@@ -138,25 +138,61 @@ def test_runtime_ratio_keeps_one_decimal_below_ten(load_figure_module):
         "1.0×", "1.4×", "5.8×", "9.9×", "10×", "70×", "87×"]
 
 
-def test_figure3_bootstrap_labels_are_reproducible(load_figure_module):
+def _relabel_table(n_features=6, n_assign=40, seed=1):
+    """A relabeling table whose bootstrap rejects more often than its analytical test."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    for i in range(n_features):
+        p_boot = rng.uniform(size=n_assign)
+        for a in range(n_assign):
+            rows.append({"assignment": a, "feature": f"sig_{i}", "p_boot": p_boot[a],
+                         "p_analytic": min(1.0, 2.5 * p_boot[a]),
+                         "ci_lo_boot": 0.1 if p_boot[a] < 0.05 else -1.0, "ci_hi_boot": 1.0})
+    return pd.DataFrame(rows)
+
+
+def test_figure3_relabeling_panel_is_reproducible_and_keyed_below(load_figure_module):
     fig3 = load_figure_module("main/figure3_robustness_benchmarking")
-    rng = np.random.default_rng(1)
-    df = pd.DataFrame({"feature": [f"Signature {i}" for i in range(12)],
-                       "se_DiD": rng.uniform(0.6, 1.4, 12)})
-    df["se_DiD_boot"] = df["se_DiD"] * rng.uniform(0.8, 1.1, 12)
+    table = _relabel_table()
+    rates = fig3._panel_a_rates({"relabel": table})
+    assert rates["reject_boot"].between(0, 100).all()
+    assert (rates["reject_analytic"] <= rates["reject_boot"]).all()
 
     def layout(global_seed):
         np.random.seed(global_seed)  # whatever state the caller left
-        fig, ax = plt.subplots(figsize=(4, 3))
-        pts = fig3._panel_a_single(ax, {"df_boot": df}, title="t", dataset="melanoma")
-        fig3._label_panel_a(ax, pts)
-        out = [(t.get_text(), t.get_position()) for t in ax.texts]
+        fig, ax = plt.subplots(figsize=(6.5, 2.8))
+        fig3._panel_a_single(ax, {"relabel": table}, title="t")
+        points = [c.get_offsets().copy() for c in ax.collections]
+        means = [t.get_text() for t in ax.texts]
+        fig.tight_layout(rect=(0, 0.12, 0.94, 1))
+        fig3.key_below_axes(ax, ncol=2)
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        below = ax.get_legend().get_window_extent(renderer).y1 < ax.get_window_extent(renderer).y0
         plt.close(fig)
-        return out
+        return points, means, below
 
-    first = layout(1)
-    assert first == layout(2)
-    assert first  # signatures were named
+    points, means, below = layout(1)
+    again, _, _ = layout(2)
+    assert all((a == b).all() for a, b in zip(points, again))
+    assert below
+    # one strip of signatures and one mean diamond per test, means written as percentages
+    assert [len(p) for p in points] == [6, 1, 6, 1]
+    expected = [f"{rates[col].mean():.1f}%" for col, *_ in fig3.PANEL_A_TESTS]
+    assert means == expected
+    for (col, *_), strip, diamond in zip(fig3.PANEL_A_TESTS, points[0::2], points[1::2]):
+        np.testing.assert_allclose(np.sort(strip[:, 0]), np.sort(rates[col].to_numpy()))
+        assert diamond[0, 0] == pytest.approx(rates[col].mean())
+
+
+def test_figure3_relabeling_panels_share_one_x_scale(load_figure_module):
+    fig3 = load_figure_module("main/figure3_robustness_benchmarking")
+    fig, (top, bottom) = plt.subplots(2, 1)
+    fig3._panel_a(top, bottom, {"relabel": _relabel_table(seed=1)}, {"relabel": _relabel_table(seed=2)})
+    assert top.get_xlim() == bottom.get_xlim()
+    assert top.get_xlim()[1] >= 8.0
+    fig3._panel_a_single(top, {"relabel": pd.DataFrame()}, title="empty")
+    plt.close(fig)
 
 
 def test_figure3_forest_rows_grouped_and_clear(load_figure_module):

@@ -36,6 +36,7 @@ from scipy import stats
 
 from sctrial import TrialDesign, did_table
 
+from .._runtime import load_recorded as load_recorded_runtime
 from .._shared import (
     SUPP_OUTPUT,
     add_log1p_cpm_layer,
@@ -542,10 +543,13 @@ def _panel_influence(ax, results: dict[str, dict]):
         data=df, x="Dataset", y="Cook's D",
         ax=ax, palette=_DS_PALETTE, fliersize=1.5,
     )
-    sns.stripplot(
-        data=df, x="Dataset", y="Cook's D",
-        ax=ax, color="black", size=2.0, alpha=0.25, jitter=0.2,
-    )
+    # Points with a seeded horizontal jitter, so the panel is the same on every render
+    # (a seaborn strip plot draws its jitter from the global, unseeded generator).
+    rng = np.random.default_rng(42)
+    for i, name in enumerate(df["Dataset"].unique()):
+        vals = df.loc[df["Dataset"] == name, "Cook's D"].to_numpy()
+        ax.scatter(i + rng.uniform(-0.2, 0.2, len(vals)), vals, s=4.0, color="black",
+                   alpha=0.25, linewidths=0, zorder=3)
     for i, name in enumerate(df["Dataset"].unique()):
         n = results[name]["effects"]["n_obs"].median()
         n_features = len(results[name]["features"])
@@ -1302,21 +1306,14 @@ def generate():
     if pseudo_idx == 0:
         print("  Pseudoreplication: no datasets had valid cell+participant stats.")
 
-    # I: Runtime scaling (Cleveland dot plot, from figure4_robustness_benchmarking)
-    try:
-        from ..main.figure3_robustness_benchmarking import (
-            _panel_c as _fig4_panel_c,
-        )
-        from ..main.figure3_robustness_benchmarking import (
-            _prepare_scalability_data,
-        )
-        scale_data = _prepare_scalability_data()
-        fig_rt, ax_rt = plt.subplots(figsize=(8, 5.5))
-        _fig4_panel_c(ax_rt, {"scale_data": scale_data})
-        fig_rt.tight_layout()
-        save_panel(fig_rt, "panel_I_runtime_scaling", FIGURE_NAME, SUPP_OUTPUT)
-    except Exception as exc:
-        print(f"  Warning: Could not generate runtime panel I: {exc}")
+    # I: Runtime per dataset (Cleveland dot plot of the recorded measurements)
+    from ..main.figure3_robustness_benchmarking import _panel_c as _runtime_panel
+
+    scale_data = {"timing_df": load_recorded_runtime()}
+    fig_rt, ax_rt = plt.subplots(figsize=(8, 5.5))
+    _runtime_panel(ax_rt, {"scale_data": scale_data})
+    fig_rt.tight_layout()
+    save_panel(fig_rt, "panel_I_runtime_scaling", FIGURE_NAME, SUPP_OUTPUT)
 
     # ==================================================================
     # Composite artboard  (180 mm × 215 mm)
@@ -1744,20 +1741,7 @@ def generate():
     )
 
     ax_i = fig_c.add_subplot(gs_row8[2])
-    try:
-        from ..main.figure3_robustness_benchmarking import (
-            _panel_c as _fig4_panel_c,
-        )
-        from ..main.figure3_robustness_benchmarking import (
-            _prepare_scalability_data,
-        )
-        _scale_data = _prepare_scalability_data()
-        _fig4_panel_c(ax_i, {"scale_data": _scale_data})
-    except Exception:
-        ax_i.text(
-            0.5, 0.5, "Runtime data unavailable",
-            ha="center", va="center", transform=ax_i.transAxes,
-        )
+    _runtime_panel(ax_i, {"scale_data": scale_data})
     for _coll in ax_i.collections:
         if hasattr(_coll, 'set_sizes'):
             _coll.set_sizes(_coll.get_sizes() * 0.2)

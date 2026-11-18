@@ -141,23 +141,32 @@ def test_correlation_key_sits_below_the_axes(load_figure_module):
         plt.close(fig)
 
 
-def test_forest_key_is_below_every_forest(load_figure_module):
+def test_rejection_curve_is_the_share_of_p_values_below_each_level(load_figure_module):
     sf5 = load_figure_module("supp/supp_fig5_sensitivity_robustness")
-    feats = [f"G{i}" for i in range(6)]
-    boot = {
-        ds: {
-            "part": pd.DataFrame({"feature": feats, "beta_DiD": np.linspace(-1, 1, 6),
-                                  "se_DiD": np.full(6, 0.3)}),
-            "boot": pd.DataFrame({"feature": feats, "se_DiD_boot": np.full(6, 0.35)}),
-        }
-        for ds in ("A", "B")
-    }
-    fig = plt.figure(figsize=(9, 6.5))
-    sf5._panel_bootstrap_multi(fig, boot)
+    p = np.array([0.01, 0.02, 0.02, 0.10, 0.30, 0.90])
+    levels, rejected = sf5._rejection_curve(p)
+    assert levels[0] == 0 and levels[-1] == sf5._RELABEL_MAX_LEVEL
+    assert list(levels) == [0.0, 1.0, 2.0, 10.0, 25.0]
+    # p < level: nothing below 1%, one below 2%, three below 10%, four below 25%
+    np.testing.assert_allclose(rejected, 100 * np.array([0, 0, 1, 3, 4]) / 6)
+    with pytest.raises(ValueError):
+        sf5._rejection_curve(np.array([0.1, np.nan]))
+
+
+def test_calibration_panel_draws_both_tests_per_cohort_with_keys_below(load_figure_module):
+    sf5 = load_figure_module("supp/supp_fig5_sensitivity_robustness")
+    rng = np.random.default_rng(0)
+    tables = {name: pd.DataFrame({"p_boot": rng.uniform(size=400),
+                                  "p_analytic": rng.uniform(size=400) ** 0.5})
+              for name in ("TNBC", "Melanoma")}
+    fig = sf5._standalone_calibration(tables)
+    axes = fig.axes
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
-    assert all(ax.get_legend() is None for ax in fig.axes)
-    (key,) = fig.legends
-    top = key.get_window_extent(renderer).y1
-    assert all(top < ax.get_window_extent(renderer).y0 for ax in fig.axes)
+    assert [ax.get_title() for ax in axes] == ["TNBC", "Melanoma"]
+    for ax in axes:
+        assert len(ax.lines) == 3  # the diagonal and one step curve per test
+        assert ax.get_xlim() == ax.get_ylim() == (0.0, sf5._RELABEL_MAX_LEVEL)
+        assert ax.get_legend().get_window_extent(renderer).y1 < ax.get_window_extent(renderer).y0
+    assert not any(_shared().layout_problems(fig).values())
     plt.close(fig)

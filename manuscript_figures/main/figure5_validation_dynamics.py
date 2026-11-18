@@ -27,8 +27,6 @@ from __future__ import annotations
 
 import gc
 import hashlib
-import multiprocessing as mp
-import os
 import pickle  # noqa: S403 — local dev cache of our own DataFrames
 import warnings
 from pathlib import Path
@@ -40,6 +38,7 @@ import seaborn as sns
 from matplotlib.lines import Line2D
 from scipy.cluster.hierarchy import leaves_list, linkage
 
+from .._relabeling import did_permutation_nulls, did_relabeling_cached, permutation_summary
 from .._shared import (
     COLORS,
     MAIN_OUTPUT,
@@ -62,7 +61,6 @@ warnings.filterwarnings("ignore")
 
 FIGURE_NAME = "Figure5_validation_dynamics"
 VISITS: tuple[str, str] = ("Pre", "Post")
-N_PERM = 999
 
 _CACHE_DIR = Path(__file__).resolve().parent.parent / "_cache"
 _CACHE_DIR.mkdir(exist_ok=True)
@@ -106,98 +104,6 @@ TNBC_GROUP_PALETTE = {
 }
 
 
-# ── parallel permutation test ────────────────────────────────────────────
-# The 999-permutation null was a serial loop that ran ~4 h single-threaded on the
-# largest cohort. Each permutation is independent, so we fan them out across the
-# node's cores. Workers FORK the (large, read-only) AnnData via copy-on-write, so
-# the multi-GB object is shared rather than re-pickled per worker. Every
-# permutation reseeds independently (base_seed + i), which makes the loop
-# parallelisable AND fully reproducible; the previous serial loop drew from one
-# shared RNG stream, so the exact null realisation changes (statistically
-# equivalent) and the cache key versions are bumped accordingly.
-#
-# Requires single-threaded BLAS (OMP/MKL/OPENBLAS/NUMEXPR_NUM_THREADS=1, set by the
-# SLURM scripts) so forked workers do not oversubscribe. Set FIGURE_PERM_SERIAL=1
-# to force the old serial path (e.g. on a platform without a usable fork).
-_PERM_SHARED: dict = {}
-
-
-def _one_permutation(i: int):
-    """One participant-arm label permutation + participant-visit DiD fit.
-
-    Reads the shared AnnData / arm assignment inherited via fork; returns the
-    per-gene DiD table for permutation ``i`` (or ``None`` if the fit fails).
-    """
-    s = _PERM_SHARED
-    adata = s["adata"]
-    pid_arm = s["pid_arm"]
-    rng = np.random.default_rng(s["base_seed"] + i)
-    shuffled = pd.Series(rng.permutation(pid_arm.to_numpy()), index=pid_arm.index)
-    adata.obs[s["arm_col"]] = adata.obs[s["pid_col"]].map(shuffled)
-    try:
-        df = did_table(adata, aggregate="participant_visit", **s["common_kw"])
-        df["permutation"] = i
-        return df
-    except Exception:
-        return None
-
-
-def _run_permutations(adata, design, common_kw, *, n_perm: int = N_PERM, base_seed: int = 42):
-    """Run ``n_perm`` label-permutation DiD fits and return the concatenated table.
-
-    Parallel over the node's cores by default; falls back to a serial loop when a
-    single worker is requested or fork is unavailable.
-
-    Before forking, the AnnData is slimmed to only the genes ``did_table`` will pull
-    from the matrix. The permutation features here are participant-level signature
-    SCORES held in ``adata.obs``; ``did_table`` resolves obs-column features without
-    ever indexing the gene matrix (``did.py``: ``genes_to_extract`` is empty when
-    every feature is an obs column), so the slim keeps the full ``.obs`` and drops
-    the transcriptome down to a single token gene. Forking the full 55k-gene
-    Sade-Feldman matrix across 32 workers OOM-killed the node via copy-on-write
-    refcount churn even though the matrix was never read. Slimming makes each fork a
-    few MB and leaves the numeric result bit-identical (same obs, same seeds).
-    """
-    arm_col = design.arm_col
-    pid_col = design.participant_col
-
-    # Keep only genes actually extracted from the matrix (var-name features), plus a
-    # single token gene so a valid AnnData with its layer survives when there are none.
-    feats = list(common_kw.get("features", []))
-    gene_feats = [f for f in feats if f in adata.var_names and f not in adata.obs.columns]
-    keep = gene_feats if gene_feats else list(adata.var_names[:1])
-    slim = adata[:, keep].copy()  # NB: a copy — the caller's adata is never mutated
-
-    pid_arm = slim.obs.groupby(pid_col, observed=True)[arm_col].first()
-
-    n_jobs = int(os.environ.get("SLURM_CPUS_PER_TASK") or max(1, (os.cpu_count() or 2) - 1))
-    n_jobs = max(1, min(n_jobs, n_perm))
-    serial = n_jobs == 1 or os.environ.get("FIGURE_PERM_SERIAL") == "1"
-
-    _PERM_SHARED.update(adata=slim, pid_arm=pid_arm, arm_col=arm_col,
-                        pid_col=pid_col, common_kw=common_kw, base_seed=base_seed)
-    try:
-        if serial:
-            print(f"  Running {n_perm} permutations (serial) ...")
-            results = [_one_permutation(i) for i in range(n_perm)]
-        else:
-            print(f"  Running {n_perm} permutations on {n_jobs} workers ...")
-            ctx = mp.get_context("fork")
-            # maxtasksperchild recycles workers so any residual COW growth is bounded.
-            with ctx.Pool(processes=n_jobs, maxtasksperchild=100) as pool:
-                results = pool.map(_one_permutation, range(n_perm),
-                                   chunksize=max(1, n_perm // (n_jobs * 4)))
-    finally:
-        _PERM_SHARED.clear()
-        del slim
-        gc.collect()
-
-    perm = [r for r in results if r is not None]
-    df_perm_all = pd.concat(perm, ignore_index=True)
-    print(f"  Completed {df_perm_all['permutation'].nunique()} permutations")
-    return df_perm_all
-
-
 # ── data preparation ─────────────────────────────────────────────────────
 
 def _to_array(mat) -> np.ndarray:
@@ -205,16 +111,15 @@ def _to_array(mat) -> np.ndarray:
 
 
 def _prepare_sf_data(*, use_cache: bool = True) -> dict:
-    """Load Sade-Feldman, run permutation test and compute participant deltas.
+    """Load Sade-Feldman, fit the participant-level DiD and compute participant deltas.
 
-    The permutation results and participant DiD are cached to disk because the
-    999-permutation loop takes several minutes.  Pass ``use_cache=False`` to
-    force recomputation (e.g. after changing N_PERM or DESIGN).
+    The results are cached to disk. Pass ``use_cache=False`` to force recomputation
+    (e.g. after changing DESIGN).
     """
     _code_hash = hashlib.md5(  # noqa: S324 — cache tag, not security
-        f"{N_PERM}|{DESIGN}|{VISITS}|{HETERO_FEATURES}".encode()
+        f"{DESIGN}|{VISITS}|{HETERO_FEATURES}".encode()
     ).hexdigest()[:8]
-    cache_key = f"figure6_sf_perm_v2_{_code_hash}_{STATS_FINGERPRINT}"
+    cache_key = f"figure5_sf_delta_v3_{_code_hash}_{STATS_FINGERPRINT}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     # ── load adata fresh every time (too large to pickle) ────────────────
@@ -230,7 +135,7 @@ def _prepare_sf_data(*, use_cache: bool = True) -> dict:
 
     # ── try to restore expensive results from cache ───────────────────────
     if use_cache and cache_path.exists():
-        print(f"  Loading cached SF permutation results from {cache_path.name}")
+        print(f"  Loading cached SF results from {cache_path.name}")
         with open(cache_path, "rb") as fh:
             cached = pickle.load(fh)  # noqa: S301 — trusted local cache
         cached["adata"] = adata
@@ -251,15 +156,11 @@ def _prepare_sf_data(*, use_cache: bool = True) -> dict:
     print("  Running participant-level DiD ...")
     df_part = did_table(adata, aggregate="participant_visit", **common_kw)
 
-    # Permutation test (parallel over cores; see _run_permutations)
-    df_perm_all = _run_permutations(adata, DESIGN, common_kw)
-
     # Participant-level deltas for heterogeneity panels
     delta_df = _compute_participant_delta(adata, hetero_feats)
 
     result = {
         "df_part": df_part,
-        "df_perm_all": df_perm_all,
         "delta_df": delta_df,
     }
 
@@ -267,7 +168,7 @@ def _prepare_sf_data(*, use_cache: bool = True) -> dict:
     if use_cache:
         with open(cache_path, "wb") as fh:
             pickle.dump(result, fh, protocol=pickle.HIGHEST_PROTOCOL)
-        print(f"  Cached SF permutation results to {cache_path.name}")
+        print(f"  Cached SF results to {cache_path.name}")
 
     result["adata"] = adata
     result["sig_cols"] = sig_cols
@@ -381,13 +282,15 @@ def _prepare_tnbc_perm_data(*, use_cache: bool = True) -> dict:
     """Load TNBC, run permutation test (anti-PDL1+Chemo vs Chemo), compute deltas.
 
     Covers panels A–D: perm results feed A/B; delta_df and hetero_feats feed C/D.
-    Results (excluding adata) are cached to disk because the 999-permutation loop
-    takes several minutes.  Pass ``use_cache=False`` to force recomputation.
+    The permutation null is the relabeling table of ``_relabeling`` (every assignment
+    of the participants to the two arms), which Figure 3A and Supplementary Table 4
+    read as well. Results (excluding adata) are cached to disk. Pass
+    ``use_cache=False`` to force recomputation.
     """
     _code_hash = hashlib.md5(
-        f"{N_PERM}|{VISITS}|{HETERO_FEATURES}|arm".encode()
+        f"{VISITS}|{HETERO_FEATURES}|arm".encode()
     ).hexdigest()[:8]
-    cache_key = f"figure5_tnbc_perm_v3_{_code_hash}_{STATS_FINGERPRINT}"
+    cache_key = f"figure5_tnbc_perm_v4_{_code_hash}_{STATS_FINGERPRINT}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     adata = get_tnbc_zhang()
@@ -429,14 +332,14 @@ def _prepare_tnbc_perm_data(*, use_cache: bool = True) -> dict:
     print("  Running TNBC participant-level DiD ...")
     df_part = did_table(adata, aggregate="participant_visit", **common_kw)
 
-    # Permutation test (parallel over cores; see _run_permutations)
-    df_perm_all = _run_permutations(adata, tnbc_design, common_kw)
+    relabel = did_relabeling_cached(adata, sig_cols, tnbc_design, VISITS, layer=layer, tag="tnbc")
 
     delta_df = _compute_tnbc_participant_delta(adata, hetero_feats, layer)
 
     result = {
         "df_part": df_part,
-        "df_perm_all": df_perm_all,
+        "df_perm_all": relabel[["assignment", "observed", "feature", "beta_DiD"]].copy(),
+        "perm_exact": bool(relabel.attrs["exact"]),
         "delta_df": delta_df,
     }
 
@@ -493,24 +396,12 @@ def _prepare_stephenson_data() -> dict:
 
 def _panel_a(ax, data: dict, *, composite: bool = False) -> None:
     """Permutation null distributions overlaid for top 3 signatures."""
-    df_part = data["df_part"]
-    df_perm = data["df_perm_all"]
-    sig_cols = data["sig_cols"]
-
-    perm_pvals = {}
-    for feat in sig_cols:
-        null_betas = df_perm.loc[df_perm["feature"] == feat, "beta_DiD"].dropna()
-        if len(null_betas) == 0:
-            continue
-        obs_row = df_part.loc[df_part["feature"] == feat]
-        if obs_row.empty:
-            continue
-        obs_beta = obs_row["beta_DiD"].values[0]
-        perm_p = (
-            (np.sum(np.abs(null_betas) >= np.abs(obs_beta)) + 1)
-            / (len(null_betas) + 1)
-        )
-        perm_pvals[feat] = perm_p
+    nulls = did_permutation_nulls(data["df_perm_all"])
+    perm_pvals = {
+        feat: permutation_summary(null, obs, exact=data["perm_exact"])["permutation_p"]
+        for feat, (null, obs) in nulls.items() if feat in data["sig_cols"]
+    }
+    perm_pvals = {feat: p for feat, p in perm_pvals.items() if np.isfinite(p)}
 
     if not perm_pvals:
         ax.text(0.5, 0.5, "No permutation results",
@@ -522,8 +413,7 @@ def _panel_a(ax, data: dict, *, composite: bool = False) -> None:
     hist_colors = [COLORS["treated"], COLORS["control"], COLORS["neutral"]]
 
     for idx, feat in enumerate(top_feats):
-        obs_beta = df_part.loc[df_part["feature"] == feat, "beta_DiD"].values[0]
-        null_betas = df_perm.loc[df_perm["feature"] == feat, "beta_DiD"].dropna()
+        null_betas, obs_beta = nulls[feat]
         color = hist_colors[idx % len(hist_colors)]
 
         # The permutation p rides in the key: text placed next to each observed
@@ -558,24 +448,14 @@ def _legend_below(ax, *, composite: bool, ncol: int, handles=None) -> None:
 
 def _panel_b(ax, data: dict, *, composite: bool = False) -> None:
     """Observed β_DiD with 95 % null interval for every signature."""
-    df_part = data["df_part"]
-    df_perm = data["df_perm_all"]
-    sig_cols = data["sig_cols"]
-
     records = []
-    for feat in sig_cols:
-        obs_row = df_part.loc[df_part["feature"] == feat]
-        if obs_row.empty:
+    for feat, (null_betas, obs_beta) in did_permutation_nulls(data["df_perm_all"]).items():
+        if feat not in data["sig_cols"]:
             continue
-        obs_beta = obs_row["beta_DiD"].values[0]
-        null_betas = df_perm.loc[df_perm["feature"] == feat, "beta_DiD"].dropna()
-        if len(null_betas) < 10:
+        summary = permutation_summary(null_betas, obs_beta, exact=data["perm_exact"])
+        if summary["n_permutations"] < 10:
             continue
-        lo, hi = np.percentile(null_betas, [2.5, 97.5])
-        perm_p = (
-            (np.sum(np.abs(null_betas) >= np.abs(obs_beta)) + 1)
-            / (len(null_betas) + 1)
-        )
+        lo, hi = summary["null_95_lo"], summary["null_95_hi"]
         records.append({
             "feature": feat,
             "display": sig_display(feat),
@@ -583,7 +463,7 @@ def _panel_b(ax, data: dict, *, composite: bool = False) -> None:
             "null_lo": lo,
             "null_hi": hi,
             "significant": (obs_beta < lo) or (obs_beta > hi),
-            "perm_p": perm_p,
+            "perm_p": summary["permutation_p"],
         })
 
     rec_df = pd.DataFrame(records).sort_values("obs_beta", ascending=True)
