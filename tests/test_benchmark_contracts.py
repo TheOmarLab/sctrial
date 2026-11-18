@@ -302,7 +302,7 @@ def test_real_data_path_reproduces_the_simulated_path_exactly(sim):
 
     via_sim = prepare_inputs(sim, panel)
     via_real = prepare_inputs_from_adata(
-        adata, panel, participant_col="pid", visit_col="tp", arm_col="grp"
+        adata, panel, participant_col="pid", visit_col="tp", arm_col="grp", counts_layer=None
     )
 
     def _index(df):

@@ -278,15 +278,33 @@ def phase_realdata(n_jobs: int):
     )
     # Use a subset of genes for tractability
     gene_cols = sf.var_names[:50].tolist()
+
+    # The cohort in its own vocabulary. The melanoma data (Smart-seq2) are TPM and
+    # hold no raw counts, so the count models (dreamlet, limma-voom, NEBULA) are not
+    # run on them; the methods that take participant-level log(1 + CPM) are.
+    from sctrial.benchmark.contracts import METHOD_ESTIMAND
+    from sctrial.benchmark.orchestrator import CORE_METHODS
+
+    methods = [m for m in CORE_METHODS if METHOD_ESTIMAND[m] == "log1p_cpm"]
+    cohort = dict(
+        participant_col="participant_id",
+        visit_col="visit",
+        visits=("Pre", "Post"),
+        arm_col="response",
+        arm_treated="Responder",
+        arm_control="Non-responder",
+        counts_layer="tpm",
+    )
+    print(f"  Methods: {methods} (TPM cohort: count models not run)")
+
     run_permutation_test(
         sf, gene_cols,
         design_type="two_arm",
+        methods=methods,
         n_permutations=1000,
         n_jobs=n_jobs,
-        participant_col="participant_id",
-        arm_col="response",
-        visit_col="visit",
         output_path=out_dir / "permutation_melanoma.csv",
+        **cohort,
     )
 
     # Subsampling
@@ -295,11 +313,11 @@ def phase_realdata(n_jobs: int):
     print("\n--- Melanoma subsampling (100×) ---")
     run_subsampling(
         sf, gene_cols,
+        methods=methods,
         n_resamples=100,
-        participant_col="participant_id",
-        arm_col="response",
-        visit_col="visit",
+        design_type="two_arm",
         output_path=out_dir / "subsampling_melanoma.csv",
+        **cohort,
     )
 
 
