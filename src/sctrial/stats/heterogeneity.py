@@ -10,7 +10,7 @@ import statsmodels.formula.api as smf
 from anndata import AnnData
 
 from ..design import TrialDesign
-from ._utils import apply_fdr, encode_visit, standardize_series
+from ._utils import apply_fdr, drop_unused_levels, encode_visit, standardize_series
 from .did import (
     MIN_CLUSTERS_FOR_ROBUST_SE,
     AggregateFunc,
@@ -158,7 +158,7 @@ def test_treatment_heterogeneity(
         else:
             tmp["outcome_std"] = tmp[feat].astype(float)
 
-        df = tmp.dropna(subset=["outcome_std"]).reset_index(drop=True)
+        df = drop_unused_levels(tmp.dropna(subset=["outcome_std"]).reset_index(drop=True))
 
         if df["biomarker_high"].nunique() < 2:
             continue

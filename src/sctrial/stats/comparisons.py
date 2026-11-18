@@ -14,7 +14,7 @@ from scipy.stats import t as t_dist
 from ..adata_tools import subset_cells
 from ..design import TrialDesign
 from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
-from ._utils import apply_fdr, encode_visit, standardize_series
+from ._utils import apply_fdr, drop_unused_levels, encode_visit, standardize_series
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE, AggregateFunc, AggregateMode, _ensure_paired
 
 
@@ -140,7 +140,7 @@ def _ols_between_arm(
         Dictionary with keys: feature, beta_arm, se_arm, ci_lo_arm,
         ci_hi_arm, p_arm, n_units.
     """
-    df_feat = df_use.copy().reset_index(drop=True)  # unique int index for .loc
+    df_feat = drop_unused_levels(df_use.copy().reset_index(drop=True))  # unique int index for .loc
     if standardize:
         y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
         if not ok:
@@ -282,7 +282,7 @@ def within_arm_fit_beta(
     float
         The beta_time.
     """
-    df_feat = df[[unit, "visit_num", feat]].dropna().copy()
+    df_feat = drop_unused_levels(df[[unit, "visit_num", feat]].dropna().copy())
     if len(df_feat) < 4:
         return np.nan
     if standardize:
@@ -509,6 +509,7 @@ def within_arm_comparison(
     df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
     df_use = encode_visit(df_use, design.visit_col, visits)
     df_use = df_use.reset_index(drop=True)  # ensure unique integer index for .loc
+    df_use = drop_unused_levels(df_use)
 
     rows = []
     for feat in features:
@@ -560,14 +561,14 @@ def within_arm_comparison(
                 UserWarning,
                 stacklevel=2,
             )
-        # A perfectly saturated paired design (n participants x 2 visits, with
-        # participant fixed effects) leaves zero residual degrees of freedom, so
-        # statsmodels' cluster-robust covariance raises ZeroDivisionError on its
-        # (nobs-1)/(nobs-k_params) small-sample correction before the degenerate-SE
-        # fallback below can run. Catch it and fall back to the nonrobust fit,
-        # which is valid here because participant FE already absorb the
-        # within-cluster correlation. Without this the exception propagates and
-        # aborts the whole caller (it silently killed all five AML GSEA libraries).
+        # A model with as many parameters as observations leaves zero residual
+        # degrees of freedom, and statsmodels' cluster-robust covariance then
+        # raises ZeroDivisionError on its (nobs-1)/(nobs-k_params) small-sample
+        # correction before the non-finite-SE fallback below can run. Catch it and
+        # fall back to the nonrobust fit so the exception does not abort the
+        # caller. A paired design with participant fixed effects built from the
+        # participants in the model has residual degrees of freedom, so this is a
+        # guard, not the usual path.
         effective_cov_type = "cluster"
         try:
             fit = model.fit(cov_type="cluster", cov_kwds={"groups": clusters_aligned})
@@ -587,12 +588,11 @@ def within_arm_comparison(
         se = float(fit.bse.get("visit_num", np.nan))
         p_val = float(fit.pvalues.get("visit_num", np.nan))
 
-        # Fallback: if cluster-robust SE is degenerate (NaN), re-fit
-        # with nonrobust SE.  Participant FE already absorbs within-
-        # cluster correlation so homoskedastic SE is valid.
+        # Fallback: if the cluster-robust SE is not finite, re-fit with the
+        # nonrobust SE. A guard for models without residual degrees of freedom.
         if not np.isfinite(se) or not np.isfinite(p_val):
             warnings.warn(
-                f"Cluster-robust SE is degenerate (NaN) for feature '{feat}' "
+                f"Cluster-robust SE is not finite for feature '{feat}' "
                 f"with {n_units_feat} clusters. Falling back to nonrobust "
                 f"(homoskedastic) SE.",
                 UserWarning,

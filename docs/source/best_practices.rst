@@ -29,7 +29,10 @@ Sample Size Recommendations
 
 Use ``st.power_did()`` and ``st.sample_size_did()`` (two-arm) or
 ``st.power_paired()`` and ``st.sample_size_paired()`` (single-arm) to
-determine whether your study is adequately powered. For fewer than 15
+determine whether your study is adequately powered. When the two groups
+differ in size, as response groups or severity groups usually do, use
+``st.power_two_group()`` and ``st.sample_size_two_group()`` with the
+group sizes or the expected allocation ratio. For fewer than 15
 participants, always use bootstrap inference (``use_bootstrap=True``).
 
 See :ref:`faq-sample-size` for detailed tables and code examples.

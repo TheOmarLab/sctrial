@@ -165,7 +165,7 @@ def test_did_table_surfaces_cov_type_used():
 
 
 def test_did_table_nonrobust_fallback_on_nan_se():
-    """Regression test: when cluster-robust SE is NaN, did_table falls back to
+    """Regression test: when cluster-robust SE is not finite, did_table falls back to
     nonrobust SE and emits a warning.
 
     We monkeypatch statsmodels.formula.api.ols inside the did module so that
@@ -240,7 +240,7 @@ def test_did_table_nonrobust_fallback_on_nan_se():
     assert res.loc[0, "cov_type_used"] == "nonrobust"
 
     # Warning emitted
-    fallback_warns = [w for w in caught if "degenerate" in str(w.message)]
+    fallback_warns = [w for w in caught if "Falling back to nonrobust" in str(w.message)]
     assert len(fallback_warns) > 0, "No fallback warning emitted"
 
 

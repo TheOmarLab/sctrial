@@ -20,7 +20,7 @@ else:
 from ..adata_tools import subset_primary
 from ..design import TrialDesign
 from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
-from ._utils import apply_fdr, encode_visit, standardize_series
+from ._utils import apply_fdr, drop_unused_levels, encode_visit, standardize_series
 
 # Minimum number of clusters for reliable cluster-robust standard errors
 # Cameron & Miller (2015) recommend 42+, with 10 as absolute minimum
@@ -401,7 +401,7 @@ def did_fit(
 
     _validate_did_fit_inputs(df, cols)
 
-    tmp = df[cols].dropna().copy().reset_index(drop=True)
+    tmp = drop_unused_levels(df[cols].dropna().copy().reset_index(drop=True))
     n_units = tmp[unit].nunique()
     if n_units < 4:
         return {
@@ -456,30 +456,22 @@ def did_fit(
     se_did = float(fit.bse.get(term, np.nan))
     p_did = float(fit.pvalues.get(term, np.nan))
 
-    # Fallback: if cluster-robust SE is NaN (degenerate, e.g. only 2 obs per
-    # cluster after participant_visit aggregation), re-fit with nonrobust SE.
-    # The participant FE already absorbs within-participant correlation, so
-    # homoskedastic SE is a valid (though conservative) alternative.
-    #
-    # Justification for nonrobust bootstrap in fallback mode:
-    # When cluster-robust SE is degenerate (typically because each cluster has
-    # only 2 observations after participant_visit aggregation), the wild cluster
-    # bootstrap with nonrobust covariance is methodologically valid because:
-    # (a) participant fixed effects already absorb within-cluster correlation,
-    # (b) with only 2 obs per cluster, heteroskedasticity cannot be estimated
-    #     within clusters anyway, and
-    # (c) the bootstrap statistic is studentized with the same variance estimator
-    #     as the observed one, so the sign-flip reference distribution is that of
-    #     the statistic actually reported.
+    # Fallback: if the cluster-robust SE is not finite, re-fit with the nonrobust
+    # (homoskedastic) SE. A paired design with participant fixed effects has
+    # residual degrees of freedom and a finite cluster-robust SE, so this is a
+    # guard for models with no residual degrees of freedom, not the usual path.
+    # The bootstrap statistic is then studentized with the same nonrobust
+    # estimator as the observed one, so its sign-flip reference distribution is
+    # that of the statistic reported.
     effective_cov_type = cov_type
     if cov_type == "cluster" and (not np.isfinite(se_did) or not np.isfinite(p_did)):
         warnings.warn(
-            f"Cluster-robust SE is degenerate (NaN) for feature '{y}' with "
+            f"Cluster-robust SE is not finite for feature '{y}' with "
             f"{int(tmp[unit].nunique())} clusters. Falling back to nonrobust "
-            f"(homoskedastic) SE. This typically occurs when each cluster has "
-            f"very few observations (e.g. participant_visit aggregation with "
-            f"2 visits). Participant fixed effects still absorb within-cluster "
-            f"correlation. Set use_bootstrap=True for more reliable p-values.",
+            f"(homoskedastic) SE. This occurs when the model leaves no residual "
+            f"degrees of freedom. Participant fixed effects still absorb "
+            f"within-cluster correlation. Set use_bootstrap=True for more "
+            f"reliable p-values.",
             UserWarning,
             stacklevel=2,
         )

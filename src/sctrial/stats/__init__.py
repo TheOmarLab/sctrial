@@ -77,10 +77,13 @@ from .power import (
     power_curve,
     power_did,
     power_paired,
+    power_two_group,
     sample_size_did,
     sample_size_paired,
+    sample_size_two_group,
     sensitivity_analysis,
     sensitivity_paired,
+    sensitivity_two_group,
 )
 from .pseudobulk import (
     pseudobulk_did,
@@ -140,6 +143,9 @@ __all__ = [
     "sample_size_paired",
     "sensitivity_analysis",
     "sensitivity_paired",
+    "power_two_group",
+    "sample_size_two_group",
+    "sensitivity_two_group",
     "power_curve",
     "design_effect",
     "effective_sample_size",

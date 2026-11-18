@@ -231,6 +231,11 @@ variance structure, and the degree of within-participant correlation.
    mde = st.sensitivity_paired(n_participants=6, power=0.80)
    print(f"Min detectable effect: {mde:.2f} SD")
 
+   # For two groups of unequal size (e.g. 3 responders and 8 non-responders):
+   power = st.power_two_group(n_treated=3, n_control=8, effect_size=1.0)
+   n_resp, n_nonresp = st.sample_size_two_group(effect_size=1.0, allocation_ratio=3 / 8)
+   print(f"Need {n_resp} responders and {n_nonresp} non-responders")
+
 **Practical considerations**:
 
 - Single-cell data doesn't increase statistical power (participants do)

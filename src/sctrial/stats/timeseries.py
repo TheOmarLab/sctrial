@@ -55,7 +55,7 @@ import pandas as pd
 from anndata import AnnData
 
 from ..design import TrialDesign
-from ._utils import apply_fdr
+from ._utils import apply_fdr, drop_unused_levels
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE, AggregateMode
 
 __all__ = [
@@ -205,7 +205,7 @@ def trend_interaction(
     # Enforce balanced panel: keep only participants observed at all visits
     visit_counts = df.groupby(design.participant_col, observed=True)[design.visit_col].nunique()
     balanced_pids = visit_counts[visit_counts == len(visits)].index
-    df = df[df[design.participant_col].isin(balanced_pids)].copy()
+    df = drop_unused_levels(df[df[design.participant_col].isin(balanced_pids)].copy())
 
     n_units = df[design.participant_col].nunique()
     n_timepoints = len(visits)
@@ -447,7 +447,7 @@ def polynomial_trend(
 
     # Aggregate
     grp_cols = [design.participant_col, design.visit_col, design.arm_col]
-    df = df.groupby(grp_cols, observed=True)[[feature]].mean().reset_index()
+    df = drop_unused_levels(df.groupby(grp_cols, observed=True)[[feature]].mean().reset_index())
 
     df["time_num"] = df[design.visit_col].map(time_map).astype(float)
     df["arm_bin"] = (df[design.arm_col] == design.arm_treated).astype(int)

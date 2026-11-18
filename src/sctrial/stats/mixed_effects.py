@@ -67,7 +67,7 @@ from anndata import AnnData
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 from ..design import TrialDesign
-from ._utils import aggregate_features, apply_fdr, standardize_series
+from ._utils import aggregate_features, apply_fdr, drop_unused_levels, standardize_series
 from .did import AggregateFunc, AggregateMode, _ensure_paired
 
 __all__ = [
@@ -160,6 +160,7 @@ def did_mixed(
     else:
         time_sorted = sorted(time_vals)
     df["post_num"] = df[time_col].map({time_sorted[0]: 0, time_sorted[1]: 1}).astype(float)
+    df = drop_unused_levels(df)
 
     # Build formula
     fixed_part = f"{outcome} ~ arm_bin + post_num + arm_bin:post_num"

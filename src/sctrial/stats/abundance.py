@@ -10,7 +10,7 @@ from anndata import AnnData
 from ..adata_tools import subset_primary
 from ..design import TrialDesign
 from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
-from ._utils import apply_fdr, encode_visit
+from ._utils import apply_fdr, drop_unused_levels, encode_visit
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE
 
 
@@ -220,13 +220,13 @@ def abundance_did(
                 continue
             # Preserve participant IDs before resetting index for safe .loc
             diff_pids = df_delta.index.to_numpy()
-            df_delta = df_delta.reset_index(drop=True)
+            df_delta = drop_unused_levels(df_delta.reset_index(drop=True))
             formula = "delta ~ arm_bin"
             if covariates:
                 formula += " + " + " + ".join(covariates)
             model = smf.ols(formula, data=df_delta)
         else:
-            tmp = tmp.reset_index(drop=True)  # unique int index for .loc
+            tmp = drop_unused_levels(tmp.reset_index(drop=True))  # unique int index for .loc
             formula = f"y ~ visit_num + visit_num:arm_bin + C({design.participant_col})"
             if covariates:
                 formula += " + " + " + ".join(covariates)

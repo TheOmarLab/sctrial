@@ -9,9 +9,31 @@ from statsmodels.stats.multitest import multipletests
 __all__ = [
     "aggregate_features",
     "apply_fdr",
+    "drop_unused_levels",
     "encode_visit",
     "standardize_series",
 ]
+
+
+def drop_unused_levels(df: pd.DataFrame) -> pd.DataFrame:
+    """Remove the unused categories of every categorical column of a model frame.
+
+    A formula term ``C(col)`` builds one indicator per category of a categorical
+    column, including categories that no row of the frame carries. anndata keeps
+    every category of an ``obs`` column through subsetting and ``groupby``, so a
+    frame restricted to the participants in a model still lists all the others.
+    Their empty indicators count as parameters, which inflates (or makes
+    undefined) the small-sample correction of a cluster-robust covariance.
+
+    Parameters
+    ----------
+    df
+        Model frame. Modified in place and returned.
+    """
+    for col in df.columns:
+        if isinstance(df[col].dtype, pd.CategoricalDtype):
+            df[col] = df[col].cat.remove_unused_categories()
+    return df
 
 
 def standardize_series(
