@@ -1,0 +1,38 @@
+# Wall-clock time of one participant-level analysis per dataset (seconds) and peak
+# traced Python memory (MB). Written by manuscript_figures._runtime.record().
+# recorded: 2026-11-18
+# commit: 6fd664b5d4214c4b5dd177419924a5d2fc1c6b99
+# host: esplhpc-cp016 (x86_64), python 3.12.13
+# threads: {'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1'}
+# replicates per dataset: 5
+dataset,design_type,method,n_cells,n_participants,n_features,replicate,time_s,peak_mb
+Sade-Feldman,two_arm_did,did_table,16291,32,19,0,14.425510223954916,27529.76368713379
+Sade-Feldman,two_arm_did,did_table,16291,32,19,1,14.328291750513017,27529.572432518005
+Sade-Feldman,two_arm_did,did_table,16291,32,19,2,14.33728810120374,27529.57210636139
+Sade-Feldman,two_arm_did,did_table,16291,32,19,3,14.33434593398124,27529.57250881195
+Sade-Feldman,two_arm_did,did_table,16291,32,19,4,14.342819397337735,27529.57136821747
+TNBC,two_arm_did,did_table,141553,12,19,0,4.573092668317258,6762.893136978149
+TNBC,two_arm_did,did_table,141553,12,19,1,4.561334667727351,6762.799816131592
+TNBC,two_arm_did,did_table,141553,12,19,2,4.5590170081704855,6762.799070358276
+TNBC,two_arm_did,did_table,141553,12,19,3,4.553606067784131,6762.799996376038
+TNBC,two_arm_did,did_table,141553,12,19,4,4.550524701364338,6762.799103736877
+Vaccine,paired,within_arm_comparison,78456,6,19,0,5.857656771317124,8089.514492988586
+Vaccine,paired,within_arm_comparison,78456,6,19,1,5.844396688975394,8089.431377410889
+Vaccine,paired,within_arm_comparison,78456,6,19,2,5.8495318135246634,8089.430585861206
+Vaccine,paired,within_arm_comparison,78456,6,19,3,5.846652010455728,8089.431287765503
+Vaccine,paired,within_arm_comparison,78456,6,19,4,5.847665140405297,8089.430443763733
+AML,paired,within_arm_comparison,38407,21,19,0,1.7219210416078568,2169.2767782211304
+AML,paired,within_arm_comparison,38407,21,19,1,1.7234050258994102,2169.1304836273193
+AML,paired,within_arm_comparison,38407,21,19,2,1.7218510312959552,2169.1309099197388
+AML,paired,within_arm_comparison,38407,21,19,3,1.7220769030973315,2169.1306009292603
+AML,paired,within_arm_comparison,38407,21,19,4,1.7296107290312648,2169.130145072937
+CAR-T,paired,within_arm_comparison,394786,31,19,0,24.844086210243404,38983.26338386536
+CAR-T,paired,within_arm_comparison,394786,31,19,1,24.78935314435512,38983.15531826019
+CAR-T,paired,within_arm_comparison,394786,31,19,2,24.808211885392666,38983.155391693115
+CAR-T,paired,within_arm_comparison,394786,31,19,3,24.790105468593538,38983.15488052368
+CAR-T,paired,within_arm_comparison,394786,31,19,4,24.805682896636426,38983.15524673462
+COVID-19,cross_sectional,between_arm_comparison,205202,34,19,0,4.248665051534772,7395.663479804993
+COVID-19,cross_sectional,between_arm_comparison,205202,34,19,1,4.1849540853872895,7395.561113357544
+COVID-19,cross_sectional,between_arm_comparison,205202,34,19,2,4.176331055350602,7395.559916496277
+COVID-19,cross_sectional,between_arm_comparison,205202,34,19,3,4.175860855728388,7395.56069278717
+COVID-19,cross_sectional,between_arm_comparison,205202,34,19,4,4.204802418127656,7395.55993938446
