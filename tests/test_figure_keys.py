@@ -548,43 +548,46 @@ def _crowded_scatter(figsize=(3.1, 1.1), n=19, seed=3):
     return fig, ax, x, y, names, lines
 
 
-def test_place_point_labels_keeps_labels_off_markers_labels_and_lines(shared):
+@pytest.fixture(scope="module")
+def crowded(shared):
+    """One placement of the crowded scatter, shared by the tests that only inspect it."""
     fig, ax, x, y, names, lines = _crowded_scatter()
     labels, allowances = shared.place_point_labels(
-        ax, x, y, names, fontsize=4.0, marker_area=15, lines=lines
+        ax, x, y, names, fontsize=4.0, marker_area=15, lines=lines, extra_orders=2
     )
     fig.canvas.draw()
-    r = fig.canvas.get_renderer()
-    boxes = _label_boxes(labels, r)
+    yield SimpleNamespace(fig=fig, ax=ax, x=x, y=y, names=names, lines=lines, labels=labels,
+                          allowances=allowances, renderer=fig.canvas.get_renderer())
+    plt.close(fig)
+
+
+def test_place_point_labels_keeps_labels_off_markers_labels_and_lines(crowded):
+    fig, ax, r = crowded.fig, crowded.ax, crowded.renderer
+    boxes = _label_boxes(crowded.labels, r)
     frame = ax.get_window_extent(r)
-    markers = ax.transData.transform(np.column_stack([x, y]))
+    markers = ax.transData.transform(np.column_stack([crowded.x, crowded.y]))
     radius = np.sqrt(15) / 2 * fig.dpi / 72
 
-    assert [t.get_text() for t in labels] == names
+    assert [t.get_text() for t in crowded.labels] == crowded.names
     for i, a in enumerate(boxes):
         assert frame.x0 <= a.x0 and a.x1 <= frame.x1 and frame.y0 <= a.y0 and a.y1 <= frame.y1
         for b in boxes[i + 1:]:
             assert not (a.x0 < b.x1 and b.x0 < a.x1 and a.y0 < b.y1 and b.y0 < a.y1)
         for mx, my in markers:
             assert not (a.x0 - radius < mx < a.x1 + radius and a.y0 - radius < my < a.y1 + radius)
-    for start, end in lines:
-        p, q = ax.transData.transform([start, end])
+    for start, end in crowded.lines:
+        pts = np.linspace(*ax.transData.transform([start, end]), 4000)
         for box in boxes:
-            pts = np.linspace(p, q, 4000)
             inside = ((pts[:, 0] > box.x0) & (pts[:, 0] < box.x1)
                       & (pts[:, 1] > box.y0) & (pts[:, 1] < box.y1))
             assert not inside.any()
-    assert allowances <= len(names)
-    plt.close(fig)
+    assert crowded.allowances <= len(crowded.names)
 
 
-def test_place_point_labels_leaders_end_on_their_label(shared):
-    fig, ax, x, y, names, lines = _crowded_scatter()
-    labels, _ = shared.place_point_labels(ax, x, y, names, fontsize=4.0, marker_area=15, lines=lines)
-    fig.canvas.draw()
-    r = fig.canvas.get_renderer()
-    boxes = {t.get_text(): t.get_window_extent(r) for t in labels}
-    leaders = [t for t in ax.texts if not t.get_text()]
+def test_place_point_labels_leaders_end_on_their_label(crowded):
+    r = crowded.renderer
+    boxes = {t.get_text(): t.get_window_extent(r) for t in crowded.labels}
+    leaders = [t for t in crowded.ax.texts if not t.get_text()]
     assert leaders
     for leader in leaders:
         box = boxes[leader.anncoords.get_text()]
@@ -596,23 +599,22 @@ def test_place_point_labels_leaders_end_on_their_label(shared):
             for ex, ey in ends
         ]
         assert any(on_edge)
+
+
+def test_place_point_labels_is_reproducible(shared, crowded):
+    fig, ax, x, y, names, lines = _crowded_scatter()
+    labels, _ = shared.place_point_labels(
+        ax, x, y, names, fontsize=4.0, marker_area=15, lines=lines, extra_orders=2
+    )
+    assert [t.get_position() for t in labels] == [t.get_position() for t in crowded.labels]
     plt.close(fig)
-
-
-def test_place_point_labels_is_reproducible(shared):
-    positions = []
-    for _ in range(2):
-        fig, ax, x, y, names, lines = _crowded_scatter()
-        labels, _ = shared.place_point_labels(ax, x, y, names, fontsize=4.0, marker_area=15, lines=lines)
-        positions.append([t.get_position() for t in labels])
-        plt.close(fig)
-    assert positions[0] == positions[1]
 
 
 def test_place_point_labels_raises_when_the_axes_cannot_hold_the_labels(shared):
     fig, ax, x, y, names, lines = _crowded_scatter(figsize=(0.9, 0.5))
     with pytest.raises(RuntimeError, match="cannot all be placed"):
-        shared.place_point_labels(ax, x, y, names, fontsize=6.0, marker_area=15, lines=lines)
+        shared.place_point_labels(ax, x, y, names, fontsize=6.0, marker_area=15, lines=lines,
+                                  extra_orders=0)
     plt.close(fig)
 
 
@@ -632,23 +634,20 @@ def test_place_point_labels_uses_a_line_only_when_no_layout_clears_it(shared):
     ax.set_xlim(-1, 1)
     ax.set_ylim(-1, 1)
     names = [f"Signature {i}" for i in range(5)]
-    levels = np.linspace(-0.95, 0.95, 9)
-    lines = [((-1.0, level), (1.0, level)) for level in levels]
+    lines = [((-1.0, level), (1.0, level)) for level in np.linspace(-0.95, 0.95, 9)]
     labels, allowances = shared.place_point_labels(
-        ax, x, y, names, fontsize=5.0, marker_area=15, lines=lines
+        ax, x, y, names, fontsize=5.0, marker_area=15, lines=lines, extra_orders=0
     )
-    assert len(labels) == 5
-    plt.close(fig)
-
-    fig, ax, x, y, names, lines = _crowded_scatter()
-    labels, _ = shared.place_point_labels(ax, x, y, names, fontsize=4.0, marker_area=15, lines=lines)
     fig.canvas.draw()
     r = fig.canvas.get_renderer()
-    p, q = ax.transData.transform(lines[0])
-    pts = np.linspace(p, q, 4000)
+    on_a_line = 0
     for box in _label_boxes(labels, r):
-        assert not ((pts[:, 0] > box.x0) & (pts[:, 0] < box.x1)
-                    & (pts[:, 1] > box.y0) & (pts[:, 1] < box.y1)).any()
+        for start, end in lines:
+            pts = np.linspace(*ax.transData.transform([start, end]), 2000)
+            on_a_line += bool(((pts[:, 0] > box.x0) & (pts[:, 0] < box.x1)
+                               & (pts[:, 1] > box.y0) & (pts[:, 1] < box.y1)).any())
+    assert len(labels) == 5
+    assert on_a_line > 0 and allowances > 0
     plt.close(fig)
 
 
