@@ -68,57 +68,95 @@ def test_supp_table2_corrects_immune_and_clinical_signatures_separately(
     assert (out["n_focal"] == 4).all() and (out["n_reference"] == 5).all()
     assert (out["n_units"] == 9).all()
     assert (out["cov_type_used"] == "cluster").all()
+    # the residual SD goes to the power table, not into the Table 2 file
+    assert "resid_sd" not in out.columns
+    assert "resid_sd" not in pd.read_csv(tmp_path / "Supp_Table2_all_results.csv").columns
 
 
-def test_supp_table5_uses_the_group_sizes_of_each_cohort(load_figure_module, monkeypatch, tmp_path):
+def _table2_rows():
+    return pd.DataFrame([
+        {"dataset": "Melanoma", "estimand": "DiD", "label": "A", "feature": "sig_a",
+         "effect": 1.2, "se": 0.9, "n_units": 11, "n_focal": 3, "n_reference": 8, "resid_sd": 0.7},
+        {"dataset": "COVID-19", "estimand": "Hedges' g (DFO_8-14)", "label": "A", "feature": "sig_a",
+         "effect": -0.5, "se": 0.55, "n_units": 16, "n_focal": 5, "n_reference": 11, "resid_sd": np.nan},
+        {"dataset": "AML", "estimand": "within-arm Δ", "label": "A", "feature": "sig_a",
+         "effect": 1.0, "se": 0.4, "n_units": 11, "n_focal": np.nan, "n_reference": np.nan, "resid_sd": 0.6},
+    ])
+
+
+def test_supp_table5_uses_the_sd_of_the_changes_and_the_t_distribution(load_figure_module):
+    from scipy import stats
+
     from sctrial.stats.power import (
         power_paired,
         power_two_group,
         sample_size_paired,
         sample_size_two_group,
+        sensitivity_paired,
         sensitivity_two_group,
     )
 
     tables = load_figure_module("supp/supp_tables")
-    monkeypatch.setattr(tables, "SUPP_OUTPUT", tmp_path)
-    pd.DataFrame([
-        {"dataset": "Melanoma", "estimand": "DiD", "label": "A", "feature": "sig_a",
-         "effect": 1.2, "se": 0.9, "n_units": 11, "n_focal": 3, "n_reference": 8},
-        {"dataset": "COVID-19", "estimand": "Hedges' g (DFO_8-14)", "label": "A", "feature": "sig_a",
-         "effect": -0.5, "se": 0.55, "n_units": 16, "n_focal": 5, "n_reference": 11},
-        {"dataset": "AML", "estimand": "within-arm Δ", "label": "A", "feature": "sig_a",
-         "effect": 1.0, "se": 0.4, "n_units": 11, "n_focal": np.nan, "n_reference": np.nan},
-    ]).to_csv(tmp_path / "Supp_Table2_all_results.csv", index=False)
-    tables._table2_fingerprint_path().write_text(tables.STATS_FINGERPRINT)
+    out = tables._power_table(_table2_rows()).set_index("dataset")
 
-    out = tables.table5_power_analysis().set_index("dataset")
+    # two-group longitudinal: pooled SD of the participant changes, not a value derived from the SE
+    row, sigma = out.loc["Melanoma"], np.sqrt(2) * 0.7
+    assert row["sigma_estimated"] == pytest.approx(sigma)
+    assert row["sigma_estimated"] != pytest.approx(0.9 / np.sqrt(1 / 3 + 1 / 8))
+    ncp, crit = 1.2 / (sigma * np.sqrt(1 / 3 + 1 / 8)), stats.t.ppf(0.975, 9)
+    assert row["power_at_observed_N"] == pytest.approx(
+        stats.nct.sf(crit, 9, ncp) + stats.nct.cdf(-crit, 9, ncp))
+    assert row["power_at_observed_N"] == pytest.approx(power_two_group(3, 8, 1.2, sigma=sigma, reference="t"))
+    assert row["min_N_for_80pct_power"] == sum(
+        sample_size_two_group(1.2, sigma=sigma, allocation_ratio=3 / 8, reference="t"))
+    assert row["min_detectable_effect_80pct"] == pytest.approx(
+        sensitivity_two_group(3, 8, sigma=sigma, reference="t"))
+    assert (row["n_focal"], row["n_reference"]) == (3, 8)
 
-    for name, n1, n2, effect, se in (("Melanoma", 3, 8, 1.2, 0.9), ("COVID-19", 5, 11, 0.5, 0.55)):
-        sigma = se / np.sqrt(1 / n1 + 1 / n2)
-        row = out.loc[name]
-        assert row["sigma_estimated"] == pytest.approx(sigma)
-        assert row["power_at_observed_N"] == pytest.approx(power_two_group(n1, n2, effect, sigma=sigma))
-        # at the observed sizes the standard error is the observed one
-        z = effect / se
-        from scipy.stats import norm
-        assert row["power_at_observed_N"] == pytest.approx(norm.sf(1.959964 - z) + norm.cdf(-1.959964 - z), abs=1e-6)
-        assert row["min_N_for_80pct_power"] == sum(
-            sample_size_two_group(effect, sigma=sigma, allocation_ratio=n1 / n2))
-        assert row["min_detectable_effect_80pct"] == pytest.approx(sensitivity_two_group(n1, n2, sigma=sigma))
-        assert (row["n_focal"], row["n_reference"]) == (n1, n2)
+    # cross-sectional Hedges' g: the SD that reproduces its standard error
+    row, sigma = out.loc["COVID-19"], 0.55 / np.sqrt(1 / 5 + 1 / 11)
+    assert row["sigma_estimated"] == pytest.approx(sigma)
+    assert row["power_at_observed_N"] == pytest.approx(power_two_group(5, 11, 0.5, sigma=sigma, reference="t"))
 
+    # single arm: the paired formula takes the SD of one visit
     row = out.loc["AML"]
-    sigma = 0.4 * np.sqrt(11 / 2)
-    assert row["power_at_observed_N"] == pytest.approx(power_paired(11, 1.0, sigma=sigma))
-    assert row["min_N_for_80pct_power"] == sample_size_paired(1.0, sigma=sigma)
+    assert row["sigma_estimated"] == pytest.approx(0.6)
+    crit = stats.t.ppf(0.975, 10)
+    ncp = 1.0 / (np.sqrt(2) * 0.6 / np.sqrt(11))
+    assert row["power_at_observed_N"] == pytest.approx(
+        stats.nct.sf(crit, 10, ncp) + stats.nct.cdf(-crit, 10, ncp))
+    assert row["power_at_observed_N"] == pytest.approx(power_paired(11, 1.0, sigma=0.6, reference="t"))
+    assert row["min_N_for_80pct_power"] == sample_size_paired(1.0, sigma=0.6, reference="t")
+    assert row["min_detectable_effect_80pct"] == pytest.approx(sensitivity_paired(11, sigma=0.6, reference="t"))
     assert pd.isna(row["n_focal"])
 
+
+def test_supp_table5_refuses_inconsistent_rows(load_figure_module):
+    tables = load_figure_module("supp/supp_tables")
+
     # group sizes that do not add up to the analyzed participants are an error, not a guess
-    bad = pd.read_csv(tmp_path / "Supp_Table2_all_results.csv")
+    bad = _table2_rows()
     bad.loc[0, "n_focal"] = 4
-    bad.to_csv(tmp_path / "Supp_Table2_all_results.csv", index=False)
     with pytest.raises(ValueError, match="group sizes"):
-        tables.table5_power_analysis()
+        tables._power_table(bad)
+
+    # a fitted row without its residual SD is an error, not a fall back to the standard error
+    for i in (0, 2):
+        bad = _table2_rows()
+        bad.loc[i, "resid_sd"] = np.nan
+        with pytest.raises(ValueError, match="residual standard deviation"):
+            tables._power_table(bad)
+
+
+def test_supp_table5_takes_the_fits_of_table2(load_figure_module, monkeypatch, tmp_path):
+    tables = load_figure_module("supp/supp_tables")
+    monkeypatch.setattr(tables, "SUPP_OUTPUT", tmp_path)
+    monkeypatch.setattr(tables, "_TABLE2_MODEL_FRAME", _table2_rows())
+
+    out = tables.table5_power_analysis()
+    saved = pd.read_csv(tmp_path / "Supp_Table5_power_analysis.csv")
+    assert list(saved["dataset"]) == ["Melanoma", "COVID-19", "AML"]
+    np.testing.assert_allclose(saved["power_at_observed_N"], out["power_at_observed_N"])
 
 
 def test_group_sizes_refuse_a_paired_participant_outside_both_groups(load_figure_module):

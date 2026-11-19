@@ -31,6 +31,12 @@ arms differ in size):
 where r = n₁/n₂ is the allocation ratio. With n₁ = n₂ this is the two-arm
 DiD formula.
 
+These formulas use the normal distribution. The two-group and paired functions
+also take ``reference="t"``, which gives the exact power of the two-sample or
+paired t-test from the noncentral t distribution (n₁ + n₂ - 2 or n - 1 degrees of
+freedom). The normal approximation overstates power in small samples, so
+``reference="t"`` is the one to use for a handful of participants.
+
 For cluster-robust inference with ICC (intraclass correlation):
 
     Design effect = 1 + (m-1)×ICC
@@ -57,8 +63,10 @@ Key Considerations for Single-Cell Studies
 
 from __future__ import annotations
 
+from typing import Literal
+
 import numpy as np
-from scipy import stats
+from scipy import optimize, stats
 
 __all__ = [
     "power_did",
@@ -460,6 +468,53 @@ def sensitivity_analysis(
 
 
 # ======================================================================
+# Reference distribution shared by the paired and two-group functions
+# ======================================================================
+
+Reference = Literal["normal", "t"]
+
+
+def _check_reference(reference: str) -> None:
+    if reference not in ("normal", "t"):
+        raise ValueError("reference must be 'normal' or 't'.")
+
+
+def _power_at_ncp(ncp: float, alpha: float, two_sided: bool, df: float | None) -> float:
+    """Power of a test whose statistic has noncentrality ``ncp``.
+
+    ``df=None`` is the normal approximation; otherwise the statistic follows a
+    noncentral t distribution with ``df`` degrees of freedom.
+    """
+    tail = alpha / 2 if two_sided else alpha
+    if df is None:
+        crit = stats.norm.ppf(1 - tail)
+        power = stats.norm.sf(crit - ncp)
+        if two_sided:
+            power += stats.norm.cdf(-crit - ncp)
+        return float(power)
+    crit = stats.t.ppf(1 - tail, df)
+    power = stats.nct.sf(crit, df, ncp)
+    if two_sided:
+        power += stats.nct.cdf(-crit, df, ncp)
+    return float(power)
+
+
+def _ncp_at_power(power: float, alpha: float, two_sided: bool, df: float | None) -> float:
+    """Noncentrality at which the test reaches ``power``."""
+    if df is None:
+        tail = alpha / 2 if two_sided else alpha
+        return float(stats.norm.ppf(1 - tail) + stats.norm.ppf(power))
+    if _power_at_ncp(0.0, alpha, two_sided, df) >= power:
+        return 0.0
+    upper = 1.0
+    while _power_at_ncp(upper, alpha, two_sided, df) < power:
+        upper *= 2.0
+    return float(
+        optimize.brentq(lambda ncp: _power_at_ncp(ncp, alpha, two_sided, df) - power, 0.0, upper)
+    )
+
+
+# ======================================================================
 # Paired (single-arm pre/post) power functions
 # ======================================================================
 
@@ -470,6 +525,7 @@ def power_paired(
     sigma: float = 1.0,
     alpha: float = 0.05,
     two_sided: bool = True,
+    reference: Reference = "normal",
 ) -> float:
     """Calculate statistical power for a paired pre/post comparison.
 
@@ -496,6 +552,10 @@ def power_paired(
         Significance level (default 0.05).
     two_sided
         If True (default), use two-sided test.
+    reference
+        ``"normal"`` (default) for the normal approximation, ``"t"`` for the exact
+        power of the paired t-test (noncentral t, ``n_participants - 1`` degrees of
+        freedom). Use ``"t"`` for small samples.
 
     Returns
     -------
@@ -507,6 +567,7 @@ def power_paired(
     >>> # 6 participants, effect = 0.8 SD
     >>> pwr = power_paired(n_participants=6, effect_size=0.8, sigma=1.0)
     >>> print(f"Power: {pwr:.1%}")
+    >>> pwr_t = power_paired(n_participants=6, effect_size=0.8, sigma=1.0, reference="t")
 
     Notes
     -----
@@ -528,28 +589,15 @@ def power_paired(
         raise ValueError("sigma must be a finite value > 0.")
     if not (0 < alpha < 1):
         raise ValueError("alpha must be between 0 and 1.")
+    _check_reference(reference)
     if n_participants < 2:
         return 0.0
 
     # Standard error for paired comparison: SE = σ × √(2/n)
     se = sigma * np.sqrt(2.0 / n_participants)
-
-    # Noncentrality parameter
     ncp = abs(effect_size) / se
-
-    # Critical value
-    if two_sided:
-        z_crit = stats.norm.ppf(1 - alpha / 2)
-    else:
-        z_crit = stats.norm.ppf(1 - alpha)
-
-    # Power
-    if two_sided:
-        power = stats.norm.sf(z_crit - ncp) + stats.norm.cdf(-z_crit - ncp)
-    else:
-        power = stats.norm.sf(z_crit - ncp)
-
-    return float(power)
+    df = n_participants - 1 if reference == "t" else None
+    return _power_at_ncp(ncp, alpha, two_sided, df)
 
 
 def sample_size_paired(
@@ -558,6 +606,7 @@ def sample_size_paired(
     power: float = 0.80,
     alpha: float = 0.05,
     two_sided: bool = True,
+    reference: Reference = "normal",
 ) -> int:
     """Calculate required sample size for a paired pre/post comparison.
 
@@ -576,6 +625,9 @@ def sample_size_paired(
         Significance level (default 0.05).
     two_sided
         If True (default), use two-sided test.
+    reference
+        ``"normal"`` (default) or ``"t"``. With ``"t"`` the result is the smallest
+        number of participants at which the paired t-test reaches the power.
 
     Returns
     -------
@@ -595,6 +647,7 @@ def sample_size_paired(
         raise ValueError("power must be between 0 and 1.")
     if not (0 < alpha < 1):
         raise ValueError("alpha must be between 0 and 1.")
+    _check_reference(reference)
 
     if two_sided:
         z_alpha = stats.norm.ppf(1 - alpha / 2)
@@ -604,8 +657,12 @@ def sample_size_paired(
 
     # n = 2σ²(z_α + z_β)² / δ²
     n = 2.0 * sigma**2 * (z_alpha + z_beta) ** 2 / effect_size**2
-
-    return max(int(np.ceil(n)), 2)
+    n_required = max(int(np.ceil(n)), 2)
+    if reference == "t":
+        # The t-test needs at least as many participants as the normal formula.
+        while power_paired(n_required, effect_size, sigma, alpha, two_sided, "t") < power:
+            n_required += 1
+    return n_required
 
 
 def sensitivity_paired(
@@ -614,6 +671,7 @@ def sensitivity_paired(
     power: float = 0.80,
     alpha: float = 0.05,
     two_sided: bool = True,
+    reference: Reference = "normal",
 ) -> float:
     """Calculate the minimum detectable effect for a paired comparison.
 
@@ -632,6 +690,8 @@ def sensitivity_paired(
         Significance level.
     two_sided
         Use two-sided test.
+    reference
+        ``"normal"`` (default) or ``"t"`` (paired t-test, noncentral t).
 
     Returns
     -------
@@ -643,18 +703,14 @@ def sensitivity_paired(
     >>> mde = sensitivity_paired(n_participants=6, power=0.80)
     >>> print(f"Minimum detectable effect: {mde:.2f} SD")
     """
+    _check_reference(reference)
     if n_participants < 2:
         return np.inf
 
-    if two_sided:
-        z_alpha = stats.norm.ppf(1 - alpha / 2)
-    else:
-        z_alpha = stats.norm.ppf(1 - alpha)
-    z_beta = stats.norm.ppf(power)
-
-    # δ = σ × √(2/n) × (z_α + z_β)
+    # δ = σ × √(2/n) × ncp, with ncp = z_α + z_β under the normal approximation
     se_unit = sigma * np.sqrt(2.0 / n_participants)
-    return float(se_unit * (z_alpha + z_beta))
+    df = n_participants - 1 if reference == "t" else None
+    return float(se_unit * _ncp_at_power(power, alpha, two_sided, df))
 
 
 # ======================================================================
@@ -683,6 +739,7 @@ def power_two_group(
     sigma: float = 1.0,
     alpha: float = 0.05,
     two_sided: bool = True,
+    reference: Reference = "normal",
 ) -> float:
     """Calculate statistical power for a difference between two groups of any size.
 
@@ -706,12 +763,16 @@ def power_two_group(
         Significance level (default 0.05).
     two_sided
         If True (default), use a two-sided test.
+    reference
+        ``"normal"`` (default) for the normal approximation, ``"t"`` for the exact
+        power of the two-sample t-test with pooled variance (noncentral t,
+        ``n_treated + n_control - 2`` degrees of freedom). Use ``"t"`` for small
+        samples.
 
     Returns
     -------
     float
-        Statistical power under the normal approximation used throughout this
-        module. A group with fewer than two participants gives 0.0.
+        Statistical power. A group with fewer than two participants gives 0.0.
 
     Examples
     --------
@@ -723,15 +784,14 @@ def power_two_group(
     _check_two_group_inputs(n_treated, n_control, sigma, alpha)
     if not np.isfinite(effect_size):
         raise ValueError("effect_size must be finite.")
+    _check_reference(reference)
     if min(n_treated, n_control) < 2:
         return 0.0
 
     se = sigma * np.sqrt(1.0 / n_treated + 1.0 / n_control)
     ncp = abs(effect_size) / se
-    if two_sided:
-        z_crit = stats.norm.ppf(1 - alpha / 2)
-        return float(stats.norm.sf(z_crit - ncp) + stats.norm.cdf(-z_crit - ncp))
-    return float(stats.norm.sf(stats.norm.ppf(1 - alpha) - ncp))
+    df = n_treated + n_control - 2 if reference == "t" else None
+    return _power_at_ncp(ncp, alpha, two_sided, df)
 
 
 def sample_size_two_group(
@@ -741,6 +801,7 @@ def sample_size_two_group(
     alpha: float = 0.05,
     two_sided: bool = True,
     allocation_ratio: float = 1.0,
+    reference: Reference = "normal",
 ) -> tuple[int, int]:
     """Calculate the group sizes required for a two-group comparison.
 
@@ -760,12 +821,14 @@ def sample_size_two_group(
         Size of the first group relative to the second, ``n_treated / n_control``.
         Use the ratio expected in the planned study, for example 3/8 when three
         responders are expected for every eight non-responders.
+    reference
+        ``"normal"`` (default) or ``"t"`` (two-sample t-test, noncentral t).
 
     Returns
     -------
     tuple[int, int]
         ``(n_treated, n_control)``, the smallest sizes at this allocation that
-        reach the desired power under the normal approximation. Each is at least 2.
+        reach the desired power. Each is at least 2.
 
     Examples
     --------
@@ -782,6 +845,7 @@ def sample_size_two_group(
         raise ValueError("alpha must be between 0 and 1.")
     if not np.isfinite(allocation_ratio) or allocation_ratio <= 0:
         raise ValueError("allocation_ratio must be a finite value > 0.")
+    _check_reference(reference)
 
     z_alpha = stats.norm.ppf(1 - alpha / 2) if two_sided else stats.norm.ppf(1 - alpha)
     z_beta = stats.norm.ppf(power)
@@ -791,6 +855,11 @@ def sample_size_two_group(
     ) / effect_size**2
     n_c = max(int(np.ceil(n_control)), 2)
     n_t = max(int(np.ceil(allocation_ratio * n_control)), 2)
+    if reference == "t":
+        # The t-test needs at least as many participants as the normal formula.
+        while power_two_group(n_t, n_c, effect_size, sigma, alpha, two_sided, "t") < power:
+            n_c += 1
+            n_t = max(int(np.ceil(allocation_ratio * n_c - 1e-9)), 2)
     return n_t, n_c
 
 
@@ -801,6 +870,7 @@ def sensitivity_two_group(
     power: float = 0.80,
     alpha: float = 0.05,
     two_sided: bool = True,
+    reference: Reference = "normal",
 ) -> float:
     """Calculate the minimum detectable difference between two groups of any size.
 
@@ -818,6 +888,8 @@ def sensitivity_two_group(
         Significance level.
     two_sided
         Use a two-sided test.
+    reference
+        ``"normal"`` (default) or ``"t"`` (two-sample t-test, noncentral t).
 
     Returns
     -------
@@ -834,10 +906,10 @@ def sensitivity_two_group(
     _check_two_group_inputs(n_treated, n_control, sigma, alpha)
     if not (0 < power < 1):
         raise ValueError("power must be between 0 and 1.")
+    _check_reference(reference)
     if min(n_treated, n_control) < 2:
         return np.inf
 
-    z_alpha = stats.norm.ppf(1 - alpha / 2) if two_sided else stats.norm.ppf(1 - alpha)
-    z_beta = stats.norm.ppf(power)
     se_unit = sigma * np.sqrt(1.0 / n_treated + 1.0 / n_control)
-    return float(se_unit * (z_alpha + z_beta))
+    df = n_treated + n_control - 2 if reference == "t" else None
+    return float(se_unit * _ncp_at_power(power, alpha, two_sided, df))

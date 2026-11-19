@@ -463,6 +463,9 @@ def within_arm_comparison(
         - **p_time** : P-value for the time coefficient
           (cluster-robust Wald test; bootstrap if ``use_bootstrap=True``).
         - **n_units** : Number of unique participants.
+        - **resid_sd** : Residual standard deviation of the fitted model. With two
+          visits per participant, ``sqrt(2) * resid_sd`` is the standard deviation
+          of the participant changes.
         - **FDR_time** : Benjamini–Hochberg corrected p-value.
 
         When ``use_bootstrap=True``, additional columns are included:
@@ -542,6 +545,7 @@ def within_arm_comparison(
                         "ci_hi_time": np.nan,
                         "p_time": np.nan,
                         "n_units": int(df_feat[unit].nunique()),
+                        "resid_sd": np.nan,
                     }
                 )
                 continue
@@ -634,6 +638,7 @@ def within_arm_comparison(
             "ci_hi_time": ci_hi,
             "p_time": p_val,
             "n_units": n_units_feat,  # post-row-drop cluster count
+            "resid_sd": float(np.sqrt(fit.scale)),
             "cov_type_used": effective_cov_type,
         }
 

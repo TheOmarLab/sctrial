@@ -36,7 +36,6 @@ from .._shared import (
     MELANOMA_GENE_LEVEL_COV_TYPE,
     SCTRIAL_AVAILABLE,
     SIGNATURE_DISPLAY_NAMES,
-    STATS_FINGERPRINT,
     SUPP_OUTPUT,
     TrialDesign,
     add_log1p_cpm_layer,
@@ -128,6 +127,10 @@ _KEEP_COLS = [
     "n_units", "n_focal", "n_reference", "cov_type_used",
 ]
 
+# Carried from the model fits to Supplementary Table 5 and not written to Supplementary Table 2.
+_MODEL_ONLY_COLS = ["resid_sd"]
+_TABLE2_MODEL_FRAME: pd.DataFrame | None = None
+
 _SET_IMMUNE = "immune"
 _SET_CLINICAL = "clinical"
 
@@ -217,7 +220,7 @@ def _harmonise(df: pd.DataFrame, dataset: str, estimand: str) -> pd.DataFrame:
         out.loc[boot, "ci_upper"] = out["ci_hi_boot"]
         out.loc[boot, "inference"] = _INFERENCE_BOOTSTRAP
 
-    avail = [c for c in _KEEP_COLS if c in out.columns]
+    avail = [c for c in _KEEP_COLS + _MODEL_ONLY_COLS if c in out.columns]
     return out[avail].reset_index(drop=True)
 
 
@@ -423,17 +426,15 @@ def table2_all_results(datasets: Collection[str] | None = None) -> pd.DataFrame:
         print("    No results generated")
         return pd.DataFrame()
 
-    df = pd.concat(all_results, ignore_index=True)
+    model_frame = pd.concat(all_results, ignore_index=True)
+    if datasets is None:
+        global _TABLE2_MODEL_FRAME
+        _TABLE2_MODEL_FRAME = model_frame.copy()
+    df = model_frame.drop(columns=[c for c in _MODEL_ONLY_COLS if c in model_frame.columns])
     path = SUPP_OUTPUT / "Supp_Table2_all_results.csv"
     df.to_csv(path, index=False)
-    _table2_fingerprint_path().write_text(STATS_FINGERPRINT)
     print(f"    Saved {path.name} ({len(df)} rows)")
     return df
-
-
-def _table2_fingerprint_path():
-    """Sidecar recording the estimator code that produced Supp Table 2."""
-    return SUPP_OUTPUT / "Supp_Table2_all_results.stats_fingerprint"
 
 
 # ======================================================================
@@ -817,22 +818,21 @@ def table4_permutation_results(datasets: Collection[str] | None = None) -> pd.Da
 # ======================================================================
 
 
-def table5_power_analysis() -> pd.DataFrame:
-    """Power analysis for each dataset and signature, from the estimates of Table 2.
+def _power_table(table2: pd.DataFrame) -> pd.DataFrame:
+    """Power, required sample size and minimum detectable effect for each row of Table 2.
 
-    Each row uses the formula of its design. Two-group rows (the DiD cohorts and the
-    cross-sectional COVID-19 comparison) use the group sizes of the cohort, so an
-    unequal allocation is not treated as balanced; single-arm rows use the paired
-    formula. The standard deviation is the one that reproduces the observed standard
-    error at the observed sizes. The minimum N is the total number of participants
-    at the observed allocation.
+    ``table2`` holds the Table 2 rows with the residual standard deviation of each
+    participant-level fit (``resid_sd``). All quantities come from the noncentral t
+    distribution of the two-sample or paired t-test.
+
+    The standard deviation is that of the analyzed quantity. In the two-group
+    longitudinal cohorts it is the pooled standard deviation of the participant
+    changes, ``sqrt(2) * resid_sd``. In the single-arm cohorts the paired formula takes
+    the standard deviation of one visit, ``resid_sd``, so that the standard deviation
+    of a change is ``sqrt(2)`` times it. The cross-sectional comparison has no fitted
+    model: its effect is Hedges' g, and the standard deviation is the one that
+    reproduces the standard error of g at the observed group sizes.
     """
-    print("  Table 5: Power analysis results")
-
-    if not SCTRIAL_AVAILABLE:
-        print("    Skipped: sctrial not available")
-        return pd.DataFrame()
-
     from sctrial.stats.power import (
         power_paired,
         power_two_group,
@@ -842,21 +842,8 @@ def table5_power_analysis() -> pd.DataFrame:
         sensitivity_two_group,
     )
 
-    # Read observed results from Table 2, regenerating it unless it was written by
-    # the current estimator code (a WLS-era Table 2 would give stale DiD power rows).
-    table2_path = SUPP_OUTPUT / "Supp_Table2_all_results.csv"
-    stamp = _table2_fingerprint_path()
-    fresh = (table2_path.exists() and stamp.exists()
-             and stamp.read_text().strip() == STATS_FINGERPRINT)
-    if fresh and not {"n_focal", "n_reference"} <= set(pd.read_csv(table2_path, nrows=0).columns):
-        fresh = False
-    if not fresh:
-        print("    Table 2 missing or from other estimator code, generating first...")
-        table2_all_results()
-    t2 = pd.read_csv(table2_path)
-
     rows: list[dict] = []
-    for _, row in t2.iterrows():
+    for _, row in table2.iterrows():
         effect = row.get("effect", np.nan)
         se = row.get("se", np.nan)
         n_units = row.get("n_units", np.nan)
@@ -864,29 +851,35 @@ def table5_power_analysis() -> pd.DataFrame:
             continue
 
         feature = row["feature"]
+        where = f"{row['dataset']} {feature}"
         n = int(n_units)
         n_focal, n_reference = row.get("n_focal", np.nan), row.get("n_reference", np.nan)
         two_group = bool(np.isfinite(n_focal) and np.isfinite(n_reference))
+        resid_sd = row.get("resid_sd", np.nan)
+        fitted = str(row.get("estimand", "")) in ("DiD", "within-arm Δ")
+        if fitted and not (np.isfinite(resid_sd) and resid_sd > 0):
+            raise ValueError(f"{where}: no residual standard deviation for the power calculation")
         abs_effect = abs(effect)
 
         if two_group:
             n1, n2 = int(n_focal), int(n_reference)
             if n1 + n2 != n:
-                raise ValueError(f"{row['dataset']} {feature}: group sizes {n1} + {n2} != n_units {n}")
-            # SE = sigma * sqrt(1/n1 + 1/n2)
-            sigma_est = max(se / np.sqrt(1.0 / n1 + 1.0 / n2), 0.01)
-            pwr = power_two_group(n1, n2, abs_effect, sigma=sigma_est)
-            mde = sensitivity_two_group(n1, n2, sigma=sigma_est, power=0.80)
+                raise ValueError(f"{where}: group sizes {n1} + {n2} != n_units {n}")
+            sigma_est = np.sqrt(2.0) * resid_sd if fitted else se / np.sqrt(1.0 / n1 + 1.0 / n2)
+            pwr = power_two_group(n1, n2, abs_effect, sigma=sigma_est, reference="t")
+            mde = sensitivity_two_group(n1, n2, sigma=sigma_est, power=0.80, reference="t")
             min_n = (sum(sample_size_two_group(abs_effect, sigma=sigma_est, power=0.80,
-                                               allocation_ratio=n1 / n2))
+                                               allocation_ratio=n1 / n2, reference="t"))
                      if abs_effect >= 1e-10 else None)
         else:
+            if not fitted:
+                raise ValueError(f"{where}: a row without group sizes must be a within-arm fit")
             n1 = n2 = None
-            # SE = sigma * sqrt(2/n)
-            sigma_est = max(se * np.sqrt(n / 2), 0.01)
-            pwr = power_paired(n_participants=max(n, 2), effect_size=abs_effect, sigma=sigma_est)
-            mde = sensitivity_paired(n_participants=max(n, 2), sigma=sigma_est, power=0.80)
-            min_n = (sample_size_paired(effect_size=abs_effect, sigma=sigma_est, power=0.80)
+            sigma_est = resid_sd
+            pwr = power_paired(n_participants=n, effect_size=abs_effect, sigma=sigma_est, reference="t")
+            mde = sensitivity_paired(n_participants=n, sigma=sigma_est, power=0.80, reference="t")
+            min_n = (sample_size_paired(effect_size=abs_effect, sigma=sigma_est, power=0.80,
+                                        reference="t")
                      if abs_effect >= 1e-10 else None)
 
         rows.append({
@@ -908,6 +901,30 @@ def table5_power_analysis() -> pd.DataFrame:
     df = pd.DataFrame(rows)
     for col in ("n_focal", "n_reference"):
         df[col] = df[col].astype("Int64")
+    return df
+
+
+def table5_power_analysis() -> pd.DataFrame:
+    """Power analysis for each dataset and signature, from the fits of Table 2.
+
+    Each row uses the formula of its design, see ``_power_table``. Two-group rows use
+    the group sizes of the cohort, so an unequal allocation is not treated as balanced;
+    single-arm rows use the paired formula. The minimum N is the total number of
+    participants at the observed allocation.
+    """
+    print("  Table 5: Power analysis results")
+
+    if not SCTRIAL_AVAILABLE:
+        print("    Skipped: sctrial not available")
+        return pd.DataFrame()
+
+    if _TABLE2_MODEL_FRAME is None:
+        print("    Table 2 fits not in memory, generating Table 2 first...")
+        table2_all_results()
+    if _TABLE2_MODEL_FRAME is None:
+        raise RuntimeError("Supplementary Table 5: Table 2 produced no results")
+
+    df = _power_table(_TABLE2_MODEL_FRAME)
     path = SUPP_OUTPUT / "Supp_Table5_power_analysis.csv"
     df.to_csv(path, index=False)
     print(f"    Saved {path.name} ({len(df)} rows)")
