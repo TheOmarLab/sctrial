@@ -118,9 +118,10 @@ def test_supp_table5_uses_the_sd_of_the_changes_and_the_t_distribution(load_figu
     assert row["sigma_estimated"] == pytest.approx(sigma)
     assert row["power_at_observed_N"] == pytest.approx(power_two_group(5, 11, 0.5, sigma=sigma, reference="t"))
 
-    # single arm: the paired formula takes the SD of one visit
+    # single arm: the table reports the SD of the participant changes; the paired
+    # formula is parameterized by the SD of one visit
     row = out.loc["AML"]
-    assert row["sigma_estimated"] == pytest.approx(0.6)
+    assert row["sigma_estimated"] == pytest.approx(np.sqrt(2) * 0.6)
     crit = stats.t.ppf(0.975, 10)
     ncp = 1.0 / (np.sqrt(2) * 0.6 / np.sqrt(11))
     assert row["power_at_observed_N"] == pytest.approx(

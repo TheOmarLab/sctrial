@@ -825,13 +825,13 @@ def _power_table(table2: pd.DataFrame) -> pd.DataFrame:
     participant-level fit (``resid_sd``). All quantities come from the noncentral t
     distribution of the two-sample or paired t-test.
 
-    The standard deviation is that of the analyzed quantity. In the two-group
-    longitudinal cohorts it is the pooled standard deviation of the participant
-    changes, ``sqrt(2) * resid_sd``. In the single-arm cohorts the paired formula takes
-    the standard deviation of one visit, ``resid_sd``, so that the standard deviation
-    of a change is ``sqrt(2)`` times it. The cross-sectional comparison has no fitted
-    model: its effect is Hedges' g, and the standard deviation is the one that
-    reproduces the standard error of g at the observed group sizes.
+    ``sigma_estimated`` is the standard deviation of the analyzed quantity. In the
+    longitudinal cohorts that quantity is the participant change, whose standard
+    deviation is ``sqrt(2) * resid_sd`` (pooled over the two groups in the two-group
+    cohorts). The paired functions are parameterized by the standard deviation of one
+    visit and receive ``resid_sd``. The cross-sectional comparison has no fitted model:
+    its effect is Hedges' g, and the standard deviation is the one that reproduces the
+    standard error of g at the observed group sizes.
     """
     from sctrial.stats.power import (
         power_paired,
@@ -875,10 +875,10 @@ def _power_table(table2: pd.DataFrame) -> pd.DataFrame:
             if not fitted:
                 raise ValueError(f"{where}: a row without group sizes must be a within-arm fit")
             n1 = n2 = None
-            sigma_est = resid_sd
-            pwr = power_paired(n_participants=n, effect_size=abs_effect, sigma=sigma_est, reference="t")
-            mde = sensitivity_paired(n_participants=n, sigma=sigma_est, power=0.80, reference="t")
-            min_n = (sample_size_paired(effect_size=abs_effect, sigma=sigma_est, power=0.80,
+            sigma_est = np.sqrt(2.0) * resid_sd
+            pwr = power_paired(n_participants=n, effect_size=abs_effect, sigma=resid_sd, reference="t")
+            mde = sensitivity_paired(n_participants=n, sigma=resid_sd, power=0.80, reference="t")
+            min_n = (sample_size_paired(effect_size=abs_effect, sigma=resid_sd, power=0.80,
                                         reference="t")
                      if abs_effect >= 1e-10 else None)
 
