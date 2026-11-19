@@ -36,6 +36,7 @@ exclude_patterns = []
 # -- HTML output ---------------------------------------------------------------
 
 html_theme = "pydata_sphinx_theme"
+html_baseurl = "https://www.omar-lab.com/sctrial/"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_favicon = "_static/logo_icon.svg"
