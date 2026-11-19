@@ -827,8 +827,9 @@ def sample_size_two_group(
     Returns
     -------
     tuple[int, int]
-        ``(n_treated, n_control)``, the smallest sizes at this allocation that
-        reach the desired power. Each is at least 2.
+        ``(n_treated, n_control)``: the smallest group sizes at this allocation that
+        reach the desired power, taken as real numbers and each rounded up. Each is
+        at least 2.
 
     Examples
     --------
@@ -853,13 +854,24 @@ def sample_size_two_group(
     n_control = (
         sigma**2 * (1.0 + allocation_ratio) / allocation_ratio * (z_alpha + z_beta) ** 2
     ) / effect_size**2
+    if reference == "t":
+        # The same continuous solution for the t-test, which needs at least as many
+        # participants as the normal formula, found along n_treated = ratio * n_control.
+        def shortfall(n: float) -> float:
+            n_treated = allocation_ratio * n
+            ncp = abs(effect_size) / (sigma * np.sqrt(1.0 / n_treated + 1.0 / n))
+            return _power_at_ncp(ncp, alpha, two_sided, n_treated + n - 2.0) - power
+
+        n_control = max(n_control, 2.0, 2.0 / allocation_ratio)
+        if shortfall(n_control) < 0:
+            upper = 2.0 * n_control
+            while shortfall(upper) < 0:
+                upper *= 2.0
+            n_control = float(optimize.brentq(shortfall, n_control, upper, xtol=1e-12, rtol=1e-14))
+            while shortfall(n_control) < 0:
+                n_control *= 1.0 + 1e-12
     n_c = max(int(np.ceil(n_control)), 2)
     n_t = max(int(np.ceil(allocation_ratio * n_control)), 2)
-    if reference == "t":
-        # The t-test needs at least as many participants as the normal formula.
-        while power_two_group(n_t, n_c, effect_size, sigma, alpha, two_sided, "t") < power:
-            n_c += 1
-            n_t = max(int(np.ceil(allocation_ratio * n_c - 1e-9)), 2)
     return n_t, n_c
 
 

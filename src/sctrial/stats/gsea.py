@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -59,6 +60,10 @@ def _finalize_ranking(valid: pd.DataFrame) -> pd.DataFrame:
     return out.sort_values("rank", ascending=False)
 
 
+class _NoRankableGenes(ValueError):
+    """No gene of a DiD table has enough participants to be ranked."""
+
+
 def _rank_did_results(
     res: pd.DataFrame,
     rank_by: str,
@@ -67,7 +72,7 @@ def _rank_did_results(
     """Rank the DiD results."""
     valid = res[res["n_units"] >= min_units].copy()
     if len(valid) == 0:
-        raise ValueError(
+        raise _NoRankableGenes(
             f"No genes have sufficient data (min_units={min_units}). "
             f"Try reducing min_units or checking your data."
         )
@@ -459,31 +464,59 @@ def run_gsea_did_by_celltype(
     visits
         Tuple of (baseline, followup) visit labels.
     celltypes
-        List of cell types to analyze. If None, uses all unique cell types in `design.celltype_col`.
+        List of cell types to analyze. If None, uses the cell types of
+        `design.celltype_col` among the cells of the two arms and the two visits.
     **kwargs
-        Additional parameters passed to `gseapy.prerank`
+        Additional parameters passed to `run_gsea_did`.
 
     Returns
     -------
     dict[str, pd.DataFrame | gp.Prerank]
-        Dictionary of GSEA results.
+        GSEA results keyed by cell type. A cell type in which the DiD cannot be
+        estimated (an arm without a participant sampled at both visits, or fewer
+        than `min_units` participants) is left out, with one warning.
     """
     _ensure_gseapy()
     if design.celltype_col is None:
         raise ValueError("design.celltype_col must be set for celltype GSEA.")
+
+    adata = _two_arm_rows(adata, design, visits)
     if celltypes is None:
         celltypes = sorted(adata.obs[design.celltype_col].dropna().unique())
 
-    adata = _two_arm_rows(adata, design, visits)
+    # The DiD of a cell type needs, in each arm, a participant with cells at both visits.
+    obs = adata.obs
+    visits_seen = obs.groupby(
+        [design.celltype_col, design.arm_col, design.participant_col], observed=True
+    )[design.visit_col].nunique()
+    paired = visits_seen[visits_seen >= 2].reset_index()
+    arms_seen = paired.groupby(design.celltype_col, observed=True)[design.arm_col].nunique()
+    estimable = set(arms_seen.index[arms_seen >= 2])
+
     results: dict[str, pd.DataFrame | gp.Prerank] = {}
+    skipped: list[str] = []
     for ct in celltypes:
-        results[ct] = run_gsea_did(
-            adata,
-            gene_sets=gene_sets,
-            design=design,
-            visits=visits,
-            celltype=ct,
-            **kwargs,
+        if ct not in estimable:
+            skipped.append(ct)
+            continue
+        try:
+            results[ct] = run_gsea_did(
+                adata,
+                gene_sets=gene_sets,
+                design=design,
+                visits=visits,
+                celltype=ct,
+                **kwargs,
+            )
+        except _NoRankableGenes:
+            skipped.append(ct)
+    if skipped:
+        warnings.warn(
+            f"{len(skipped)} cell types were skipped because the DiD cannot be estimated in "
+            "them (each arm needs participants with cells at both visits, at least "
+            "`min_units` in total): " + ", ".join(str(ct) for ct in skipped) + ".",
+            UserWarning,
+            stacklevel=2,
         )
     return results
 

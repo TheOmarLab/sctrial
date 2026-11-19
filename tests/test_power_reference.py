@@ -57,9 +57,22 @@ def test_t_sample_sizes_are_the_smallest_that_reach_the_power():
 
     n_t, n_c = sample_size_two_group(1.2, sigma=1.0, allocation_ratio=3 / 8, reference="t")
     assert power_two_group(n_t, n_c, 1.2, reference="t") >= 0.80
-    assert n_t == int(np.ceil(3 / 8 * n_c - 1e-9))
-    assert power_two_group(int(np.ceil(3 / 8 * (n_c - 1) - 1e-9)), n_c - 1, 1.2, reference="t") < 0.80
     assert n_t + n_c >= sum(sample_size_two_group(1.2, sigma=1.0, allocation_ratio=3 / 8))
+
+
+@pytest.mark.parametrize("effect,power", [(1.0, 0.80), (0.6, 0.80), (1.4, 0.90), (2.5, 0.80)])
+def test_t_sample_size_at_a_three_to_one_allocation_is_minimal_and_symmetric(effect, power):
+    n_t, n_c = sample_size_two_group(effect, power=power, allocation_ratio=3.0, reference="t")
+    assert 3 * (n_c - 1) < n_t <= 3 * n_c
+    assert power_two_group(n_t, n_c, effect, reference="t") >= power
+    assert power_two_group(3 * (n_c - 1), n_c - 1, effect, reference="t") < power
+    assert sample_size_two_group(effect, power=power, allocation_ratio=1 / 3, reference="t") == (n_c, n_t)
+
+
+def test_t_sample_size_does_not_skip_the_first_sufficient_allocation():
+    # 33 and 11 participants reach 80% power for a difference of one SD; 36 and 12 are not needed.
+    assert power_two_group(33, 11, 1.0, reference="t") >= 0.80 > power_two_group(30, 10, 1.0, reference="t")
+    assert sample_size_two_group(1.0, allocation_ratio=3.0, reference="t") == (33, 11)
 
 
 def test_t_sensitivity_inverts_the_power():

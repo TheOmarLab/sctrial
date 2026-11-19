@@ -23,7 +23,7 @@ from sctrial.benchmark.contracts import (
     prepare_inputs_from_adata,
     require_raw_counts,
 )
-from sctrial.benchmark.permutation import run_permutation_test
+from sctrial.benchmark.permutation import _permute_visits, run_permutation_test
 from sctrial.benchmark.simulator_v2 import TranscriptomeSimConfig, simulate_trial_v2
 from sctrial.benchmark.subsample import run_subsampling
 
@@ -258,6 +258,42 @@ def test_single_arm_permutation_ignores_the_arm_column():
                                   visit_col="timepoint", visits=("T0", "T1"), arm_col="response")
     assert np.isfinite(result["pvalue"]).all()
     assert len(result) == 3 * len(PYTHON_METHODS) * len(genes)
+
+
+def test_visit_permutation_keeps_every_sample_whole():
+    cohort = canonical_cohort(_cohort(), **REAL)
+    sample = cohort.obs["participant"].astype(str) + "/" + cohort.obs["visit"].astype(str)
+    kept, exchanged = set(), set()
+    for seed in range(40):
+        permuted = _permute_visits(cohort, "participant", "visit", np.random.default_rng(seed))
+        assert permuted.obs["visit"].dtype == cohort.obs["visit"].dtype
+        labels = permuted.obs["visit"].astype(str)
+        # one label per original sample, and the two samples of a participant keep two labels
+        assert labels.groupby(sample.to_numpy()).nunique().eq(1).all()
+        assert labels.groupby(cohort.obs["participant"].to_numpy()).nunique().eq(2).all()
+        same = (labels == cohort.obs["visit"].astype(str)).groupby(cohort.obs["participant"].to_numpy()).all()
+        kept.update(same.index[same])
+        exchanged.update(same.index[~same])
+    participants = set(cohort.obs["participant"])
+    assert kept == participants and exchanged == participants
+
+
+def test_visit_permutation_leaves_a_missing_visit_label_missing():
+    cohort = canonical_cohort(_cohort(), **REAL)
+    unlabeled = cohort.obs["participant"] == cohort.obs["participant"].iloc[0]
+    cohort.obs["visit"] = cohort.obs["visit"].astype(object)
+    cohort.obs.loc[unlabeled, "visit"] = np.nan
+    for seed in range(8):
+        permuted = _permute_visits(cohort, "participant", "visit", np.random.default_rng(seed))
+        assert permuted.obs.loc[unlabeled, "visit"].isna().all()
+        assert permuted.obs.loc[~unlabeled, "visit"].notna().all()
+
+
+def test_visit_permutation_needs_two_visit_labels():
+    cohort = canonical_cohort(_cohort(), **REAL)
+    one_visit = cohort[cohort.obs["visit"] == "Pre"].copy()
+    with pytest.raises(ValueError, match="two visit labels"):
+        _permute_visits(one_visit, "participant", "visit", np.random.default_rng(0))
 
 
 def test_subsampling_on_real_labels_gives_results():

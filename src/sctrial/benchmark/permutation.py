@@ -1,8 +1,8 @@
 """Participant-label permutation for real-data null calibration.
 
-Shuffles arm labels (two-arm) or visit labels (single-arm) while
-preserving the participant structure. All core methods are run on
-each permuted dataset.
+Shuffles arm labels across participants (two-arm) or exchanges the two visit
+labels within participants (single-arm). Samples stay intact. All core methods
+are run on each permuted dataset.
 
 The cohort is mapped once to the vocabulary of the runners
 (:func:`sctrial.benchmark.contracts.canonical_cohort`) before the permutations.
@@ -34,12 +34,24 @@ def _permute_arms(adata, participant_col: str, arm_col: str, rng):
 
 
 def _permute_visits(adata, participant_col: str, visit_col: str, rng):
-    """Shuffle visit labels within each participant."""
+    """Exchange the two visit labels of a random subset of the participants.
+
+    Each participant's pair of samples is kept or exchanged as a whole, so every cell of a
+    sample carries the same label and the permuted dataset has the samples of the cohort.
+    """
     adata = adata.copy()
-    for pid in adata.obs[participant_col].unique():
-        mask = adata.obs[participant_col] == pid
-        visits = adata.obs.loc[mask, visit_col].values.copy()
-        adata.obs.loc[mask, visit_col] = rng.permutation(visits)
+    visit = adata.obs[visit_col]
+    labels = list(pd.unique(visit.dropna()))
+    if len(labels) != 2:
+        raise ValueError(f"visit permutation needs two visit labels, found {labels}.")
+    participants = pd.unique(adata.obs[participant_col])
+    exchanged = participants[rng.integers(0, 2, size=len(participants)).astype(bool)]
+    values = np.asarray(visit, dtype=object).copy()
+    first, second = values == labels[0], values == labels[1]
+    rows = adata.obs[participant_col].isin(exchanged).to_numpy()
+    values[rows & first] = labels[1]
+    values[rows & second] = labels[0]
+    adata.obs[visit_col] = pd.Series(values, index=adata.obs.index).astype(visit.dtype)
     return adata
 
 
