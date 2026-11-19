@@ -830,8 +830,8 @@ def _power_table(table2: pd.DataFrame) -> pd.DataFrame:
     deviation is ``sqrt(2) * resid_sd`` (pooled over the two groups in the two-group
     cohorts). The paired functions are parameterized by the standard deviation of one
     visit and receive ``resid_sd``. The cross-sectional comparison has no fitted model:
-    its effect is Hedges' g, and the standard deviation is the one that reproduces the
-    standard error of g at the observed group sizes.
+    its effect is Hedges' g, a difference in units of the pooled within-group standard
+    deviation, so the standard deviation is 1.
     """
     from sctrial.stats.power import (
         power_paired,
@@ -865,7 +865,7 @@ def _power_table(table2: pd.DataFrame) -> pd.DataFrame:
             n1, n2 = int(n_focal), int(n_reference)
             if n1 + n2 != n:
                 raise ValueError(f"{where}: group sizes {n1} + {n2} != n_units {n}")
-            sigma_est = np.sqrt(2.0) * resid_sd if fitted else se / np.sqrt(1.0 / n1 + 1.0 / n2)
+            sigma_est = np.sqrt(2.0) * resid_sd if fitted else 1.0
             pwr = power_two_group(n1, n2, abs_effect, sigma=sigma_est, reference="t")
             mde = sensitivity_two_group(n1, n2, sigma=sigma_est, power=0.80, reference="t")
             min_n = (sum(sample_size_two_group(abs_effect, sigma=sigma_est, power=0.80,
@@ -936,6 +936,35 @@ def table5_power_analysis() -> pd.DataFrame:
 # ======================================================================
 
 
+def _with_analytical_interval(res: pd.DataFrame) -> pd.DataFrame:
+    """Add the 95% interval that belongs to the analytical p-value of each DiD coefficient.
+
+    The cluster-robust fit refers the statistic to the normal distribution, so its interval is
+    the effect ± 1.96 SE. The pooled-variance fit refers it to the t distribution on the
+    residual degrees of freedom, ``n_units - 2`` for two visits per participant (one fixed
+    effect per participant, the visit and the interaction), and its interval uses that
+    quantile. The degrees of freedom are checked against the reported p-values.
+    """
+    from scipy import stats
+
+    res = res.copy()
+    pooled = (res["cov_type_used"] == "nonrobust").to_numpy()
+    df = np.where(pooled, res["n_units"].to_numpy(dtype=float) - 2.0, np.nan)
+    quantile = np.full(len(res), 1.96)
+    quantile[pooled] = stats.t.ppf(0.975, df[pooled])
+
+    statistic = np.abs(res["beta_DiD"].to_numpy(dtype=float) / res["se_DiD"].to_numpy(dtype=float))
+    expected = np.where(pooled, 2.0 * stats.t.sf(statistic, df), 2.0 * stats.norm.sf(statistic))
+    reported = res["p_DiD"].to_numpy(dtype=float)
+    known = np.isfinite(expected) & np.isfinite(reported)
+    if not np.allclose(reported[known], expected[known], rtol=1e-6, atol=1e-12):
+        raise ValueError("the analytical p-values do not follow the assumed reference distribution")
+
+    res["ci_lower"] = res["beta_DiD"] - quantile * res["se_DiD"]
+    res["ci_upper"] = res["beta_DiD"] + quantile * res["se_DiD"]
+    return res
+
+
 def table7_gene_level_results() -> pd.DataFrame:
     """Gene-level DiD results for the melanoma cohort.
 
@@ -972,10 +1001,7 @@ def table7_gene_level_results() -> pd.DataFrame:
             standardize=True, aggregate="participant_visit",
             cov_type=MELANOMA_GENE_LEVEL_COV_TYPE,
         )
-        # Add CIs from effect ± 1.96 × SE
-        if "beta_DiD" in res.columns and "se_DiD" in res.columns:
-            res["ci_lower"] = res["beta_DiD"] - 1.96 * res["se_DiD"]
-            res["ci_upper"] = res["beta_DiD"] + 1.96 * res["se_DiD"]
+        res = _with_analytical_interval(res)
 
         # Sort by p-value
         if "p_DiD" in res.columns:
@@ -1143,9 +1169,7 @@ def table6_gene_level_tnbc() -> pd.DataFrame:
             visits=("Pre", "Post"), layer="log1p_norm",
             standardize=True, aggregate="participant_visit",
         )
-        if "beta_DiD" in res.columns and "se_DiD" in res.columns:
-            res["ci_lower"] = res["beta_DiD"] - 1.96 * res["se_DiD"]
-            res["ci_upper"] = res["beta_DiD"] + 1.96 * res["se_DiD"]
+        res = _with_analytical_interval(res)
 
         if "p_DiD" in res.columns:
             res = res.sort_values("p_DiD").reset_index(drop=True)

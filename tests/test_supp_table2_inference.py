@@ -113,10 +113,13 @@ def test_supp_table5_uses_the_sd_of_the_changes_and_the_t_distribution(load_figu
         sensitivity_two_group(3, 8, sigma=sigma, reference="t"))
     assert (row["n_focal"], row["n_reference"]) == (3, 8)
 
-    # cross-sectional Hedges' g: the SD that reproduces its standard error
-    row, sigma = out.loc["COVID-19"], 0.55 / np.sqrt(1 / 5 + 1 / 11)
-    assert row["sigma_estimated"] == pytest.approx(sigma)
-    assert row["power_at_observed_N"] == pytest.approx(power_two_group(5, 11, 0.5, sigma=sigma, reference="t"))
+    # cross-sectional Hedges' g is in units of the pooled SD, so the SD is 1 whatever its SE
+    row = out.loc["COVID-19"]
+    assert row["sigma_estimated"] == 1.0
+    assert row["power_at_observed_N"] == pytest.approx(power_two_group(5, 11, 0.5, sigma=1.0, reference="t"))
+    assert row["min_detectable_effect_80pct"] == pytest.approx(sensitivity_two_group(5, 11, sigma=1.0, reference="t"))
+    assert row["min_N_for_80pct_power"] == sum(
+        sample_size_two_group(0.5, sigma=1.0, allocation_ratio=5 / 11, reference="t"))
 
     # single arm: the table reports the SD of the participant changes; the paired
     # formula is parameterized by the SD of one visit
@@ -174,3 +177,47 @@ def test_group_sizes_refuse_a_paired_participant_outside_both_groups(load_figure
     adata.obs.loc[adata.obs["participant_id"] == "C0", "arm"] = "Other"
     with pytest.raises(ValueError, match="neither"):
         tables._paired_group_sizes(adata, design, ("Pre", "Post"))
+
+
+def _gene_rows(cov_type, n_units, betas, ses):
+    from scipy import stats
+
+    betas, ses = np.asarray(betas, dtype=float), np.asarray(ses, dtype=float)
+    stat = np.abs(betas / ses)
+    p = 2 * stats.t.sf(stat, n_units - 2) if cov_type == "nonrobust" else 2 * stats.norm.sf(stat)
+    return pd.DataFrame({"feature": [f"g{i}" for i in range(len(betas))], "beta_DiD": betas,
+                         "se_DiD": ses, "p_DiD": p, "n_units": n_units, "cov_type_used": cov_type})
+
+
+def test_gene_level_interval_uses_the_reference_distribution_of_the_p_value(load_figure_module):
+    from scipy import stats
+
+    tables = load_figure_module("supp/supp_tables")
+    betas, ses = [2.1, -1.0, 0.4, 2.2], [1.0, 0.45, 0.5, 1.0]
+
+    pooled = tables._with_analytical_interval(_gene_rows("nonrobust", 11, betas, ses))
+    half = (pooled["ci_upper"] - pooled["ci_lower"]) / 2
+    assert np.allclose(half, stats.t.ppf(0.975, 9) * np.asarray(ses))
+    excludes_zero = (pooled["ci_lower"] > 0) | (pooled["ci_upper"] < 0)
+    assert (excludes_zero == (pooled["p_DiD"] < 0.05)).all()
+    # 2.1 and 2.2 standard errors: outside +/- 1.96 SE, not significant on 9 degrees of freedom
+    assert pooled["p_DiD"].iloc[0] > 0.05 and pooled["p_DiD"].iloc[3] > 0.05
+
+    robust = tables._with_analytical_interval(_gene_rows("cluster", 11, betas, ses))
+    assert np.array_equal(robust["ci_lower"], np.asarray(betas) - 1.96 * np.asarray(ses))
+    assert np.array_equal(robust["ci_upper"], np.asarray(betas) + 1.96 * np.asarray(ses))
+
+
+def test_gene_level_interval_refuses_p_values_from_another_distribution(load_figure_module):
+    tables = load_figure_module("supp/supp_tables")
+    rows = _gene_rows("cluster", 11, [2.1, -1.0], [1.0, 0.45]).assign(cov_type_used="nonrobust")
+    with pytest.raises(ValueError, match="reference distribution"):
+        tables._with_analytical_interval(rows)
+
+
+def test_gene_level_interval_keeps_genes_without_a_fit(load_figure_module):
+    tables = load_figure_module("supp/supp_tables")
+    rows = _gene_rows("nonrobust", 11, [2.1, -1.0], [1.0, 0.45])
+    rows.loc[1, ["beta_DiD", "se_DiD", "p_DiD", "cov_type_used"]] = [np.nan, np.nan, np.nan, np.nan]
+    out = tables._with_analytical_interval(rows)
+    assert np.isfinite(out.loc[0, "ci_lower"]) and np.isnan(out.loc[1, "ci_lower"])
