@@ -200,12 +200,52 @@ def warn_unbounded_bootstrap_intervals(
 
 
 _BOOT_COV_TYPES = ("cluster", "nonrobust")
+# Hypothesised values further than this many standard errors from the estimate are not examined:
+# an interval that reaches that far is reported as unbounded.
 _BOOT_CI_MAX_RADIUS_SE = 1e4
+# Two statistics that are equal in exact arithmetic can differ in the last bits once computed
+# along different paths. A resampled statistic within this relative margin of the observed one
+# is a tie; the margin is far above rounding error and far below any difference between two
+# statistics that are not equal.
+_TIE_RTOL = 1e-9
+
+
+def _tie_tolerance(values: np.ndarray) -> float:
+    """Margin below which two means of ``values`` count as equal, on the scale of the values."""
+    return _TIE_RTOL * float(np.max(np.abs(values), initial=0.0))
 
 
 def _sum_by_cluster(values: np.ndarray, order: np.ndarray, starts: np.ndarray) -> np.ndarray:
     """Sum the rows of ``values`` within each cluster (rows of the result follow cluster order)."""
     return np.add.reduceat(values[order], starts, axis=0)
+
+
+def _real_roots_by_row(coefs: np.ndarray) -> np.ndarray:
+    """Real roots of the polynomial in each row of ``coefs`` (highest degree first).
+
+    Returns one row per polynomial, padded with NaN where a root is not real or the row holds a
+    non-finite coefficient.
+    """
+    n_rows, degree = coefs.shape[0], coefs.shape[1] - 1
+    roots = np.full((n_rows, degree), np.nan + 0.0j)
+    finite = np.all(np.isfinite(coefs), axis=1)
+    with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+        first_row = -coefs[:, 1:] / coefs[:, :1]
+    regular = finite & np.all(np.isfinite(first_row), axis=1)
+    companion = np.zeros((int(regular.sum()), degree, degree))
+    companion[:, 0, :] = first_row[regular]
+    companion[:, np.arange(1, degree), np.arange(degree - 1)] = 1.0
+    roots[regular] = np.linalg.eigvals(companion)
+    # A vanishing leading coefficient lowers the degree; np.roots drops leading zeros.
+    for i in np.flatnonzero(finite & ~regular):
+        row = coefs[i].copy()
+        row[0] = 0.0
+        found = np.roots(row)
+        roots[i, : found.size] = found
+    # A statistic that touches the observed one without crossing it gives a double root, which
+    # rounding turns into a conjugate pair with a small imaginary part.
+    real = np.abs(roots.imag) <= 1e-6 * np.maximum(1.0, np.abs(roots.real))
+    return np.where(real, roots.real, np.nan)
 
 
 def wild_cluster_bootstrap_t(
@@ -242,15 +282,26 @@ def wild_cluster_bootstrap_t(
     :math:`(1 + \#\{|t^*| \ge |t|\}) / (1 + B)`. Neither depends on which level of a
     binary regressor is coded as 1.
 
-    The confidence interval is obtained by **inverting the bootstrap test**: it is the
-    set of values :math:`\beta_0` around the estimate whose bootstrap p-value is at
-    least ``1 - ci_level``, found with the same bootstrap weights for every
-    :math:`\beta_0`. The interval therefore excludes zero exactly when the p-value is
-    below ``1 - ci_level``. The two assignments that keep or flip every cluster
-    reproduce the observed statistic, so under enumeration the p-value cannot fall
-    below :math:`2^{1-G}`. With five or fewer clusters (enumerated whenever
-    ``B >= 32``) that floor exceeds 0.05, the test cannot reject at the 5% level, and
-    the interval is unbounded (``-inf``, ``inf``).
+    A bootstrap statistic within ``1e-9`` of the observed one (relative to the observed
+    statistic when that exceeds one) counts as a tie, so assignments that reproduce
+    the observed statistic in exact arithmetic (for example a flipped cluster whose
+    outcome did not change) are counted whatever the rounding of the two computations.
+
+    The confidence interval is obtained by **inverting the bootstrap test** with the
+    same bootstrap weights for every :math:`\beta_0`. The bootstrap p-value is a step
+    function of :math:`\beta_0` that changes only where a draw's statistic equals the
+    observed one, which is at the real roots of one quartic per draw. The interval
+    runs from the smallest to the largest :math:`\beta_0` whose p-value is at least
+    ``1 - ci_level``, so it contains every value the test does not reject, and it
+    contains zero whenever the p-value is at least ``1 - ci_level``. In small or
+    unbalanced designs the values that are not rejected can form more than one
+    interval; the reported interval then spans them, includes the rejected values in
+    between, and can contain zero although the p-value is below ``1 - ci_level``. The
+    two assignments that keep or flip every cluster reproduce the observed statistic,
+    so under enumeration the p-value cannot fall below :math:`2^{1-G}`. With five or
+    fewer clusters (enumerated whenever ``B >= 32``) that floor exceeds 0.05, the
+    test cannot reject at the 5% level, and the interval is unbounded (``-inf``,
+    ``inf``).
 
     The bootstrap standard error is that of the **unrestricted** wild cluster
     bootstrap (unrestricted fitted values plus sign-flipped unrestricted residuals),
@@ -391,17 +442,27 @@ def wild_cluster_bootstrap_t(
         return _nan_result
     se_obs = float(np.sqrt(var_obs))
 
-    def _p_value(beta_null: float) -> float:
-        var_star = var_scale * (q_yy - 2.0 * beta_null * q_xy + beta_null**2 * q_xx)
-        valid = np.isfinite(var_star) & (var_star > 0) & ~is_tie
-        n_valid = int(valid.sum()) + n_ties
-        if n_valid == 0:
-            return np.nan
-        t_star = (num_y[valid] - beta_null * num_x[valid]) / np.sqrt(var_star[valid])
-        n_extreme = np.count_nonzero(np.abs(t_star) >= abs(beta_hat - beta_null) / se_obs)
+    free = ~is_tie
+    num_y_f, num_x_f = num_y[free], num_x[free]
+    q_yy_f, q_xy_f, q_xx_f = q_yy[free], q_xy[free], q_xx[free]
+
+    def _p_values(beta_nulls: np.ndarray) -> np.ndarray:
+        b = np.asarray(beta_nulls, dtype=float)[:, None]
+        var_star = var_scale * (q_yy_f - 2.0 * b * q_xy_f + b**2 * q_xx_f)
+        valid = np.isfinite(var_star) & (var_star > 0)
+        t_star = (num_y_f - b * num_x_f) / np.sqrt(np.where(valid, var_star, 1.0))
+        t_obs = np.abs(beta_hat - b) / se_obs
+        extreme = valid & (np.abs(t_star) >= t_obs - _TIE_RTOL * np.maximum(1.0, t_obs))
+        n_extreme = np.count_nonzero(extreme, axis=1) + n_ties
+        n_valid = np.count_nonzero(valid, axis=1) + n_ties
         if enumerate_all:
-            return float((n_extreme + n_ties) / n_valid)
-        return float((n_extreme + n_ties + 1) / (n_valid + 1))
+            p = n_extreme / np.maximum(n_valid, 1)
+        else:
+            p = (n_extreme + 1) / (n_valid + 1)
+        return np.where(n_valid > 0, p, np.nan)
+
+    def _p_value(beta_null: float) -> float:
+        return float(_p_values(np.array([beta_null]))[0])
 
     p_boot = _p_value(0.0)
     if not np.isfinite(p_boot):
@@ -411,31 +472,85 @@ def wild_cluster_bootstrap_t(
     # count as below the level.
     alpha = float(np.round(1.0 - ci_level, 12))
 
+    # With s = (beta_null - beta_hat) / se_obs, a draw's statistic equals the observed one where
+    # (a0 - s * b1)**2 = s**2 * (c0 + c1 * s + c2 * s**2). The p-value is constant between
+    # consecutive real roots, so one value per gap decides the whole gap.
+    a0 = num_y_f - beta_hat * num_x_f
+    b1 = se_obs * num_x_f
+    c0 = var_scale * (q_yy_f - 2.0 * beta_hat * q_xy_f + beta_hat**2 * q_xx_f)
+    c1 = 2.0 * var_scale * se_obs * (beta_hat * q_xx_f - q_xy_f)
+    c2 = var_scale * se_obs**2 * q_xx_f
+    crossings = _real_roots_by_row(np.stack([c2, c1, c0 - b1**2, 2.0 * a0 * b1, -(a0**2)], axis=1))
+    # A draw whose variance is positive at every hypothesised value is no longer as extreme as
+    # the observed statistic beyond its outermost crossing, because the observed statistic grows
+    # without bound and the draw's does not. The other draws are allowed anything.
+    with np.errstate(invalid="ignore"):
+        settled = (c2 > 0) & (c1**2 < (1.0 - 1e-9) * 4.0 * c0 * c2)
+    n_settled = int(settled.sum())
+    monte_carlo = 0 if enumerate_all else 1
+    # Number of settled draws that must be extreme for a p-value of at least alpha.
+    n_needed = int(
+        np.ceil(
+            alpha * (n_settled + n_ties + monte_carlo)
+            - (len(settled) - n_settled)
+            - n_ties
+            - monte_carlo
+            - 1e-9
+        )
+    )
+
     def _bound(direction: float) -> float:
-        accepted = 0.0
-        rejected = np.nan
-        distance = 0.0
-        step = 0.25 * se_obs
-        while distance <= _BOOT_CI_MAX_RADIUS_SE * se_obs:
-            distance = distance + step if distance < 10.0 * se_obs else 2.0 * distance
-            if _p_value(beta_hat + direction * distance) >= alpha:
-                accepted = distance
-            else:
-                rejected = distance
-                break
-        if not np.isfinite(rejected):
+        signed = direction * crossings
+        positive = np.isfinite(signed) & (signed > 0)
+        roots = np.unique(signed[positive])[::-1]
+        remote = roots[roots > _BOOT_CI_MAX_RADIUS_SE]
+        roots = roots[roots <= _BOOT_CI_MAX_RADIUS_SE]
+        if roots.size == 0:
             return direction * np.inf
-        for _ in range(80):
-            if rejected - accepted <= 1e-10 * se_obs:
+        # From beyond the outermost root inward: each root, where a tie can raise the p-value
+        # at that single value, followed by the gap between it and the next root (or the estimate).
+        points = np.empty(2 * roots.size + 1)
+        points[0] = 2.0 * roots[0] + 1.0
+        if remote.size:
+            points[0] = min(points[0], 0.5 * (roots[0] + remote[-1]))
+        points[1::2] = roots
+        points[2::2] = 0.5 * (roots + np.append(roots[1:], 0.0))
+
+        # Beyond the n_needed-th largest outermost crossing too few draws can be extreme, so
+        # every point out there is rejected without being evaluated. The margin covers the
+        # stretch in which a draw still counts as tied.
+        start = 0
+        outermost = np.where(positive, signed, 0.0).max(axis=1)[settled]
+        if 0 < n_needed <= np.count_nonzero(outermost > 0):
+            limit = np.partition(outermost, -n_needed)[-n_needed]
+            start = int(np.searchsorted(-points, -(limit * (1.0 + 1e-3) + 1e-3)))
+
+        inner, outer = 0.0, float(points[-1])
+        size = 32
+        while start < points.size:
+            chunk = points[start : start + size]
+            accepted = _p_values(beta_hat + direction * se_obs * chunk) >= alpha
+            if accepted.any():
+                first = start + int(np.argmax(accepted))
+                if first == 0:
+                    return direction * np.inf
+                inner, outer = float(points[first]), float(points[first - 1])
                 break
-            mid = 0.5 * (accepted + rejected)
-            if _p_value(beta_hat + direction * mid) >= alpha:
-                accepted = mid
+            start, size = start + size, min(2 * size, 256)
+        # ``inner`` is accepted and ``outer`` rejected; close in on the last accepted value.
+        while True:
+            mid = 0.5 * (inner + outer)
+            if not inner < mid < outer:
+                break
+            if _p_value(beta_hat + direction * se_obs * mid) >= alpha:
+                inner = mid
             else:
-                rejected = mid
-        return beta_hat + direction * accepted
+                outer = mid
+        return beta_hat + direction * se_obs * inner
 
     ci_lo, ci_hi = _bound(-1.0), _bound(1.0)
+    if p_boot >= alpha:
+        ci_lo, ci_hi = min(ci_lo, 0.0), max(ci_hi, 0.0)
 
     return BootstrapResult(
         p_boot=p_boot,
@@ -476,12 +591,14 @@ def permutation_pvalue(
     obs_diff = np.mean(group1) - np.mean(group2)
     combined = np.concatenate([group1, group2])
     n1 = len(group1)
+    # A permutation that reproduces the observed split sums the same values in another order.
+    tol = _tie_tolerance(combined)
 
     count = 0
     for _ in range(n_perm):
         perm = rng.permutation(combined)
         p_diff = np.mean(perm[:n1]) - np.mean(perm[n1:])
-        if abs(p_diff) >= abs(obs_diff):
+        if abs(p_diff) >= abs(obs_diff) - tol:
             count += 1
 
     return (count + 1) / (n_perm + 1)
@@ -517,12 +634,13 @@ def permutation_pvalue_paired(
     rng = np.random.default_rng(seed)
     diff = np.asarray(y) - np.asarray(x)
     obs_mean = np.mean(diff)
+    tol = _tie_tolerance(diff)
 
     count = 0
     for _ in range(n_perm):
         signs = rng.choice([-1, 1], size=len(diff))
         p_mean = np.mean(diff * signs)
-        if abs(p_mean) >= abs(obs_mean):
+        if abs(p_mean) >= abs(obs_mean) - tol:
             count += 1
 
     return (count + 1) / (n_perm + 1)

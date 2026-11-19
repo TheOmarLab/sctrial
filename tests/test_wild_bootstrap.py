@@ -125,6 +125,109 @@ def test_interval_excludes_zero_exactly_when_p_is_below_alpha(seed):
     assert res.ci_lo <= fit.params[term] <= res.ci_hi
 
 
+def _from_outcomes(y, n_treated, *, single_arm=False):
+    """Unfitted model, clusters and tested term for given outcomes, two visits per participant."""
+    n = len(y) // 2
+    pid = np.repeat(np.arange(n), 2)
+    df = pd.DataFrame({
+        "y": np.asarray(y, dtype=float),
+        "pid": pid,
+        "time": np.tile([0.0, 1.0], n),
+        "arm": np.repeat((np.arange(n) < n_treated).astype(float), 2),
+    })
+    formula = "y ~ time + C(pid)" if single_arm else "y ~ time + time:arm + C(pid)"
+    return smf.ols(formula, data=df), pid, ("time" if single_arm else "time:arm")
+
+
+def _p_at(model, pid, term, beta_null, cov_type="nonrobust"):
+    """Bootstrap p-value of ``beta = beta_null``: the test of zero after shifting the outcome."""
+    shifted = np.asarray(model.endog) - beta_null * np.asarray(model.exog)[:, model.exog_names.index(term)]
+    fit = _fit(sm.OLS(shifted, pd.DataFrame(model.exog, columns=model.exog_names)), pid, cov_type)
+    return wild_cluster_bootstrap_t(fit, fit.model.exog, pid, term, B=999, cov_type=cov_type).p_boot
+
+
+@pytest.mark.parametrize("cov_type", ["nonrobust", "cluster"])
+@pytest.mark.parametrize("baselines", [[0, 0, 0, 0, 0, 0], [100, 7, 23, 55, 3, 80]])
+def test_assignments_that_reproduce_the_observed_statistic_are_counted(baselines, cov_type):
+    # Flipping the participant whose outcome did not change leaves the data unchanged, so four
+    # of the 64 assignments give the observed statistic. Counted exactly, the test cannot reject.
+    changes = [0, 10, 11, 11, 4, 2]
+    y = np.ravel([[b, b + d] for b, d in zip(baselines, changes)])
+    model, pid, term = _from_outcomes(y, 0, single_arm=True)
+    fit = _fit(model, pid, cov_type)
+    res = wild_cluster_bootstrap_t(fit, fit.model.exog, pid, term, B=999, cov_type=cov_type)
+
+    assert res.p_boot == 4 / 64
+    assert res.ci_lo <= 0.0 <= res.ci_hi
+
+
+def test_interval_spans_values_the_test_accepts_beyond_a_rejected_stretch():
+    # Two treated and five control participants. The test rejects the values between about
+    # -2.5 and -1 and accepts those on both sides, zero included.
+    model, pid, term = _from_outcomes([6, -2, 7, -2, 1, 7, 7, 3, -2, 5, -2, 2, -2, 4], n_treated=2)
+    fit = _fit(model, pid, "nonrobust")
+    res = wild_cluster_bootstrap_t(fit, fit.model.exog, pid, term, B=999, cov_type="nonrobust")
+
+    assert res.p_boot == pytest.approx(_reference_p(model, pid, term, "nonrobust", n_draws=999))
+    assert res.p_boot == 0.0625
+    assert _reference_p(model, pid, term, "nonrobust", beta_null=-2.0, n_draws=999) < 0.05
+    assert res.ci_lo < -2.0 and res.ci_lo <= 0.0 <= res.ci_hi
+
+    grid = np.linspace(res.ci_lo - 6.0, res.ci_hi + 6.0, 241)
+    accepted = grid[[_p_at(model, pid, term, b) >= 0.05 for b in grid]]
+    assert res.ci_lo <= accepted.min() and accepted.max() <= res.ci_hi
+    eps = 1e-6 * float(fit.bse[term])
+    for bound, outward in ((res.ci_lo, -1.0), (res.ci_hi, 1.0)):
+        assert _reference_p(model, pid, term, "nonrobust", beta_null=bound - outward * eps, n_draws=999) >= 0.05
+        assert _reference_p(model, pid, term, "nonrobust", beta_null=bound + outward * eps, n_draws=999) < 0.05
+
+
+def test_interval_includes_a_value_accepted_only_through_ties():
+    # At exactly -13 two more assignments tie with the observed statistic and the p-value is
+    # 0.0625; just below and just above it is 0.047.
+    model, pid, term = _from_outcomes([4, 2, 1, 3, -2, 6, 5, 1, 5, 0, 4, -2, 4, -1], n_treated=2)
+    fit = _fit(model, pid, "nonrobust")
+    res = wild_cluster_bootstrap_t(fit, fit.model.exog, pid, term, B=999, cov_type="nonrobust")
+
+    assert _reference_p(model, pid, term, "nonrobust", beta_null=-13.0, n_draws=999) == 0.0625
+    assert _reference_p(model, pid, term, "nonrobust", beta_null=-12.9, n_draws=999) < 0.05
+    assert _reference_p(model, pid, term, "nonrobust", beta_null=-13.1, n_draws=999) < 0.05
+    assert res.ci_lo == pytest.approx(-13.0, abs=1e-6) and res.ci_lo <= -13.0
+    assert res.ci_hi == pytest.approx(13.25, abs=1e-6)
+
+
+@pytest.mark.parametrize("seed", range(6))
+@pytest.mark.parametrize("cov_type", ["nonrobust", "cluster"])
+def test_interval_holds_every_accepted_value_in_small_unbalanced_designs(seed, cov_type):
+    rng = np.random.default_rng(seed)
+    n_treated, n_control = int(rng.integers(2, 4)), int(rng.integers(4, 7))
+    y = rng.choice(np.arange(-2, 7), size=2 * (n_treated + n_control)).astype(float)
+    model, pid, term = _from_outcomes(y, n_treated)
+    fit = _fit(model, pid, cov_type)
+    res = wild_cluster_bootstrap_t(fit, fit.model.exog, pid, term, B=999, cov_type=cov_type)
+
+    scale = float(fit.bse[term])
+    grid = np.append(fit.params[term] + scale * np.linspace(-25.0, 25.0, 101), 0.0)
+    for b in grid:
+        if _p_at(model, pid, term, b, cov_type) >= 0.05:
+            assert res.ci_lo - 1e-9 * scale <= b <= res.ci_hi + 1e-9 * scale
+
+
+def test_noise_far_from_the_estimate_does_not_set_the_bound():
+    # Flipping one whole arm leaves no residual variation in the tested regressor, and rounding
+    # then puts a crossing hundreds of millions of standard errors away.
+    rng = np.random.default_rng(3)
+    model, pid, term = _from_outcomes(rng.choice(np.arange(-2, 7), size=12).astype(float), n_treated=4)
+    fit = _fit(model, pid, "nonrobust")
+    res = wild_cluster_bootstrap_t(fit, fit.model.exog, pid, term, B=999, cov_type="nonrobust")
+
+    assert abs(res.ci_lo - fit.params[term]) < 100 * fit.bse[term]
+    assert abs(res.ci_hi - fit.params[term]) < 100 * fit.bse[term]
+    eps = 1e-6 * float(fit.bse[term])
+    assert _p_at(model, pid, term, res.ci_lo - eps) < 0.05 <= _p_at(model, pid, term, res.ci_lo + eps)
+    assert _p_at(model, pid, term, res.ci_hi + eps) < 0.05 <= _p_at(model, pid, term, res.ci_hi - eps)
+
+
 @pytest.mark.parametrize("weighted", [False, True])
 def test_standard_error_is_that_of_the_unrestricted_bootstrap(weighted):
     """Exactly the cluster-robust SE without small-sample correction, whatever the effect size."""
@@ -139,7 +242,7 @@ def test_standard_error_is_that_of_the_unrestricted_bootstrap(weighted):
     exog, weights = np.asarray(model.exog, float), np.asarray(model.weights, float)
     signs, _ = _signs(pid)
     draws = [
-        sm.WLS(fit.fittedvalues + fit.resid * w[idx], exog, weights=weights).fit().params[j]
+        sm.WLS(fit.fittedvalues + fit.resid * w[idx], exog, weights=weights).fit().params.iloc[j]
         for w in signs
     ]
     np.testing.assert_allclose(res.boot_distribution, draws, rtol=1e-9, atol=1e-12)

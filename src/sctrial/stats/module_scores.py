@@ -14,6 +14,7 @@ from statsmodels.stats.multitest import multipletests
 
 from ..adata_tools import subset_arms
 from ..design import TrialDesign
+from ..utils import _tie_tolerance
 from ._utils import encode_visit
 
 __all__ = [
@@ -177,11 +178,12 @@ def _perm_test_diff(
     if treated_label is None:
         treated_label = labels[0]
     obs = values[labels == treated_label].mean() - values[labels != treated_label].mean()
+    tol = _tie_tolerance(values)
     count = 0
     for _ in range(n_perm):
         perm = rng.permutation(np.asarray(labels))
         perm_diff = values[perm == treated_label].mean() - values[perm != treated_label].mean()
-        if np.abs(perm_diff) >= np.abs(obs):
+        if np.abs(perm_diff) >= np.abs(obs) - tol:
             count += 1
     return float((count + 1) / (n_perm + 1))
 

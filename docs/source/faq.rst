@@ -351,8 +351,11 @@ When enabled, the output DataFrame includes additional columns:
 - ``se_DiD_boot``: bootstrap standard error
 - ``ci_lo_boot`` / ``ci_hi_boot``: confidence interval from inverting the bootstrap test
 
-The interval is the set of values :math:`\beta_0` that the bootstrap test does not reject,
-so it excludes zero exactly when the bootstrap p-value is below 0.05. The standard error is
+The interval runs from the smallest to the largest value :math:`\beta_0` that the bootstrap
+test does not reject, so it contains zero whenever the bootstrap p-value is at least 0.05. In
+small or unbalanced cohorts the values that are not rejected can form more than one interval;
+the reported interval spans them and can then contain zero although the p-value is below
+0.05. The standard error is
 the standard deviation of the unrestricted bootstrap estimates, which equals the
 cluster-robust standard error without small-sample correction. With nine or fewer
 participants (at the default 999 draws) every sign assignment is enumerated, so the result

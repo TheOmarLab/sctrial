@@ -250,3 +250,17 @@ class TestResolveFeature:
         )
         # Should return exact match
         assert resolve_feature(adata, "Score") == "Score"
+
+
+def test_permutation_pvalue_counts_reorderings_of_the_observed_split():
+    # Three against three: 2 of the 20 splits are the observed one or its mirror, and 2 more
+    # are as extreme. A draw of the observed split sums the same values in another order.
+    group1, group2 = np.array([1.9000000000000001, -0.4, 0.2]), np.array([1.8, 2.3, 2.7])
+    p = permutation_pvalue(group1, group2, n_perm=6000, seed=1)
+    assert p == pytest.approx(0.2, abs=0.02)
+
+
+def test_permutation_pvalue_paired_counts_unchanged_pairs_as_ties():
+    x, y = np.zeros(4), np.array([0.0, 0.7, 1.1, 0.3])
+    p = permutation_pvalue_paired(x, y, n_perm=6000, seed=1)
+    assert p == pytest.approx(4 / 16, abs=0.02)
