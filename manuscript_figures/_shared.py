@@ -690,6 +690,161 @@ def key_below_row(axes, *, ncol: int, fontsize: float | None = None, gap_pt: flo
     )
 
 
+_KEY_INSIDE_ORDER = ("upper right", "upper left", "lower right", "lower left",
+                     "upper center", "lower center", "center right", "center left")
+
+
+def _drawn_boxes(ax, renderer, *, step_px: float = 3.0):
+    """Display-space boxes of what an axes draws: bars, boxes, lines, points and text.
+
+    Lines and line collections are sampled along their length, so a diagonal line counts
+    for the pixels it crosses and not for its whole bounding box. Returns two (n, 4) arrays
+    of x0, y0, x1, y1: the data and text, and the reference lines that span the axes
+    (``axhline``, ``axvline``).
+    """
+    import numpy as np
+    from matplotlib.collections import LineCollection, PathCollection
+
+    px = ax.figure.dpi / 72.0
+    data: list[tuple[float, float, float, float]] = []
+    reference: list[tuple[float, float, float, float]] = []
+    out = data
+
+    def along(points, half):
+        points = np.asarray(points, dtype=float)
+        points = points[np.isfinite(points).all(axis=1)]
+        if len(points) == 0:
+            return
+        if len(points) > 1:
+            pieces = []
+            for a, b in zip(points[:-1], points[1:]):
+                n = int(np.ceil(np.hypot(*(b - a)) / step_px)) + 1
+                pieces.append(np.linspace(a, b, n))
+            points = np.vstack(pieces)
+        out.extend((x - half, y - half, x + half, y + half) for x, y in points)
+
+    for patch in ax.patches:
+        if patch.get_visible():
+            box = patch.get_window_extent(renderer)
+            out.append((box.x0, box.y0, box.x1, box.y1))
+    for line in ax.lines:
+        if not line.get_visible():
+            continue
+        half = max(line.get_linewidth(), line.get_markersize() if line.get_marker() not in
+                   (None, "None", "", " ") else 0.0) / 2 * px
+        out = data if line.get_transform() == ax.transData else reference
+        along(line.get_transform().transform(line.get_xydata()), half)
+    out = data
+    for coll in ax.collections:
+        if not coll.get_visible():
+            continue
+        if isinstance(coll, LineCollection):
+            widths = coll.get_linewidths()
+            half = (float(np.max(widths)) if len(widths) else 1.0) / 2 * px
+            for segment in coll.get_segments():
+                along(coll.get_transform().transform(segment), half)
+        elif isinstance(coll, PathCollection):
+            offsets = coll.get_offset_transform().transform(coll.get_offsets())
+            sizes = coll.get_sizes()
+            radius = (np.sqrt(float(np.max(sizes))) if len(sizes) else 1.0) / 2 * px
+            out.extend((x - radius, y - radius, x + radius, y + radius) for x, y in offsets
+                       if np.isfinite(x) and np.isfinite(y))
+        else:
+            box = coll.get_window_extent(renderer)
+            out.append((box.x0, box.y0, box.x1, box.y1))
+    for artist in list(ax.texts) + list(ax.images):
+        if artist.get_visible() and (not hasattr(artist, "get_text") or artist.get_text()):
+            box = artist.get_window_extent(renderer)
+            out.append((box.x0, box.y0, box.x1, box.y1))
+    return (np.asarray(data, dtype=float).reshape(-1, 4),
+            np.asarray(reference, dtype=float).reshape(-1, 4))
+
+
+def key_inside_axes(ax, *, ncol: int, fontsize: float | None = None,
+                    prefer=(), band: str | None = None, keep_title: bool = False):
+    """Put the axis legend inside the axes where it covers no data and no text.
+
+    The key is measured after a draw and each location is tested against what the axes
+    draws (bars, boxes, lines, points, annotations): first those in ``prefer``, then the
+    other corners and edge centres. The first location with nothing under it is used,
+    failing that the first that covers only a reference line spanning the axes (``axhline``,
+    ``axvline``). When every location covers data or text, ``band="top"`` or
+    ``band="bottom"`` extends the y range on that side by the height of the key and puts
+    the key in the band; with ``band=None`` the location that covers least is used. Call it
+    once the panel's fonts and limits are final. Returns ``(legend, loc, covered)``: the
+    new legend, the location chosen, and the area of data and text under the key in square
+    points (0.0 when the key is clear of both). Returns None when the axis has no legend.
+    """
+    import numpy as np
+
+    leg = ax.get_legend()
+    if leg is None:
+        return None
+    handles = leg.legend_handles
+    labels = [t.get_text() for t in leg.get_texts()]
+    title = leg.get_title().get_text() if keep_title else ""
+    if fontsize is None:
+        fontsize = leg.get_texts()[0].get_fontsize() if labels else plt.rcParams["legend.fontsize"]
+    leg.remove()
+    style = dict(
+        handles=handles, labels=labels, ncol=ncol, fontsize=fontsize, frameon=True,
+        framealpha=0.85, edgecolor="#CCCCCC", borderpad=0.3, handlelength=1.0,
+        handletextpad=0.3, labelspacing=0.2, columnspacing=0.8, borderaxespad=0.4,
+        title=title or None, title_fontsize=fontsize,
+    )
+    if band not in (None, "top", "bottom"):
+        raise ValueError("band must be None, 'top' or 'bottom'.")
+    fig = ax.figure
+
+    def place(order):
+        probe = ax.legend(loc="upper right", **style)
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        key = probe.get_window_extent(renderer)
+        probe.remove()
+        frame = ax.get_window_extent(renderer)
+        data, reference = _drawn_boxes(ax, renderer)
+        pad = style["borderaxespad"] * fontsize * fig.dpi / 72.0
+        xs = {"left": frame.x0 + pad, "center": (frame.x0 + frame.x1 - key.width) / 2,
+              "right": frame.x1 - pad - key.width}
+        ys = {"lower": frame.y0 + pad, "center": (frame.y0 + frame.y1 - key.height) / 2,
+              "upper": frame.y1 - pad - key.height}
+
+        def covered(loc: str, drawn) -> float:
+            vertical, horizontal = loc.split()
+            x0, y0 = xs[horizontal], ys[vertical]
+            x1, y1 = x0 + key.width, y0 + key.height
+            if len(drawn) == 0:
+                return 0.0
+            width = np.clip(np.minimum(drawn[:, 2], x1) - np.maximum(drawn[:, 0], x0), 0, None)
+            height = np.clip(np.minimum(drawn[:, 3], y1) - np.maximum(drawn[:, 1], y0), 0, None)
+            return float((width * height).sum()) * (72.0 / fig.dpi) ** 2
+
+        on_data = {loc: covered(loc, data) for loc in order}
+        on_line = {loc: covered(loc, reference) for loc in order}
+        best = next(
+            (loc for loc in order if on_data[loc] == 0.0 and on_line[loc] == 0.0),
+            next((loc for loc in order if on_data[loc] == 0.0), min(order, key=on_data.get)),
+        )
+        return best, on_data[best], (key.height + 2 * pad) / frame.height
+
+    order = tuple(dict.fromkeys(tuple(prefer) + _KEY_INSIDE_ORDER))
+    best, area, share = place(order)
+    if area > 0.0 and band is not None and share < 0.5:
+        # Extend in the axis' own scale, so a log axis gains the same share of its height
+        scale = ax.yaxis.get_transform()
+        low, high = scale.transform(ax.get_ylim())
+        extra = (high - low) * share / (1.0 - share)
+        side = "upper" if band == "top" else "lower"
+        if (band == "top") == (high > low):
+            high += extra
+        else:
+            low -= extra
+        ax.set_ylim(*scale.inverted().transform([low, high]))
+        best, area, _ = place((f"{side} right", f"{side} left", f"{side} center"))
+    return ax.legend(loc=best, **style), best, area
+
+
 def letter_left_of_band(fig, letter: str, *, fontsize: float, left: float, top: float,
                         boxes, gap_pt: float = 2.5) -> tuple[float, float]:
     """Figure coordinates for a bold letter whose top is at display y ``top``.
@@ -953,7 +1108,6 @@ def plot_cell_vs_participant_beta(ax, res_cell, res_part, *, title: str,
     the standalone panel (by default the active tick-label size).
     """
     import matplotlib.patches as mpatches
-    from adjustText import adjust_text
     from matplotlib.font_manager import FontProperties
     from matplotlib.lines import Line2D
     from scipy import stats
@@ -980,10 +1134,11 @@ def plot_cell_vs_participant_beta(ax, res_cell, res_part, *, title: str,
     # clipped a marker below the axis while its label floated in the corner. The
     # standalone panel shares one range so the identity line runs at 45 degrees. The
     # composite cell is a ~3.5:1 strip where shared limits squeeze the narrow
-    # cell-level spread into the middle third, so each axis spans its own data there.
+    # cell-level spread into the middle third, so each axis spans its own data there,
+    # with room above and below the markers for the signature labels.
     if composite:
-        for set_lim, v in ((ax.set_xlim, beta_cell), (ax.set_ylim, beta_part)):
-            pad = 0.15 * (v.max() - v.min())
+        for set_lim, v, frac in ((ax.set_xlim, beta_cell, 0.15), (ax.set_ylim, beta_part, 0.45)):
+            pad = frac * (v.max() - v.min())
             set_lim(v.min() - pad, v.max() + pad)
     else:
         ax.set_xlim(lim_lo, lim_hi)
@@ -996,7 +1151,7 @@ def plot_cell_vs_participant_beta(ax, res_cell, res_part, *, title: str,
 
     # Final text sizes, fixed BEFORE label layout: the standalone export raises
     # text to a minimum size afterwards and the composite shrinks it, and any
-    # resize after adjust_text has run makes the labels collide.
+    # resize after the labels are placed makes them collide.
     if composite:
         label_fs = 4.0
     elif label_fs is None:
@@ -1005,9 +1160,7 @@ def plot_cell_vs_participant_beta(ax, res_cell, res_part, *, title: str,
         )
 
     # Spearman rho, not Pearson r. The key and the rho statistic sit in one row
-    # below the axes, so nothing inside the plot competes with the labels
-    # (adjustText 1.3.0 cannot avoid artists: its ``objects`` path maps
-    # display-space boxes through the data transform a second time).
+    # below the axes, so nothing inside the plot competes with the labels.
     rho, p = stats.spearmanr(beta_cell, beta_part)
     handles = [
         mpatches.Patch(facecolor=COLORS["treated"], label="Positive effect"),
@@ -1019,23 +1172,241 @@ def plot_cell_vs_participant_beta(ax, res_cell, res_part, *, title: str,
               frameon=True, framealpha=0.9, handlelength=0.8, handletextpad=0.3,
               columnspacing=1.2, borderpad=0.25)
 
-    # Label every signature and let adjustText resolve overlaps, drawing a thin
-    # leader line from each label back to its marker. x/y are the markers as static
-    # obstacles (not label positions), so no label sits on another signature's
-    # point; a fixed iteration budget keeps the layout reproducible (the default
-    # one-second time limit depends on the machine).
-    texts = [ax.text(xv, yv, sig_display(feat), fontsize=label_fs, alpha=0.9)
-             for feat, xv, yv in zip(common, beta_cell, beta_part)]
-    adjust_text(
-        texts, x=beta_cell, y=beta_part, ax=ax, expand=(1.5, 1.8),
-        force_text=(0.3, 0.5), iter_lim=1000,
-        ensure_inside_axes=True,
+    # One label per signature, placed where it covers no marker, no other label and
+    # no reference line, with a leader back to its marker (see place_point_labels).
+    # Positions are measured on the page, so the standalone panel takes its final
+    # layout first; the composite cell is already laid out by its grid.
+    if not composite:
+        ax.figure.tight_layout()
+    (x_lo, x_hi), (y_lo, y_hi) = ax.get_xlim(), ax.get_ylim()
+    _, allowances = place_point_labels(
+        ax, beta_cell, beta_part, [sig_display(feat) for feat in common],
+        fontsize=label_fs, marker_area=15 if composite else 30,
+        lines=[((lim_lo, lim_lo), (lim_hi, lim_hi)), ((x_lo, 0.0), (x_hi, 0.0)),
+               ((0.0, y_lo), (0.0, y_hi))],
     )
-    for txt, xv, yv in zip(texts, beta_cell, beta_part):
-        tx, ty = txt.get_position()
-        ax.annotate("", xy=(xv, yv), xytext=(tx, ty),
-                    arrowprops=dict(arrowstyle="-", color=COLORS["gray"], lw=0.4, alpha=0.6))
+    print(f"    scatter labels ({title}): {len(common)} placed, {allowances} under an allowance")
     despine(ax)
+
+
+def _segments_through_boxes(start, end, boxes):
+    """Whether each segment passes through each box, by broadcasting.
+
+    ``start`` and ``end`` end in an axis of length 2 and ``boxes`` in one of length 4
+    (x0, y0, x1, y1). A segment that only touches the edge of a box does not count.
+    """
+    import numpy as np
+
+    t0, t1 = 0.0, 1.0
+    for axis in (0, 1):
+        origin, delta = start[..., axis], end[..., axis] - start[..., axis]
+        lo, hi = boxes[..., axis], boxes[..., axis + 2]
+        with np.errstate(divide="ignore", invalid="ignore"):
+            ta, tb = (lo - origin) / delta, (hi - origin) / delta
+        flat = delta == 0
+        inside = (lo < origin) & (origin < hi)
+        t0 = np.maximum(t0, np.where(flat, np.where(inside, -np.inf, np.inf), np.minimum(ta, tb)))
+        t1 = np.minimum(t1, np.where(flat, np.where(inside, np.inf, -np.inf), np.maximum(ta, tb)))
+    return t0 < t1
+
+
+def _segments_cross(p, q, a, b):
+    """Whether the open segments p to q and a to b cross, by broadcasting."""
+    def side(u, v, w):
+        return ((v[..., 0] - u[..., 0]) * (w[..., 1] - u[..., 1])
+                - (v[..., 1] - u[..., 1]) * (w[..., 0] - u[..., 0]))
+
+    return (side(p, q, a) * side(p, q, b) < 0) & (side(a, b, p) * side(a, b, q) < 0)
+
+
+def place_point_labels(ax, xs, ys, names, *, fontsize: float, marker_area: float,
+                       lines=(), color: str | None = None, clearance_pt: float = 0.6,
+                       extra_orders: int = 42):
+    """Label scatter markers so that no label covers a marker, another label or a line.
+
+    Each label takes the position nearest its marker, over a fine grid of positions
+    inside the axes, at which its box is clear of every marker and every placed label,
+    its leader passes through no label, and no earlier leader passes through it.
+    Three allowances carry a cost in points of leader length and are accepted when
+    they shorten the leaders by more than that: lying within one text height of
+    another signature's marker, a leader that crosses another leader, and a leader that
+    passes behind another marker. Labels choose in turn, a label left without a
+    position chooses first in a new attempt, and every label is then re-placed against
+    the final positions of the others. Six systematic orders of choice and
+    ``extra_orders`` shuffled ones (fixed seed) are tried and the layout with the
+    lowest total cost is kept, so the result depends only on the data and the size of
+    the axes. A label sits on one of ``lines`` (segments in data coordinates) only if
+    no order places every label clear of them. Returns the labels and the number
+    placed under an allowance. Raises if the labels cannot all be placed.
+    """
+    import numpy as np
+    from matplotlib.patheffects import withStroke
+
+    # What each allowance costs, in points of leader length
+    beside_marker_pt, behind_marker_pt, crossing_pt, on_line_pt = 8.0, 25.0, 80.0, 1000.0
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    px = fig.dpi / 72.0
+    points = ax.transData.transform(np.column_stack([xs, ys]))
+    n = len(points)
+    labels = [
+        ax.text(x, y, name, fontsize=fontsize, ha="left", va="bottom", alpha=0.9, zorder=5,
+                path_effects=[withStroke(linewidth=0.3 * fontsize, foreground="white")])
+        for x, y, name in zip(xs, ys, names)
+    ]
+    sizes = [(e.width, e.height) for e in (t.get_window_extent(renderer) for t in labels)]
+    frame = ax.get_window_extent(renderer)
+    segments = np.array([ax.transData.transform(np.asarray(seg, dtype=float))
+                         for seg in lines]).reshape(-1, 2, 2)
+    radius = np.sqrt(marker_area) / 2.0 * px
+    gap = clearance_pt * px
+    side_gap = 0.6 * fontsize * px
+    inset = 1.5 * px
+    grow = np.array([-1.0, -1.0, 1.0, 1.0])
+
+    def length_cost(dist):
+        # A leader twice as long costs more than twice as much
+        return dist * (1.0 + dist / (25.0 * px))
+
+    def candidates(i):
+        """Admissible boxes of label i, nearest first, with the cost each carries alone."""
+        w, h = sizes[i]
+        gx = np.arange(frame.x0 + inset, frame.x1 - inset - w, 0.375 * fontsize * px)
+        gy = np.arange(frame.y0 + inset, frame.y1 - inset - h, 0.1875 * fontsize * px)
+        x0, y0 = (g.ravel() for g in np.meshgrid(gx, gy))
+        boxes = np.column_stack([x0, y0, x0 + w, y0 + h])
+        ends = np.clip(points[i], boxes[:, :2], boxes[:, 2:])
+        dist = np.hypot(*(ends - points[i]).T)
+        keep = np.lexsort((x0, y0, dist))
+        boxes, ends, dist = boxes[keep], ends[keep], dist[keep]
+
+        def markers_within(margin):
+            zone = (boxes + margin * grow)[:, None, :]
+            return ((zone[..., 0] < points[:, 0]) & (points[:, 0] < zone[..., 2])
+                    & (zone[..., 1] < points[:, 1]) & (points[:, 1] < zone[..., 3]))
+
+        free = ~markers_within(radius + gap).any(axis=1)
+        boxes, ends, dist = boxes[free], ends[free], dist[free]
+        others = np.arange(n) != i
+        beside = markers_within(radius + fontsize * px)[:, others].sum(axis=1)
+        apart = others & (np.hypot(*(points - points[i]).T) > 2.0 * radius)
+        along = ends - points[i]
+        reach = np.maximum((along ** 2).sum(axis=1), 1e-12)
+        t = np.clip(((points[apart] - points[i]) @ along.T).T / reach[:, None], 0.0, 1.0)
+        nearest = points[i] + t[..., None] * along[:, None, :]
+        behind = (np.hypot(*np.moveaxis(nearest - points[apart], -1, 0)) < radius + gap).sum(axis=1)
+        on_line = np.zeros(len(boxes))
+        if len(segments):
+            on_line = _segments_through_boxes(
+                segments[None, :, 0, :], segments[None, :, 1, :], (boxes + gap * grow)[:, None, :]
+            ).sum(axis=1)
+        alone = length_cost(dist) + px * (beside_marker_pt * beside + behind_marker_pt * behind)
+        return boxes, ends, alone, length_cost(dist), on_line
+
+    grid = [candidates(i) for i in range(n)]
+
+    def best(i, placed, off_lines):
+        """Cheapest admissible candidate of label i given the placed labels, or None."""
+        boxes, ends, alone, _, on_line = grid[i]
+        total = np.where(on_line > 0, np.inf, alone) if off_lines else alone + on_line_pt * px * on_line
+        if placed:
+            taken = np.array([grid[j][0][k] for j, k in placed.items()])
+            taken_start = np.array([points[j] for j in placed])
+            taken_end = np.array([grid[j][1][k] for j, k in placed.items()])
+            wide = (boxes + np.array([side_gap, gap, side_gap, gap]) * grow)[:, None, :]
+            clash = ((wide[..., 0] < taken[:, 2]) & (taken[:, 0] < wide[..., 2])
+                     & (wide[..., 1] < taken[:, 3]) & (taken[:, 1] < wide[..., 3]))
+            start = np.broadcast_to(points[i], ends.shape)[:, None, :]
+            clash |= _segments_through_boxes(start, ends[:, None, :], (taken + gap * grow)[None])
+            clash |= _segments_through_boxes(
+                taken_start[None], taken_end[None], (boxes + gap * grow)[:, None, :]
+            )
+            crossing = _segments_cross(start, ends[:, None, :], taken_start[None], taken_end[None])
+            total = np.where(
+                clash.any(axis=1), np.inf, total + crossing_pt * px * crossing.sum(axis=1)
+            )
+        if not len(total) or not np.isfinite(total).any():
+            return None
+        k = int(np.argmin(total))
+        return k, float(total[k])
+
+    def solve(order, off_lines):
+        order = list(order)
+        costs = dict.fromkeys(order, 0.0)
+        for _ in range(4 * n):
+            placed: dict[int, int] = {}
+            blocked = None
+            for i in order:
+                found = best(i, placed, off_lines)
+                if found is None:
+                    blocked = i
+                    break
+                placed[i], costs[i] = found
+            if blocked is None:
+                break
+            # A label with no free position chooses first in the next attempt
+            order.remove(blocked)
+            order.insert(0, blocked)
+        else:
+            return None
+        for _ in range(8):
+            changed = False
+            for i in order:
+                k, value = best(i, {j: c for j, c in placed.items() if j != i}, off_lines)
+                changed |= k != placed[i]
+                placed[i], costs[i] = k, value
+            if not changed:
+                break
+        return sum(costs.values()), placed, costs
+
+    crowding = [sum(np.hypot(*(points[j] - points[i])) < 6.0 * sizes[i][1] for j in range(n))
+                for i in range(n)]
+    orders = [
+        sorted(range(n), key=lambda i: (-crowding[i], i)),
+        sorted(range(n), key=lambda i: (crowding[i], i)),
+        sorted(range(n), key=lambda i: (points[i][0], i)),
+        sorted(range(n), key=lambda i: (-points[i][0], i)),
+        sorted(range(n), key=lambda i: (points[i][1], i)),
+        sorted(range(n), key=lambda i: (-points[i][1], i)),
+    ]
+    shuffle = np.random.default_rng(0)
+    orders += [list(shuffle.permutation(n)) for _ in range(extra_orders)]
+    # A label goes onto a line only if no order places every label clear of the lines
+    for off_lines in (True, False):
+        solutions = [found for found in (solve(order, off_lines) for order in orders)
+                     if found is not None]
+        if solutions:
+            break
+    else:
+        raise RuntimeError("The point labels cannot all be placed inside the axes")
+    _, placed, costs = min(solutions, key=lambda found: found[0])
+
+    to_data = ax.transData.inverted()
+    allowances = 0
+    for i, label in enumerate(labels):
+        box, end = grid[i][0][placed[i]], grid[i][1][placed[i]]
+        allowances += costs[i] - grid[i][3][placed[i]] > 1e-6
+        label.set_position(to_data.transform(box[:2]))
+        if np.hypot(*(end - points[i])) > radius + 1.5 * gap:
+            leader_to_label(ax, label, (xs[i], ys[i]), anchor=end, box=box, color=color)
+    return labels, int(allowances)
+
+
+def leader_to_label(ax, label, point, *, anchor, box, color: str | None = None,
+                    lw: float = 0.4, alpha: float = 0.6):
+    """Draw a leader from a marker to ``anchor``, a point on the edge of its label's box.
+
+    The label end is held as a fraction of the label's own box (``box`` in display
+    units), so the leader stays on the edge of the label when the axes are resized.
+    """
+    fx = (anchor[0] - box[0]) / (box[2] - box[0])
+    fy = (anchor[1] - box[1]) / (box[3] - box[1])
+    return ax.annotate(
+        "", xy=point, xycoords="data", xytext=(fx, fy), textcoords=label, zorder=2,
+        arrowprops=dict(arrowstyle="-", color=color or COLORS["gray"], lw=lw, alpha=alpha,
+                        shrinkA=0, shrinkB=0),
+    )
 
 
 def dataset_display(name: str) -> str:

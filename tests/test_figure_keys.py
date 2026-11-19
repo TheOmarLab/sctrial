@@ -412,3 +412,266 @@ def test_figure4_effect_heatmap_key_clears_the_title(load_figure_module, shared)
     overlaps = sys.modules["manuscript_figures._shared"].layout_problems(fig)["text overlaps"]
     assert not [o for o in overlaps if "FDR" in o or "title" in o]
     plt.close(fig)
+
+
+def _bar_axes(heights):
+    fig, ax = plt.subplots(figsize=(3.0, 2.2), dpi=150)
+    ax.bar(range(len(heights)), heights, label="value")
+    ax.set_ylim(0, 10)
+    ax.legend()
+    return fig, ax
+
+
+def test_key_inside_axes_takes_the_first_clear_location(shared):
+    # tall bars on the right: the preferred upper-right corner is covered, upper left is clear
+    fig, ax = _bar_axes([1, 1, 1, 1, 9.5, 9.5, 9.5])
+    legend, loc, covered = shared.key_inside_axes(ax, ncol=1, fontsize=6)
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    key = _extent(legend, renderer)
+    assert covered == 0.0
+    assert loc == "upper left"  # upper left
+    for bar in ax.patches:
+        box = _extent(bar, renderer)
+        assert not (key.x0 < box.x1 and box.x0 < key.x1 and key.y0 < box.y1 and box.y0 < key.y1)
+    frame = _extent(ax, renderer)
+    assert frame.x0 <= key.x0 and key.x1 <= frame.x1 and frame.y0 <= key.y0 and key.y1 <= frame.y1
+    plt.close(fig)
+
+
+def test_key_inside_axes_keeps_the_preferred_location_when_it_is_clear(shared):
+    fig, ax = _bar_axes([9.5, 9.5, 1, 1, 1, 1, 1])
+    legend, loc, covered = shared.key_inside_axes(ax, ncol=1, fontsize=6)
+    assert covered == 0.0 and loc == "upper right"  # upper right, the first of the default order
+    # the short bars occupy the lower right, so the second choice is taken
+    legend, loc, covered = shared.key_inside_axes(ax, ncol=1, fontsize=6,
+                                             prefer=("lower right", "upper right"))
+    assert covered == 0.0 and loc == "upper right"
+    plt.close(fig)
+
+    fig, ax = plt.subplots(figsize=(3.0, 2.2), dpi=150)
+    ax.bar([0, 1], [9.5, 9.5], label="value")
+    ax.set_xlim(-0.5, 6.5)
+    ax.set_ylim(0, 10)
+    ax.legend()
+    legend, loc, covered = shared.key_inside_axes(ax, ncol=1, fontsize=6,
+                                             prefer=("lower right", "upper right"))
+    assert covered == 0.0 and loc == "lower right"  # lower right is clear and comes first
+    plt.close(fig)
+
+
+def test_key_inside_axes_reports_what_it_covers_when_nothing_is_clear(shared):
+    fig, ax = _bar_axes([9.9] * 7)
+    ax.axhline(5, color="k")
+    legend, loc, covered = shared.key_inside_axes(ax, ncol=1, fontsize=6)
+    assert covered > 0.0
+    plt.close(fig)
+
+
+def test_key_inside_axes_counts_a_line_where_it_runs_not_its_bounding_box(shared):
+    fig, ax = plt.subplots(figsize=(3.0, 2.2), dpi=150)
+    ax.plot([0, 1], [0, 1], label="diagonal")  # crosses lower left and upper right only
+    ax.legend()
+    legend, loc, covered = shared.key_inside_axes(ax, ncol=1, fontsize=6,
+                                             prefer=("upper right", "lower right"))
+    assert covered == 0.0 and loc == "lower right"  # lower right, clear of the diagonal
+    plt.close(fig)
+
+
+def test_key_inside_axes_without_a_legend_does_nothing(shared):
+    fig, ax = plt.subplots()
+    assert shared.key_inside_axes(ax, ncol=1) is None
+    plt.close(fig)
+
+
+def test_key_inside_axes_tries_every_location_after_the_preferred_ones(shared):
+    # the two preferred corners are covered; the lower left is clear
+    fig, ax = plt.subplots(figsize=(3.0, 2.2), dpi=150)
+    ax.bar([4, 5, 6], [9.8, 9.8, 9.8], label="value")
+    ax.set_xlim(-0.5, 6.5)
+    ax.set_ylim(0, 10)
+    ax.legend()
+    legend, loc, covered = shared.key_inside_axes(ax, ncol=1, fontsize=6,
+                                                  prefer=("upper right", "lower right"))
+    assert covered == 0.0 and loc == "upper left"
+    plt.close(fig)
+
+
+@pytest.mark.parametrize("band,side", [("top", "upper"), ("bottom", "lower")])
+def test_key_inside_axes_opens_a_band_when_nothing_is_clear(shared, band, side):
+    fig, ax = _bar_axes([9.9] * 7)
+    ax.axhline(5, color="k")
+    before = ax.get_ylim()
+    legend, loc, covered = shared.key_inside_axes(ax, ncol=1, fontsize=6, band=band)
+    after = ax.get_ylim()
+    assert covered == 0.0 and loc.startswith(side)
+    if band == "top":
+        assert after[1] > before[1] and after[0] == before[0]
+    else:
+        assert after[0] < before[0] and after[1] == before[1]
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    key, frame = _extent(legend, renderer), _extent(ax, renderer)
+    assert frame.y0 <= key.y0 and key.y1 <= frame.y1
+    plt.close(fig)
+
+
+def test_key_inside_axes_accepts_a_reference_line_but_prefers_a_clear_place(shared):
+    # bars cover the left half, a threshold line crosses the free right half
+    fig, ax = plt.subplots(figsize=(3.0, 2.2), dpi=150)
+    ax.bar([0, 1, 2], [9.9, 9.9, 9.9], label="value")
+    ax.set_xlim(-0.5, 5.5)
+    ax.set_ylim(0, 10)
+    ax.axvline(4.9, color="k", ls="--")
+    ax.legend()
+    before = ax.get_ylim()
+    legend, loc, covered = shared.key_inside_axes(ax, ncol=1, fontsize=6, band="top")
+    assert covered == 0.0 and loc.endswith("right")
+    assert ax.get_ylim() == before  # no band was opened for a reference line
+    plt.close(fig)
+
+
+def _label_boxes(labels, renderer):
+    return [t.get_window_extent(renderer) for t in labels]
+
+
+def _crowded_scatter(figsize=(3.1, 1.1), n=19, seed=3):
+    rng = np.random.default_rng(seed)
+    x = np.concatenate([rng.normal(0.0, 0.08, n - 3), [-0.8, 0.7, 0.75]])
+    y = 1.3 * x + rng.normal(0.0, 0.25, n)
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.scatter(x, y, s=15, zorder=3)
+    ax.set_xlim(x.min() - 0.3, x.max() + 0.3)
+    ax.set_ylim(y.min() - 0.9, y.max() + 0.9)
+    names = [f"Signature name {i}" for i in range(n)]
+    lines = [((-2.0, -2.0), (2.0, 2.0))]
+    return fig, ax, x, y, names, lines
+
+
+def test_place_point_labels_keeps_labels_off_markers_labels_and_lines(shared):
+    fig, ax, x, y, names, lines = _crowded_scatter()
+    labels, allowances = shared.place_point_labels(
+        ax, x, y, names, fontsize=4.0, marker_area=15, lines=lines
+    )
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    boxes = _label_boxes(labels, r)
+    frame = ax.get_window_extent(r)
+    markers = ax.transData.transform(np.column_stack([x, y]))
+    radius = np.sqrt(15) / 2 * fig.dpi / 72
+
+    assert [t.get_text() for t in labels] == names
+    for i, a in enumerate(boxes):
+        assert frame.x0 <= a.x0 and a.x1 <= frame.x1 and frame.y0 <= a.y0 and a.y1 <= frame.y1
+        for b in boxes[i + 1:]:
+            assert not (a.x0 < b.x1 and b.x0 < a.x1 and a.y0 < b.y1 and b.y0 < a.y1)
+        for mx, my in markers:
+            assert not (a.x0 - radius < mx < a.x1 + radius and a.y0 - radius < my < a.y1 + radius)
+    for start, end in lines:
+        p, q = ax.transData.transform([start, end])
+        for box in boxes:
+            pts = np.linspace(p, q, 4000)
+            inside = ((pts[:, 0] > box.x0) & (pts[:, 0] < box.x1)
+                      & (pts[:, 1] > box.y0) & (pts[:, 1] < box.y1))
+            assert not inside.any()
+    assert allowances <= len(names)
+    plt.close(fig)
+
+
+def test_place_point_labels_leaders_end_on_their_label(shared):
+    fig, ax, x, y, names, lines = _crowded_scatter()
+    labels, _ = shared.place_point_labels(ax, x, y, names, fontsize=4.0, marker_area=15, lines=lines)
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    boxes = {t.get_text(): t.get_window_extent(r) for t in labels}
+    leaders = [t for t in ax.texts if not t.get_text()]
+    assert leaders
+    for leader in leaders:
+        box = boxes[leader.anncoords.get_text()]
+        path = leader.arrow_patch.get_path().vertices
+        ends = leader.arrow_patch.get_transform().transform(path[[0, -1]])
+        on_edge = [
+            box.x0 - 1 <= ex <= box.x1 + 1 and box.y0 - 1 <= ey <= box.y1 + 1
+            and (min(abs(ex - box.x0), abs(ex - box.x1)) <= 1 or min(abs(ey - box.y0), abs(ey - box.y1)) <= 1)
+            for ex, ey in ends
+        ]
+        assert any(on_edge)
+    plt.close(fig)
+
+
+def test_place_point_labels_is_reproducible(shared):
+    positions = []
+    for _ in range(2):
+        fig, ax, x, y, names, lines = _crowded_scatter()
+        labels, _ = shared.place_point_labels(ax, x, y, names, fontsize=4.0, marker_area=15, lines=lines)
+        positions.append([t.get_position() for t in labels])
+        plt.close(fig)
+    assert positions[0] == positions[1]
+
+
+def test_place_point_labels_raises_when_the_axes_cannot_hold_the_labels(shared):
+    fig, ax, x, y, names, lines = _crowded_scatter(figsize=(0.9, 0.5))
+    with pytest.raises(RuntimeError, match="cannot all be placed"):
+        shared.place_point_labels(ax, x, y, names, fontsize=6.0, marker_area=15, lines=lines)
+    plt.close(fig)
+
+
+def test_segments_through_boxes(shared):
+    box = np.array([0.0, 0.0, 2.0, 1.0])
+    start = np.array([[-1.0, 0.5], [-1.0, 2.0], [1.0, -1.0], [-1.0, 0.0], [0.5, 0.5]])
+    end = np.array([[3.0, 0.5], [3.0, 2.0], [1.0, 3.0], [3.0, 0.0], [0.6, 0.6]])
+    hit = shared._segments_through_boxes(start, end, box[None, :])
+    assert hit.tolist() == [True, False, True, False, True]
+
+
+def test_place_point_labels_uses_a_line_only_when_no_layout_clears_it(shared):
+    fig, ax = plt.subplots(figsize=(2.0, 0.5))
+    x = np.linspace(-0.6, 0.6, 5)
+    y = np.zeros(5)
+    ax.scatter(x, y, s=15, zorder=3)
+    ax.set_xlim(-1, 1)
+    ax.set_ylim(-1, 1)
+    names = [f"Signature {i}" for i in range(5)]
+    levels = np.linspace(-0.95, 0.95, 9)
+    lines = [((-1.0, level), (1.0, level)) for level in levels]
+    labels, allowances = shared.place_point_labels(
+        ax, x, y, names, fontsize=5.0, marker_area=15, lines=lines
+    )
+    assert len(labels) == 5
+    plt.close(fig)
+
+    fig, ax, x, y, names, lines = _crowded_scatter()
+    labels, _ = shared.place_point_labels(ax, x, y, names, fontsize=4.0, marker_area=15, lines=lines)
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    p, q = ax.transData.transform(lines[0])
+    pts = np.linspace(p, q, 4000)
+    for box in _label_boxes(labels, r):
+        assert not ((pts[:, 0] > box.x0) & (pts[:, 0] < box.x1)
+                    & (pts[:, 1] > box.y0) & (pts[:, 1] < box.y1)).any()
+    plt.close(fig)
+
+
+def test_key_inside_axes_band_on_a_log_axis_extends_in_log_units(shared):
+    fig, ax = plt.subplots(figsize=(2.2, 1.2))
+    heights = [20000, 25000, 30000, 28000, 26000, 24000, 29000, 27000]
+    ax.bar(range(8), heights, width=1.0, label="cells")
+    ax.set_ylim(500, 32000)
+    ax.set_yscale("log")
+    low, high = ax.get_ylim()
+    ax.legend(loc="upper right")
+    leg, loc, covered = shared.key_inside_axes(ax, ncol=1, fontsize=6, band="top")
+    new_low, new_high = ax.get_ylim()
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    key, frame = leg.get_window_extent(r), ax.get_window_extent(r)
+    tallest = ax.transData.transform((0, max(heights)))[1]
+
+    assert new_low == pytest.approx(low)
+    assert new_high > high
+    assert loc.startswith("upper") and covered == 0.0
+    assert key.y0 >= tallest - 0.5 and key.y1 <= frame.y1
+    # the added band is a share of the axis height, not a linear amount of cells
+    share = (np.log10(new_high) - np.log10(high)) / (np.log10(new_high) - np.log10(new_low))
+    assert 0.1 < share < 0.5
+    plt.close(fig)

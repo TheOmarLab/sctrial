@@ -49,7 +49,12 @@ from .._shared import (
     get_sade_feldman,
     get_tnbc_zhang,
     harmonize_response,
+    key_below_axes,
+    key_below_row,
+    key_inside_axes,
+    letter_at_panel_corner,
     plot_cell_vs_participant_beta,
+    report_layout_problems,
     save_panel,
     score_signatures,
     sig_display,
@@ -291,6 +296,7 @@ def _panel_a_paired_verification(ax: plt.Axes, data: dict) -> None:
               ncol=4, frameon=True, framealpha=0.9,
               handletextpad=0.3, columnspacing=0.8)
 
+    ax.set_ylim(0, counts["n_cells"].max() * 1.35)
     pair_info = data["pair_info"]
     ax.text(
         0.02, 0.98,
@@ -342,8 +348,9 @@ def _panel_c_pvalue_inflation(ax: plt.Axes, data: dict) -> None:
 
     thresh = -np.log10(0.05)
     ax.axvline(thresh, color=COLORS["gray"], ls="--", lw=1, zorder=1)
-    ax.text(thresh + 0.1, len(df) - 0.5, "p = 0.05", fontsize=8,
-            va="bottom", color=COLORS["gray"])
+    ax.text(thresh, len(df) - 0.45, "p = 0.05 ", fontsize=8,
+            ha="right", va="bottom", color=COLORS["gray"])
+    ax.set_ylim(-0.6, len(df) + 0.6)
 
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["display"], fontsize=4.5)
@@ -1086,7 +1093,7 @@ def generate() -> None:
             fig.tight_layout()
             save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
 
-    # ── Combined artboard (180 × 270 mm, taller to fit new TNBC row) ──────
+    # ── Combined artboard, 180 mm wide: A B / C D E / F G / H I / J K ─────
     _SMALL_RC = {
         "font.size":             5,
         "axes.titlesize":        5.5,
@@ -1097,6 +1104,7 @@ def generate() -> None:
         "legend.title_fontsize": 4,
     }
     _MAX_FONT_COMPOSITE = 6
+    _KEY_FS = 4.5
 
     def _cap_fontsize(fig, maximum):
         for ax in fig.get_axes():
@@ -1116,25 +1124,22 @@ def generate() -> None:
     _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
     plt.rcParams.update(_SMALL_RC)
 
-    _mm  = 1.0 / 25.4
-    fig_c = plt.figure(figsize=(180 * _mm, 245 * _mm))
-
-    # 9-row gridspec: content rows at indices 0,2,4,6,8; spacer rows at 1,3,5,7.
-    # Spacers between rows 1-2, 2-3, 4-5 are narrow; spacer between rows 3-4 is wider.
-    #   Row 0 (content): A | B
-    #   Row 1 (spacer):  narrow
-    #   Row 2 (content): C | D | E
-    #   Row 3 (spacer):  narrow
-    #   Row 4 (content): F (top-left) + G (bottom-left) | H (right, spans both)
-    #   Row 5 (spacer):  wider (keep gap between rows 3 and 4)
-    #   Row 6 (content): I | J
-    #   Row 7 (spacer):  narrow
-    #   Row 8 (content): K (centred)
+    # Heights in mm. A panel with 19 signature rows needs 36 mm for its 4.5 pt row
+    # labels to clear each other. Each gap holds the x-axis text of the row above and
+    # the titles of the row below.
+    _mm = 1.0 / 25.4
+    _rows_mm = [28.0, 41.0, 36.0, 50.0, 36.0]
+    _gaps_mm = [20.0, 14.0, 13.0, 22.0]
+    _top_mm, _bottom_mm = 7.0, 10.0
+    _height_mm = sum(_rows_mm) + sum(_gaps_mm) + _top_mm + _bottom_mm
+    fig_c = plt.figure(figsize=(180 * _mm, _height_mm * _mm))
+    _ratios = [_rows_mm[0]]
+    for _gap, _row in zip(_gaps_mm, _rows_mm[1:]):
+        _ratios += [_gap, _row]
     outer = fig_c.add_gridspec(
-        9, 1,
-        height_ratios=[1.0, 1.2, 1.8, 1.05, 3.8, 0.75, 1.8, 1.05, 1.8],
-        hspace=0,
-        left=0.10, right=0.95, top=0.97, bottom=0.05,
+        len(_ratios), 1, height_ratios=_ratios, hspace=0,
+        left=0.115, right=0.965,
+        top=1 - _top_mm / _height_mm, bottom=_bottom_mm / _height_mm,
     )
 
     # Row 0: A | B
@@ -1142,25 +1147,24 @@ def generate() -> None:
     ax_a = fig_c.add_subplot(gs0[0])
     ax_b = fig_c.add_subplot(gs0[1])
 
-    # Row 2: C | D | E
-    gs1  = outer[2].subgridspec(1, 3, wspace=0.95, width_ratios=[0.72, 1, 0.95])
+    # Row 1: C | D | E
+    gs1  = outer[2].subgridspec(1, 3, wspace=0.85, width_ratios=[0.85, 1, 0.95])
     ax_c = fig_c.add_subplot(gs1[0])
     ax_d = fig_c.add_subplot(gs1[1])
     ax_e = fig_c.add_subplot(gs1[2])
 
-    # Row 4: F (top-left) + G (bottom-left) | H (right, spans both)
-    gs2       = outer[4].subgridspec(2, 2, width_ratios=[1, 1.6],
-                                     hspace=0.50, wspace=0.40)
-    ax_f      = fig_c.add_subplot(gs2[0, 0])    # Panel F (TNBC anti-PDL1+Chemo DID)
-    ax_g_comp = fig_c.add_subplot(gs2[1, 0])    # Panel G (Melanoma forest)
+    # Row 2: F | G
+    gs2       = outer[4].subgridspec(1, 2, wspace=0.50)
+    ax_f      = fig_c.add_subplot(gs2[0])    # TNBC anti-PDL1+Chemo DID
+    ax_g_comp = fig_c.add_subplot(gs2[1])    # Melanoma forest
 
-    # Row 6: I | J
-    gs3  = outer[6].subgridspec(1, 2, wspace=0.55)
-    ax_i = fig_c.add_subplot(gs3[0])
-    ax_j = fig_c.add_subplot(gs3[1])
+    # Row 3: H (2 x 3 grid) | I
+    gs3  = outer[6].subgridspec(1, 2, wspace=0.26, width_ratios=[1.25, 1])
+    ax_i = fig_c.add_subplot(gs3[1])
 
-    # Row 8: K (centred)
-    gs4  = outer[8].subgridspec(1, 3, width_ratios=[0.6, 1.8, 0.6], wspace=0.40)
+    # Row 4: J | K
+    gs4  = outer[8].subgridspec(1, 2, wspace=0.50)
+    ax_j = fig_c.add_subplot(gs4[0])
     ax_k = fig_c.add_subplot(gs4[1])
 
     # ── Draw all panels ────────────────────────────────────────────────────
@@ -1172,8 +1176,8 @@ def generate() -> None:
     _panel_f_tnbc_response_did_antipdl1(ax_f, tnbc_data)
     _panel_g_forest(ax_g_comp, data)
     axes_h, ax_h_hdr = _panel_h_interaction_grid(
-        fig_c, gs2[:, 1], data, n_sigs=6,
-        inner_hspace=0.80, inner_wspace=0.30, inner_top=0.88,
+        fig_c, gs3[0], data, n_sigs=6,
+        inner_hspace=0.80, inner_wspace=0.46, inner_top=0.88,
         group_title="Participant-Level Trajectories (Melanoma)",
     )
     _panel_i_heatmap(ax_i, data)
@@ -1182,55 +1186,21 @@ def generate() -> None:
 
     # ── Combined-panel-only adjustments ───────────────────────────────────
 
-    # Move below-figure legends inside the plot area for space
-    _inside = {
-        ax_c:      "lower right",    # Melanoma p-value inflation
-        ax_d:      "center right",   # TNBC mean delta by arm
-        ax_e:      "lower right",    # TNBC Chemo DID
-        ax_f:      "upper left",     # TNBC anti-PDL1 DID
-        ax_g_comp: "upper left",     # Melanoma forest
-        ax_j:      "lower right",    # Melanoma delta by response
-        ax_k:      "lower right",    # Melanoma Hedges' g
-    }
-    for ax_target, loc in _inside.items():
-        leg = ax_target.get_legend()
-        if leg:
-            handles = leg.legend_handles
-            labels  = [t.get_text() for t in leg.get_texts()]
-            leg.remove()
-            ax_target.legend(
-                handles=handles, labels=labels,
-                fontsize=4.5, loc=loc,
-                frameon=True, framealpha=0.85,
-                handlelength=1, handletextpad=0.3,
-                borderpad=0.3, labelspacing=0.2,
-            )
+    # Panel C: its title is wider than its column on one line
+    ax_c.set_title("P-value Inflation: Cell vs\nParticipant Level (Melanoma)",
+                   fontsize=ax_c.title.get_fontsize(), fontweight="bold")
 
-    # Panel A: place legend high inside the plot area
-    leg_a = ax_a.get_legend()
-    if leg_a:
-        handles_a = leg_a.legend_handles
-        labels_a  = [t.get_text() for t in leg_a.get_texts()]
-        leg_a.remove()
-        ax_a.legend(
-            handles=handles_a, labels=labels_a,
-            fontsize=4.5, loc="upper right",
-            bbox_to_anchor=(1.0, 1.10),
-            frameon=True, framealpha=0.85,
-            handlelength=1, handletextpad=0.3,
-            borderpad=0.3, labelspacing=0.2,
-            ncol=2,
-        )
+    # Panel H: lift the two-line titles clear of the neighbouring y tick labels
+    for _ax_h in axes_h:
+        _ax_h.set_title(_ax_h.get_title(), fontsize=_ax_h.title.get_fontsize(),
+                        fontweight="bold", pad=3)
 
-    # Panel H (interaction grid): consolidate legend at centre-bottom
+    # Panel H: one key for the grid, with markers sized for the artboard
     if axes_h:
         leg_h = axes_h[-1].get_legend()
         if leg_h:
             leg_h.remove()
-        # Place legend between the two H rows: anchor to bottom of axes_h[1]
-        # (centre panel of top row), pointing downward into the inter-row gap.
-        mid_top_ax = axes_h[1]
-        _hh = [
+        axes_h[3].legend(handles=[
             Line2D([0], [0], color=COL_RESP, linewidth=1.5, marker="o",
                    markersize=3, markeredgecolor="white", label="Responder"),
             Line2D([0], [0], color=COL_NRESP, linewidth=1.5, marker="o",
@@ -1238,18 +1208,7 @@ def generate() -> None:
                    label="Non-responder"),
             Line2D([0], [0], color=COL_GRAY, linewidth=0.6, alpha=0.4,
                    label="Individual"),
-        ]
-        mid_top_ax.legend(
-            handles=_hh, fontsize=4.5,
-            loc="upper center", bbox_to_anchor=(0.5, -0.28),
-            ncol=3, frameon=True, framealpha=0.95, edgecolor="#CCCCCC",
-        )
-
-    # Panel C: nudge "p = 0.05" annotation down
-    for txt in ax_c.texts:
-        if "0.05" in txt.get_text():
-            x, y = txt.get_position()
-            txt.set_position((x, y - 2))
+        ])
 
     # Panel I (heatmap): replace below-legend with y-axis group labels
     from matplotlib.colors import to_rgba
@@ -1287,35 +1246,43 @@ def generate() -> None:
     # Cap all font sizes to composite maximum
     _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
 
-    # Bold panel labels (after cap so they stay prominent)
-    _lbl_fs = 7
-    _lbl_pos = {
-        "C": (-0.55, 1.22),   # more left, and up
-        "D": (-0.15, 1.22),   # up
-        "E": (-0.28, 1.22),   # left and up
-        "F": (-0.15, 1.22),   # up
-        "G": (-0.15, 1.22),   # up
+    # Keys stay inside the axes, each at the first place where it covers no data and no
+    # text (measured once fonts and limits are final). Panel B's key carries the
+    # correlation and Panel H's serves the whole grid: both go below their axes.
+    _key_place = {
+        "A": (ax_a, 2, ("upper right", "upper center", "center right")),
+        "C": (ax_c, 1, ("lower right", "center right", "upper right")),
+        "D": (ax_d, 1, ("lower right", "upper left", "lower left", "upper right", "center right")),
+        "E": (ax_e, 1, ("lower right", "upper left", "lower left", "upper right")),
+        "F": (ax_f, 1, ("upper left", "lower right", "lower left", "upper right")),
+        "G": (ax_g_comp, 1, ("upper left", "lower right", "lower left", "upper right")),
+        "J": (ax_j, 1, ("lower right", "upper left", "lower left", "upper right")),
+        "K": (ax_k, 1, ("lower right", "upper left", "center right")),
     }
-    _lbl_default = (-0.15, 1.12)
+    for _name, (_ax, _ncol, _prefer) in _key_place.items():
+        _placed = key_inside_axes(_ax, ncol=_ncol, fontsize=_KEY_FS, prefer=_prefer, band="top")
+        if _placed is not None:
+            print(f"    key of panel {_name}: {_placed[1]}, covers {_placed[2]:.1f} pt2")
+    key_below_axes(ax_b, ncol=3, fontsize=5, gap_pt=1.5)
+    if axes_h:
+        key_below_row(axes_h[3:], ncol=3, fontsize=_KEY_FS, gap_pt=1.5)
+
+    # Bold panel letters, placed after the cap so they stay prominent
+    _lbl_fs = 7
     for ax, lbl in [
         (ax_a, "A"), (ax_b, "B"), (ax_c, "C"),
         (ax_d, "D"), (ax_e, "E"), (ax_f, "F"),
         (ax_g_comp, "G"), (ax_i, "I"), (ax_j, "J"), (ax_k, "K"),
     ]:
-        _lx, _ly = _lbl_pos.get(lbl, _lbl_default)
-        ax.text(_lx, _ly, lbl, transform=ax.transAxes,
-                fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
-    # H label: placed on ax_h_hdr (top of H region) after cap so fontsize
-    # matches all other panel letters.  y=1.68 calibrated for gs2 hspace=0.70
-    # and inner_top=0.88 so the label sits at the same absolute height as
-    # F's label at y=1.22.
-    if ax_h_hdr is not None:
-        ax_h_hdr.text(
-            -0.15, 1.68, "H",
-            transform=ax_h_hdr.transAxes,
-            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
-            clip_on=False,
-        )
+        letter_at_panel_corner(ax, lbl, fontsize=_lbl_fs, keep_clear=True)
+    if axes_h and ax_h_hdr is not None:
+        # H: left of the grid, level with the group title
+        fig_c.canvas.draw()
+        _renderer = fig_c.canvas.get_renderer()
+        _title_top = max(t.get_window_extent(_renderer).y1 for t in ax_h_hdr.texts)
+        letter_at_panel_corner(axes_h[0], "H", fontsize=_lbl_fs, top=_title_top,
+                               keep_clear=True)
+    report_layout_problems(fig_c, FIGURE_NAME)
     plt.rcParams.update(_prev_rc)
 
     save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)

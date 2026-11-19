@@ -36,6 +36,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib.lines import Line2D
+from matplotlib.transforms import blended_transform_factory
 from scipy.cluster.hierarchy import leaves_list, linkage
 
 from .._relabeling import did_permutation_nulls, did_relabeling_cached, permutation_summary
@@ -52,6 +53,10 @@ from .._shared import (
     get_stephenson,
     get_tnbc_zhang,
     harmonize_response,
+    key_below_axes,
+    key_inside_axes,
+    letter_at_panel_corner,
+    report_layout_problems,
     save_panel,
     score_signatures,
     sig_display,
@@ -505,6 +510,21 @@ def _panel_b(ax, data: dict, *, composite: bool = False) -> None:
     despine(ax)
 
 
+def _hedges_g_row(ax, values: list[float]) -> None:
+    """Write one Hedges' g per x category on a common baseline above the data.
+
+    The axis is extended upward by a band that holds the row, so the values clear
+    every box and each other at any panel size.
+    """
+    ylo, yhi = ax.get_ylim()
+    ax.set_ylim(ylo, yhi + 0.14 * (yhi - ylo))
+    across = blended_transform_factory(ax.transData, ax.transAxes)
+    for i, g in enumerate(values):
+        if np.isfinite(g):
+            ax.text(i, 0.985, f"{g:.2f}", transform=across, ha="center", va="top",
+                    fontsize=6.5, fontstyle="italic", color="grey")
+
+
 # ── Panel C: Individual-effect strip plot ────────────────────────────────
 
 def _panel_c(ax, data: dict) -> None:
@@ -588,17 +608,11 @@ def _panel_d(ax, data: dict) -> None:
         tick.set_rotation(35)
         tick.set_ha("right")
         tick.set_fontsize(8)
-    for i, feat in enumerate(top):
-        t_vals = effects.loc[effects["arm"] == DESIGN.arm_treated, feat].dropna().values
-        c_vals = effects.loc[effects["arm"] == DESIGN.arm_control, feat].dropna().values
-        g = _hedges_g(t_vals, c_vals)
-        if np.isfinite(g):
-            feat_vals = long.loc[long["feature"] == feat, "effect"].dropna()
-            ymax = float(feat_vals.max()) if not feat_vals.empty else 0.0
-            y_off = -0.12 if feat in ("CD14", "LYZ") else 0.02
-            ax.text(i, ymax + y_off * (ax.get_ylim()[1] - ax.get_ylim()[0]),
-                    f"g={g:.2f}", ha="center", va="bottom", fontsize=6.5,
-                    fontstyle="italic", color="grey")
+    _hedges_g_row(ax, [
+        _hedges_g(effects.loc[effects["arm"] == DESIGN.arm_treated, feat].dropna().values,
+                  effects.loc[effects["arm"] == DESIGN.arm_control, feat].dropna().values)
+        for feat in top
+    ])
     ax.set_xlabel("")
     ax.set_ylabel("Participant Effect (Post − Pre)")
     ax.set_title(
@@ -749,20 +763,15 @@ def _panel_f(ax, tnbc_data: dict) -> None:
     ax.set_xticks(range(n_feats))
     ax.set_xticklabels(top, rotation=35, ha="right", fontsize=8)
     ax.set_xlim(-0.5, n_feats - 0.5)
+    # Room below the boxes for the four-group key
     ylo, yhi = ax.get_ylim()
-    # Hedges' g annotations: anti-PDL1+Chemo vs Chemo (pooled across response)
-    for feat_idx, feat in enumerate(top):
-        chemo_vals = effects.loc[effects["arm"] == TNBC_ARM_CHEMO, feat].dropna().values
-        combo_vals = effects.loc[effects["arm"] == TNBC_ARM_COMBO, feat].dropna().values
-        g = _hedges_g(combo_vals, chemo_vals)
-        if np.isfinite(g):
-            feat_data = long.loc[long["feature"] == feat, "effect"].dropna()
-            ymax_feat = float(np.nanpercentile(feat_data, 90)) if not feat_data.empty else yhi
-            extra = 0.25 * (yhi - ylo) if feat == "NKG7" else 0.0
-            ax.text(feat_idx, ymax_feat + 0.12 * (yhi - ylo) + extra,
-                    f"g={g:.2f}", ha="center", va="bottom", fontsize=6.5,
-                    fontstyle="italic", color="grey")
-    ax.set_ylim(ylo - 0.25 * (yhi - ylo), yhi + 0.25 * (yhi - ylo))
+    ax.set_ylim(ylo - 0.25 * (yhi - ylo), yhi)
+    # Hedges' g: anti-PDL1+Chemo vs Chemo (pooled across response)
+    _hedges_g_row(ax, [
+        _hedges_g(effects.loc[effects["arm"] == TNBC_ARM_COMBO, feat].dropna().values,
+                  effects.loc[effects["arm"] == TNBC_ARM_CHEMO, feat].dropna().values)
+        for feat in top
+    ])
     ax.set_ylabel("Participant Effect (Post − Pre)")
     ax.set_title(
         "Response-Stratified Heterogeneity - TNBC\n(Hedges' g: anti-PDL1+Chemo vs Chemo)",
@@ -1046,7 +1055,7 @@ def generate() -> None:
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
 
-    # ── Combined artboard (180 × 260 mm) ─────────────────────────────────
+    # ── Combined artboard, 180 mm wide ───────────────────────────────────
     _SMALL_RC = {
         "font.size": 5,
         "axes.titlesize": 5.5,
@@ -1057,6 +1066,8 @@ def generate() -> None:
         "legend.title_fontsize": 4,
     }
     _MAX_FONT_COMPOSITE = 6
+    _KEY_FS = 4.5
+    _SIGNATURE_FS = 5  # the 19 signature names of panels B, I and J
 
     def _cap_fontsize(fig, maximum):
         for ax in fig.get_axes():
@@ -1076,25 +1087,29 @@ def generate() -> None:
     _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
     plt.rcParams.update(_SMALL_RC)
 
-    _mm = 1.0 / 25.4
-    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
-
     #   Row 0: A | B     (TNBC permutation)
     #   Row 1: C | D     (TNBC heterogeneity)
-    #   Row 2: E | F     (Melanoma/SF heterogeneity)
+    #   Row 2: E | F     (Melanoma heterogeneity)
     #   Row 3: G | H     (temporal lines)
     #   Row 4: I | J     (heatmap + bar)
-    # Row 0 sits over its own wider gap: the A/B keys hang below their axes and
-    # would otherwise run into Row 1's two-line titles. Rows 1-4 keep the 0.70
-    # spacing (their gaps and heights move by about 1 mm).
-    top = fig_c.add_gridspec(
-        2, 1,
-        height_ratios=[1.35, 6.8],
-        hspace=0.26,
-        left=0.10, right=0.95, top=0.97, bottom=0.05,
+    # Heights in mm. A panel with the 19 signature names at 5 pt needs 39 mm for the
+    # names to clear each other. Each gap holds the x-axis text of the row above and the
+    # titles of the row below.
+    _mm = 1.0 / 25.4
+    _rows_mm = [39.0, 26.5, 26.0, 21.0, 39.0]
+    _gaps_mm = [19.5, 15.5, 14.0, 12.0]
+    _top_mm, _bottom_mm = 7.0, 9.5
+    _height_mm = sum(_rows_mm) + sum(_gaps_mm) + _top_mm + _bottom_mm
+    fig_c = plt.figure(figsize=(180 * _mm, _height_mm * _mm))
+    _ratios = [_rows_mm[0]]
+    for _gap, _row in zip(_gaps_mm, _rows_mm[1:]):
+        _ratios += [_gap, _row]
+    grid = fig_c.add_gridspec(
+        len(_ratios), 1, height_ratios=_ratios, hspace=0,
+        left=0.10, right=0.95,
+        top=1 - _top_mm / _height_mm, bottom=_bottom_mm / _height_mm,
     )
-    rest = top[1].subgridspec(4, 1, height_ratios=[1, 1, 0.85, 1.6], hspace=0.70)
-    outer = [top[0]] + [rest[i] for i in range(4)]
+    outer = [grid[2 * i] for i in range(5)]
 
     gs0 = outer[0].subgridspec(1, 2, wspace=0.45)
     ax_a = fig_c.add_subplot(gs0[0])
@@ -1112,8 +1127,9 @@ def generate() -> None:
     ax_g = fig_c.add_subplot(gs3[0])
     ax_h = fig_c.add_subplot(gs3[1])
 
+    # Panel I is inset from the left: its signature names are wider than the margin
     gs4 = outer[4].subgridspec(1, 2, wspace=0.45)
-    ax_i = fig_c.add_subplot(gs4[0])
+    ax_i = fig_c.add_subplot(gs4[0].subgridspec(1, 2, width_ratios=[0.13, 1], wspace=0)[1])
     ax_j = fig_c.add_subplot(gs4[1])
 
     # Panels A–B: TNBC permutation validation
@@ -1141,72 +1157,13 @@ def generate() -> None:
         for _lbl in _ax_strip.get_xticklabels():
             _lbl.set_visible(True)
 
-    # Move legends inside plots for the composite
-    _inside = {
-        ax_e: "upper right", ax_f: "upper right",
-        ax_g: "lower right",
-        ax_j: "lower right",
-    }
-    for ax_target, loc in _inside.items():
-        leg = ax_target.get_legend()
-        if leg:
-            handles = leg.legend_handles
-            labels = [t.get_text() for t in leg.get_texts()]
-            leg.remove()
-            ax_target.legend(
-                handles=handles, labels=labels,
-                fontsize=5, loc=loc,
-                frameon=True, framealpha=0.85,
-                edgecolor="#CCCCCC", borderpad=0.3,
-                handlelength=1, handletextpad=0.3,
-                labelspacing=0.2,
-            )
-
-    # Panels C and D (TNBC): 2-column legends
-    leg_cc = ax_cc.get_legend()
-    if leg_cc:
-        handles = leg_cc.legend_handles
-        labels = [t.get_text() for t in leg_cc.get_texts()]
-        leg_cc.remove()
-        ax_cc.legend(
-            handles=handles, labels=labels,
-            fontsize=5, loc="upper left", ncol=2,
-            frameon=True, framealpha=0.85,
-            edgecolor="#CCCCCC", borderpad=0.3,
-            handlelength=1, handletextpad=0.3,
-            labelspacing=0.2,
-        )
-
-    leg_d = ax_d.get_legend()
-    if leg_d:
-        handles = leg_d.legend_handles
-        labels = [t.get_text() for t in leg_d.get_texts()]
-        leg_d.remove()
-        ax_d.legend(
-            handles=handles, labels=labels,
-            fontsize=5, loc="lower right", ncol=2,
-            frameon=True, framealpha=0.85,
-            edgecolor="#CCCCCC", borderpad=0.3,
-            handlelength=1, handletextpad=0.3,
-            labelspacing=0.2,
-        )
-
-    # Panel H: 2-column legend with reduced marker size
-    leg_h = ax_h.get_legend()
-    if leg_h:
-        handles = leg_h.legend_handles
-        labels = [t.get_text() for t in leg_h.get_texts()]
-        leg_h.remove()
-        new_leg_h = ax_h.legend(
-            handles=handles, labels=labels,
-            fontsize=5, loc="upper right", ncol=2,
-            frameon=True, framealpha=0.85,
-            edgecolor="#CCCCCC", borderpad=0.3,
-            handlelength=1, handletextpad=0.3,
-            labelspacing=0.2,
-        )
-        for handle in new_leg_h.legend_handles:
+    # Panel H: marker size of the key for the artboard, and a y label that fits the row
+    if ax_h.get_legend():
+        for handle in ax_h.get_legend().legend_handles:
             handle.set_markersize(3)
+    _h_label = ax_h.get_ylabel()
+    if " (" in _h_label:
+        ax_h.set_ylabel(_h_label.replace(" (", "\n(", 1))
 
     # Panel G: extend x-axis right to make room for signature text
     xl = ax_g.get_xlim()
@@ -1214,33 +1171,49 @@ def generate() -> None:
     for txt in ax_g.texts:
         txt.set_fontsize(5.5)
 
-    # Panel I: increase heatmap annotation font and xtick/xlabel
+    # Panel I: heatmap annotation font and xtick/xlabel
     for txt in ax_i.texts:
         txt.set_fontsize(5.5)
     ax_i.tick_params(axis="x", labelsize=5.5)
     ax_i.set_xlabel("Days from Onset", fontsize=6)
 
-    # Match xlabel, ylabel, legend font size across all panels
+    # The same 19 signature names label panels B, I and J: one size for all three
+    for _ax_sig in (ax_b, ax_i, ax_j):
+        _ax_sig.tick_params(axis="y", labelsize=_SIGNATURE_FS)
+
+    # Match xlabel and ylabel font size across all panels
     _label_fs = 6
-    for ax in [ax_a, ax_b, ax_cc, ax_d, ax_e, ax_f, ax_g, ax_h, ax_i, ax_j]:
+    _all_axes = [ax_a, ax_b, ax_cc, ax_d, ax_e, ax_f, ax_g, ax_h, ax_i, ax_j]
+    for ax in _all_axes:
         ax.xaxis.label.set_fontsize(_label_fs)
         ax.yaxis.label.set_fontsize(_label_fs)
-        leg = ax.get_legend()
-        if leg:
-            for txt in leg.get_texts():
-                txt.set_fontsize(4.5)
 
     _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
 
-    # Bold panel labels (after cap so they stay prominent)
+    # A and B carry their key below the axes; it is re-placed by measurement for this
+    # row height. The other keys stay inside the axes, each at the first place where it
+    # covers no data and no text.
+    for _ax in (ax_a, ax_b):
+        key_below_axes(_ax, ncol=3, fontsize=_KEY_FS, gap_pt=1.5, clear_of=[ax_a, ax_b])
+    _key_place = {
+        "C": (ax_cc, 2, ("upper left", "upper right"), "top"),
+        "D": (ax_d, 2, ("lower right", "lower left", "lower center"), "bottom"),
+        "E": (ax_e, 1, ("upper right", "upper left"), "top"),
+        "F": (ax_f, 2, ("lower right", "lower left", "lower center"), "bottom"),
+        "G": (ax_g, 1, ("lower right", "upper right"), "top"),
+        "H": (ax_h, 2, ("upper right", "upper center"), "top"),
+        "J": (ax_j, 1, ("lower right", "center right"), "top"),
+    }
+    for _name, (_ax, _ncol, _prefer, _band) in _key_place.items():
+        _placed = key_inside_axes(_ax, ncol=_ncol, fontsize=_KEY_FS, prefer=_prefer, band=_band)
+        if _placed is not None:
+            print(f"    key of panel {_name}: {_placed[1]}, covers {_placed[2]:.1f} pt2")
+
+    # Bold panel letters, placed after the cap so they stay prominent
     _lbl_fs = 9
-    for ax, lbl in [
-        (ax_a, "A"), (ax_b, "B"), (ax_cc, "C"), (ax_d, "D"),
-        (ax_e, "E"), (ax_f, "F"),
-        (ax_g, "G"), (ax_h, "H"), (ax_i, "I"), (ax_j, "J"),
-    ]:
-        ax.text(-0.25, 1.12, lbl, transform=ax.transAxes,
-                fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    for ax, lbl in zip(_all_axes, "ABCDEFGHIJ"):
+        letter_at_panel_corner(ax, lbl, fontsize=_lbl_fs, keep_clear=True)
+    report_layout_problems(fig_c, FIGURE_NAME)
 
     plt.rcParams.update(_prev_rc)
 

@@ -38,6 +38,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
+from matplotlib.ticker import LogLocator, NullLocator
 
 from sctrial import TrialDesign, did_table
 from sctrial.stats.effect_size import hedges_g
@@ -48,7 +49,12 @@ from .._shared import (
     apply_style,
     despine,
     get_tnbc_zhang,
+    key_below_axes,
+    key_below_row,
+    key_inside_axes,
+    letter_at_panel_corner,
     plot_cell_vs_participant_beta,
+    report_layout_problems,
     save_panel,
     score_signatures,
     sig_display,
@@ -263,6 +269,10 @@ def _panel_a(ax: plt.Axes, data: dict) -> None:
         )
 
     ax.set_yscale("log")
+    # Headroom above the tallest bar for the note on the number of paired participants
+    ax.set_ylim(top=counts["n_cells"].max() * 3.2)
+    ax.yaxis.set_major_locator(LogLocator(base=10))
+    ax.yaxis.set_minor_locator(NullLocator())
     ax.set_xlabel("Participant", fontsize=9)
     ax.set_ylabel("Number of cells\n(log scale)", fontsize=9)
     ax.set_title("Paired Participants: Cells per Visit",
@@ -1190,21 +1200,36 @@ def generate() -> None:
         fig_f.tight_layout()
         save_panel(fig_f, "panel_F_heatmap", FIGURE_NAME, MAIN_OUTPUT)
 
-    # ── Combined artboard (180 × 215 mm) ──────────────────────────────────
+    # ── Combined artboard (180 mm wide) ───────────────────────────────────
     _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
     plt.rcParams.update(_SMALL_RC)
 
     _mm  = 1.0 / 25.4
     _MAX = 6
+    _KEY_FS = 4.5
 
-    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
-
-    outer = fig_c.add_gridspec(
-        4, 1,
-        height_ratios=[1, 3.3, 2.2, 1.3],
-        hspace=0.55,
-        left=0.10, right=0.95, top=0.97, bottom=0.05,
+    # Heights in mm. A panel with the 19 signature names at 4.5 pt needs 36 mm for the
+    # names to clear each other. Each gap holds the x-axis text of the row above and the
+    # titles of the row below.
+    _row_c, _gap_cd, _row_d = 36.0, 12.0, 36.0
+    _rows_mm = [18.0, _row_c + _gap_cd + _row_d, 36.0, 36.0]
+    _gaps_mm = [20.5, 10.5, 14.5]
+    # E's two-line titles and its key reach further into the gaps than the text of C
+    # and D, and F's slanted column names further than the x label of G: E is inset at
+    # top and bottom and F ends above G, so that neither sets the gap for its row.
+    _inset_e, _short_f = 2.5, 4.0
+    _top_mm, _bottom_mm = 6.0, 9.5
+    _height_mm = sum(_rows_mm) + sum(_gaps_mm) + _top_mm + _bottom_mm
+    fig_c = plt.figure(figsize=(180 * _mm, _height_mm * _mm))
+    _ratios = [_rows_mm[0]]
+    for _gap, _row in zip(_gaps_mm, _rows_mm[1:]):
+        _ratios += [_gap, _row]
+    grid = fig_c.add_gridspec(
+        len(_ratios), 1, height_ratios=_ratios, hspace=0,
+        left=0.10, right=0.95,
+        top=1 - _top_mm / _height_mm, bottom=_bottom_mm / _height_mm,
     )
+    outer = [grid[2 * i] for i in range(4)]
 
     # Row 0: A | B
     gs0  = outer[0].subgridspec(1, 2, wspace=0.28, width_ratios=[1, 1.4])
@@ -1212,14 +1237,22 @@ def generate() -> None:
     ax_b = fig_c.add_subplot(gs0[1])
 
     # Row 1: C (top-left) + D (bottom-left) | E (right, spans both)
-    gs1  = outer[1].subgridspec(2, 2, width_ratios=[1, 1.6],
-                                 hspace=0.70, wspace=0.40)
+    gs1  = outer[1].subgridspec(3, 2, width_ratios=[1, 1.6],
+                                 height_ratios=[_row_c, _gap_cd, _row_d],
+                                 hspace=0, wspace=0.40)
     ax_c = fig_c.add_subplot(gs1[0, 0])
-    ax_d = fig_c.add_subplot(gs1[1, 0])
+    ax_d = fig_c.add_subplot(gs1[2, 0])
+
+    gs_e = gs1[:, 1].subgridspec(
+        3, 1, hspace=0,
+        height_ratios=[_inset_e, _rows_mm[1] - 2 * _inset_e, _inset_e],
+    )[1]
 
     # Row 2: F | G
     gs2  = outer[2].subgridspec(1, 2, wspace=0.55, width_ratios=[1, 1.5])
-    ax_f = fig_c.add_subplot(gs2[0])
+    ax_f = fig_c.add_subplot(
+        gs2[0].subgridspec(2, 1, hspace=0, height_ratios=[_rows_mm[2] - _short_f, _short_f])[0]
+    )
     ax_g = fig_c.add_subplot(gs2[1])
 
     # Row 3: H | I
@@ -1234,7 +1267,7 @@ def generate() -> None:
     _panel_d(ax_d, data)
     # Wider inner hspace so the top-row Pre/Post tick labels clear the bottom-row
     # subplot titles in the 2x3 interaction grid.
-    axes_e = _panel_e(fig_c, gs1[:, 1], data, n_sigs=6,
+    axes_e = _panel_e(fig_c, gs_e, data, n_sigs=6,
                       inner_hspace=0.85, inner_wspace=0.40)
     _panel_f(ax_f, data)
     _panel_g(ax_g, data)
@@ -1243,65 +1276,12 @@ def generate() -> None:
 
     # ── Legend overrides (all must come AFTER panels are drawn) ───────────
 
-    # Panels C and D: move below-axis legends inside the plot, wherever the data
-    # leave room ("best"); a fixed corner covered bars and intervals once the
-    # participant-level estimates changed.
-    for ax_target in (ax_c, ax_d):
-        leg = ax_target.get_legend()
-        if leg:
-            handles = leg.legend_handles
-            labels  = [t.get_text() for t in leg.get_texts()]
-            leg.remove()
-            ax_target.legend(
-                handles=handles, labels=labels,
-                fontsize=5, loc="best",
-                frameon=True, framealpha=0.85,
-                handlelength=0.8, handletextpad=0.2,
-                borderpad=0.2, labelspacing=0.15,
-                columnspacing=0.5,
-            )
-
-    # Panel G legend — single row above axes, title pushed up to make room
-    leg_g = ax_g.get_legend()
-    if leg_g:
-        handles_g = leg_g.legend_handles
-        labels_g  = [t.get_text() for t in leg_g.get_texts()]
-        leg_g.remove()
-        ax_g.legend(
-            handles=handles_g, labels=labels_g,
-            fontsize=5, loc="lower center", bbox_to_anchor=(0.5, 0.98),
-            ncol=4, frameon=True, framealpha=0.85,
-            handlelength=0.8, handletextpad=0.2,
-            borderpad=0.2, labelspacing=0.15, columnspacing=0.5,
-        )
-    ax_g.set_title(ax_g.get_title(), pad=12,
-                   fontsize=ax_g.title.get_fontsize(), fontweight="bold")
-
-    # Panel A legend — nudged right via bbox_to_anchor to avoid overlapping bars
-    leg_a = ax_a.get_legend()
-    if leg_a:
-        handles_a = leg_a.legend_handles
-        labels_a  = [t.get_text() for t in leg_a.get_texts()]
-        leg_a.remove()
-        ax_a.legend(
-            handles=handles_a, labels=labels_a,
-            fontsize=5,
-            loc="upper left",
-            bbox_to_anchor=(0.04, 1.08),
-            ncol=3,
-            frameon=True, framealpha=0.85,
-            handlelength=0.8, handletextpad=0.2,
-            borderpad=0.2, labelspacing=0.15,
-            columnspacing=0.5,
-        )
-
     # Panel E legend
     if axes_e:
         leg_e = axes_e[-1].get_legend()
         if leg_e:
             leg_e.remove()
-        mid_ax = axes_e[min(4, len(axes_e) - 1)]
-        mid_ax.legend(
+        axes_e[3].legend(
             handles=[
                 Line2D([0], [0], color=COL_TREAT, lw=1.5, marker="o",
                        markersize=3, markeredgecolor="white",
@@ -1312,18 +1292,12 @@ def generate() -> None:
                 Line2D([0], [0], color=COL_GRAY, lw=0.6, alpha=0.4,
                        label="Individual"),
             ],
-            fontsize=5,
-            loc="upper center", bbox_to_anchor=(0.5, -0.25),
-            ncol=3, frameon=True, framealpha=0.95,
-            handlelength=2.5,  # ← wider line segments
-            handletextpad=0.6,  # ← space between line and label
-            borderpad=0.2, labelspacing=0.15,
-            columnspacing=1.5,  # ← space between columns
         )
 
-    # Panel F — shrink stars, move legend above heatmap, push title up
+    # Panel F: smaller stars in the composite; the star key goes below the left corner
+    # of the heatmap, in the space the slanted column names leave free
     for coll in ax_f.collections:
-        coll.set_sizes([12])  # smaller stars in composite
+        coll.set_sizes([12])
 
     leg_f = ax_f.get_legend()
     if leg_f:
@@ -1333,30 +1307,45 @@ def generate() -> None:
         ax_f.legend(
             handles=handles_f, labels=labels_f,
             fontsize=5,
-            loc="lower left",
-            bbox_to_anchor=(0.01, 1.01),
+            loc="upper right",
+            bbox_to_anchor=(-0.10, -0.02),
             frameon=False,
-            handletextpad=0.2, borderpad=0.3,
+            handletextpad=0.2, borderpad=0.0, borderaxespad=0.0,
             markerscale=0.8,
         )
-    ax_f.set_title(ax_f.get_title(), fontsize=ax_f.title.get_fontsize(),
-                   fontweight="bold", pad=12)
-
-    # Panel C y-axis tick labels — kept at same size as D (5 pt)
 
     _cap_fontsize(fig_c, _MAX)
 
-    # Bold panel labels
+    # A and B carry their key below the axes on one line (A's key and its note on the
+    # number of paired participants do not fit side by side inside the axes). The keys
+    # of C, D, H and I stay inside the axes, each at the first place where it covers no
+    # data and no text, measured once fonts and limits are final.
+    for _ax, _ncol in ((ax_a, 5), (ax_b, 3)):
+        key_below_axes(_ax, ncol=_ncol, fontsize=_KEY_FS, gap_pt=1.5, clear_of=[ax_a, ax_b])
+    _key_place = {
+        "C": (ax_c, 1, ("lower right", "center right", "upper right")),
+        "D": (ax_d, 1, ("upper left", "lower right", "lower left", "upper right")),
+        "G": (ax_g, 1, ("upper right", "lower right", "upper left", "lower left")),
+        "H": (ax_h, 1, ("upper left", "lower right", "center right")),
+        "I": (ax_i, 1, ("upper left", "lower right", "lower left", "upper right")),
+    }
+    for _name, (_ax, _ncol, _prefer) in _key_place.items():
+        _placed = key_inside_axes(_ax, ncol=_ncol, fontsize=_KEY_FS, prefer=_prefer)
+        if _placed is not None:
+            print(f"    key of panel {_name}: {_placed[1]}, covers {_placed[2]:.1f} pt2")
+    if axes_e:
+        key_below_row(axes_e[3:], ncol=3, fontsize=_KEY_FS, gap_pt=1.5)
+
+    # Bold panel letters, placed after the cap so they stay prominent
     _lbl_fs = 7
     for ax, lbl in [
         (ax_a, "A"), (ax_b, "B"), (ax_c, "C"),
         (ax_d, "D"), (ax_f, "F"), (ax_g, "G"), (ax_h, "H"), (ax_i, "I"),
     ]:
-        ax.text(-0.15, 1.12, lbl, transform=ax.transAxes,
-                fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+        letter_at_panel_corner(ax, lbl, fontsize=_lbl_fs, keep_clear=True)
     if axes_e:
-        axes_e[0].text(-0.10, 1.15, "E", transform=axes_e[0].transAxes,
-                       fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+        letter_at_panel_corner(axes_e[0], "E", fontsize=_lbl_fs, keep_clear=True)
+    report_layout_problems(fig_c, FIGURE_NAME)
 
     plt.rcParams.update(_prev_rc)
 
