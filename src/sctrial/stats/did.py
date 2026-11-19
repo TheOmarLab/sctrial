@@ -4,7 +4,7 @@ import sys
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal, TypedDict, cast
+from typing import Any, Literal, TypedDict, cast
 
 import numpy as np
 import pandas as pd
@@ -325,6 +325,36 @@ def _ensure_paired(df: pd.DataFrame, unit: str, time: str, visits: tuple[str, st
     return df[df[unit].isin(keep)].copy()
 
 
+def _missing_did_fit(n_units: int) -> DidFitResult:
+    """Result of ``did_fit`` when the interaction cannot be estimated."""
+    return {
+        "beta_DiD": np.nan,
+        "se_DiD": np.nan,
+        "p_DiD": np.nan,
+        "beta_time": np.nan,
+        "p_time": np.nan,
+        "n_units": n_units,
+    }
+
+
+def _term_is_estimable(fit: Any, term: str) -> bool:
+    """Whether the regressor ``term`` is linearly independent of the other regressors.
+
+    A rank-deficient least-squares fit still returns a number for every coefficient, split
+    arbitrarily among the collinear regressors.
+    """
+    exog = np.asarray(fit.model.exog, dtype=float)
+    names = list(fit.model.exog_names)
+    if term not in names:
+        return False
+    if int(fit.model.rank) == exog.shape[1]:
+        return True
+    j = names.index(term)
+    others = np.delete(exog, j, axis=1)
+    unexplained = exog[:, j] - others @ np.linalg.lstsq(others, exog[:, j], rcond=None)[0]
+    return bool(np.linalg.norm(unexplained) > 1e-8 * np.linalg.norm(exog[:, j]))
+
+
 def did_fit(
     df: pd.DataFrame,
     y: str,
@@ -450,31 +480,22 @@ def did_fit(
 
     _validate_did_fit_inputs(df, cols)
 
-    tmp = drop_unused_levels(df[cols].dropna().copy().reset_index(drop=True))
+    tmp = df[cols].dropna()
+    # With participant fixed effects only a participant observed at both visits informs the
+    # change over time; one left with a single visit for this outcome is not in the model.
+    visits_seen = tmp.groupby(unit, observed=True)[time].nunique()
+    tmp = tmp[tmp[unit].isin(visits_seen.index[visits_seen >= 2])]
+    tmp = drop_unused_levels(tmp.copy().reset_index(drop=True))
     n_units = tmp[unit].nunique()
     # Fewer than four participants, or one arm without any participant in the model:
     # the interaction is not estimable.
     if n_units < 4 or tmp[arm_bin].nunique() < 2:
-        return {
-            "beta_DiD": np.nan,
-            "se_DiD": np.nan,
-            "p_DiD": np.nan,
-            "beta_time": np.nan,
-            "p_time": np.nan,
-            "n_units": n_units,
-        }
+        return _missing_did_fit(n_units)
 
     # time is assumed numeric 0/1 already
     tmp_opt = _standardize_outcome(tmp, y, standardize, outcome_col="outcome_std")
     if tmp_opt is None:
-        return {
-            "beta_DiD": np.nan,
-            "se_DiD": np.nan,
-            "p_DiD": np.nan,
-            "beta_time": np.nan,
-            "p_time": np.nan,
-            "n_units": n_units,
-        }
+        return _missing_did_fit(n_units)
     tmp = tmp_opt
     if tmp is None:
         raise ValueError("Outcome standardization failed unexpectedly.")
@@ -503,6 +524,8 @@ def did_fit(
         cov_type=cov_type, cov_kwds={"groups": tmp[unit]} if cov_type == "cluster" else None
     )
     term = f"{time}:{arm_bin}"
+    if not _term_is_estimable(fit, term):
+        return _missing_did_fit(n_units)
 
     se_did = float(fit.bse.get(term, np.nan))
     p_did = float(fit.pvalues.get(term, np.nan))

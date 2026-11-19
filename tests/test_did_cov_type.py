@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import types
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -148,3 +149,59 @@ def test_gsea_wrappers_pass_the_covariance_to_the_gene_table(monkeypatch):
     )
     gsea.run_gsea_did_by_celltype(adata, sets, by_type, VISITS, rank_by="tstat", cov_type="nonrobust")
     assert received and set(received) == {"nonrobust"}
+
+
+def _two_visit_frame(n_per_arm=6, seed=0):
+    rng = np.random.default_rng(seed)
+    rows = []
+    for arm in (1, 0):
+        for i in range(n_per_arm):
+            base = rng.normal()
+            rows.append({"unit": f"a{arm}p{i}", "time": 0, "arm_bin": arm, "y": base})
+            rows.append({"unit": f"a{arm}p{i}", "time": 1, "arm_bin": arm,
+                         "y": base + 2.0 * arm + rng.normal(0, 0.3)})
+    return pd.DataFrame(rows)
+
+
+@pytest.mark.parametrize("missing_time", [0, 1])
+@pytest.mark.parametrize("standardize", [True, False])
+def test_did_fit_gives_no_estimate_when_an_arm_has_one_visit_only(missing_time, standardize):
+    # Without the control follow-up the visit and the interaction are the same regressor; the
+    # fit used to split the treated change between them and report it with a p-value of zero.
+    df = _two_visit_frame()
+    df.loc[(df["arm_bin"] == 0) & (df["time"] == missing_time), "y"] = np.nan
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        out = did_fit(df, y="y", unit="unit", time="time", arm_bin="arm_bin",
+                      standardize=standardize, use_bootstrap=True, n_boot=99)
+
+    assert np.isnan(out["beta_DiD"]) and np.isnan(out["se_DiD"]) and np.isnan(out["p_DiD"])
+    assert out["n_units"] == 6
+    assert "p_DiD_boot" not in out
+
+
+@pytest.mark.parametrize("cov_type", ["cluster", "nonrobust"])
+def test_did_fit_leaves_out_a_participant_with_one_visit_for_the_outcome(cov_type):
+    df = _two_visit_frame()
+    partial = df.copy()
+    partial.loc[(partial["unit"].isin(["a1p0", "a0p3"])) & (partial["time"] == 1), "y"] = np.nan
+    complete = df[~df["unit"].isin(["a1p0", "a0p3"])]
+    kw = dict(y="y", unit="unit", time="time", arm_bin="arm_bin", cov_type=cov_type, standardize=False)
+
+    out, ref = did_fit(partial, **kw), did_fit(complete, **kw)
+    assert out["n_units"] == ref["n_units"] == 10
+    for key in ("beta_DiD", "se_DiD", "p_DiD", "resid_sd"):
+        assert out[key] == pytest.approx(ref[key], rel=1e-12)
+
+
+def test_did_fit_gives_no_estimate_when_a_covariate_duplicates_the_interaction():
+    df = _two_visit_frame()
+    kw = dict(y="y", unit="unit", time="time", arm_bin="arm_bin", standardize=False)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        duplicated = did_fit(df.assign(dup=df["time"] * df["arm_bin"]), covariates=["dup"], **kw)
+        # constant within a participant: collinear with the fixed effects, not with the interaction
+        harmless = did_fit(df.assign(site=df["arm_bin"] * 3.0), covariates=["site"], **kw)
+
+    assert np.isnan(duplicated["beta_DiD"]) and np.isnan(duplicated["p_DiD"])
+    assert harmless["beta_DiD"] == pytest.approx(did_fit(df, **kw)["beta_DiD"], rel=1e-10)

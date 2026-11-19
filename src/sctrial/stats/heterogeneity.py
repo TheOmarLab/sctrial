@@ -46,9 +46,10 @@ def test_treatment_heterogeneity(
 
     The model uses the participants observed at both visits. The biomarker is a
     participant attribute: a participant's value is the mean of ``biomarker_col``
-    over its cells, and participants without a value are excluded. The interaction
-    needs at least two participants in each arm by biomarker group; when a group
-    is smaller, a warning is raised and the coefficient and p-value are NaN.
+    over its cells, and participants without a value are excluded. For each
+    feature the interaction needs at least two participants with a value at both
+    visits in each arm by biomarker group; when a group is smaller, the
+    coefficient and p-value of that feature are NaN and a warning is raised.
 
     Parameters
     ----------
@@ -160,32 +161,17 @@ def test_treatment_heterogeneity(
     df_use = encode_visit(df_use, design.visit_col, visits)
     obs_feat = df_use
 
-    # The interaction contrasts the change over time across the four arm by biomarker
-    # groups. A group with one participant fits that participant exactly and adds
-    # nothing to the cluster-robust variance, so each group needs at least two.
-    group_sizes = df_use.drop_duplicates(unit).groupby([arm_bin, "biomarker_high"]).size()
-    counts = {
-        f"{arm_name}/{level_name}": int(group_sizes.get((a, b), 0))
-        for a, arm_name in ((0, "control"), (1, "treated"))
-        for b, level_name in ((0, "low"), (1, "high"))
-    }
-    estimable = min(counts.values()) >= 2
-    if not estimable:
-        warnings.warn(
-            "The arm by visit by biomarker interaction is not estimable: it needs at least "
-            "2 paired participants in each arm by biomarker group, found "
-            + ", ".join(f"{name}={n}" for name, n in counts.items())
-            + ".",
-            UserWarning,
-            stacklevel=2,
-        )
-
     rows = []
+    n_examined = 0
+    not_estimable: dict[str, dict[str, int]] = {}
     for feat in final_features:
         tmp = obs_feat.copy()
         if tmp.columns.duplicated().any():
             tmp = tmp.loc[:, ~tmp.columns.duplicated()].copy()
         tmp = tmp.dropna(subset=[feat, "biomarker_high"])
+        # A participant with a missing value at one visit has no change for this feature.
+        visits_seen = tmp.groupby(unit, observed=True)[time].nunique()
+        tmp = tmp[tmp[unit].isin(visits_seen.index[visits_seen >= 2])].copy()
         n_clusters = tmp[unit].nunique()
         if n_clusters < MIN_CLUSTERS_FOR_ROBUST_SE:
             warnings.warn(
@@ -211,7 +197,19 @@ def test_treatment_heterogeneity(
 
         df = drop_unused_levels(tmp.dropna(subset=["outcome_std"]).reset_index(drop=True))
 
-        if not estimable:
+        # The interaction contrasts the change over time across the four arm by biomarker
+        # groups. A group with one participant fits that participant exactly and adds
+        # nothing to the cluster-robust variance, so each group needs at least two of the
+        # participants in this feature's model.
+        group_sizes = df.drop_duplicates(unit).groupby([arm_bin, "biomarker_high"]).size()
+        counts = {
+            f"{arm_name}/{level_name}": int(group_sizes.get((a, b), 0))
+            for a, arm_name in ((0, "control"), (1, "treated"))
+            for b, level_name in ((0, "low"), (1, "high"))
+        }
+        n_examined += 1
+        if min(counts.values()) < 2:
+            not_estimable[feat] = counts
             rows.append(
                 {
                     "feature": feat,
@@ -247,6 +245,18 @@ def test_treatment_heterogeneity(
                 "n_units": n_units_eff,
                 "threshold": threshold,
             }
+        )
+
+    if not_estimable:
+        first, counts = next(iter(not_estimable.items()))
+        warnings.warn(
+            f"The arm by visit by biomarker interaction is not estimable for "
+            f"{len(not_estimable)} of {n_examined} features: it needs at least "
+            "2 paired participants in each arm by biomarker group, found "
+            + ", ".join(f"{name}={n}" for name, n in counts.items())
+            + f" for '{first}'.",
+            UserWarning,
+            stacklevel=2,
         )
 
     res = pd.DataFrame(rows)

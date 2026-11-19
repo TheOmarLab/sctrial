@@ -186,3 +186,41 @@ def test_heterogeneity_reports_non_estimable_interaction():
     assert np.isnan(res["p_heterogeneity"].iloc[0])
     assert np.isnan(res["FDR_heterogeneity"].iloc[0])
     assert res["n_units"].iloc[0] == 16
+
+
+def test_heterogeneity_counts_groups_among_the_participants_with_the_feature():
+    # Every arm by biomarker group holds four participants, but three of the treated/high
+    # ones have no value of the second feature: its interaction is not estimable, the first
+    # feature's is.
+    adata, design = _heterogeneity_fixture()
+    pid = adata.obs["participant_id"]
+    adata.obs["bmk"] = pid.map({f"P{i:02d}": float(i % 2) for i in range(16)})
+    adata.obs["sig2"] = adata.obs["sig1"] + 1.0
+    treated_high = ["P01", "P03", "P05"]
+    adata.obs.loc[pid.isin(treated_high), "sig2"] = np.nan
+
+    with pytest.warns(UserWarning, match="not estimable for 1 of 2 features.*treated/high=1 for 'sig2'"):
+        res = st.test_treatment_heterogeneity(
+            adata, features=["sig1", "sig2"], design=design, visits=("V1", "V2"), biomarker_col="bmk"
+        ).set_index("feature")
+
+    assert np.isfinite(res.loc["sig1", "beta_heterogeneity"]) and res.loc["sig1", "n_units"] == 16
+    assert np.isnan(res.loc["sig2", "beta_heterogeneity"]) and np.isnan(res.loc["sig2", "p_heterogeneity"])
+    assert res.loc["sig2", "n_units"] == 13
+
+
+def test_heterogeneity_drops_a_participant_missing_the_feature_at_one_visit():
+    adata, design = _heterogeneity_fixture()
+    pid = adata.obs["participant_id"]
+    adata.obs["bmk"] = pid.map({f"P{i:02d}": float(i % 2) for i in range(16)})
+    adata.obs["sig2"] = adata.obs["sig1"]
+    adata.obs.loc[(pid == "P02") & (adata.obs["visit"] == "V2"), "sig2"] = np.nan
+
+    res = st.test_treatment_heterogeneity(
+        adata, features=["sig2"], design=design, visits=("V1", "V2"), biomarker_col="bmk"
+    )
+    ref = _heterogeneity(adata[pid != "P02"].copy(), design)
+
+    assert res["n_units"].iloc[0] == 15
+    for col in ("beta_heterogeneity", "p_heterogeneity"):
+        assert res[col].iloc[0] == pytest.approx(ref[col].iloc[0], rel=1e-10)
