@@ -536,6 +536,7 @@ def _label_boxes(labels, renderer):
 
 
 def _crowded_scatter(figsize=(3.1, 1.1), n=19, seed=3):
+    """A cluster of markers around the identity line with three markers apart from it."""
     rng = np.random.default_rng(seed)
     x = np.concatenate([rng.normal(0.0, 0.08, n - 3), [-0.8, 0.7, 0.75]])
     y = 1.3 * x + rng.normal(0.0, 0.25, n)
@@ -561,7 +562,18 @@ def crowded(shared):
     plt.close(fig)
 
 
-def test_place_point_labels_keeps_labels_off_markers_labels_and_lines(crowded):
+def _on_a_line(ax, boxes, lines) -> int:
+    """Number of label boxes that one of the lines passes through."""
+    count = 0
+    for start, end in lines:
+        pts = np.linspace(*ax.transData.transform([start, end]), 4000)
+        count += sum(bool(((pts[:, 0] > b.x0) & (pts[:, 0] < b.x1)
+                           & (pts[:, 1] > b.y0) & (pts[:, 1] < b.y1)).any()) for b in boxes)
+    return count
+
+
+def test_place_point_labels_keeps_labels_off_markers_and_labels(crowded):
+    """The rules that hold in every layout, on a scatter with little room."""
     fig, ax, r = crowded.fig, crowded.ax, crowded.renderer
     boxes = _label_boxes(crowded.labels, r)
     frame = ax.get_window_extent(r)
@@ -575,13 +587,18 @@ def test_place_point_labels_keeps_labels_off_markers_labels_and_lines(crowded):
             assert not (a.x0 < b.x1 and b.x0 < a.x1 and a.y0 < b.y1 and b.y0 < a.y1)
         for mx, my in markers:
             assert not (a.x0 - radius < mx < a.x1 + radius and a.y0 - radius < my < a.y1 + radius)
-    for start, end in crowded.lines:
-        pts = np.linspace(*ax.transData.transform([start, end]), 4000)
-        for box in boxes:
-            inside = ((pts[:, 0] > box.x0) & (pts[:, 0] < box.x1)
-                      & (pts[:, 1] > box.y0) & (pts[:, 1] < box.y1))
-            assert not inside.any()
     assert crowded.allowances <= len(crowded.names)
+
+
+def test_place_point_labels_keeps_labels_off_the_lines_when_there_is_room(shared):
+    fig, ax, x, y, names, lines = _crowded_scatter(figsize=(4.2, 2.6), n=10)
+    lines.append(((ax.get_xlim()[0], 0.0), (ax.get_xlim()[1], 0.0)))
+    labels, _ = shared.place_point_labels(
+        ax, x, y, names, fontsize=4.0, marker_area=15, lines=lines, extra_orders=0
+    )
+    fig.canvas.draw()
+    assert _on_a_line(ax, _label_boxes(labels, fig.canvas.get_renderer()), lines) == 0
+    plt.close(fig)
 
 
 def test_place_point_labels_leaders_end_on_their_label(crowded):
@@ -639,15 +656,9 @@ def test_place_point_labels_uses_a_line_only_when_no_layout_clears_it(shared):
         ax, x, y, names, fontsize=5.0, marker_area=15, lines=lines, extra_orders=0
     )
     fig.canvas.draw()
-    r = fig.canvas.get_renderer()
-    on_a_line = 0
-    for box in _label_boxes(labels, r):
-        for start, end in lines:
-            pts = np.linspace(*ax.transData.transform([start, end]), 2000)
-            on_a_line += bool(((pts[:, 0] > box.x0) & (pts[:, 0] < box.x1)
-                               & (pts[:, 1] > box.y0) & (pts[:, 1] < box.y1)).any())
     assert len(labels) == 5
-    assert on_a_line > 0 and allowances > 0
+    assert _on_a_line(ax, _label_boxes(labels, fig.canvas.get_renderer()), lines) > 0
+    assert allowances > 0
     plt.close(fig)
 
 
