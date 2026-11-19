@@ -1210,8 +1210,8 @@ def _segments_through_boxes(start, end, boxes):
     return t0 < t1
 
 
-def _segments_cross(p, q, a, b):
-    """Whether the open segments p to q and a to b cross, by broadcasting."""
+def _leaders_cross(p, q, a, b):
+    """Whether the open segments p to q and a to b cross, by broadcasting over arrays."""
     def side(u, v, w):
         return ((v[..., 0] - u[..., 0]) * (w[..., 1] - u[..., 1])
                 - (v[..., 1] - u[..., 1]) * (w[..., 0] - u[..., 0]))
@@ -1223,6 +1223,9 @@ def place_point_labels(ax, xs, ys, names, *, fontsize: float, marker_area: float
                        lines=(), color: str | None = None, clearance_pt: float = 0.6,
                        extra_orders: int = 42):
     """Label scatter markers so that no label covers a marker, another label or a line.
+
+    ``label_points`` scores adjustText layouts and cannot keep labels off reference
+    lines; this function searches label positions directly under those constraints.
 
     Each label takes the position nearest its marker, over a fine grid of positions
     inside the axes, at which its box is clear of every marker and every placed label,
@@ -1322,7 +1325,7 @@ def place_point_labels(ax, xs, ys, names, *, fontsize: float, marker_area: float
             clash |= _segments_through_boxes(
                 taken_start[None], taken_end[None], (boxes + gap * grow)[:, None, :]
             )
-            crossing = _segments_cross(start, ends[:, None, :], taken_start[None], taken_end[None])
+            crossing = _leaders_cross(start, ends[:, None, :], taken_start[None], taken_end[None])
             total = np.where(
                 clash.any(axis=1), np.inf, total + crossing_pt * px * crossing.sum(axis=1)
             )
