@@ -377,3 +377,60 @@ class TestWeighting:
         for n_jobs in (1, 2):
             par = st.did_table_parallel(adata, weight_col="n_cells", n_jobs=n_jobs, **kw)
             assert beta(par) == pytest.approx(self.WLS_BETA, abs=1e-10), n_jobs
+
+    def _weighted_adata(self):
+        """``_cell_adata`` with ``precision``, the cell count of each participant-visit."""
+        adata, design = self._cell_adata()
+        counts = adata.obs.groupby(["participant", "visit"], observed=True)["score"]
+        adata.obs["precision"] = counts.transform("size").astype(float)
+        return adata, design
+
+    def test_custom_weight_column_reaches_the_fit_through_every_table_function(self):
+        adata, design = self._weighted_adata()
+        kw = dict(features=["score"], design=design, visits=("Pre", "Post"), standardize=False)
+
+        def beta(res):
+            return res.set_index("feature").loc["score", "beta_DiD"]
+
+        assert beta(st.did_table(adata, weight_col="precision", **kw)) == pytest.approx(
+            self.WLS_BETA, abs=1e-10
+        )
+        cfg = st.DiDConfig(standardize=False, weight_col="precision")
+        cfg_res = st.did_table(adata, features=["score"], design=design,
+                               visits=("Pre", "Post"), config=cfg)
+        assert beta(cfg_res) == pytest.approx(self.WLS_BETA, abs=1e-10)
+        for n_jobs in (1, 2):
+            par = st.did_table_parallel(adata, weight_col="precision", n_jobs=n_jobs, **kw)
+            assert beta(par) == pytest.approx(self.WLS_BETA, abs=1e-10), n_jobs
+
+        frame, *_ = st.get_did_aggregated_df(
+            adata, ["score"], design, ("Pre", "Post"), weight_col="precision"
+        )
+        assert (frame["precision"] == frame["n_cells"]).all()
+
+    def test_cell_level_weights_reach_the_fit(self):
+        """Weights of 1 / cell count give every participant-visit a total weight of one."""
+        adata, design = self._weighted_adata()
+        adata.obs["inverse_count"] = 1.0 / adata.obs["precision"]
+        res = st.did_table(adata, features=["score"], design=design, visits=("Pre", "Post"),
+                           standardize=False, aggregate="cell", weight_col="inverse_count")
+        assert res.loc[0, "beta_DiD"] == pytest.approx(self.OLS_BETA, abs=1e-10)
+
+    def test_custom_weight_column_is_checked(self):
+        adata, design = self._weighted_adata()
+        adata.obs["uneven"] = np.arange(adata.n_obs, dtype=float) + 1.0
+        kw = dict(features=["score"], design=design, visits=("Pre", "Post"), standardize=False)
+
+        with pytest.raises(KeyError, match="weight_col 'missing' not found in adata.obs"):
+            st.did_table(adata, weight_col="missing", **kw)
+        with pytest.raises(KeyError, match="weight_col 'n_cells' not found in adata.obs"):
+            st.did_table(adata, aggregate="cell", weight_col="n_cells", **kw)
+        with pytest.raises(ValueError, match="varies within participant-visit"):
+            st.did_table(adata, weight_col="uneven", **kw)
+        with pytest.raises(ValueError, match="also a feature or a covariate"):
+            st.did_table(adata, weight_col="score", **kw)
+        with pytest.raises(ValueError, match="varies within participant-visit"):
+            st.did_table_parallel(adata, weight_col="uneven", n_jobs=2, **kw)
+
+        cell = st.did_table(adata, aggregate="cell", weight_col="uneven", **kw)
+        assert np.isfinite(cell.loc[0, "beta_DiD"])

@@ -163,6 +163,40 @@ def _add_feature_columns(
     return df, final_features
 
 
+def _obs_weight_columns(
+    obs: pd.DataFrame,
+    weight_col: str | None,
+    aggregate: str,
+    features: Sequence[str],
+    covariates: list[str] | None,
+) -> list[str]:
+    """The ``obs`` column that holds the weights, if they are not the aggregation's cell counts."""
+    if weight_col is None or (weight_col == "n_cells" and aggregate != "cell"):
+        return []
+    if weight_col in features or weight_col in (covariates or []):
+        raise ValueError(
+            f"weight_col '{weight_col}' is also a feature or a covariate; "
+            "give the weights their own column."
+        )
+    if weight_col not in obs.columns:
+        raise KeyError(f"weight_col '{weight_col}' not found in adata.obs")
+    return [weight_col]
+
+
+def _weight_aggregation(
+    df: pd.DataFrame, grp_cols: Sequence[str | None], weight_col: str | None, level: str
+) -> dict[str, str]:
+    """How a weight column other than ``n_cells`` is aggregated: its value within the group."""
+    if weight_col is None or weight_col == "n_cells":
+        return {}
+    if df.groupby(list(grp_cols), observed=True)[weight_col].nunique(dropna=False).max() > 1:
+        raise ValueError(
+            f"weight_col '{weight_col}' varies within {level}; a weight must be constant "
+            "within each aggregated unit. Use aggregate='cell' for cell-level weights."
+        )
+    return {weight_col: "first"}
+
+
 def _aggregate_for_did(
     df: pd.DataFrame,
     final_features: list[str],
@@ -171,6 +205,7 @@ def _aggregate_for_did(
     aggregate: AggregateMode,
     agg: AggregateFunc,
     covariates: list[str] | None,
+    weight_col: str | None = None,
 ) -> tuple[pd.DataFrame, str, str, str]:
     """Aggregate the data for DiD analysis."""
     if aggregate == "participant_visit":
@@ -196,6 +231,7 @@ def _aggregate_for_did(
                 {
                     **{f: agg for f in final_features},
                     **cov_agg,
+                    **_weight_aggregation(df, grp_cols, weight_col, "participant-visit"),
                     "n_cells": "sum",
                     "arm_bin": "first",
                 }
@@ -234,6 +270,7 @@ def _aggregate_for_did(
                 {
                     **{f: agg for f in final_features},
                     **cov_agg_ct,
+                    **_weight_aggregation(df, grp_cols, weight_col, "participant-visit-celltype"),
                     "n_cells": "sum",
                     "arm_bin": "first",
                 }
@@ -609,10 +646,14 @@ def did_table(
     seed
         Random seed for bootstrap.
     weight_col
-        Column to use as WLS weights, for example ``"n_cells"`` (created by
-        ``aggregate="participant_visit"``). ``None`` (default) fits OLS, so each
-        participant-visit aggregate counts equally regardless of how many cells it
-        averages. See ``did_fit`` for the rationale.
+        Column to use as WLS weights. ``"n_cells"`` is the cell count of each
+        aggregate (created by ``aggregate="participant_visit"`` or
+        ``"participant_visit_celltype"``). Any other name is a column of
+        ``adata.obs`` with finite, positive values; when the data are aggregated it
+        must be constant within each aggregated unit, and that value is the weight
+        of the unit. ``None`` (default) fits OLS, so each participant-visit
+        aggregate counts equally regardless of how many cells it averages. See
+        ``did_fit`` for the rationale.
     cov_type
         Covariance of the analytical test: ``"cluster"`` (default, cluster-robust by
         participant) or ``"nonrobust"`` (homoskedastic; with two visits, the pooled
@@ -657,6 +698,7 @@ def did_table(
             if c not in obs.columns:
                 raise KeyError(f"Covariate '{c}' not found in adata.obs")
             cols.append(c)
+    cols += _obs_weight_columns(obs, weight_col, aggregate, features, covariates)
 
     df = obs[cols].copy()
     df, final_features = _add_feature_columns(df, ad, features, layer)
@@ -669,6 +711,7 @@ def did_table(
         aggregate,
         agg,
         covariates,
+        weight_col,
     )
 
     rows = []
@@ -708,6 +751,7 @@ def get_did_aggregated_df(
     aggregate: AggregateMode = "participant_visit",
     agg: AggregateFunc = "mean",
     covariates: list[str] | None = None,
+    weight_col: str | None = None,
 ) -> tuple[pd.DataFrame, str, str, str]:
     """Build aggregated DataFrame for DiD, for use in permutation tests.
 
@@ -738,6 +782,10 @@ def get_did_aggregated_df(
     covariates
         Optional covariate columns to include as fixed effects. Non-numeric
         covariates must be constant within participant-visit.
+    weight_col
+        Column of ``adata.obs`` to carry into the frame as weights for ``did_fit``,
+        as in `did_table`. The cell count ``n_cells`` of an aggregated frame is
+        always present.
 
     Returns
     -------
@@ -748,10 +796,11 @@ def get_did_aggregated_df(
     cols = [design.participant_col, design.visit_col, design.arm_col, "visit_num", "arm_bin"]
     if covariates:
         cols.extend(covariates)
+    cols += _obs_weight_columns(obs, weight_col, aggregate, features, covariates)
     df = obs[cols].copy()
     df, final_features = _add_feature_columns(df, ad, features, layer)
     df_use, unit, time, arm_bin = _aggregate_for_did(
-        df, final_features, design, visits, aggregate, agg, covariates
+        df, final_features, design, visits, aggregate, agg, covariates, weight_col
     )
     return df_use, unit, time, arm_bin
 
@@ -844,6 +893,7 @@ def did_table_parallel(
             if c not in obs.columns:
                 raise KeyError(f"Covariate '{c}' not found in adata.obs")
             cols.append(c)
+    cols += _obs_weight_columns(obs, weight_col, aggregate, features, covariates)
 
     df = obs[cols].copy()
     df, final_features = _add_feature_columns(df, ad, features, layer)
@@ -856,6 +906,7 @@ def did_table_parallel(
         aggregate,
         agg,
         covariates,
+        weight_col,
     )
 
     # Generate independent seeds for each parallel feature using SeedSequence
