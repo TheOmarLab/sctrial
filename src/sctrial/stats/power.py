@@ -63,6 +63,7 @@ Key Considerations for Single-Cell Studies
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Literal
 
 import numpy as np
@@ -357,10 +358,12 @@ def sample_size_did(
     else:
         n_required = n_base
 
-    # Participants per arm (divide total by 2)
-    n_per_arm = int(np.ceil(n_required / 2))
+    def reaches(n: int) -> bool:
+        reached = power_did(n, effect_size, sigma, alpha, two_sided, icc, cluster_size)
+        return reached >= power - _POWER_TOL
 
-    return max(n_per_arm, 2)  # Minimum 2 per arm
+    # Participants per arm (the formula gives the total), at least 2
+    return _smallest_sufficient(int(np.ceil(n_required / 2)), 2, reaches)
 
 
 def power_curve(
@@ -479,6 +482,25 @@ def _check_reference(reference: str) -> None:
         raise ValueError("reference must be 'normal' or 't'.")
 
 
+# A power within this of the target reaches it: the target effect of a round trip through a
+# sensitivity function is itself the root of a numerical solve.
+_POWER_TOL = 1e-9
+
+
+def _smallest_sufficient(n_start: int, n_min: int, reaches: Callable[[int], bool]) -> int:
+    """Smallest size from ``n_min`` at which ``reaches`` holds, searched from ``n_start``.
+
+    A closed-form or root-found size rounded up is one too large when the real-valued
+    solution is an integer up to rounding, so the size is settled with the power function.
+    """
+    n = max(n_start, n_min)
+    while not reaches(n):
+        n += 1
+    while n > n_min and reaches(n - 1):
+        n -= 1
+    return n
+
+
 def _power_at_ncp(ncp: float, alpha: float, two_sided: bool, df: float | None) -> float:
     """Power of a test whose statistic has noncentrality ``ncp``.
 
@@ -493,9 +515,13 @@ def _power_at_ncp(ncp: float, alpha: float, two_sided: bool, df: float | None) -
             power += stats.norm.cdf(-crit - ncp)
         return float(power)
     crit = stats.t.ppf(1 - tail, df)
-    power = stats.nct.sf(crit, df, ncp)
-    if two_sided:
-        power += stats.nct.cdf(-crit, df, ncp)
+    # SciPy raises floating-point flags inside the noncentral t (a division by zero at one
+    # degree of freedom, an invalid value at very large noncentrality) while returning the
+    # correct probability.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        power = stats.nct.sf(crit, df, ncp)
+        if two_sided:
+            power += stats.nct.cdf(-crit, df, ncp)
     return float(power)
 
 
@@ -657,12 +683,13 @@ def sample_size_paired(
 
     # n = 2σ²(z_α + z_β)² / δ²
     n = 2.0 * sigma**2 * (z_alpha + z_beta) ** 2 / effect_size**2
-    n_required = max(int(np.ceil(n)), 2)
-    if reference == "t":
-        # The t-test needs at least as many participants as the normal formula.
-        while power_paired(n_required, effect_size, sigma, alpha, two_sided, "t") < power:
-            n_required += 1
-    return n_required
+
+    def reaches(n_participants: int) -> bool:
+        reached = power_paired(n_participants, effect_size, sigma, alpha, two_sided, reference)
+        return reached >= power - _POWER_TOL
+
+    # The t-test needs at least as many participants as the normal formula.
+    return _smallest_sufficient(int(np.ceil(n)), 2, reaches)
 
 
 def sensitivity_paired(
@@ -827,14 +854,14 @@ def sample_size_two_group(
     Returns
     -------
     tuple[int, int]
-        ``(n_treated, n_control)``: the smallest group sizes at this allocation that
-        reach the desired power, taken as real numbers and each rounded up. Each is
-        at least 2.
+        ``(n_treated, n_control)``: the smallest sizes that reach the desired power
+        according to ``power_two_group``, with the smaller group equal to its share
+        of the larger group rounded up to a whole participant. Each is at least 2.
 
     Examples
     --------
     >>> sample_size_two_group(effect_size=1.0, allocation_ratio=5 / 11)
-    (12, 26)
+    (12, 25)
     """
     if effect_size == 0 or not np.isfinite(effect_size):
         raise ValueError("effect_size must be finite and non-zero.")
@@ -854,25 +881,26 @@ def sample_size_two_group(
     n_control = (
         sigma**2 * (1.0 + allocation_ratio) / allocation_ratio * (z_alpha + z_beta) ** 2
     ) / effect_size**2
-    if reference == "t":
-        # The same continuous solution for the t-test, which needs at least as many
-        # participants as the normal formula, found along n_treated = ratio * n_control.
-        def shortfall(n: float) -> float:
-            n_treated = allocation_ratio * n
-            ncp = abs(effect_size) / (sigma * np.sqrt(1.0 / n_treated + 1.0 / n))
-            return _power_at_ncp(ncp, alpha, two_sided, n_treated + n - 2.0) - power
 
-        n_control = max(n_control, 2.0, 2.0 / allocation_ratio)
-        if shortfall(n_control) < 0:
-            upper = 2.0 * n_control
-            while shortfall(upper) < 0:
-                upper *= 2.0
-            n_control = float(optimize.brentq(shortfall, n_control, upper, xtol=1e-12, rtol=1e-14))
-            while shortfall(n_control) < 0:
-                n_control *= 1.0 + 1e-12
-    n_c = max(int(np.ceil(n_control)), 2)
-    n_t = max(int(np.ceil(allocation_ratio * n_control)), 2)
-    return n_t, n_c
+    # Sizes are whole participants, so the allocation holds up to rounding: for a given size
+    # of the larger group, the smaller group is its share rounded up.
+    treated_is_smaller = allocation_ratio <= 1.0
+    share = allocation_ratio if treated_is_smaller else 1.0 / allocation_ratio
+
+    def sizes(n_larger: int) -> tuple[int, int]:
+        n_smaller = max(int(np.ceil(share * n_larger - 1e-9)), 2)
+        return (n_smaller, n_larger) if treated_is_smaller else (n_larger, n_smaller)
+
+    def reaches(n_larger: int) -> bool:
+        n_treated, n_reference = sizes(n_larger)
+        reached = power_two_group(
+            n_treated, n_reference, effect_size, sigma, alpha, two_sided, reference
+        )
+        return reached >= power - _POWER_TOL
+
+    # The normal formula gives the starting point; the t-test needs at least as many.
+    n_larger = n_control if treated_is_smaller else allocation_ratio * n_control
+    return sizes(_smallest_sufficient(int(np.ceil(n_larger)), 2, reaches))
 
 
 def sensitivity_two_group(

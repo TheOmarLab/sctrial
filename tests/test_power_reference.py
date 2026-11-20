@@ -26,7 +26,7 @@ def _nct_power(ncp, df, alpha=0.05):
 
 def test_default_reference_is_the_normal_approximation():
     assert power_two_group(5, 11, 1.0) == pytest.approx(0.4579, abs=1e-4)
-    assert sample_size_two_group(1.0, allocation_ratio=5 / 11) == (12, 26)
+    assert sample_size_two_group(1.0, allocation_ratio=5 / 11) == (12, 25)
     assert sensitivity_two_group(3, 8) == pytest.approx(1.8967, abs=1e-4)
     assert power_paired(6, 0.8) == power_paired(6, 0.8, reference="normal")
     assert sample_size_paired(0.5) == 63
@@ -138,3 +138,41 @@ def test_within_arm_resid_sd_times_sqrt2_is_the_sd_of_the_changes():
                                        visits=("Pre", "Post"), standardize=True)
     change = _changes(adata)[0]
     assert np.sqrt(2) * res["resid_sd"].iloc[0] == pytest.approx(change.std(ddof=1), rel=1e-10)
+
+
+@pytest.mark.parametrize("reference", ["t", "normal"])
+@pytest.mark.parametrize("sizes", [(3, 8), (6, 6), (4, 12), (10, 30), (8, 3), (2, 9)])
+def test_two_group_sample_size_returns_the_sizes_a_detectable_effect_came_from(sizes, reference):
+    # 3 and 8 reach 80% power at their own detectable effect; rounding a solution that is an
+    # integer up to rounding used to return 4 and 9.
+    n_t, n_c = sizes
+    effect = sensitivity_two_group(n_t, n_c, sigma=1.3, reference=reference)
+    # the normal formula for the detectable effect leaves out the far tail (about 1e-6)
+    assert power_two_group(n_t, n_c, effect, sigma=1.3, reference=reference) == pytest.approx(0.80, abs=2e-6)
+    assert sample_size_two_group(
+        effect, sigma=1.3, allocation_ratio=n_t / n_c, reference=reference
+    ) == (n_t, n_c)
+
+
+@pytest.mark.parametrize("reference", ["t", "normal"])
+@pytest.mark.parametrize("n", [2, 3, 9, 17, 38])
+def test_paired_sample_size_returns_the_size_a_detectable_effect_came_from(n, reference):
+    effect = sensitivity_paired(n, sigma=0.7, reference=reference)
+    assert sample_size_paired(effect, sigma=0.7, reference=reference) == n
+
+
+@pytest.mark.parametrize("effect", [0.3, 0.5, 0.9, 1.4])
+def test_did_sample_size_is_the_smallest_that_reaches_the_power(effect):
+    from sctrial.stats.power import power_did, sample_size_did
+
+    n = sample_size_did(effect)
+    assert power_did(n, effect) >= 0.80
+    assert n == 2 or power_did(n - 1, effect) < 0.80
+
+
+def test_power_at_one_degree_of_freedom_raises_no_numerical_warning():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert 0.05 < power_paired(2, 2.0, reference="t") < 1.0
+        assert sample_size_paired(4.0, sigma=1.0, reference="t") >= 2
+        assert power_paired(15, 11.0, two_sided=False, reference="t") == pytest.approx(1.0)
