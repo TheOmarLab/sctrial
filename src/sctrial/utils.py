@@ -208,8 +208,11 @@ _BOOT_CI_MAX_RADIUS_SE = 1e4
 # one is a tie; the margin is far above rounding error and far below any difference between
 # two statistics that are not equal.
 _TIE_RTOL = 1e-9
-# A bootstrap variance below this fraction of the largest variance among the draws is zero.
-_ZERO_VARIANCE_RTOL = 1e-12
+# A bootstrap variance below this fraction of the largest variance among the draws is too small
+# for the closed form, which obtains it as a difference of two larger numbers. It is computed
+# again from the residuals of the draw, and is zero when those do not exceed the rounding error
+# of the outcome they are residuals of.
+_SMALL_VARIANCE_RTOL = 1e-12
 
 
 def _tie_tolerance(centred: np.ndarray) -> float:
@@ -295,6 +298,15 @@ def wild_cluster_bootstrap_t(
     the observed statistic in exact arithmetic (for example a flipped cluster whose
     outcome did not change) are counted whatever the rounding of the two computations.
 
+    An assignment that the model fits exactly has no residual variance and an
+    unbounded statistic, and counts as at least as extreme as the observed one. Its
+    residuals are zero within the rounding error of the outcome (``8 * n * eps`` times
+    the largest absolute outcome, measured from the mean when the other regressors
+    hold a constant). An assignment with a small positive variance is not such a case:
+    its statistic is computed from its own residuals and compared as any other. When
+    the model fits the observed outcome exactly by the same criterion, there is no
+    statistic to compare with and every result is NaN.
+
     The confidence interval is obtained by **inverting the bootstrap test** with the
     same bootstrap weights for every :math:`\beta_0`. The bootstrap p-value is a step
     function of :math:`\beta_0` that changes only where a draw's statistic equals the
@@ -374,6 +386,26 @@ def wild_cluster_bootstrap_t(
     y = np.asarray(fit.model.endog, dtype=float)
     X = np.asarray(X, dtype=float)
     n_obs, k_params = X.shape
+    rounding = 8.0 * n_obs * float(np.finfo(float).eps)
+
+    # When the other regressors hold a constant, the estimate and every residual are the same
+    # wherever the origin of the outcome lies. The outcome is then measured from its mean, which
+    # keeps rounding error at the scale of its spread: far from zero, two statistics that are
+    # equal in exact arithmetic would differ by more than the tie margin. An outcome whose mean
+    # is zero within rounding is left as it is, and one whose spread is zero within rounding
+    # does not vary.
+    others = np.delete(X, j, axis=1)
+    if others.shape[1]:
+        ones = np.ones(n_obs)
+        beyond = ones - others @ np.linalg.lstsq(others, ones, rcond=None)[0]
+        if np.linalg.norm(beyond) <= 1e-8 * np.sqrt(n_obs):
+            mean = float(y.mean())
+            centred = y - mean
+            spread = float(np.max(np.abs(centred), initial=0.0))
+            if spread <= rounding * abs(mean):
+                y = np.zeros(n_obs)
+            elif abs(mean) > rounding * spread:
+                y = centred
 
     # WLS is OLS on the outcome and regressors scaled by the square root of the weights,
     # and a cluster-level sign flip commutes with that scaling.
@@ -395,6 +427,11 @@ def wild_cluster_bootstrap_t(
     a = pinv_x[j]
     beta_hat = float(a @ y)
     resid_u = y - X @ (pinv_x @ y)
+
+    def _residual_of(values: np.ndarray) -> np.ndarray:
+        """Residual of the rows of ``values`` on the regressors, projected twice."""
+        once = values - (values @ pinv_x.T) @ X.T
+        return once - (once @ pinv_x.T) @ X.T
 
     x_j = X[:, j]
     X_r = np.delete(X, j, axis=1)
@@ -446,24 +483,60 @@ def wild_cluster_bootstrap_t(
         q_xx = np.einsum("bg,bg->b", score_x, score_x)
         var_obs = var_scale * float(score_u @ score_u)
 
-    if not np.isfinite(var_obs) or var_obs <= 0:
+    # A model that fits the outcome exactly leaves no variance to studentize with. Rounding
+    # leaves its residuals a hair away from zero, so they are compared with the rounding error
+    # of the outcome, as those of a draw are below. Projecting the residuals once more removes
+    # the error that a badly scaled design adds to them (it lies along the regressors).
+    refined_u = _residual_of(resid_u)
+    observed_parts = refined_u if cov_type == "nonrobust" else _sum_by_cluster(a * refined_u, order, starts)
+    observed_floor = rounding * float(np.max(np.abs(y), initial=0.0))
+    if cov_type == "cluster":
+        observed_floor *= float(np.max(np.abs(a)))
+    if not np.isfinite(var_obs) or np.max(np.abs(observed_parts), initial=0.0) <= observed_floor:
         return _nan_result
     se_obs = float(np.sqrt(var_obs))
 
     free = ~is_tie
     num_y_f, num_x_f = num_y[free], num_x[free]
     q_yy_f, q_xy_f, q_xx_f = q_yy[free], q_xy[free], q_xx[free]
+    signs_f = signs[free]
+    # The restricted residuals, projected once more on the restricted regressors: only the
+    # draws recomputed below use them, so every other number is that of the closed form.
+    refined_r_y = resid_r_y - X_r @ (pinv_r @ resid_r_y)
+    refined_r_x = resid_r_x - X_r @ (pinv_r @ resid_r_x)
+
+    def _variance_from_residuals(
+        beta_null: float, draws: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Variance of the given draws from their own residuals, and whether it is zero."""
+        restricted = refined_r_y - beta_null * refined_r_x
+        resid = _residual_of(signs_f[draws][:, cluster_idx] * restricted)
+        floor = rounding * float(np.max(np.abs(y - beta_null * x_j), initial=0.0))
+        if cov_type == "nonrobust":
+            parts = resid
+        else:
+            parts = np.add.reduceat((resid * a)[:, order], starts, axis=1)
+            floor *= float(np.max(np.abs(a)))
+        variance = var_scale * np.einsum("bi,bi->b", parts, parts)
+        return variance, np.max(np.abs(parts), axis=1, initial=0.0) <= floor
 
     def _p_values(beta_nulls: np.ndarray) -> np.ndarray:
         b = np.asarray(beta_nulls, dtype=float)[:, None]
         var_star = var_scale * (q_yy_f - 2.0 * b * q_xy_f + b**2 * q_xx_f)
         valid = np.isfinite(var_star)
         # A draw that the model fits exactly has no residual variance and an unbounded
-        # statistic, so it is at least as extreme as any observed one. Rounding leaves such a
-        # variance a hair above or below zero; it is recognised against the largest variance
-        # among the draws, not by its sign.
+        # statistic, so it is at least as extreme as any observed one. The closed form leaves
+        # such a variance a hair above or below zero, and gives a small positive variance no
+        # better: both are computed again from the residuals of the draw, where a draw without
+        # variance is told from one with little.
         largest = np.max(np.where(valid, var_star, 0.0), axis=1, keepdims=True, initial=var_obs)
-        unbounded = valid & (var_star <= _ZERO_VARIANCE_RTOL * largest)
+        small = valid & (var_star <= _SMALL_VARIANCE_RTOL * largest)
+        unbounded = np.zeros_like(small)
+        for row in np.flatnonzero(small.any(axis=1)):
+            draws = np.flatnonzero(small[row])
+            var_star[row, draws], unbounded[row, draws] = _variance_from_residuals(
+                float(b[row, 0]), draws
+            )
         regular = valid & ~unbounded
         t_star = (num_y_f - b * num_x_f) / np.sqrt(np.where(regular, var_star, 1.0))
         t_obs = np.abs(beta_hat - b) / se_obs
