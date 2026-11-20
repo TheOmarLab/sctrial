@@ -12,9 +12,12 @@ from anndata import AnnData
 from ..design import TrialDesign
 from ._utils import (
     apply_fdr,
+    covariate_aggregator,
     drop_unused_levels,
     encode_visit,
+    feature_aggregator,
     fit_identified,
+    fits_exactly,
     standardize_series,
 )
 from .did import (
@@ -138,7 +141,8 @@ def test_treatment_heterogeneity(
     grp_cols = [unit, design.visit_col, design.arm_col]
     use_cols = list(final_features) + [arm_bin]
     # Covariates travel with the participant-visit rows: a numeric one as its mean over the
-    # cells, any other as its value, which must be the same for every cell of the row.
+    # cells (its median with agg="median"), any other as its value, which must be the same for
+    # every cell of the row.
     cov_agg: dict[str, str] = {}
     for c in covariates or []:
         if c not in adata.obs.columns:
@@ -147,7 +151,7 @@ def test_treatment_heterogeneity(
             raise ValueError(f"covariate '{c}' is also a feature of the model.")
         obs_feat[c] = adata.obs.loc[obs_feat.index, c].to_numpy()
         if pd.api.types.is_numeric_dtype(obs_feat[c]):
-            cov_agg[c] = "mean"
+            cov_agg[c] = covariate_aggregator(agg)
         else:
             if obs_feat.groupby(grp_cols, observed=True)[c].nunique().max() > 1:
                 raise ValueError(
@@ -155,9 +159,19 @@ def test_treatment_heterogeneity(
                     "use numeric or constant covariates only."
                 )
             cov_agg[c] = "first"
-    df_use = (
-        obs_feat.groupby(grp_cols, observed=True)[use_cols].mean(numeric_only=True).reset_index()
-    )
+    if agg == "mean":
+        df_use = (
+            obs_feat.groupby(grp_cols, observed=True)[use_cols]
+            .mean(numeric_only=True)
+            .reset_index()
+        )
+    else:
+        # A feature read from obs is in the frame twice; one copy is aggregated.
+        unique = obs_feat.loc[:, ~obs_feat.columns.duplicated()]
+        how = {f: feature_aggregator(agg) for f in dict.fromkeys(final_features)}
+        df_use = (
+            unique.groupby(grp_cols, observed=True).agg({**how, arm_bin: "mean"}).reset_index()
+        )
     if cov_agg:
         cov_rows = obs_feat.groupby(grp_cols, observed=True)[list(cov_agg)].agg(cov_agg)
         df_use = df_use.merge(cov_rows.reset_index(), on=grp_cols, how="left")
@@ -200,7 +214,9 @@ def test_treatment_heterogeneity(
         tmp = obs_feat[list(dict.fromkeys([*model_cols, feat]))].copy()
         if tmp.columns.duplicated().any():
             tmp = tmp.loc[:, ~tmp.columns.duplicated()].copy()
-        tmp = tmp.dropna(subset=[feat, "biomarker_high"])
+        # A row without the outcome or a covariate is not in the model; the formula would drop
+        # it from the model matrices only, not from the cluster labels passed beside it.
+        tmp = tmp.dropna(subset=[feat, "biomarker_high", *(covariates or [])])
         # A participant with a missing value at one visit has no change for this feature.
         visits_seen = tmp.groupby(unit, observed=True)[time].nunique()
         tmp = tmp[tmp[unit].isin(visits_seen.index[visits_seen >= 2])].copy()
@@ -284,7 +300,10 @@ def test_treatment_heterogeneity(
             {
                 "feature": feat,
                 "beta_heterogeneity": float(fit.params.get(term, np.nan)),
-                "p_heterogeneity": float(fit.pvalues.get(term, np.nan)),
+                # an exact fit gives the estimate and no test
+                "p_heterogeneity": (
+                    np.nan if fits_exactly(fit) else float(fit.pvalues.get(term, np.nan))
+                ),
                 "n_units": n_units_eff,
                 "threshold": threshold,
             }

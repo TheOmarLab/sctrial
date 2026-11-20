@@ -12,9 +12,12 @@ from statsmodels.stats.multitest import multipletests
 __all__ = [
     "aggregate_features",
     "apply_fdr",
+    "covariate_aggregator",
     "drop_unused_levels",
     "encode_visit",
+    "feature_aggregator",
     "fit_identified",
+    "fits_exactly",
     "standardize_series",
 ]
 
@@ -37,25 +40,68 @@ def fit_identified(model: Any, term: str, **fit_kwargs: Any) -> Any | None:
     columns of the design, not its rank, in the small-sample factor of a cluster-robust
     covariance, so a regressor that the others determine (a covariate that is constant
     within participant, beside participant effects) would enlarge every standard error.
+
+    The rank is read from a plain fit, and the covariance named in ``fit_kwargs`` is
+    computed on the independent columns only: that factor divides by the number of rows
+    minus the number of columns, which is zero for a design with as many columns as rows.
+    A model without residual degrees of freedom has no variance estimate under any
+    covariance; its plain fit is returned, with standard errors that are not finite.
     """
-    fit = model.fit(**fit_kwargs)
-    exog = np.asarray(fit.model.exog, dtype=float)
-    names = list(fit.model.exog_names)
-    rank = int(fit.model.rank)
-    if rank == exog.shape[1]:
-        return fit
-    if term in names and not _column_is_identified(exog, names.index(term)):
-        return None
-    pivots = scipy.linalg.qr(exog, mode="r", pivoting=True)[1]
-    keep = np.sort(pivots[:rank])
-    rows = fit.model.data.row_labels
-    design = pd.DataFrame(exog[:, keep], columns=[names[i] for i in keep], index=rows)
-    outcome = pd.Series(np.asarray(fit.model.endog, dtype=float), index=rows, name=fit.model.endog_names)
-    if isinstance(fit.model, sm.OLS):
-        reduced = sm.OLS(outcome, design)
-    else:
-        reduced = sm.WLS(outcome, design, weights=np.asarray(fit.model.weights, dtype=float))
-    return reduced.fit(**fit_kwargs)
+    plain = model.fit()
+    fitted = plain.model
+    exog = np.asarray(fitted.exog, dtype=float)
+    names = list(fitted.exog_names)
+    rank = int(fitted.rank)
+    if rank < exog.shape[1]:
+        if term in names and not _column_is_identified(exog, names.index(term)):
+            return None
+        pivots = scipy.linalg.qr(exog, mode="r", pivoting=True)[1]
+        keep = np.sort(pivots[:rank])
+        rows = fitted.data.row_labels
+        design = pd.DataFrame(exog[:, keep], columns=[names[i] for i in keep], index=rows)
+        outcome = pd.Series(np.asarray(fitted.endog, dtype=float), index=rows, name=fitted.endog_names)
+        if isinstance(fitted, sm.OLS):
+            model = sm.OLS(outcome, design)
+        else:
+            model = sm.WLS(outcome, design, weights=np.asarray(fitted.weights, dtype=float))
+        plain = model.fit()
+    if plain.df_resid <= 0:
+        return plain
+    return model.fit(**fit_kwargs)
+
+
+def fits_exactly(fit: Any) -> bool:
+    """Whether a least-squares fit with residual degrees of freedom fits its outcome exactly.
+
+    Every residual is then zero in exact arithmetic and the computed ones are rounding error,
+    so a standard error or a p-value computed from them is noise: the model gives an estimate
+    and no test. The residuals are computed here from the outcome measured from its mean when
+    the model holds a constant (they do not depend on the origin then), and count as zero
+    within ``8 * n * eps`` times the largest absolute outcome. An outcome that does not vary
+    within rounding is fitted exactly by a model that holds a constant.
+
+    A model without residual degrees of freedom fits any outcome and is not such a case; its
+    standard errors are not finite.
+    """
+    model = fit.model
+    if model.df_resid <= 0:
+        return False
+    outcome = np.asarray(model.endog, dtype=float)
+    rounding = 8.0 * outcome.size * float(np.finfo(float).eps)
+    if model.k_constant:
+        mean = float(outcome.mean())
+        outcome = outcome - mean
+        if float(np.max(np.abs(outcome), initial=0.0)) <= rounding * abs(mean):
+            return True
+    weights = np.asarray(getattr(model, "weights", 1.0), dtype=float)
+    outcome = outcome * np.sqrt(np.broadcast_to(weights, outcome.shape))
+    design = np.asarray(model.wexog, dtype=float)
+    projector = np.asarray(model.pinv_wexog, dtype=float)
+    resid = outcome - design @ (projector @ outcome)
+    # once more: the error that a badly scaled design adds to a residual lies along the regressors
+    resid = resid - design @ (projector @ resid)
+    floor = rounding * float(np.max(np.abs(outcome), initial=0.0))
+    return bool(np.max(np.abs(resid), initial=0.0) <= floor)
 
 
 def drop_unused_levels(df: pd.DataFrame) -> pd.DataFrame:
@@ -137,6 +183,34 @@ def encode_visit(
     return out
 
 
+def _pct_pos(values: pd.Series) -> float:
+    """Percentage of the values above zero, among the values that are not missing."""
+    observed = values.dropna()
+    return float((observed > 0).mean() * 100.0) if len(observed) else float("nan")
+
+
+def feature_aggregator(agg: str) -> Any:
+    """What a pandas ``groupby().agg`` applies to a feature column for the aggregation ``agg``.
+
+    ``'mean'`` and ``'median'`` are passed by name; ``'pct_pos'`` is the percentage (0 to 100)
+    of cells with a value above zero.
+    """
+    if agg in ("mean", "median"):
+        return agg
+    if agg == "pct_pos":
+        return _pct_pos
+    raise ValueError(f"Unsupported agg='{agg}'. Use 'mean', 'median', or 'pct_pos'.")
+
+
+def covariate_aggregator(agg: str) -> str:
+    """Aggregation of a numeric covariate beside features aggregated with ``agg``.
+
+    A covariate follows the mean or the median of the features. The share of positive cells
+    summarises an expression value, not a covariate, which then keeps its mean.
+    """
+    return "mean" if agg == "pct_pos" else str(feature_aggregator(agg))
+
+
 def aggregate_features(
     df: pd.DataFrame,
     grp_cols: list[str],
@@ -165,20 +239,17 @@ def aggregate_features(
     -----
     ``'mean'`` and ``'median'`` return values on the original feature scale.
     ``'pct_pos'`` returns the percentage (0–100) of cells with values > 0,
-    *not* a proportion (0–1).
+    *not* a proportion (0–1), among the cells that have a value.
     """
     if agg == "mean":
         return df.groupby(grp_cols, observed=True)[list(features)].mean().reset_index()
     if agg == "median":
         return df.groupby(grp_cols, observed=True)[list(features)].median().reset_index()
-    if agg == "pct_pos":
-        out = (
-            df.groupby(grp_cols, observed=True)[list(features)]
-            .apply(lambda x: (x > 0).mean() * 100.0)
-            .reset_index()
-        )
-        return out
-    raise ValueError(f"Unsupported agg='{agg}'. Use 'mean', 'median', or 'pct_pos'.")
+    return (
+        df.groupby(grp_cols, observed=True)[list(features)]
+        .agg(feature_aggregator(agg))
+        .reset_index()
+    )
 
 
 def apply_fdr(

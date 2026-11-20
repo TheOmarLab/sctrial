@@ -12,7 +12,7 @@ def test_pseudobulk_did_basic():
 
     obs_rows = []
     expr = []
-    for pid, arm in zip(participants, arms):
+    for k, (pid, arm) in enumerate(zip(participants, arms)):
         for visit in visits:
             for _ in range(10):
                 obs_rows.append(
@@ -23,10 +23,12 @@ def test_pseudobulk_did_basic():
                         "celltype": "CT1",
                     }
                 )
+                # the change differs a little between participants: with the same change in
+                # every participant of an arm the model fits exactly and there is no test
                 if arm == "Treated" and visit == "V2":
-                    expr.append([20.0, 10.0])
+                    expr.append([20.0 + k, 10.0])
                 else:
-                    expr.append([10.0, 10.0])
+                    expr.append([10.0 + (k % 3 if visit == "V2" else 0), 10.0])
 
     obs = pd.DataFrame(obs_rows)
     X = np.asarray(expr, dtype=float)

@@ -15,7 +15,7 @@ from statsmodels.stats.multitest import multipletests
 from ..adata_tools import subset_arms
 from ..design import TrialDesign
 from ..utils import _tie_tolerance
-from ._utils import encode_visit
+from ._utils import encode_visit, fits_exactly
 
 __all__ = [
     "module_score_pseudobulk",
@@ -288,12 +288,14 @@ def module_score_did_by_pool(
             p_control = np.nan
             try:
                 fit_t = smf.ols("module_score ~ visit_num", data=treated).fit(cov_type="HC1")
-                p_treated = float(fit_t.pvalues.get("visit_num", np.nan))
+                if not fits_exactly(fit_t):
+                    p_treated = float(fit_t.pvalues.get("visit_num", np.nan))
             except (ValueError, TypeError):
                 p_treated = np.nan
             try:
                 fit_c = smf.ols("module_score ~ visit_num", data=control).fit(cov_type="HC1")
-                p_control = float(fit_c.pvalues.get("visit_num", np.nan))
+                if not fits_exactly(fit_c):
+                    p_control = float(fit_c.pvalues.get("visit_num", np.nan))
             except (ValueError, TypeError):
                 p_control = np.nan
 
@@ -307,7 +309,12 @@ def module_score_did_by_pool(
                     "mean_delta_treated": mean_delta_treated,
                     "mean_delta_control": mean_delta_control,
                     "beta_DiD": float(fit.params.get("visit_num:arm_bin", np.nan)),
-                    "p_DiD": float(fit.pvalues.get("visit_num:arm_bin", np.nan)),
+                    # an exact fit gives the estimate and no test
+                    "p_DiD": (
+                        np.nan
+                        if fits_exactly(fit)
+                        else float(fit.pvalues.get("visit_num:arm_bin", np.nan))
+                    ),
                     "p_treated": p_treated,
                     "p_control": p_control,
                     "n_units": n_units_eff,

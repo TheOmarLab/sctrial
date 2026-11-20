@@ -226,6 +226,46 @@ def test_heterogeneity_drops_a_participant_missing_the_feature_at_one_visit():
         assert res[col].iloc[0] == pytest.approx(ref[col].iloc[0], rel=1e-10)
 
 
+@pytest.mark.parametrize("kind", ["numeric", "label"])
+def test_heterogeneity_drops_a_participant_missing_a_covariate_at_one_visit(kind):
+    # The formula dropped the row, the cluster labels kept it: 31 rows against 32 labels.
+    adata, design = _heterogeneity_fixture()
+    pid, visit = adata.obs["participant_id"], adata.obs["visit"]
+    adata.obs["bmk"] = pid.map({f"P{i:02d}": float(i % 2) for i in range(16)})
+    number = pid.str[1:].astype(int) + (visit == "V2").astype(int)
+    if kind == "numeric":
+        adata.obs["load"] = np.sin(number.to_numpy(dtype=float))
+    else:
+        adata.obs["load"] = ("b" + (number % 3).astype(str)).astype(object)
+    holed = adata.copy()
+    holed.obs.loc[(pid == "P02") & (visit == "V2"), "load"] = np.nan
+
+    res = _heterogeneity(holed, design, covariates=["load"])
+    ref = _heterogeneity(adata[pid != "P02"].copy(), design, covariates=["load"])
+
+    assert res["n_units"].iloc[0] == ref["n_units"].iloc[0] == 15
+    assert np.isfinite(ref["beta_heterogeneity"].iloc[0])
+    for col in ("beta_heterogeneity", "p_heterogeneity"):
+        assert res[col].iloc[0] == pytest.approx(ref[col].iloc[0], rel=1e-10)
+
+
+def test_heterogeneity_counts_the_groups_after_dropping_missing_covariates():
+    # Two treated participants with a high biomarker; one loses a covariate value, so the
+    # group is left with one.
+    adata, design = _heterogeneity_fixture()
+    pid, visit = adata.obs["participant_id"], adata.obs["visit"]
+    high = {"P00", "P01", "P08", "P09", "P10", "P11"}
+    adata.obs["bmk"] = pid.map({f"P{i:02d}": float(f"P{i:02d}" in high) for i in range(16)})
+    adata.obs["load"] = np.cos(np.arange(adata.n_obs, dtype=float))
+    adata.obs.loc[(pid == "P00") & (visit == "V2"), "load"] = np.nan
+
+    with pytest.warns(UserWarning, match="not estimable.*treated/high=1"):
+        res = _heterogeneity(adata, design, covariates=["load"])
+
+    assert res["n_units"].iloc[0] == 15
+    assert np.isnan(res["beta_heterogeneity"].iloc[0]) and np.isnan(res["p_heterogeneity"].iloc[0])
+
+
 def test_heterogeneity_matches_the_model_without_time_invariant_terms():
     # Arm, biomarker group and their product are constant within a participant. As extra
     # columns beside the participant effects they changed nothing but the standard error.

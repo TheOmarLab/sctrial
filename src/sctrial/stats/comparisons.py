@@ -16,9 +16,12 @@ from ..design import TrialDesign
 from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
 from ._utils import (
     apply_fdr,
+    covariate_aggregator,
     drop_unused_levels,
     encode_visit,
+    feature_aggregator,
     fit_identified,
+    fits_exactly,
     standardize_series,
 )
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE, AggregateFunc, AggregateMode, _ensure_paired
@@ -98,7 +101,7 @@ def _prepare_between_arm_df(
         if covariates:
             for c in covariates:
                 if pd.api.types.is_numeric_dtype(df[c]):
-                    cov_agg[c] = str(agg)
+                    cov_agg[c] = covariate_aggregator(agg)
                 else:
                     nunique = df.groupby(grp_cols, observed=True)[c].nunique()
                     if nunique.max() > 1:
@@ -111,7 +114,7 @@ def _prepare_between_arm_df(
             df.groupby(grp_cols, observed=True)
             .agg(
                 {
-                    **{f: agg for f in features},
+                    **{f: feature_aggregator(agg) for f in features},
                     **cov_agg,
                 }
             )
@@ -150,7 +153,11 @@ def _ols_between_arm(
     # Only the columns of this feature's model: a frame with a column for every feature, copied
     # once per feature, makes the cost per feature grow with the number of features.
     model_cols = dict.fromkeys([design.participant_col, "arm_bin", *(covariates or []), feat])
-    df_feat = drop_unused_levels(df_use[list(model_cols)].reset_index(drop=True))
+    df_feat = df_use[list(model_cols)]
+    # The rows of the model: the outcome is scaled on them, not on rows that a missing
+    # covariate keeps out of the fit.
+    df_feat = df_feat.dropna(subset=list(dict.fromkeys([feat, "arm_bin", *(covariates or [])])))
+    df_feat = drop_unused_levels(df_feat.reset_index(drop=True))
     if standardize:
         y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
         if not ok:
@@ -185,8 +192,10 @@ def _ols_between_arm(
     model = smf.ols(formula, data=df_feat)
     fit = model.fit()
 
+    # An exact fit (no spread within the arms) gives the difference and no test.
+    exact = fits_exactly(fit)
     beta = float(fit.params.get("arm_bin", np.nan))
-    se = float(fit.bse.get("arm_bin", np.nan))
+    se = np.nan if exact else float(fit.bse.get("arm_bin", np.nan))
     t_crit = float(t_dist.ppf(0.975, fit.df_resid))
     # Report effective participant count after model row drops
     model_row_idx = fit.model.data.row_labels
@@ -197,7 +206,7 @@ def _ols_between_arm(
         "se_arm": se,
         "ci_lo_arm": beta - t_crit * se,
         "ci_hi_arm": beta + t_crit * se,
-        "p_arm": float(fit.pvalues.get("arm_bin", np.nan)),
+        "p_arm": np.nan if exact else float(fit.pvalues.get("arm_bin", np.nan)),
         "n_units": n_units_eff,
     }
 
@@ -261,12 +270,12 @@ def get_within_arm_aggregated_df(
         if covariates:
             for c in covariates:
                 if pd.api.types.is_numeric_dtype(df[c]):
-                    cov_agg[c] = str(agg)
+                    cov_agg[c] = covariate_aggregator(agg)
                 else:
                     cov_agg[c] = "first"
         df_use = (
             df.groupby(grp_cols, observed=True)
-            .agg({**{f: agg for f in features}, **cov_agg})
+            .agg({**{f: feature_aggregator(agg) for f in features}, **cov_agg})
             .reset_index()
         )
     else:
@@ -304,7 +313,11 @@ def within_arm_fit_beta(
     float
         The beta_time.
     """
-    df_feat = drop_unused_levels(df[[unit, "visit_num", feat]].dropna().copy())
+    df_feat = df[[unit, "visit_num", feat]].dropna()
+    # As in within_arm_comparison: a participant left with one visit is not in the model.
+    visits_seen = df_feat.groupby(unit, observed=True)["visit_num"].nunique()
+    df_feat = df_feat[df_feat[unit].isin(visits_seen.index[visits_seen >= 2])]
+    df_feat = drop_unused_levels(df_feat.copy())
     if len(df_feat) < 4:
         return np.nan
     if standardize:
@@ -507,7 +520,7 @@ def within_arm_comparison(
         if covariates:
             for c in covariates:
                 if pd.api.types.is_numeric_dtype(df[c]):
-                    cov_agg[c] = str(agg)
+                    cov_agg[c] = covariate_aggregator(agg)
                 else:
                     nunique = df.groupby(grp_cols, observed=True)[c].nunique()
                     if nunique.max() > 1:
@@ -520,7 +533,7 @@ def within_arm_comparison(
             df.groupby(grp_cols, observed=True)
             .agg(
                 {
-                    **{f: agg for f in features},
+                    **{f: feature_aggregator(agg) for f in features},
                     **cov_agg,
                 }
             )
@@ -541,7 +554,14 @@ def within_arm_comparison(
     for feat in features:
         # Only the columns of this feature's model: a frame with a column for every feature,
         # copied once per feature, makes the cost per feature grow with the number of features.
-        df_feat = df_use[list(dict.fromkeys([*model_cols, feat]))].copy()
+        df_feat = df_use[list(dict.fromkeys([*model_cols, feat]))]
+        # A row without the feature or a covariate is not in the model, and with participant
+        # effects neither is the other visit of that participant: it would add a participant
+        # and a cluster that inform nothing, and a value to the scaling of the outcome.
+        df_feat = df_feat.dropna(subset=list(dict.fromkeys([feat, *(covariates or [])])))
+        visits_seen = df_feat.groupby(unit, observed=True)["visit_num"].nunique()
+        df_feat = df_feat[df_feat[unit].isin(visits_seen.index[visits_seen >= 2])]
+        df_feat = drop_unused_levels(df_feat.copy())
 
         if standardize:
             y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
@@ -627,13 +647,16 @@ def within_arm_comparison(
             )
             continue
 
+        # An exact fit (no participant changes, or all by the same amount) gives the estimate
+        # and no test: its standard error and p-value would be made of rounding error.
+        exact = fits_exactly(fit)
         beta = float(fit.params.get("visit_num", np.nan))
-        se = float(fit.bse.get("visit_num", np.nan))
-        p_val = float(fit.pvalues.get("visit_num", np.nan))
+        se = np.nan if exact else float(fit.bse.get("visit_num", np.nan))
+        p_val = np.nan if exact else float(fit.pvalues.get("visit_num", np.nan))
 
         # Fallback: if the cluster-robust SE is not finite, re-fit with the
         # nonrobust SE. A guard for models without residual degrees of freedom.
-        if not np.isfinite(se) or not np.isfinite(p_val):
+        if not exact and (not np.isfinite(se) or not np.isfinite(p_val)):
             warnings.warn(
                 f"Cluster-robust SE is not finite for feature '{feat}' "
                 f"with {n_units_feat} clusters. Falling back to nonrobust "
@@ -649,7 +672,7 @@ def within_arm_comparison(
         # Use robust conf_int() to ensure CI is consistent with the
         # cluster-robust SE / p-value (avoids df_resid mismatch).
         ci_bounds = fit.conf_int(alpha=0.05)
-        if "visit_num" in ci_bounds.index:
+        if "visit_num" in ci_bounds.index and not exact:
             ci_lo = float(ci_bounds.loc["visit_num", 0])
             ci_hi = float(ci_bounds.loc["visit_num", 1])
         else:
@@ -772,9 +795,12 @@ def between_arm_comparison(
         if method == "ols":
             rows.append(_ols_between_arm(df_use, feat, design, standardize, covariates))
         elif method == "wilcoxon":
-            values = df_use[feat].to_numpy()
-            g1 = np.asarray(values[in_treated], dtype=float)
-            g2 = np.asarray(values[in_control], dtype=float)
+            values = np.asarray(df_use[feat].to_numpy(), dtype=float)
+            # A participant without the feature is not in the test.
+            observed = ~np.isnan(values)
+            g1 = values[in_treated & observed]
+            g2 = values[in_control & observed]
+            n_units = int(df_use.loc[observed, design.participant_col].nunique())
 
             if len(g1) > 0 and len(g2) > 0:
                 stat, p_val = mannwhitneyu(g1, g2, alternative="two-sided")
@@ -806,7 +832,7 @@ def between_arm_comparison(
                         "ci_lo_arm": ci_lo,
                         "ci_hi_arm": ci_hi,
                         "p_arm": float(p_val),
-                        "n_units": int(df_use[design.participant_col].nunique()),
+                        "n_units": n_units,
                     }
                 )
             else:
@@ -824,7 +850,7 @@ def between_arm_comparison(
                         "ci_lo_arm": np.nan,
                         "ci_hi_arm": np.nan,
                         "p_arm": np.nan,
-                        "n_units": int(df_use[design.participant_col].nunique()),
+                        "n_units": n_units,
                     }
                 )
 
@@ -918,7 +944,7 @@ def compare_gene_in_celltype(
             "expr": expr,
         }
     )
-    df = df.dropna(subset=[participant_col, "group"])
+    df = df.dropna(subset=[participant_col, "group", "expr"])
 
     def _summarize(group_df: pd.DataFrame) -> pd.Series:
         vals = np.asarray(group_df["expr"].values, dtype=float)

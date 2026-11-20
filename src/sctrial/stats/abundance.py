@@ -10,7 +10,7 @@ from anndata import AnnData
 from ..adata_tools import subset_arms, subset_primary
 from ..design import TrialDesign
 from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
-from ._utils import apply_fdr, drop_unused_levels, encode_visit, fit_identified
+from ._utils import apply_fdr, drop_unused_levels, encode_visit, fit_identified, fits_exactly
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE
 
 
@@ -168,6 +168,15 @@ def abundance_did(
         tmp = counts[counts[design.celltype_col] == ct].copy()
         # keep paired units only
         tmp = tmp[tmp[design.participant_col].isin(paired_units)].copy()
+        if covariates:
+            # A visit without a covariate value is not in the model, and neither is the other
+            # visit of that participant. The formula would drop the row from the model matrices
+            # only, not from the cluster labels passed beside it.
+            tmp = tmp.dropna(subset=list(covariates))
+            visits_seen = tmp.groupby(design.participant_col, observed=True)[
+                design.visit_col
+            ].nunique()
+            tmp = tmp[tmp[design.participant_col].isin(visits_seen.index[visits_seen >= 2])].copy()
 
         n_units = tmp[design.participant_col].nunique()
         if n_units < min_units:
@@ -270,7 +279,9 @@ def abundance_did(
                 clusters_aligned = tmp[design.participant_col].loc[model_row_idx].to_numpy()
             n_units_eff = int(len(np.unique(clusters_aligned)))
 
-            p_val = float(fit.pvalues[term])
+            # An exact fit (no proportion changes) gives the estimate and no test.
+            exact = fits_exactly(fit)
+            p_val = np.nan if exact else float(fit.pvalues[term])
             se_boot = np.nan
             ci_lo_boot = np.nan
             ci_hi_boot = np.nan
@@ -292,10 +303,10 @@ def abundance_did(
                 "celltype": ct,
                 "n_participants": n_units_eff,
                 "beta_DiD": float(fit.params[term]),
-                "se_DiD": float(fit.bse[term]),
+                "se_DiD": np.nan if exact else float(fit.bse[term]),
                 "p_DiD": p_val,
                 "beta_time": float(fit.params.get("visit_num", np.nan)),
-                "p_time": float(fit.pvalues.get("visit_num", np.nan)),
+                "p_time": np.nan if exact else float(fit.pvalues.get("visit_num", np.nan)),
             }
             if use_bootstrap:
                 row_dict["p_DiD_boot"] = p_val
@@ -349,8 +360,8 @@ def abundance_did(
                     "celltype": ct,
                     "n_participants": int(df_delta.shape[0]),
                     "beta_DiD": float(fit.params[term]),
-                    "se_DiD": float(fit.bse[term]),
-                    "p_DiD": float(fit.pvalues[term]),
+                    "se_DiD": np.nan if fits_exactly(fit) else float(fit.bse[term]),
+                    "p_DiD": np.nan if fits_exactly(fit) else float(fit.pvalues[term]),
                     "beta_time": np.nan,
                     "p_time": np.nan,
                 }

@@ -223,6 +223,80 @@ def test_a_covariate_constant_within_participant_leaves_the_standard_error_uncha
             assert adjusted[key] == pytest.approx(plain[key], rel=1e-9), key
 
 
+def _four_participants():
+    values = {"T0": (0.0, 1.3), "T1": (0.2, 1.1), "C0": (0.1, 0.4), "C1": (-0.2, 0.3)}
+    site = {"T0": "s1", "T1": "s2", "C0": "s1", "C1": "s3"}
+    rows = [
+        {"unit": pid, "time": t, "arm_bin": int(pid.startswith("T")), "site": site[pid], "y": y}
+        for pid, pair in values.items()
+        for t, y in enumerate(pair)
+    ]
+    return pd.DataFrame(rows)
+
+
+@pytest.mark.parametrize("use_bootstrap", [False, True])
+@pytest.mark.parametrize("cov_type", ["cluster", "nonrobust"])
+def test_redundant_columns_are_removed_before_the_covariance_is_computed(cov_type, use_bootstrap):
+    # Four participants at three sites: eight rows and eight design columns of rank six, so two
+    # residual degrees of freedom. The cluster-robust covariance was computed on the eight columns
+    # first, where statsmodels divides by 8 - 8.
+    df = _four_participants()
+    kw = dict(y="y", unit="unit", time="time", arm_bin="arm_bin", standardize=False,
+              cov_type=cov_type, use_bootstrap=use_bootstrap, n_boot=99)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        plain, adjusted = did_fit(df, **kw), did_fit(df, covariates=["site"], **kw)
+
+    assert np.isfinite(plain["se_DiD"]) and plain["n_units"] == 4
+    for key in plain:
+        if isinstance(plain[key], float):
+            assert adjusted[key] == pytest.approx(plain[key], rel=1e-9, nan_ok=True), key
+    assert adjusted["cov_type_used"] == plain["cov_type_used"] == cov_type
+
+
+@pytest.mark.parametrize("use_bootstrap", [False, True])
+def test_a_model_without_residual_degrees_of_freedom_reports_no_standard_error(use_bootstrap):
+    # Eight rows and eight independent columns. The cluster correction divides by rows minus
+    # columns, which raised ZeroDivisionError before the documented fallback could apply.
+    df = _four_participants()
+    rng = np.random.default_rng(0)
+    df["c1"], df["c2"] = rng.normal(size=8), rng.normal(size=8)
+    kw = dict(y="y", unit="unit", time="time", arm_bin="arm_bin", standardize=False,
+              covariates=["c1", "c2"], use_bootstrap=use_bootstrap, n_boot=99)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        cluster, nonrobust = did_fit(df, cov_type="cluster", **kw), did_fit(df, cov_type="nonrobust", **kw)
+
+    assert cluster["cov_type_used"] == "nonrobust"
+    assert np.isfinite(cluster["beta_DiD"])
+    assert cluster["beta_DiD"] == pytest.approx(nonrobust["beta_DiD"], rel=1e-12)
+    assert not np.isfinite(cluster["se_DiD"]) and np.isnan(cluster["p_DiD"])
+    with pytest.warns(UserWarning, match="no residual\\s+degrees of freedom"):
+        did_fit(df, cov_type="cluster", **kw)
+
+
+def test_fit_identified_reads_the_rank_before_the_requested_covariance():
+    import statsmodels.api as sm
+
+    from sctrial.stats._utils import fit_identified
+
+    rng = np.random.default_rng(4)
+    groups = np.repeat(np.arange(6), 2)
+    base = pd.DataFrame({"const": 1.0, "x": rng.normal(size=12), "z": rng.normal(size=12)})
+    # nine redundant copies: twelve rows, twelve columns, rank three
+    wide = base.assign(**{f"dup{i}": base["z"] * (i + 2) for i in range(9)})
+    y = rng.normal(size=12)
+    kwargs = {"cov_type": "cluster", "cov_kwds": {"groups": groups}}
+
+    lean = sm.OLS(y, base).fit(**kwargs)
+    fit = fit_identified(sm.OLS(y, wide), "x", **kwargs)
+
+    assert fit is not None and fit.model.exog.shape[1] == 3
+    assert fit.params["x"] == pytest.approx(lean.params["x"], rel=1e-9)
+    assert fit.bse["x"] == pytest.approx(lean.bse["x"], rel=1e-9)
+    assert fit_identified(sm.OLS(y, wide), "z", **kwargs) is None
+
+
 @pytest.mark.parametrize("bad", [np.nan, np.inf, 0.0, -1.0])
 def test_did_fit_refuses_a_missing_or_non_positive_weight(bad):
     # A row with a missing weight used to be dropped, and its participant with it.

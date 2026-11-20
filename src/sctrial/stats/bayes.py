@@ -208,6 +208,9 @@ def did_table_bayes(
     for feat in final_features:
         select_cols = [unit, time, arm_bin, feat] + cov_cols
         df_feat = df_use[select_cols].dropna()
+        # As in did_fit: a participant left with one visit for this feature is not in the model.
+        visits_seen = df_feat.groupby(unit, observed=True)[time].nunique()
+        df_feat = df_feat[df_feat[unit].isin(visits_seen.index[visits_seen >= 2])]
         if df_feat.empty:
             rows.append(_missing_row(feat, 0))
             continue

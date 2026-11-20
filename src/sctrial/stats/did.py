@@ -22,9 +22,12 @@ from ..design import TrialDesign
 from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
 from ._utils import (
     apply_fdr,
+    covariate_aggregator,
     drop_unused_levels,
     encode_visit,
+    feature_aggregator,
     fit_identified,
+    fits_exactly,
     standardize_series,
 )
 
@@ -221,7 +224,7 @@ def _aggregate_for_did(
         if covariates:
             for c in covariates:
                 if pd.api.types.is_numeric_dtype(df[c]):
-                    cov_agg[c] = str(agg)
+                    cov_agg[c] = covariate_aggregator(agg)
                 else:
                     nunique = df.groupby(grp_cols, observed=True)[c].nunique()
                     if nunique.max() > 1:
@@ -235,7 +238,7 @@ def _aggregate_for_did(
             df.groupby(grp_cols, observed=True)
             .agg(
                 {
-                    **{f: agg for f in final_features},
+                    **{f: feature_aggregator(agg) for f in final_features},
                     **cov_agg,
                     **_weight_aggregation(df, grp_cols, weight_col, "participant-visit"),
                     "n_cells": "sum",
@@ -260,7 +263,7 @@ def _aggregate_for_did(
         if covariates:
             for c in covariates:
                 if pd.api.types.is_numeric_dtype(df[c]):
-                    cov_agg_ct[c] = str(agg)
+                    cov_agg_ct[c] = covariate_aggregator(agg)
                 else:
                     nunique = df.groupby(grp_cols, observed=True)[c].nunique()
                     if nunique.max() > 1:
@@ -274,7 +277,7 @@ def _aggregate_for_did(
             df.groupby(grp_cols, observed=True)
             .agg(
                 {
-                    **{f: agg for f in final_features},
+                    **{f: feature_aggregator(agg) for f in final_features},
                     **cov_agg_ct,
                     **_weight_aggregation(df, grp_cols, weight_col, "participant-visit-celltype"),
                     "n_cells": "sum",
@@ -455,6 +458,9 @@ def did_fit(
         ``beta_time``, ``p_time``, ``n_units``, ``cov_type_used``.
         When ``use_bootstrap=True``, also includes ``p_DiD_boot``,
         ``se_DiD_boot``, ``ci_lo_boot``, ``ci_hi_boot``.
+        When the model fits the outcome exactly (for example when no participant
+        changes), the estimates are returned and the standard error and the
+        p-values are NaN: they would be computed from rounding error.
     """
     if df is None or df.empty:
         raise ValueError("df must be a non-empty DataFrame.")
@@ -520,8 +526,11 @@ def did_fit(
     if fit is None or term not in fit.params:
         return _missing_did_fit(n_units)
 
-    se_did = float(fit.bse.get(term, np.nan))
-    p_did = float(fit.pvalues.get(term, np.nan))
+    # A model that fits the outcome exactly gives the estimate and no test: its standard error
+    # and p-values would be made of rounding error.
+    exact = fits_exactly(fit)
+    se_did = np.nan if exact else float(fit.bse.get(term, np.nan))
+    p_did = np.nan if exact else float(fit.pvalues.get(term, np.nan))
 
     # Fallback: if the cluster-robust SE is not finite, re-fit with the nonrobust
     # (homoskedastic) SE. A paired design with participant fixed effects has
@@ -531,7 +540,11 @@ def did_fit(
     # estimator as the observed one, so its sign-flip reference distribution is
     # that of the statistic reported.
     effective_cov_type = cov_type
-    if cov_type == "cluster" and (not np.isfinite(se_did) or not np.isfinite(p_did)):
+    if (
+        not exact
+        and cov_type == "cluster"
+        and (not np.isfinite(se_did) or not np.isfinite(p_did))
+    ):
         warnings.warn(
             f"Cluster-robust SE is not finite for feature '{y}' with "
             f"{int(tmp[unit].nunique())} clusters. Falling back to nonrobust "
@@ -557,7 +570,7 @@ def did_fit(
         "se_DiD": se_did,
         "p_DiD": p_did,
         "beta_time": float(fit.params.get(time, np.nan)),
-        "p_time": float(fit.pvalues.get(time, np.nan)),
+        "p_time": np.nan if exact else float(fit.pvalues.get(time, np.nan)),
         "n_units": n_units_eff,
         "resid_sd": float(np.sqrt(fit.scale)),
         "cov_type_used": effective_cov_type,

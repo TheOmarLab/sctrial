@@ -56,7 +56,7 @@ from anndata import AnnData
 
 from ..adata_tools import subset_arms
 from ..design import TrialDesign
-from ._utils import apply_fdr, drop_unused_levels
+from ._utils import apply_fdr, drop_unused_levels, fits_exactly
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE, AggregateMode
 
 __all__ = [
@@ -208,21 +208,37 @@ def trend_interaction(
     balanced_pids = visit_counts[visit_counts == len(visits)].index
     df = drop_unused_levels(df[df[design.participant_col].isin(balanced_pids)].copy())
 
-    n_units = df[design.participant_col].nunique()
     n_timepoints = len(visits)
+    no_estimate = {
+        "beta_trend": np.nan,
+        "beta_treat_trend": np.nan,
+        "se_treat_trend": np.nan,
+        "p_treat_trend": np.nan,
+    }
 
-    model_cols = [design.participant_col, "time_num", "arm_bin"]
+    model_cols = [design.participant_col, design.visit_col, "time_num", "arm_bin"]
     rows = []
     for feat in features:
         # Only the columns of this feature's model: a frame with a column for every feature,
         # copied once per feature, makes the cost per feature grow with the number of features.
-        df_feat = df[list(dict.fromkeys([*model_cols, feat]))].copy()
+        df_feat = df[list(dict.fromkeys([*model_cols, feat]))]
+        # The panel is balanced for each feature: a participant without a value at one visit
+        # is not in the model of that feature.
+        df_feat = df_feat.dropna(subset=[feat])
+        visits_seen = df_feat.groupby(design.participant_col, observed=True)[
+            design.visit_col
+        ].nunique()
+        balanced = visits_seen.index[visits_seen == n_timepoints]
+        df_feat = drop_unused_levels(df_feat[df_feat[design.participant_col].isin(balanced)].copy())
+        n_units = int(df_feat[design.participant_col].nunique())
         df_feat["outcome_std"] = df_feat[feat].astype(float)
 
         # Standardize
         y_std = df_feat["outcome_std"].std(ddof=1)
-        if y_std < 1e-12:
-            rows.append({"feature": feat, "n_units": n_units, "n_timepoints": n_timepoints})
+        if not np.isfinite(y_std) or y_std < 1e-12:
+            rows.append(
+                {"feature": feat, **no_estimate, "n_units": n_units, "n_timepoints": n_timepoints}
+            )
             continue
         df_feat["outcome_std"] = (df_feat["outcome_std"] - df_feat["outcome_std"].mean()) / y_std
 
@@ -252,23 +268,27 @@ def trend_interaction(
                 cov_type="cluster", cov_kwds={"groups": df_feat[design.participant_col]}
             )
 
+            # An exact fit gives the estimates and no test.
+            exact = fits_exactly(fit)
+            errors = fit.bse * np.nan if exact else fit.bse
+            tested = fit.pvalues * np.nan if exact else fit.pvalues
             result = {
                 "feature": feat,
                 "beta_trend": float(fit.params.get("time_num", np.nan)),
                 "beta_treat_trend": float(fit.params.get("arm_bin:time_num", np.nan)),
-                "se_treat_trend": float(fit.bse.get("arm_bin:time_num", np.nan)),
-                "p_treat_trend": float(fit.pvalues.get("arm_bin:time_num", np.nan)),
+                "se_treat_trend": float(errors.get("arm_bin:time_num", np.nan)),
+                "p_treat_trend": float(tested.get("arm_bin:time_num", np.nan)),
                 "n_units": n_units,
                 "n_timepoints": n_timepoints,
             }
 
             if model in ["quadratic", "cubic"]:
                 result["beta_treat_trend2"] = float(fit.params.get("arm_bin:time_num2", np.nan))
-                result["p_treat_trend2"] = float(fit.pvalues.get("arm_bin:time_num2", np.nan))
+                result["p_treat_trend2"] = float(tested.get("arm_bin:time_num2", np.nan))
 
             if model == "cubic":
                 result["beta_treat_trend3"] = float(fit.params.get("arm_bin:time_num3", np.nan))
-                result["p_treat_trend3"] = float(fit.pvalues.get("arm_bin:time_num3", np.nan))
+                result["p_treat_trend3"] = float(tested.get("arm_bin:time_num3", np.nan))
 
             rows.append(result)
 
@@ -276,6 +296,7 @@ def trend_interaction(
             rows.append(
                 {
                     "feature": feat,
+                    **no_estimate,
                     "n_units": n_units,
                     "n_timepoints": n_timepoints,
                     "error": str(e),
@@ -551,7 +572,7 @@ def test_parallel_trends(
         - feature: Feature name
         - beta_pretrend: Pre-treatment trend difference
         - p_pretrend: P-value for non-parallel trends
-        - warning: "Violation" if p < 0.10
+        - warning: "Potential violation" if p < 0.10, otherwise "OK"
 
     Examples
     --------
@@ -560,7 +581,7 @@ def test_parallel_trends(
     ...     adata, features=genes, design=design,
     ...     pre_visits=["Screen1", "Screen2", "Baseline"]
     ... )
-    >>> violations = pre_test[pre_test["warning"] == "Violation"]
+    >>> violations = pre_test[pre_test["warning"] == "Potential violation"]
     >>> print(f"Features with potential violations: {len(violations)}")
     """
     if len(pre_visits) < 2:

@@ -67,7 +67,13 @@ from anndata import AnnData
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 from ..design import TrialDesign
-from ._utils import aggregate_features, apply_fdr, drop_unused_levels, standardize_series
+from ._utils import (
+    aggregate_features,
+    apply_fdr,
+    covariate_aggregator,
+    drop_unused_levels,
+    standardize_series,
+)
 from .did import AggregateFunc, AggregateMode, _ensure_paired
 
 __all__ = [
@@ -115,7 +121,8 @@ def did_mixed(
     random_slope
         If True, include random slope for time.
     covariates
-        Additional covariates to include as fixed effects.
+        Columns of ``df`` to include as fixed effects. A column that is not numeric
+        enters as a categorical term. A name that is not a column raises ``KeyError``.
     visits
         (baseline, follow-up) labels of ``time_col``. If None, the two labels are
         sorted.
@@ -127,6 +134,13 @@ def did_mixed(
         none. When None, every row that is not ``arm_treated`` forms the reference
         group; a warning is raised if that group holds more than one label or
         missing labels.
+
+    Notes
+    -----
+    The model is fitted on the rows that hold a value for the outcome, the
+    participant, the visit and every covariate in the model. A participant left
+    with one visit stays in the model. The result holds missing values, with the
+    reason under ``error``, when those rows do not hold the two visits.
 
     Returns
     -------
@@ -145,6 +159,20 @@ def did_mixed(
         import statsmodels.formula.api as smf
     except ImportError:
         raise ImportError("statsmodels is required for mixed effects models")
+
+    def _not_estimated(reason: str) -> dict:
+        return {
+            "beta_DiD": np.nan,
+            "se_DiD": np.nan,
+            "p_DiD": np.nan,
+            "ci_lower": np.nan,
+            "ci_upper": np.nan,
+            "var_participant": np.nan,
+            "var_residual": np.nan,
+            "icc": np.nan,
+            "converged": False,
+            "error": reason,
+        }
 
     df = df.copy()
 
@@ -177,28 +205,32 @@ def did_mixed(
                 stacklevel=2,
             )
 
+    # The rows of the model hold every variable of it. The formula interface would drop the
+    # others from the model matrices only, not from the participant labels passed beside it.
+    model_covariates = list(covariates or [])
+    absent = [cov for cov in model_covariates if cov not in df.columns]
+    if absent:
+        raise KeyError(f"covariates not found in the table: {absent}")
+    df = df.dropna(
+        subset=list(dict.fromkeys([outcome, participant_col, time_col, *model_covariates]))
+    )
+
     # Encode binary variables
     df["arm_bin"] = df[arm_col].isin([arm_treated]).astype(int)
 
     # Ensure time is numeric
     time_vals = df[time_col].unique()
     if len(time_vals) != 2:
-        return {
-            "beta_DiD": np.nan,
-            "se_DiD": np.nan,
-            "p_DiD": np.nan,
-            "ci_lower": np.nan,
-            "ci_upper": np.nan,
-            "var_participant": np.nan,
-            "var_residual": np.nan,
-            "icc": np.nan,
-            "converged": False,
-            "error": "Requires exactly 2 time points",
-        }
+        return _not_estimated("Requires exactly 2 time points")
 
     # Map time to 0/1 (pre=0, post=1)
     if visits is not None:
         time_sorted = list(visits)
+        if set(time_vals) != set(time_sorted):
+            return _not_estimated(
+                f"{time_col!r} holds {sorted(map(str, time_vals))}, not the visits "
+                f"{[str(v) for v in time_sorted]}"
+            )
     else:
         time_sorted = sorted(time_vals)
     df["post_num"] = df[time_col].map({time_sorted[0]: 0, time_sorted[1]: 1}).astype(float)
@@ -206,13 +238,11 @@ def did_mixed(
 
     # Build formula
     fixed_part = f"{outcome} ~ arm_bin + post_num + arm_bin:post_num"
-    if covariates:
-        for cov in covariates:
-            if cov in df.columns:
-                if pd.api.types.is_numeric_dtype(df[cov]):
-                    fixed_part += f" + {cov}"
-                else:
-                    fixed_part += f" + C({cov})"
+    for cov in model_covariates:
+        if pd.api.types.is_numeric_dtype(df[cov]):
+            fixed_part += f" + {cov}"
+        else:
+            fixed_part += f" + C({cov})"
 
     # Random effects specification
     if random_slope:
@@ -249,18 +279,7 @@ def did_mixed(
             else:
                 converged = not bool(caught2)
     except (ValueError, np.linalg.LinAlgError) as e:
-        return {
-            "beta_DiD": np.nan,
-            "se_DiD": np.nan,
-            "p_DiD": np.nan,
-            "ci_lower": np.nan,
-            "ci_upper": np.nan,
-            "var_participant": np.nan,
-            "var_residual": np.nan,
-            "icc": np.nan,
-            "converged": False,
-            "error": str(e),
-        }
+        return _not_estimated(str(e))
 
     # Extract DiD coefficient
     did_term = "arm_bin:post_num"
@@ -360,7 +379,10 @@ def did_table_mixed(
     random_slope
         Include random slope for time (allows time effect to vary by participant).
     covariates
-        Additional covariates to include.
+        Columns of ``adata.obs`` to include as fixed effects. With
+        ``aggregate="participant_visit"`` a numeric covariate is its mean over the
+        cells of a participant-visit (its median with ``agg="median"``); any other
+        covariate must be the same for every cell of a participant-visit.
 
     Returns
     -------
@@ -370,8 +392,15 @@ def did_table_mixed(
         - beta_DiD, se_DiD, p_DiD, FDR_DiD: DiD statistics
         - ci_lower, ci_upper: 95% CI
         - var_participant, var_residual, icc: Variance components
-        - n_units: Number of participants
+        - n_units: Number of participants in the model of the feature
         - converged: Model convergence
+
+    Notes
+    -----
+    As in :func:`did_table`, each feature is fitted on the participants that have
+    a value for it at both visits. A row without a value for the feature, or for
+    a covariate of the model, is not in the model, and neither is the other visit
+    of that participant.
 
     Examples
     --------
@@ -418,28 +447,55 @@ def did_table_mixed(
         df_genes = pd.DataFrame(mat, columns=gene_feats, index=df.index)
         df = pd.concat([df, df_genes], axis=1)
 
+    # Covariates travel with the rows of the model: a numeric one as its summary over the cells
+    # of a participant-visit, any other as its value, which must be the same for those cells.
+    cov_agg: dict[str, str] = {}
+    for cov in covariates or []:
+        if cov in features:
+            raise ValueError(f"covariate '{cov}' is also a feature of the model.")
+        if cov not in ad.obs.columns:
+            raise KeyError(f"covariate '{cov}' not found in adata.obs")
+        df[cov] = ad.obs[cov].to_numpy()
+        cov_agg[cov] = (
+            covariate_aggregator(agg) if pd.api.types.is_numeric_dtype(df[cov]) else "first"
+        )
+
     # Aggregate if requested
     if aggregate == "participant_visit":
         grp_cols = [design.participant_col, design.visit_col, design.arm_col]
+        cov_rows = None
+        if cov_agg:
+            grouped = df.groupby(grp_cols, observed=True)
+            for cov, how in cov_agg.items():
+                if how == "first" and grouped[cov].nunique().max() > 1:
+                    raise ValueError(
+                        f"Covariate '{cov}' varies within participant-visit; "
+                        "use numeric or constant covariates only."
+                    )
+            cov_rows = grouped[list(cov_agg)].agg(cov_agg).reset_index()
         df = aggregate_features(df, grp_cols=grp_cols, features=list(features), agg=agg)
+        if cov_rows is not None:
+            df = df.merge(cov_rows, on=grp_cols, how="left")
 
     # Ensure paired data
     df = _ensure_paired(df, unit=design.participant_col, time=design.visit_col, visits=visits)
 
-    n_units = df[design.participant_col].nunique()
-
     # Run mixed model for each feature, on a frame of the columns of its own model: a frame
     # with a column for every feature, copied once per feature, makes the cost per feature
     # grow with the number of features.
-    model_cols = [
-        design.participant_col,
-        design.visit_col,
-        design.arm_col,
-        *(c for c in covariates or [] if c in df.columns),
-    ]
+    model_covariates = list(cov_agg)
+    model_cols = [design.participant_col, design.visit_col, design.arm_col, *model_covariates]
     rows = []
     for feat in features:
-        df_feat = df[list(dict.fromkeys([*model_cols, feat]))].copy()
+        df_feat = df[list(dict.fromkeys([*model_cols, feat]))]
+        # A participant without a value at one visit has no change for this feature.
+        df_feat = df_feat.dropna(subset=list(dict.fromkeys([feat, *model_covariates])))
+        visits_seen = df_feat.groupby(design.participant_col, observed=True)[
+            design.visit_col
+        ].nunique()
+        paired = visits_seen.index[visits_seen >= 2]
+        df_feat = df_feat[df_feat[design.participant_col].isin(paired)].copy()
+        n_units = int(df_feat[design.participant_col].nunique())
 
         if standardize:
             y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)

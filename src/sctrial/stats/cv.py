@@ -124,7 +124,7 @@ def loo_cv_did(
         design,
         stacklevel=3,
     )
-    participants = adata.obs[design.participant_col].unique().tolist()
+    participants = adata.obs[design.participant_col].dropna().unique().tolist()
 
     # Full-sample estimates for comparison
     full_res = did_table(
