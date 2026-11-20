@@ -176,3 +176,15 @@ def test_power_at_one_degree_of_freedom_raises_no_numerical_warning():
         assert 0.05 < power_paired(2, 2.0, reference="t") < 1.0
         assert sample_size_paired(4.0, sigma=1.0, reference="t") >= 2
         assert power_paired(15, 11.0, two_sided=False, reference="t") == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("df,ncp", [(1.0, 8.0), (1.0, 12.0), (9.0, 20.0), (30.0, 40.0)])
+def test_two_sided_t_power_is_finite_where_the_lower_tail_routine_fails(df, ncp):
+    # Recent SciPy returns NaN for the lower tail of the noncentral t at these values; the
+    # two-sided power is the upper tail plus a far tail that is zero to many digits.
+    from sctrial.stats.power import _power_at_ncp
+
+    two_sided = _power_at_ncp(ncp, 0.05, True, df)
+    upper = float(stats.nct.sf(stats.t.ppf(0.975, df), df, ncp))
+    assert np.isfinite(two_sided)
+    assert two_sided == pytest.approx(upper, abs=1e-12)

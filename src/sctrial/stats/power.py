@@ -517,11 +517,13 @@ def _power_at_ncp(ncp: float, alpha: float, two_sided: bool, df: float | None) -
     crit = stats.t.ppf(1 - tail, df)
     # SciPy raises floating-point flags inside the noncentral t (a division by zero at one
     # degree of freedom, an invalid value at very large noncentrality) while returning the
-    # correct probability.
+    # correct probability. The far tail is taken as the upper tail of the mirrored
+    # distribution, P(T <= -c | ncp) = P(T >= c | -ncp): the lower-tail routine returns NaN
+    # there in recent SciPy releases.
     with np.errstate(divide="ignore", invalid="ignore"):
         power = stats.nct.sf(crit, df, ncp)
         if two_sided:
-            power += stats.nct.cdf(-crit, df, ncp)
+            power += stats.nct.sf(crit, df, -ncp)
     return float(power)
 
 
