@@ -211,9 +211,12 @@ def trend_interaction(
     n_units = df[design.participant_col].nunique()
     n_timepoints = len(visits)
 
+    model_cols = [design.participant_col, "time_num", "arm_bin"]
     rows = []
     for feat in features:
-        df_feat = df.copy()
+        # Only the columns of this feature's model: a frame with a column for every feature,
+        # copied once per feature, makes the cost per feature grow with the number of features.
+        df_feat = df[list(dict.fromkeys([*model_cols, feat]))].copy()
         df_feat["outcome_std"] = df_feat[feat].astype(float)
 
         # Standardize

@@ -428,10 +428,18 @@ def did_table_mixed(
 
     n_units = df[design.participant_col].nunique()
 
-    # Run mixed model for each feature
+    # Run mixed model for each feature, on a frame of the columns of its own model: a frame
+    # with a column for every feature, copied once per feature, makes the cost per feature
+    # grow with the number of features.
+    model_cols = [
+        design.participant_col,
+        design.visit_col,
+        design.arm_col,
+        *(c for c in covariates or [] if c in df.columns),
+    ]
     rows = []
     for feat in features:
-        df_feat = df.copy()
+        df_feat = df[list(dict.fromkeys([*model_cols, feat]))].copy()
 
         if standardize:
             y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)

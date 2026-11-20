@@ -190,11 +190,14 @@ def test_treatment_heterogeneity(
     df_use = encode_visit(df_use, design.visit_col, visits)
     obs_feat = df_use
 
+    model_cols = [unit, time, arm_bin, "biomarker_high", *(covariates or [])]
     rows = []
     n_examined = 0
     not_estimable: dict[str, dict[str, int]] = {}
     for feat in final_features:
-        tmp = obs_feat.copy()
+        # Only the columns of this feature's model: a frame with a column for every feature,
+        # copied once per feature, makes the cost per feature grow with the number of features.
+        tmp = obs_feat[list(dict.fromkeys([*model_cols, feat]))].copy()
         if tmp.columns.duplicated().any():
             tmp = tmp.loc[:, ~tmp.columns.duplicated()].copy()
         tmp = tmp.dropna(subset=[feat, "biomarker_high"])

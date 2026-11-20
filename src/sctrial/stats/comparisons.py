@@ -147,7 +147,10 @@ def _ols_between_arm(
         Dictionary with keys: feature, beta_arm, se_arm, ci_lo_arm,
         ci_hi_arm, p_arm, n_units.
     """
-    df_feat = drop_unused_levels(df_use.copy().reset_index(drop=True))  # unique int index for .loc
+    # Only the columns of this feature's model: a frame with a column for every feature, copied
+    # once per feature, makes the cost per feature grow with the number of features.
+    model_cols = dict.fromkeys([design.participant_col, "arm_bin", *(covariates or []), feat])
+    df_feat = drop_unused_levels(df_use[list(model_cols)].reset_index(drop=True))
     if standardize:
         y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
         if not ok:
@@ -533,10 +536,12 @@ def within_arm_comparison(
     df_use = df_use.reset_index(drop=True)  # ensure unique integer index for .loc
     df_use = drop_unused_levels(df_use)
 
+    model_cols = [unit, "visit_num", *(covariates or [])]
     rows = []
     for feat in features:
-        # Create a fresh copy for each feature to avoid cross-contamination
-        df_feat = df_use.copy()
+        # Only the columns of this feature's model: a frame with a column for every feature,
+        # copied once per feature, makes the cost per feature grow with the number of features.
+        df_feat = df_use[list(dict.fromkeys([*model_cols, feat]))].copy()
 
         if standardize:
             y_std, ok = standardize_series(df_feat, feat, min_std=1e-12)
@@ -760,13 +765,16 @@ def between_arm_comparison(
         covariates=covariates,
     )
 
+    in_treated = (df_use["arm_bin"] == 1).to_numpy()
+    in_control = (df_use["arm_bin"] == 0).to_numpy()
     rows = []
     for feat in features:
         if method == "ols":
             rows.append(_ols_between_arm(df_use, feat, design, standardize, covariates))
         elif method == "wilcoxon":
-            g1 = np.asarray(df_use[df_use["arm_bin"] == 1][feat].values, dtype=float)
-            g2 = np.asarray(df_use[df_use["arm_bin"] == 0][feat].values, dtype=float)
+            values = df_use[feat].to_numpy()
+            g1 = np.asarray(values[in_treated], dtype=float)
+            g2 = np.asarray(values[in_control], dtype=float)
 
             if len(g1) > 0 and len(g2) > 0:
                 stat, p_val = mannwhitneyu(g1, g2, alternative="two-sided")
