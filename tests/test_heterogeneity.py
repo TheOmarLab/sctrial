@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 from anndata import AnnData
 
 import sctrial as st
@@ -88,3 +89,226 @@ def test_treatment_heterogeneity_numeric_biomarker():
         threshold=0.0,
     )
     assert "beta_heterogeneity" in res.columns
+
+
+def _heterogeneity_fixture(n=16, cells=None, seed=0):
+    rng = np.random.default_rng(seed)
+    rows = []
+    for pid in range(n):
+        arm = "Treated" if pid < n // 2 else "Control"
+        biomarker = float(rng.normal())
+        n_cells = 3 if cells is None else cells[pid]
+        for visit in ("V1", "V2"):
+            for _ in range(n_cells):
+                rows.append(
+                    {
+                        "participant_id": f"P{pid:02d}",
+                        "visit": visit,
+                        "arm": arm,
+                        "bmk": biomarker,
+                        "sig1": float(rng.normal()),
+                    }
+                )
+    obs = pd.DataFrame(rows)
+    obs.index = obs.index.astype(str)
+    adata = AnnData(X=np.zeros((len(obs), 1)), obs=obs)
+    design = st.TrialDesign(
+        participant_col="participant_id",
+        visit_col="visit",
+        arm_col="arm",
+        arm_treated="Treated",
+        arm_control="Control",
+    )
+    return adata, design
+
+
+def _heterogeneity(adata, design, **kwargs):
+    return st.test_treatment_heterogeneity(
+        adata, features=["sig1"], design=design, visits=("V1", "V2"), biomarker_col="bmk", **kwargs
+    )
+
+
+def test_heterogeneity_excludes_participants_without_biomarker():
+    adata, design = _heterogeneity_fixture()
+    missing = ["P03", "P11"]
+    adata.obs.loc[adata.obs["participant_id"].isin(missing), "bmk"] = np.nan
+
+    with pytest.warns(UserWarning, match="2 of 16 paired participants have no value"):
+        res = _heterogeneity(adata, design)
+    kept = adata[~adata.obs["participant_id"].isin(missing)].copy()
+    ref = _heterogeneity(kept, design)
+
+    assert res["n_units"].iloc[0] == 14
+    for col in ("beta_heterogeneity", "p_heterogeneity", "threshold"):
+        assert res[col].iloc[0] == pytest.approx(ref[col].iloc[0], rel=1e-12)
+
+
+def test_heterogeneity_uses_paired_participants_only():
+    adata, design = _heterogeneity_fixture()
+    drop = adata.obs["participant_id"].isin(["P02", "P12"]) & (adata.obs["visit"] == "V2")
+    one_visit = adata[~drop.to_numpy()].copy()
+    paired = adata[~adata.obs["participant_id"].isin(["P02", "P12"])].copy()
+
+    res = _heterogeneity(one_visit, design)
+    ref = _heterogeneity(paired, design)
+
+    assert res["n_units"].iloc[0] == 14
+    for col in ("beta_heterogeneity", "p_heterogeneity", "threshold"):
+        assert res[col].iloc[0] == pytest.approx(ref[col].iloc[0], rel=1e-12)
+
+
+def test_heterogeneity_median_is_over_participants():
+    cells = [1, 9, 2, 8, 1, 7, 3, 9, 2, 9, 1, 8, 2, 7, 1, 9]
+    adata, design = _heterogeneity_fixture(cells=cells)
+    per_participant = adata.obs.groupby("participant_id", observed=True)["bmk"].first()
+    participant_median = float(per_participant.median())
+    assert participant_median != pytest.approx(float(adata.obs["bmk"].median()))
+
+    res = _heterogeneity(adata, design)
+    explicit = _heterogeneity(adata, design, threshold=participant_median)
+
+    assert res["threshold"].iloc[0] == pytest.approx(participant_median)
+    assert res["beta_heterogeneity"].iloc[0] == pytest.approx(explicit["beta_heterogeneity"].iloc[0])
+    assert res["p_heterogeneity"].iloc[0] == pytest.approx(explicit["p_heterogeneity"].iloc[0])
+
+
+def test_heterogeneity_reports_non_estimable_interaction():
+    adata, design = _heterogeneity_fixture()
+    treated = adata.obs["arm"] == "Treated"
+    adata.obs.loc[treated, "bmk"] = 5.0
+    adata.obs.loc[adata.obs["participant_id"] == "P00", "bmk"] = -5.0
+
+    with pytest.warns(UserWarning, match="not estimable.*treated/low=1"):
+        res = _heterogeneity(adata, design, threshold=0.0)
+
+    assert len(res) == 1
+    assert np.isnan(res["beta_heterogeneity"].iloc[0])
+    assert np.isnan(res["p_heterogeneity"].iloc[0])
+    assert np.isnan(res["FDR_heterogeneity"].iloc[0])
+    assert res["n_units"].iloc[0] == 16
+
+
+def test_heterogeneity_counts_groups_among_the_participants_with_the_feature():
+    # Every arm by biomarker group holds four participants, but three of the treated/high
+    # ones have no value of the second feature: its interaction is not estimable, the first
+    # feature's is.
+    adata, design = _heterogeneity_fixture()
+    pid = adata.obs["participant_id"]
+    adata.obs["bmk"] = pid.map({f"P{i:02d}": float(i % 2) for i in range(16)})
+    adata.obs["sig2"] = adata.obs["sig1"] + 1.0
+    treated_high = ["P01", "P03", "P05"]
+    adata.obs.loc[pid.isin(treated_high), "sig2"] = np.nan
+
+    with pytest.warns(UserWarning, match="not estimable for 1 of 2 features.*treated/high=1 for 'sig2'"):
+        res = st.test_treatment_heterogeneity(
+            adata, features=["sig1", "sig2"], design=design, visits=("V1", "V2"), biomarker_col="bmk"
+        ).set_index("feature")
+
+    assert np.isfinite(res.loc["sig1", "beta_heterogeneity"]) and res.loc["sig1", "n_units"] == 16
+    assert np.isnan(res.loc["sig2", "beta_heterogeneity"]) and np.isnan(res.loc["sig2", "p_heterogeneity"])
+    assert res.loc["sig2", "n_units"] == 13
+
+
+def test_heterogeneity_drops_a_participant_missing_the_feature_at_one_visit():
+    adata, design = _heterogeneity_fixture()
+    pid = adata.obs["participant_id"]
+    adata.obs["bmk"] = pid.map({f"P{i:02d}": float(i % 2) for i in range(16)})
+    adata.obs["sig2"] = adata.obs["sig1"]
+    adata.obs.loc[(pid == "P02") & (adata.obs["visit"] == "V2"), "sig2"] = np.nan
+
+    res = st.test_treatment_heterogeneity(
+        adata, features=["sig2"], design=design, visits=("V1", "V2"), biomarker_col="bmk"
+    )
+    ref = _heterogeneity(adata[pid != "P02"].copy(), design)
+
+    assert res["n_units"].iloc[0] == 15
+    for col in ("beta_heterogeneity", "p_heterogeneity"):
+        assert res[col].iloc[0] == pytest.approx(ref[col].iloc[0], rel=1e-10)
+
+
+@pytest.mark.parametrize("kind", ["numeric", "label"])
+def test_heterogeneity_drops_a_participant_missing_a_covariate_at_one_visit(kind):
+    # The formula dropped the row, the cluster labels kept it: 31 rows against 32 labels.
+    adata, design = _heterogeneity_fixture()
+    pid, visit = adata.obs["participant_id"], adata.obs["visit"]
+    adata.obs["bmk"] = pid.map({f"P{i:02d}": float(i % 2) for i in range(16)})
+    number = pid.str[1:].astype(int) + (visit == "V2").astype(int)
+    if kind == "numeric":
+        adata.obs["load"] = np.sin(number.to_numpy(dtype=float))
+    else:
+        adata.obs["load"] = ("b" + (number % 3).astype(str)).astype(object)
+    holed = adata.copy()
+    holed.obs.loc[(pid == "P02") & (visit == "V2"), "load"] = np.nan
+
+    res = _heterogeneity(holed, design, covariates=["load"])
+    ref = _heterogeneity(adata[pid != "P02"].copy(), design, covariates=["load"])
+
+    assert res["n_units"].iloc[0] == ref["n_units"].iloc[0] == 15
+    assert np.isfinite(ref["beta_heterogeneity"].iloc[0])
+    for col in ("beta_heterogeneity", "p_heterogeneity"):
+        assert res[col].iloc[0] == pytest.approx(ref[col].iloc[0], rel=1e-10)
+
+
+def test_heterogeneity_counts_the_groups_after_dropping_missing_covariates():
+    # Two treated participants with a high biomarker; one loses a covariate value, so the
+    # group is left with one.
+    adata, design = _heterogeneity_fixture()
+    pid, visit = adata.obs["participant_id"], adata.obs["visit"]
+    high = {"P00", "P01", "P08", "P09", "P10", "P11"}
+    adata.obs["bmk"] = pid.map({f"P{i:02d}": float(f"P{i:02d}" in high) for i in range(16)})
+    adata.obs["load"] = np.cos(np.arange(adata.n_obs, dtype=float))
+    adata.obs.loc[(pid == "P00") & (visit == "V2"), "load"] = np.nan
+
+    with pytest.warns(UserWarning, match="not estimable.*treated/high=1"):
+        res = _heterogeneity(adata, design, covariates=["load"])
+
+    assert res["n_units"].iloc[0] == 15
+    assert np.isnan(res["beta_heterogeneity"].iloc[0]) and np.isnan(res["p_heterogeneity"].iloc[0])
+
+
+def test_heterogeneity_matches_the_model_without_time_invariant_terms():
+    # Arm, biomarker group and their product are constant within a participant. As extra
+    # columns beside the participant effects they changed nothing but the standard error.
+    import statsmodels.formula.api as smf
+
+    adata, design = _heterogeneity_fixture()
+    pid = adata.obs["participant_id"]
+    adata.obs["bmk"] = pid.map({f"P{i:02d}": float(i % 2) for i in range(16)})
+    res = st.test_treatment_heterogeneity(
+        adata, features=["sig1"], design=design, visits=("V1", "V2"), biomarker_col="bmk",
+        standardize=False,
+    )
+
+    cells = adata.obs
+    pv = cells.groupby(["participant_id", "visit", "arm", "bmk"], observed=True)["sig1"].mean().reset_index()
+    pv["t"] = (pv["visit"] == "V2").astype(int)
+    pv["a"] = (pv["arm"] == "Treated").astype(int)
+    lean = smf.ols("sig1 ~ t + t:a + t:bmk + t:a:bmk + C(participant_id)", data=pv).fit(
+        cov_type="cluster", cov_kwds={"groups": pv["participant_id"]}
+    )
+    full = smf.ols("sig1 ~ t + a + bmk + t:a + t:bmk + a:bmk + t:a:bmk + C(participant_id)", data=pv).fit(
+        cov_type="cluster", cov_kwds={"groups": pv["participant_id"]}
+    )
+    assert lean.model.exog.shape[1] == np.linalg.matrix_rank(lean.model.exog)
+    assert full.bse["t:a:bmk"] > 1.1 * lean.bse["t:a:bmk"]
+    assert res["beta_heterogeneity"].iloc[0] == pytest.approx(lean.params["t:a:bmk"], rel=1e-9)
+    assert res["p_heterogeneity"].iloc[0] == pytest.approx(lean.pvalues["t:a:bmk"], rel=1e-9)
+
+
+def test_heterogeneity_is_unchanged_by_a_covariate_constant_within_participant():
+    adata, design = _heterogeneity_fixture()
+    pid = adata.obs["participant_id"]
+    adata.obs["bmk"] = pid.map({f"P{i:02d}": float(i % 2) for i in range(16)})
+    adata.obs["site"] = pid.map({f"P{i:02d}": float(i % 3) for i in range(16)})
+    plain = _heterogeneity(adata, design)
+    adjusted = _heterogeneity(adata, design, covariates=["site"])
+    for col in ("beta_heterogeneity", "p_heterogeneity"):
+        assert adjusted[col].iloc[0] == pytest.approx(plain[col].iloc[0], rel=1e-9)
+
+
+def test_heterogeneity_refuses_a_covariate_that_is_also_a_feature():
+    adata, design = _heterogeneity_fixture()
+    with pytest.raises(ValueError, match="also a feature"):
+        _heterogeneity(adata, design, covariates=["sig1"])
+    with pytest.raises(KeyError, match="not found in adata.obs"):
+        _heterogeneity(adata, design, covariates=["absent"])

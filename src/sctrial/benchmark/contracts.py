@@ -55,6 +55,10 @@ import numpy as np
 import pandas as pd
 
 __all__ = [
+    "CANONICAL_ARMS",
+    "CANONICAL_VISITS",
+    "canonical_cohort",
+    "require_raw_counts",
     "METHOD_ESTIMAND",
     "METHOD_INPUT",
     "prepare_inputs",
@@ -85,6 +89,12 @@ METHOD_INPUT: dict[str, str] = {
 """The input representation each method expects: ``participant_log1p_cpm``, ``pseudobulk_counts``, or ``cell_counts``."""
 
 _META_COLS = ("participant", "visit", "arm")
+
+CANONICAL_VISITS = ("Pre", "Post")
+"""The visit labels every runner reads: (baseline, follow-up)."""
+
+CANONICAL_ARMS = ("Treated", "Control")
+"""The arm labels every runner reads: (treated, control)."""
 
 
 def participant_log1p_cpm(
@@ -180,13 +190,186 @@ def truth_for(method: str, oracle: dict, gene: str, injected: float) -> float:
     return float(table.get(gene, injected))
 
 
+def _count_matrix(adata, counts_layer: str | None):
+    """The matrix the caller named as raw counts; ``None`` names ``adata.X``.
+
+    A named layer that is absent raises. Falling back to ``adata.X`` would hand a
+    normalised matrix to the count models of a cohort that has no counts.
+    """
+    if counts_layer is None:
+        return adata.X
+    if counts_layer not in adata.layers:
+        raise KeyError(
+            f"counts layer {counts_layer!r} not found (layers: {sorted(adata.layers)}). "
+            "Name the layer that holds the counts, or pass counts_layer=None if they "
+            "are in adata.X."
+        )
+    return adata.layers[counts_layer]
+
+
+def _require_vocabulary(obs: pd.DataFrame, col: str, allowed: tuple[str, str]) -> None:
+    """Refuse labels the runners do not read: they would match neither group."""
+    values = obs[col]
+    other = sorted(str(v) for v in pd.unique(values.dropna()) if v not in allowed)
+    n_missing = int(values.isna().sum())
+    if other or n_missing:
+        found = ([f"labels {other}"] if other else []) + (
+            [f"{n_missing} missing labels"] if n_missing else []
+        )
+        raise ValueError(
+            f"obs[{col!r}] holds {' and '.join(found)}; the benchmark runners read "
+            f"{allowed[0]!r} and {allowed[1]!r} only. Map a real cohort with "
+            "canonical_cohort() first."
+        )
+
+
+def canonical_cohort(
+    adata,
+    *,
+    participant_col: str,
+    visit_col: str,
+    visits: tuple[str, str],
+    arm_col: str | None = None,
+    arm_treated: str | None = None,
+    arm_control: str | None = None,
+    counts_layer: str | None = "counts",
+):
+    """A real cohort in the vocabulary of the benchmark.
+
+    The runners read the columns ``participant``, ``visit`` and ``arm`` and the
+    labels of :data:`CANONICAL_VISITS` and :data:`CANONICAL_ARMS`. A real cohort
+    names them differently (``response`` with ``Responder``/``Non-responder``),
+    and a label a runner does not read matches neither group: every method then
+    fails for every gene. This function maps a cohort once, from labels the caller
+    states; nothing is guessed.
+
+    Parameters
+    ----------
+    adata
+        The cohort.
+    participant_col, visit_col
+        Columns of ``adata.obs``.
+    visits
+        (baseline, follow-up) labels of ``visit_col``. Rows of other visits are
+        left out.
+    arm_col, arm_treated, arm_control
+        The arm column and its two labels, for a two-arm cohort. Rows of any other
+        arm, or with a missing arm label, are left out with one warning
+        (:func:`sctrial.subset_arms`). ``arm_col=None`` declares a single-arm
+        cohort.
+    counts_layer
+        Layer that holds raw counts; ``None`` names ``adata.X``.
+
+    Returns
+    -------
+    AnnData
+        Counts in ``X`` and ``obs`` columns ``participant``, ``visit``, ``arm``
+        with the canonical labels.
+
+    Raises
+    ------
+    KeyError
+        If a column or the counts layer is absent.
+    ValueError
+        If a named visit or arm has no rows, if the arm labels of a two-arm
+        cohort are not given, or if a participant label is missing.
+    """
+    import anndata as ad
+
+    from ..adata_tools import subset_arms
+    from ..design import TrialDesign
+
+    obs = adata.obs
+    absent_cols = [
+        c for c in (participant_col, visit_col, arm_col) if c is not None and c not in obs.columns
+    ]
+    if absent_cols:
+        raise KeyError(f"columns {absent_cols} not in adata.obs (columns: {list(obs.columns)})")
+    baseline, followup = visits
+    if baseline == followup:
+        raise ValueError(f"visits must name two different labels, got {visits!r}")
+    absent_visits = [v for v in (baseline, followup) if not obs[visit_col].isin([v]).any()]
+    if absent_visits:
+        present = sorted(str(v) for v in pd.unique(obs[visit_col].dropna()))
+        raise ValueError(
+            f"No rows of visit {' or '.join(repr(v) for v in absent_visits)} in "
+            f"obs[{visit_col!r}] (labels present: {present})."
+        )
+    cohort = adata[obs[visit_col].isin([baseline, followup]).to_numpy()]
+
+    if arm_col is None:
+        arm_labels = np.full(cohort.n_obs, CANONICAL_ARMS[0], dtype=object)
+    else:
+        if arm_treated is None or arm_control is None:
+            raise ValueError(
+                "A two-arm cohort needs arm_treated and arm_control; pass arm_col=None "
+                "for a single-arm cohort."
+            )
+        design = TrialDesign(
+            participant_col=participant_col,
+            visit_col=visit_col,
+            arm_col=arm_col,
+            arm_treated=arm_treated,
+            arm_control=arm_control,
+            celltype_col=None,
+        )
+        cohort = subset_arms(cohort, design, stacklevel=3)
+        arm = cohort.obs[arm_col]
+        absent_arms = [a for a in (arm_treated, arm_control) if not arm.isin([a]).any()]
+        if absent_arms:
+            raise ValueError(
+                f"No rows of arm {' or '.join(repr(a) for a in absent_arms)} in "
+                f"obs[{arm_col!r}] at visits {visits!r}."
+            )
+        arm_labels = np.where(arm.isin([arm_treated]).to_numpy(), *CANONICAL_ARMS)
+
+    participant = cohort.obs[participant_col]
+    if participant.isna().any():
+        raise ValueError(f"obs[{participant_col!r}] has missing participant labels")
+    canonical_obs = pd.DataFrame(
+        {
+            "participant": participant.astype(str).to_numpy(),
+            "visit": np.where(
+                cohort.obs[visit_col].isin([baseline]).to_numpy(), *CANONICAL_VISITS
+            ),
+            "arm": arm_labels,
+        },
+        index=cohort.obs_names,
+    )
+    out = ad.AnnData(X=_count_matrix(cohort, counts_layer).copy(), obs=canonical_obs)
+    out.var_names = adata.var_names
+    return out
+
+
+def require_raw_counts(methods: list[str], cohort) -> None:
+    """Refuse to run a count model on a matrix that does not hold counts.
+
+    ``dreamlet``, ``limma_voom``, ``edger_qlf`` and ``nebula`` model raw counts.
+    A cohort measured as TPM, or a normalised matrix named as the counts layer,
+    has non-integer values.
+    """
+    from scipy import sparse
+
+    count_models = [m for m in methods if METHOD_ESTIMAND.get(m) == "count_link"]
+    if not count_models:
+        return
+    X = cohort.X
+    values = X.data if sparse.issparse(X) else np.asarray(X)
+    if values.size and (np.any(values < 0) or np.any(values != np.floor(values))):
+        raise ValueError(
+            f"{count_models} model raw counts, but the count matrix holds non-integer or "
+            "negative values. Name a raw-count layer, or run only the methods that take "
+            "log(1 + CPM) (METHOD_ESTIMAND == 'log1p_cpm')."
+        )
+
+
 def prepare_inputs_from_adata(
     adata,
     panel_genes: list[str],
     participant_col: str = "participant",
     visit_col: str = "visit",
     arm_col: str = "arm",
-    counts_layer: str = "counts",
+    counts_layer: str | None = "counts",
 ) -> dict:
     """The same contracts, applied to REAL data.
 
@@ -199,9 +382,18 @@ def prepare_inputs_from_adata(
 
     The CPM denominator is the whole measured transcriptome, not the tested
     panel, exactly as in :func:`prepare_inputs`.
+
+    The visit and arm labels must be those of :data:`CANONICAL_VISITS` and
+    :data:`CANONICAL_ARMS`, which the runners read; any other label raises.
+    :func:`canonical_cohort` maps a real cohort. ``counts_layer`` names the raw
+    counts (``None`` for ``adata.X``) and raises when the layer is absent.
     """
     obs = adata.obs
-    X = adata.layers[counts_layer] if counts_layer in adata.layers else adata.X
+    if visit_col in obs.columns:
+        _require_vocabulary(obs, visit_col, CANONICAL_VISITS)
+    if arm_col in obs.columns:
+        _require_vocabulary(obs, arm_col, CANONICAL_ARMS)
+    X = _count_matrix(adata, counts_layer)
     gene_cols = [str(g) for g in adata.var_names]
     panel = [g for g in panel_genes if g in set(gene_cols)]
 
@@ -255,7 +447,6 @@ def _canonical_adata(adata, participant_col, visit_col, arm_col, counts_layer):
         columns={participant_col: "participant", visit_col: "visit", arm_col: "arm"}
     )
     keep = [c for c in ("participant", "visit", "arm") if c in obs.columns]
-    X = adata.layers[counts_layer] if counts_layer in adata.layers else adata.X
-    out = ad.AnnData(X=X, obs=obs[keep].copy())
+    out = ad.AnnData(X=_count_matrix(adata, counts_layer), obs=obs[keep].copy())
     out.var_names = adata.var_names
     return out

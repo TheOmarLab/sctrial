@@ -1,39 +1,26 @@
 """
-Figure 3 — Statistical Robustness & Method Benchmarking
+Figure 3: Statistical robustness and method benchmarking
 ========================================================
-
-Seven-panel figure combining bootstrap validation, leave-one-out
-sensitivity, NatMeth signal-fraction benchmark summaries (null-gene FPR
-curves, signal-gene effect-size RMSE, genomic inflation λ_GC), and
-real-data precision / effect-size panels.
 
 Panels
 ------
-A   Bootstrap vs analytical SE (Sade–Feldman, top) and TNBC (bottom).
-B   Leave-one-out participant sensitivity (Sade–Feldman, top) and TNBC (bottom).
-C   Effect-size bias and RMSE on signal genes (simulator benchmark). Combined artboard:
-    left column, benchmark top row (faceted bias/RMSE grid).
-D   Null-gene p-value calibration: QQ plots (top) + % outside 95% CI heatmap (bottom);
-    right column spanning benchmark rows 3–4 (from Supp Fig 5 panel I).
-E   Genomic inflation λ_GC under pure null (simulator benchmark). Combined artboard:
-    left column, benchmark bottom row.
-F   Computational cost: median runtime per iteration by method and panel size
-    (simulator benchmark). Combined artboard: left column, benchmark bottom row.
-G   Standard-error comparison (cell vs participant level): Sade–Feldman (top)
-    and TNBC (bottom).
-H   Cross-dataset signed Cohen's d forest (pre-specified endpoints), now
-    including TNBC as a sixth dataset group.
-
-Null-gene FPR vs signal fraction (former panel C) moved to Supp Fig 5 panel H.
-Cell-vs-participant effect-size scatter and p-value comparison moved
-to Figure 2 panels B–C.
+A   False-positive rate of the participant-level tests under relabeling: every
+    reassignment of the participants to the two groups is refitted, and the share of
+    rejections at p < 0.05 is shown per signature for the analytical cluster-robust
+    test and the wild cluster bootstrap (TNBC and melanoma).
+B   Leave-one-out participant sensitivity (TNBC and melanoma).
+C   Pure-null Type I error against biological sample size (simulation benchmark).
+D   Mixed-signal null-gene false positive rate (simulation benchmark).
+E   Realized FDR after Benjamini-Hochberg correction (simulation benchmark).
+F   Marginal detection probability (simulation benchmark).
+G   Runtime by number of tested genes (simulation benchmark).
+H   Cross-dataset standardized effects for five pre-specified endpoints.
 """
 
 from __future__ import annotations
 
 import gc
 import hashlib
-import time
 import warnings
 from pathlib import Path
 
@@ -92,12 +79,15 @@ from .._benchmark import (  # noqa: F401
     _plot_offscale,
     _style_axis,
 )
+from .._relabeling import calibration_rates, did_relabeling_cached
+from .._runtime import check_recorded as check_recorded_runtime
+from .._runtime import load_recorded as load_recorded_runtime
 from .._shared import (
     COLORS,
     MAIN_OUTPUT,
+    STATS_FINGERPRINT,
     TrialDesign,
     apply_style,
-    between_arm_comparison,
     clear_cache,
     despine,
     did_table,
@@ -107,11 +97,15 @@ from .._shared import (
     get_stephenson,
     get_tnbc_zhang,
     get_vaccine,
+    group_axis_labels,
     harmonize_response,
+    key_below_axes,
+    key_below_row,
+    output_dpi,
+    report_layout_problems,
     save_panel,
     score_signatures,
     sig_display,
-    within_arm_comparison,
 )
 
 warnings.filterwarnings("ignore")
@@ -152,14 +146,7 @@ TNBC_DESIGN = TrialDesign(
 )
 TNBC_VISITS: tuple[str, str] = ("Pre", "Post")
 
-N_BENCHMARK_REPLICATES = 5
-_CODE_VERSION = "v15"
-
-_METHOD_FAMILY: dict[str, str] = {
-    "two_arm_did": "did_table",
-    "paired": "did_table",
-    "cross_sectional": "between_arm",
-}
+_CODE_VERSION = "v16"
 
 DatasetInfo = tuple[str, object, object, tuple, list[str], str]
 
@@ -229,7 +216,10 @@ def _save_analysis_cache(tag: str, data: dict) -> None:
     for key in frame_keys:
         df = data.get(key)
         if df is not None and not df.empty:
-            df.to_json(_CACHE_DIR / f"{tag}_{key}.json", orient="records", indent=2)
+            df.to_json(_CACHE_DIR / f"{tag}_{key}.json", orient="records", indent=2,
+                       double_precision=15)
+    # JSON has no infinity, and a bootstrap interval can be unbounded.
+    data["relabel"].to_pickle(_CACHE_DIR / f"{tag}_relabel.pkl")
     sig_path = _CACHE_DIR / f"{tag}_sig_cols.json"
     sig_path.write_text(json.dumps(data.get("sig_cols", [])))
 
@@ -239,6 +229,10 @@ def _load_analysis_cache(tag: str) -> dict | None:
     import json
     frame_keys = ("df_cell", "df_part", "df_boot", "loo_records")
     result: dict = {}
+    relabel_path = _CACHE_DIR / f"{tag}_relabel.pkl"
+    if not relabel_path.exists():
+        return None
+    result["relabel"] = pd.read_pickle(relabel_path)  # noqa: S301 (written by this module)
     for key in frame_keys:
         path = _CACHE_DIR / f"{tag}_{key}.json"
         if not path.exists():
@@ -260,7 +254,7 @@ def _load_analysis_cache(tag: str) -> dict | None:
 # ======================================================================
 
 def _prepare_sf_data() -> dict:
-    _tag = "sf_analysis_" + _cache_key("sf")
+    _tag = "sf_analysis_" + _cache_key("sf", STATS_FINGERPRINT)
     cached = _load_analysis_cache(_tag)
     if cached is not None:
         print("  SF analysis (cached)")
@@ -291,17 +285,19 @@ def _prepare_sf_data() -> dict:
     )
     print("  Running leave-one-out analysis ...")
     loo_records = _run_loo(adata, sig_cols, common_kw)
+    relabel = did_relabeling_cached(adata, sig_cols, DESIGN, VISITS, layer="log1p_tpm",
+                                    tag="melanoma", n_boot=N_BOOT)
 
     result = {
         "df_cell": df_cell, "df_part": df_part, "df_boot": df_boot,
-        "loo_records": loo_records, "sig_cols": sig_cols, "adata": adata,
+        "loo_records": loo_records, "relabel": relabel, "sig_cols": sig_cols, "adata": adata,
     }
     _save_analysis_cache(_tag, result)
     return result
 
 
 def _prepare_tnbc_data() -> dict:
-    _tag = "tnbc_analysis_" + _cache_key("tnbc")
+    _tag = "tnbc_analysis_" + _cache_key("tnbc", STATS_FINGERPRINT)
     cached = _load_analysis_cache(_tag)
     if cached is not None:
         print("  TNBC analysis (cached)")
@@ -328,10 +324,12 @@ def _prepare_tnbc_data() -> dict:
     )
     print("  [TNBC] Running leave-one-out analysis ...")
     loo_records = _run_loo(adata, sig_cols, common_kw)
+    relabel = did_relabeling_cached(adata, sig_cols, TNBC_DESIGN, TNBC_VISITS, layer="log1p_norm",
+                                    tag="tnbc", n_boot=N_BOOT)
 
     result = {
         "df_cell": df_cell, "df_part": df_part, "df_boot": df_boot,
-        "loo_records": loo_records, "sig_cols": sig_cols, "adata": adata,
+        "loo_records": loo_records, "relabel": relabel, "sig_cols": sig_cols, "adata": adata,
     }
     _save_analysis_cache(_tag, result)
     return result
@@ -372,78 +370,6 @@ SF_DESIGN = TrialDesign(
 SF_VISITS: tuple[str, str] = ("Pre", "Post")
 
 
-def _run_scalability_benchmark(datasets: list[DatasetInfo]) -> tuple[pd.DataFrame, pd.DataFrame]:
-    cache_tag = "benchmark_" + _cache_key(
-        *[f"{n}:{a.n_obs}" for n, a, *_ in datasets],
-        str(N_BENCHMARK_REPLICATES),
-    )
-    cached_t = _load_cache(cache_tag + "_time")
-    cached_m = _load_cache(cache_tag + "_mem")
-    if cached_t is not None and cached_m is not None:
-        print("  Scalability benchmarks (cached)")
-        return cached_t, cached_m
-
-    print(f"  Running scalability benchmarks ({N_BENCHMARK_REPLICATES} replicates per dataset) ...")
-    timings: list[dict] = []
-    mem_usage: list[dict] = []
-
-    for name, adata, design, visits, sigs, dtype in datasets:
-        n_cells = adata.n_obs
-        n_features = len(sigs)
-        pid_col = design.participant_col
-        n_pids = adata.obs[pid_col].nunique()
-        method = _METHOD_FAMILY.get(dtype, "did_table")
-        print(f"    {name} ({n_pids} ppts × {n_features} features, {n_cells:,} cells, {dtype}) ... ", end="", flush=True)
-
-        run_times = []
-        run_peaks = []
-        for rep in range(N_BENCHMARK_REPLICATES):
-            gc.collect()
-            import tracemalloc
-            tracemalloc.start()
-            t0 = time.perf_counter()
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                if dtype == "cross_sectional":
-                    between_arm_comparison(
-                        adata, visit=visits[0], features=sigs, design=design,
-                        aggregate="participant_visit", standardize=True,
-                    )
-                elif dtype == "paired":
-                    within_arm_comparison(
-                        adata, arm="All", features=sigs, design=design,
-                        visits=visits, aggregate="participant_visit", standardize=True,
-                    )
-                else:
-                    did_table(
-                        adata, features=sigs, design=design, visits=visits,
-                        aggregate="participant_visit", standardize=True,
-                    )
-            elapsed = time.perf_counter() - t0
-            _, peak = tracemalloc.get_traced_memory()
-            tracemalloc.stop()
-            run_times.append(elapsed)
-            run_peaks.append(peak / 1024**2)
-
-            shared = {
-                "n_cells": n_cells, "n_participants": n_pids, "n_features": n_features,
-                "dataset": name, "design_type": dtype, "method": method, "replicate": rep,
-            }
-            timings.append({**shared, "time_s": elapsed})
-            mem_usage.append({**shared, "peak_mb": peak / 1024**2})
-            gc.collect()
-
-        med_t = np.median(run_times)
-        med_m = np.median(run_peaks)
-        print(f"median {med_t:.2f}s, {med_m:.1f} MB")
-
-    timing_df = pd.DataFrame(timings)
-    memory_df = pd.DataFrame(mem_usage)
-    _save_cache(cache_tag + "_time", timing_df)
-    _save_cache(cache_tag + "_mem", memory_df)
-    return timing_df, memory_df
-
-
 def _paired_cohens_d(participant_deltas: np.ndarray) -> tuple[float, float, float]:
     n = len(participant_deltas)
     sd = float(np.std(participant_deltas, ddof=1))
@@ -456,7 +382,7 @@ def _paired_cohens_d(participant_deltas: np.ndarray) -> tuple[float, float, floa
 
 
 def _compute_effect_sizes_across_datasets(datasets: list[DatasetInfo]) -> pd.DataFrame:
-    cache_tag = "effects_" + _cache_key(*[f"{n}:{a.n_obs}" for n, a, *_ in datasets])
+    cache_tag = "effects_" + _cache_key("pid-observed", *[f"{n}:{a.n_obs}" for n, a, *_ in datasets])
     cached = _load_cache(cache_tag)
     if cached is not None:
         print("  Effect sizes (cached)")
@@ -480,7 +406,7 @@ def _compute_effect_sizes_across_datasets(datasets: list[DatasetInfo]) -> pd.Dat
                     for arm in [design.arm_treated, design.arm_control]:
                         arm_pb = pb[pb[design.arm_col] == arm]
                         arm_d: list[float] = []
-                        for _, pdf in arm_pb.groupby(pid_col):
+                        for _, pdf in arm_pb.groupby(pid_col, observed=True):
                             if set(visits).issubset(set(pdf[design.visit_col])):
                                 pre = pdf.loc[pdf[design.visit_col] == visits[0], sig].values[0]
                                 post = pdf.loc[pdf[design.visit_col] == visits[1], sig].values[0]
@@ -499,7 +425,7 @@ def _compute_effect_sizes_across_datasets(datasets: list[DatasetInfo]) -> pd.Dat
                         [sig].mean().reset_index()
                     )
                     ds: list[float] = []
-                    for _, pdf in pb.groupby(pid_col):
+                    for _, pdf in pb.groupby(pid_col, observed=True):
                         if set(visits).issubset(set(pdf[design.visit_col])):
                             pre = pdf.loc[pdf[design.visit_col] == visits[0], sig].values[0]
                             post = pdf.loc[pdf[design.visit_col] == visits[1], sig].values[0]
@@ -511,8 +437,11 @@ def _compute_effect_sizes_across_datasets(datasets: list[DatasetInfo]) -> pd.Dat
                 elif dtype == "cross_sectional":
                     visit_mask = adata.obs[design.visit_col] == visits[0]
                     obs_visit = adata.obs.loc[visit_mask]
-                    pb_t = obs_visit.loc[obs_visit[design.arm_col] == design.arm_treated].groupby(pid_col)[sig].mean()
-                    pb_c = obs_visit.loc[obs_visit[design.arm_col] == design.arm_control].groupby(pid_col)[sig].mean()
+                    # observed=True: participant_id is categorical, and without it the
+                    # groupby returns every participant in the cohort (NaN for absent
+                    # ones), so len() counted the whole cohort in each arm.
+                    pb_t = obs_visit.loc[obs_visit[design.arm_col] == design.arm_treated].groupby(pid_col, observed=True)[sig].mean()
+                    pb_c = obs_visit.loc[obs_visit[design.arm_col] == design.arm_control].groupby(pid_col, observed=True)[sig].mean()
                     n1, n2 = len(pb_t), len(pb_c)
                     if n1 < 3 or n2 < 3:
                         continue
@@ -602,158 +531,130 @@ def _load_tnbc() -> DatasetInfo:
 
 
 def _prepare_scalability_data() -> dict:
+    """Cross-dataset effect sizes, and the size of each dataset as it was loaded."""
     print("  Loading and processing datasets one at a time ...")
-    timing_frames: list[pd.DataFrame] = []
-    memory_frames: list[pd.DataFrame] = []
     effect_frames: list[pd.DataFrame] = []
+    sizes: dict[str, dict] = {}
 
     for idx in range(6):
         ds = _load_dataset_by_index(idx)
         if ds is None:
             continue
-        name = ds[0]
-        print(f"  {name}: {ds[1].n_obs:,} cells, {ds[1].n_vars:,} genes")
-        try:
-            t_df, m_df = _run_scalability_benchmark([ds])
-            if t_df is not None and not t_df.empty:
-                timing_frames.append(t_df)
-            if m_df is not None and not m_df.empty:
-                memory_frames.append(m_df)
-        except Exception as exc:
-            print(f"    Runtime benchmark failed for {name}: {exc}")
+        name, adata, design, _visits, sigs, _dtype = ds
+        print(f"  {name}: {adata.n_obs:,} cells, {adata.n_vars:,} genes")
+        sizes[name] = {"n_cells": int(adata.n_obs), "n_features": len(sigs),
+                       "n_participants": int(adata.obs[design.participant_col].nunique())}
         edf = _compute_effect_sizes_across_datasets([ds])
         if edf is not None and not edf.empty:
             effect_frames.append(edf)
-        del ds
+        del ds, adata
         gc.collect()
 
     return {
-        "timing_df": pd.concat(timing_frames, ignore_index=True) if timing_frames else pd.DataFrame(),
-        "memory_df": pd.concat(memory_frames, ignore_index=True) if memory_frames else pd.DataFrame(),
+        "sizes": sizes,
         "effect_df": pd.concat(effect_frames, ignore_index=True) if effect_frames else pd.DataFrame(),
     }
 
 
+def _check_runtime_recording(sizes: dict[str, dict]) -> None:
+    """Fail when the recorded runtime table (Supp Fig 4I) was made on other dataset versions."""
+    recorded = load_recorded_runtime()
+    for name, size in sizes.items():
+        check_recorded_runtime(recorded, name, **size)
+
+
 
 # ======================================================================
-# Panel A: Bootstrap vs Analytical SE
+# Panel A: false-positive rate of the participant-level tests under relabeling
 # ======================================================================
 
-def _panel_a_single(
-    ax, data: dict, *, title: str = "Bootstrap vs Analytical SE",
-    composite: bool = False, dataset: str = "melanoma",
-) -> None:
-    """Bootstrap SE scatter (analytical vs bootstrap) with leader lines."""
-    from adjustText import adjust_text
+# (column of calibration_rates, tick label, key label, color), drawn bottom to top
+PANEL_A_TESTS = (
+    ("reject_analytic", "Analytical", "Analytical cluster-robust test", COLORS["control"]),
+    ("reject_boot", "Bootstrap", "Wild cluster bootstrap", COLORS["treated"]),
+)
+PANEL_A_NOMINAL = 5.0  # percent
 
-    df_boot = data["df_boot"]
 
-    if df_boot is None or len(df_boot) == 0:
+def _panel_a_rates(data: dict) -> pd.DataFrame | None:
+    """Per-signature rejection rates (percent) under relabeling, or None without data."""
+    relabel = data.get("relabel")
+    if relabel is None or len(relabel) == 0:
+        return None
+    rates = calibration_rates(relabel, alpha=PANEL_A_NOMINAL / 100)
+    for col, *_ in PANEL_A_TESTS:
+        rates[col] = 100.0 * rates[col]
+    return rates
+
+
+def _panel_a_x_max(rates_list) -> float:
+    """Common x-axis maximum (percent) that holds every signature of every cohort."""
+    top = max(float(r[[t[0] for t in PANEL_A_TESTS]].to_numpy().max()) for r in rates_list)
+    return max(8.0, 1.12 * top)
+
+
+def _panel_a_single(ax, data: dict, *, title: str, composite: bool = False,
+                    x_max: float | None = None) -> None:
+    """Share of relabelings in which each test rejects at p < 0.05.
+
+    Every reassignment of the participants to the two groups is refitted, so the null
+    hypothesis holds by construction and the share of rejections is the false-positive
+    rate of the test on this cohort. One point per signature, a diamond at their mean
+    (its value is written right of the axes), and a dashed line at the nominal 5%.
+    """
+    from matplotlib.lines import Line2D
+
+    rates = _panel_a_rates(data)
+    _ttl_fs = 7.0 if composite else 10
+    if rates is None:
         ax.text(0.5, 0.5, "Data unavailable", ha="center", va="center", transform=ax.transAxes)
-        ax.set_title(title, fontsize=10, fontweight="bold")
+        ax.set_title(title, fontsize=_ttl_fs, fontweight="bold")
         despine(ax)
         return
 
-    feats, analytical, bootstrap = [], [], []
-    for _, row in df_boot.iterrows():
-        se_an = row["se_DiD"]
-        se_bt = row.get("se_DiD_boot", np.nan)
-        if np.isfinite(se_an) and np.isfinite(se_bt):
-            feats.append(row["feature"])
-            analytical.append(se_an)
-            bootstrap.append(se_bt)
+    rng = np.random.default_rng(42)
+    for row, (col, _tick, _key, color) in enumerate(PANEL_A_TESTS):
+        vals = rates[col].to_numpy(float)
+        ax.scatter(vals, row + rng.uniform(-0.18, 0.18, len(vals)), s=14 if composite else 26,
+                   color=color, alpha=0.6, edgecolor="none", zorder=2)
+        ax.scatter(vals.mean(), row, s=30 if composite else 60, color=color, marker="D",
+                   edgecolor="black", linewidth=0.8, zorder=4)
+        ax.annotate(f"{vals.mean():.1f}%", xy=(1.0, row), xycoords=ax.get_yaxis_transform(),
+                    xytext=(3, 0), textcoords="offset points", ha="left", va="center",
+                    fontsize=5.0 if composite else 9, color=color, fontweight="bold")
+    ax.axvline(PANEL_A_NOMINAL, ls="--", color=COLORS["gray"], lw=1, zorder=1)
 
-    analytical = np.array(analytical)
-    bootstrap = np.array(bootstrap)
-
-    if len(analytical) == 0:
-        ax.text(0.5, 0.5, "Insufficient bootstrap data", ha="center", va="center", transform=ax.transAxes)
-        despine(ax)
-        return
-
-    raw_lo = min(analytical.min(), bootstrap.min())
-    raw_hi = max(analytical.max(), bootstrap.max())
-    data_range = raw_hi - raw_lo
-    lo = raw_lo - 0.12 * data_range
-    hi = raw_hi + 0.12 * data_range
-    x_lo = lo - 0.08 * (hi - lo)
-    ax.plot([x_lo, hi], [x_lo, hi], ls="--", color=COLORS["gray"], lw=1, zorder=1)
-
-    ax.scatter(analytical, bootstrap, s=22, color=COLORS["treated"],
-               edgecolor="white", linewidth=0.5, zorder=3)
-
-    _ax_fs = 5.2 if composite else 10
-    _ttl_fs_a = 7.0 if composite else 10
-    ax.set_xlabel("Analytical SE (cluster-robust)", fontsize=_ax_fs)
-    ax.set_ylabel("Bootstrap SE (wild cluster)", fontsize=_ax_fs)
-    ax.set_title(title, fontsize=_ttl_fs_a, fontweight="bold")
-    ax.set_xlim(x_lo, hi)
-    ax.set_ylim(lo, 2.0 if dataset == "melanoma" else 1.4)
+    if x_max is None:
+        x_max = _panel_a_x_max([rates])
+    ax.set_xlim(-0.03 * x_max, x_max)
+    ax.set_ylim(-0.6, len(PANEL_A_TESTS) - 0.4)
+    ax.set_yticks(range(len(PANEL_A_TESTS)))
+    ax.set_yticklabels([t[1] for t in PANEL_A_TESTS], fontsize=5 if composite else 9)
+    ax.set_xlabel("Relabelings rejected at p < 0.05 (%)", fontsize=5.2 if composite else 10)
+    ax.set_title(title, fontsize=_ttl_fs, fontweight="bold")
     despine(ax)
 
-    # The r/p statistics box is drawn FIRST and passed to adjust_text as a fixed
-    # object to avoid, so no signature label lands on it (previously the p-value
-    # was overprinted). Labels carry a white bounding box: adjust_text sets the box
-    # as the arrow's patchB, so the leader line terminates at the box EDGE instead
-    # of crossing the glyphs (the "strikethrough" defect).
-    r, p = stats.pearsonr(analytical, bootstrap)
-    # TNBC (left subpanel): top-left. Melanoma (right subpanel): bottom-right.
-    if dataset == "melanoma":
-        _stat_x, _stat_ha, _stat_y, _stat_va = 0.96, "right", 0.04, "bottom"
-    else:
-        _stat_x, _stat_ha, _stat_y, _stat_va = 0.04, "left", 0.96, "top"
-    stat_text = ax.text(
-        _stat_x, _stat_y, f"r = {r:.2f}\np = {p:.1e}",
-        transform=ax.transAxes, fontsize=(10 if composite else 10), va=_stat_va, ha=_stat_ha,
-        zorder=6,
-        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#dddddd", alpha=0.9),
-    )
-
-    # Per-signature manual (dx, dy) offsets for TNBC as fractions of data range.
-    # Positive dy = up, positive dx = right.
-    _TNBC_OFFSETS: dict[str, tuple[float, float]] = {
-        "Inflammatory": (0.0, -0.008),
-        "Antigen":      (0.0, -0.012),
-        "Checkpoint":   (0.0, +0.008),
-        "Regulatory":   (0.002, 0.002),   # place close to marker → short leader line
-        "Exhaustion":   (0.0, +0.018),    # raise above Monocyte/Macrophage
-        "Monocyte":     (+0.010, 0.0),    # nudge right to stay inside axes
-    }
-
-    # ── Labels with leader lines via adjust_text ──────────────────────
-    # Show in both standalone and composite; font is smaller in composite.
-    if True:
-        texts = []
-        _lbl_fs = 4.5 if composite else 6.5
-        _dr = raw_hi - raw_lo
-        for feat, xa, ya in zip(feats, analytical, bootstrap):
-            label = sig_display(feat)
-            if dataset == "tnbc":
-                for kw, (dx, dy) in _TNBC_OFFSETS.items():
-                    if kw.lower() in label.lower():
-                        xa = xa + dx * _dr
-                        ya = ya + dy * _dr
-                        break
-            texts.append(ax.text(
-                xa, ya, label, fontsize=_lbl_fs, ha="center", va="center",
-                color="#1a1a1a", zorder=5,
-                bbox=dict(boxstyle="round,pad=0.15", fc="none", ec="none", alpha=0.75)))
-        _adj_kw = dict(
-            x=analytical, y=bootstrap, ax=ax,
-            arrowprops=dict(arrowstyle="-", color="#bbbbbb", lw=0.5, shrinkA=1, shrinkB=1),
-            expand=(1.1, 1.3), force_text=(0.5, 0.6), force_points=(0.3, 0.4),
-        )
-        try:
-            adjust_text(texts, add_objects=[stat_text], **_adj_kw)
-        except TypeError:
-            # Older/newer adjustText may name the parameter differently; fall back
-            # to repelling from points/text only.
-            adjust_text(texts, **_adj_kw)
+    _ms = 3.6 if composite else 5.5
+    handles = [
+        Line2D([], [], linestyle="none", marker="o", markersize=_ms, markerfacecolor=color,
+               markeredgecolor="none", alpha=0.7, label=key)
+        for _col, _tick, key, color in reversed(PANEL_A_TESTS)
+    ] + [
+        Line2D([], [], linestyle="none", marker="D", markersize=_ms, markerfacecolor=COLORS["gray"],
+               markeredgecolor="black", markeredgewidth=0.7, label="Mean of the signatures"),
+        Line2D([], [], linestyle="--", color=COLORS["gray"], lw=1, label="Nominal 5%"),
+    ]
+    ax.legend(handles=handles, fontsize=5.0 if composite else 8.5, handlelength=1.4)
 
 
 def _panel_a(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict, *, composite: bool = False) -> None:
-    _panel_a_single(ax_top, data_sf, title="Bootstrap vs Analytical SE (Melanoma)", composite=composite, dataset="melanoma")
-    _panel_a_single(ax_bottom, data_tnbc, title="Bootstrap vs Analytical SE (TNBC)", composite=composite, dataset="tnbc")
+    """Both panel A strips on one x scale (melanoma on ``ax_top``, TNBC on ``ax_bottom``)."""
+    rates = [r for r in (_panel_a_rates(data_sf), _panel_a_rates(data_tnbc)) if r is not None]
+    x_max = _panel_a_x_max(rates) if rates else None
+    _panel_a_single(ax_top, data_sf, title="False-positive rate under relabeling (Melanoma)",
+                    composite=composite, x_max=x_max)
+    _panel_a_single(ax_bottom, data_tnbc, title="False-positive rate under relabeling (TNBC)",
+                    composite=composite, x_max=x_max)
 
 
 # ======================================================================
@@ -842,7 +743,7 @@ def _panel_b(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict, *, composite: bo
 
 
 # ======================================================================
-# Runtime scaling (exported for Supp Fig 3)
+# Recorded runtime per dataset (drawn in Supp Fig 4, panel I)
 # ======================================================================
 
 def _panel_c(ax, data: dict) -> None:
@@ -916,59 +817,19 @@ def _panel_c(ax, data: dict) -> None:
 
 
 # ======================================================================
-# Panel F: Standard-error comparison
-# ======================================================================
-
-def _panel_d_se_comparison_single(ax, data: dict, *, title: str = "Precision: Cell vs Participant Level") -> None:
-    df_cell = data.get("df_cell")
-    df_boot = data.get("df_boot")
-
-    if (df_cell is None or len(df_cell) == 0 or df_boot is None or len(df_boot) == 0
-            or "feature" not in df_cell.columns or "se_DiD" not in df_cell.columns
-            or "feature" not in df_boot.columns):
-        ax.text(0.5, 0.5, "Data unavailable", ha="center", va="center", transform=ax.transAxes)
-        ax.set_title(title, fontsize=10, fontweight="bold")
-        despine(ax)
-        return
-
-    se_cell = df_cell[["feature", "se_DiD"]].copy().rename(columns={"se_DiD": "se_cell"})
-    se_part = df_boot[["feature"]].copy()
-    se_part["se_part"] = df_boot.get("se_DiD_boot", df_boot["se_DiD"])
-    merged = se_cell.merge(se_part, on="feature")
-
-    if merged.empty:
-        ax.text(0.5, 0.5, "No overlapping features", ha="center", va="center", transform=ax.transAxes)
-        ax.set_title(title, fontsize=10, fontweight="bold")
-        despine(ax)
-        return
-
-    merged["display"] = merged["feature"].apply(sig_display)
-    merged = merged.sort_values("se_part", ascending=True)
-    y_pos = np.arange(len(merged))
-    bar_h = 0.35
-
-    ax.barh(y_pos - bar_h / 2, merged["se_cell"].values, height=bar_h,
-            color=COLORS["highlight"], alpha=0.8, label="Cell-level SE", edgecolor="none")
-    ax.barh(y_pos + bar_h / 2, merged["se_part"].values, height=bar_h,
-            color=COLORS["treated"], alpha=0.8, label="Participant-level SE (bootstrap)", edgecolor="none")
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(merged["display"].values, fontsize=8)
-    ax.set_xlabel("Standard Error")
-    ax.set_title(title, fontsize=10, fontweight="bold")
-    ax.legend(fontsize=8, loc="lower right", frameon=True, framealpha=0.9)
-    despine(ax)
-
-
-def _panel_d_se_comparison(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict) -> None:
-    _panel_d_se_comparison_single(ax_top, data_sf, title="Precision: Cell vs Participant Level (Melanoma)")
-    _panel_d_se_comparison_single(ax_bottom, data_tnbc, title="Precision: Cell vs Participant Level (TNBC)")
-
-
-# ======================================================================
-# Panel G: Cross-dataset Cohen's d forest
+# Panel H: Cross-dataset Cohen's d forest
 # ======================================================================
 
 def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
+    """Forest of design-specific standardized effects, five endpoints per dataset.
+
+    Rows are grouped by dataset; each group is named once, with its participant count,
+    to the left of its endpoint labels, and each row's effect is written in a column
+    right of the axes, clear of the confidence intervals. The axes fonts must be final
+    (the group labels are placed from the measured endpoint labels).
+    """
+    import matplotlib.transforms as mtransforms
+
     scale_data = data.get("scale_data")
     if scale_data is None:
         ax.text(0.5, 0.5, "Effect-size data unavailable", ha="center", va="center", transform=ax.transAxes, fontsize=10)
@@ -1000,113 +861,94 @@ def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
         "Type I Interferon": "Type I IFN",
         "T Cell Activation": "T-cell activation",
     }
+    sig_rank = {s: i for i, s in enumerate(_SIG_ORDER)}
 
-    rows: list[dict] = []
-    for ds in ds_order:
+    # Bottom-up y positions: the first dataset and its first endpoint at the top.
+    _GROUP_GAP = 0.6
+    rows: list[tuple[float, dict]] = []
+    groups: list[tuple[str, float, float]] = []
+    y = 0.0
+    for ds in reversed(ds_order):
         grp = effect_df[effect_df["dataset"] == ds]
         if grp.empty:
             continue
-        sig_order_map = {s: i for i, s in enumerate(_SIG_ORDER)}
-        grp = grp.copy()
-        grp["_sort_key"] = grp["signature"].map(lambda s, m=sig_order_map: m.get(s, len(_SIG_ORDER)))
-        grp = grp.sort_values("_sort_key")
-        rows.append({"_group_label": ds})
-        for _, row in grp.iterrows():
-            rows.append(row.to_dict())
-
+        grp = grp.assign(_k=grp["signature"].map(lambda s: sig_rank.get(s, len(_SIG_ORDER))))
+        grp = grp.sort_values("_k")
+        y_first = y
+        for _, row in grp.iloc[::-1].iterrows():
+            rows.append((y, row.to_dict()))
+            y += 1
+        groups.append((ds, y_first, y - 1))
+        y += _GROUP_GAP
     if not rows:
         return
 
-    y = 0
-    y_positions: list[float] = []
-    y_labels: list[str] = []
-    label_datasets: list[str | None] = []
-    data_rows: list[tuple[int, dict]] = []
-    # Extra whitespace above each dataset's group label separates the datasets
-    # visually; the point + label colours carry the grouping.
-    _GROUP_GAP = 0.7
-
-    for r in reversed(rows):
-        if "_group_label" in r:
-            y_positions.append(y)
-            y_labels.append(r["_group_label"])
-            label_datasets.append(None)
-            y += 1 + _GROUP_GAP
-        else:
-            y_positions.append(y)
-            sig_full = r.get("signature", "")
-            sig_short = _SIG_SHORT.get(sig_full, sig_full.replace("_", " "))
-            y_labels.append(f"  {sig_short}")
-            label_datasets.append(r.get("dataset"))
-            data_rows.append((len(y_positions) - 1, r))
-            y += 1
-
-    ax.grid(True, which="major", axis="x", color="#f0f0f0", linewidth=0.3, zorder=0)
-    ax.set_axisbelow(True)
-    ax.axvline(0, color="#444", linewidth=1.0, linestyle="-", zorder=1, alpha=0.5)
-
     _pt_size = 24 if composite else 50
     _ci_lw = 1.7 if composite else 2.2
-    _ann_fs = 5.0 if composite else 7
-    _yt_fs = 6.4 if composite else 8.5
-    _yt_grp_fs = 7.2 if composite else 9.5
+    _ann_fs = 4.5 if composite else 7
+    _yt_fs = 4.5 if composite else 8.5  # the composite's tick-label size
+    _yt_grp_fs = 5.5 if composite else 9.5
     _xl_fs = 5.2 if composite else 11
     _ttl_fs = 7.0 if composite else 13
     _xt_fs = 6.4 if composite else 9.5
 
-    for idx, row in data_rows:
-        yp = y_positions[idx]
+    ax.grid(True, which="major", axis="x", color="#f0f0f0", linewidth=0.3, zorder=0)
+    ax.set_axisbelow(True)
+    ax.axvline(0, color="#444", linewidth=1.0, linestyle="-", zorder=1, alpha=0.5)
+    for ref_d in (-0.8, -0.5, -0.2, 0.2, 0.5, 0.8):
+        ax.axvline(ref_d, color=COLORS["gray"], linewidth=0.4, linestyle=":", zorder=0, alpha=0.25)
+    for (_, _, top_below), (_, bottom_above, _) in zip(groups, groups[1:]):
+        ax.axhline((top_below + bottom_above) / 2, color=COLORS["gray"], linewidth=0.4,
+                   alpha=0.3)
+
+    # Effects in a column right of the axes, never on a confidence interval.
+    value_tr = mtransforms.offset_copy(
+        mtransforms.blended_transform_factory(ax.transAxes, ax.transData),
+        fig=ax.figure, x=3, units="points")
+    for yp, row in rows:
         color = DATASET_COLORS.get(row["dataset"], COLORS["gray"])
         ax.hlines(yp, row["d_lower"], row["d_upper"], color=color, linewidth=_ci_lw, zorder=2, alpha=0.7)
         ax.scatter(row["d"], yp, color=color, s=_pt_size, zorder=3, edgecolors="white", linewidths=1.0)
-        x_annot = row["d_upper"] + 0.08
-        ax.text(x_annot, yp, f"{row['d']:+.2f}  (n\u2090={row['n_participants']})",
-                fontsize=_ann_fs, va="center", ha="left", color="#444")
+        ax.text(1.0, yp, f"{round(row['d'], 2) + 0.0:+.2f}", transform=value_tr, fontsize=_ann_fs,
+                va="center", ha="left", color="#444", clip_on=False)
 
-    for i, lbl in enumerate(y_labels):
-        if lbl in ds_order:
-            yp = y_positions[i]
-            ax.axhline(yp - 0.5, color=COLORS["gray"], linewidth=0.4, linestyle="-", alpha=0.3, xmin=0.0, xmax=1.0)
+    ax.set_yticks([yp for yp, _ in rows])
+    ax.set_yticklabels([_SIG_SHORT.get(r["signature"], r["signature"].replace("_", " "))
+                        for _, r in rows], fontsize=_yt_fs)
+    for tick_label, (_, r) in zip(ax.get_yticklabels(), rows):
+        tick_label.set_color(DATASET_COLORS.get(r["dataset"], "#444"))
 
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels(y_labels, fontsize=_yt_fs)
-    for tick_label, lab_ds in zip(ax.get_yticklabels(), label_datasets):
-        text = tick_label.get_text()
-        if text in ds_order:
-            # Dataset group header: bold, larger, full dataset colour.
-            tick_label.set_fontweight("bold")
-            tick_label.set_fontsize(_yt_grp_fs)
-            tick_label.set_color(DATASET_COLORS.get(text, COLORS["gray"]))
-        elif lab_ds is not None:
-            # Endpoint row: tinted with its dataset colour to preserve grouping.
-            tick_label.set_color(DATASET_COLORS.get(lab_ds, "#444"))
-
-    for ref_d in (-0.8, -0.5, -0.2, 0.2, 0.5, 0.8):
-        ax.axvline(ref_d, color=COLORS["gray"], linewidth=0.4, linestyle=":", zorder=0, alpha=0.25)
-
-    # VERIFIED design-specific: two-arm uses two-sample pooled-SD Cohen's d
-    # (cohens_d_from_did), single-arm uses one-sample paired Cohen's d. Neither
-    # applies the Hedges small-sample correction (that is a separate hedges_g
-    # function), so this is NOT Hedges' g. Labelled as a design-specific
-    # standardized participant-level effect rather than a single "Cohen's d".
     ax.set_xlabel("Standardized effect (design-specific Cohen's d)", fontsize=_xl_fs)
     ax.set_title("Effect sizes: pre-specified endpoints", fontsize=_ttl_fs, fontweight="bold",
                  pad=12 if not composite else 8)
     ax.tick_params(axis="x", which="major", labelsize=_xt_fs)
     all_vals = effect_df[["d_lower", "d_upper", "d"]].values.flatten()
-    x_margin = max(abs(all_vals.min()), abs(all_vals.max())) + 0.5
+    x_margin = max(abs(all_vals.min()), abs(all_vals.max())) + 0.3
     ax.set_xlim(-x_margin, x_margin)
-    ax.set_ylim(-0.6, max(y_positions) + 0.6)
+    ax.set_ylim(-0.7, y - _GROUP_GAP - 0.3)
     despine(ax)
     ax.spines["bottom"].set_linewidth(1.2)
     ax.spines["left"].set_linewidth(1.2)
+
+    # Dataset names (and participant counts) once per group, left of the endpoints.
+    n_texts = len(ax.texts)
+    group_axis_labels(
+        ax,
+        [(f"{_DATASET_DISPLAY_NAMES.get(ds, ds)}\n"
+          f"n = {int(effect_df.loc[effect_df['dataset'] == ds, 'n_participants'].max())}",
+          y_lo, y_hi) for ds, y_lo, y_hi in groups],
+        fontsize=_yt_grp_fs, axis="y", gap_pt=4.0)
+    for txt, (ds, _, _) in zip(ax.texts[n_texts:], groups):
+        txt.set_fontweight("bold")
+        txt.set_color(DATASET_COLORS.get(ds, COLORS["gray"]))
+        txt.set_multialignment("right")
 
 
 # ======================================================================
 # Composite generation
 # ======================================================================
 
-def _load_verified_benchmark_data() -> tuple["pd.DataFrame | None", "pd.DataFrame | None"]:
+def _load_verified_benchmark_data() -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
     """Load both benchmark CSVs, enforcing completion guards explicitly.
 
     The shared loaders in _benchmark.py already call completion_marker,
@@ -1126,7 +968,7 @@ def _load_verified_benchmark_data() -> tuple["pd.DataFrame | None", "pd.DataFram
             )
         if not layout.completion_marker("sensitivity").exists():
             raise FileNotFoundError(
-                f"no completion_marker for the sensitivity grid; "
+                "no completion_marker for the sensitivity grid; "
                 "run scripts/aggregate_benchmark.py first"
             )
     except (FileNotFoundError, ValueError):
@@ -1159,13 +1001,15 @@ def generate() -> None:
         print(f"  Warning: Could not prepare TNBC data for panels A/B/F: {exc}")
         data_tnbc = {"df_cell": pd.DataFrame(), "df_part": pd.DataFrame(),
                      "df_boot": pd.DataFrame(), "loo_records": pd.DataFrame(),
-                     "sig_cols": [], "adata": None}
+                     "relabel": pd.DataFrame(), "sig_cols": [], "adata": None}
 
     try:
         data["scale_data"] = _prepare_scalability_data()
     except Exception as exc:
         print(f"  Warning: Could not load multi-dataset effect sizes: {exc}")
         data["scale_data"] = None
+    if data["scale_data"] is not None:
+        _check_runtime_recording(data["scale_data"]["sizes"])
 
     bench_df, core_df = _load_verified_benchmark_data()
     if bench_df is not None:
@@ -1174,10 +1018,13 @@ def generate() -> None:
         print(f"  Core CSV: {len(core_df):,} rows, {core_df.scenario.nunique()} scenarios")
 
     # ── Individual panels ──────────────────────────────────────────────
-    fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
+    fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 5.6))
     _panel_a(ax_top, ax_bottom, data, data_tnbc)
-    fig.tight_layout()
-    save_panel(fig, "panel_A_bootstrap_validation", FIGURE_NAME, MAIN_OUTPUT)
+    fig.tight_layout(h_pad=5.0, rect=(0, 0.07, 0.94, 1))  # room for each key and the means
+    for ax_ in (ax_top, ax_bottom):
+        key_below_axes(ax_, ncol=2)
+    report_layout_problems(fig, "panel_A_relabeling_calibration")
+    save_panel(fig, "panel_A_relabeling_calibration", FIGURE_NAME, MAIN_OUTPUT)
 
     fig, (ax_top, ax_bottom) = plt.subplots(2, 1, figsize=(6.5, 9.5))
     _panel_b(ax_top, ax_bottom, data, data_tnbc)
@@ -1222,6 +1069,7 @@ def generate() -> None:
     fig, ax = plt.subplots(figsize=(10, 9))
     _panel_e_cross_dataset(ax, data)
     fig.tight_layout()
+    report_layout_problems(fig, "panel_H_cross_dataset_effects")
     save_panel(fig, "panel_H_cross_dataset_effects", FIGURE_NAME, MAIN_OUTPUT)
 
     # ── Combined artboard (180 × 215 mm) ──────────────────────────────
@@ -1275,14 +1123,17 @@ def generate() -> None:
     #   C pure-null Type I error | D mixed-signal null-gene FPR
     #   E realised FDR after BH  | F marginal detection (beta = 0.5)
     #   G runtime  +  H pure-null calibration (lambda_GC)   | I cross-dataset forest
-    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
+    # Laid out at the resolution it is written at, so measured placements hold in the file.
+    fig_c = plt.figure(figsize=(180 * _mm, 233 * _mm), dpi=output_dpi())
     # lambda_GC (old panel H) removed. Bottom row places G (runtime) and H
     # (cross-dataset forest) SIDE BY SIDE so neither is over-wide; the forest gets
     # the wider column. Letters are consecutive A-H.
     outer = fig_c.add_gridspec(
         9, 1,
-        height_ratios=[0.80, 0.40, 0.48, 0.46, 0.60, 0.72, 0.72, 0.68, 1.92],
-        hspace=0.0, left=0.085, right=0.965, top=0.980, bottom=0.032,
+        # The bottom row holds the 30-row forest (H) at 4.5 pt row labels.
+        # Row 1 holds panel A's x labels and keys and panel B's titles.
+        height_ratios=[0.80, 0.58, 0.48, 0.46, 0.60, 0.72, 0.72, 0.68, 2.25],
+        hspace=0.0, left=0.100, right=0.965, top=0.972, bottom=0.040,
     )
 
     gs_a = outer[0].subgridspec(1, 2, wspace=0.42)
@@ -1302,8 +1153,10 @@ def generate() -> None:
     fig_c.add_subplot(outer[7]).set_axis_off()
 
     # Bottom row: G runtime (left) | H cross-dataset forest (right, wider column).
-    gs_gh = outer[8].subgridspec(1, 2, width_ratios=[1.0, 1.32], wspace=0.40)
-    ax_rt = fig_c.add_subplot(gs_gh[0])
+    gs_gh = outer[8].subgridspec(1, 2, width_ratios=[1.0, 1.32], wspace=0.52)
+    # G's method key goes below its axes, inside the row (H's forest is taller).
+    ax_rt = fig_c.add_subplot(gs_gh[0].subgridspec(2, 1, height_ratios=[0.80, 0.20],
+                                                   hspace=0.0)[0])
     ax_forest = fig_c.add_subplot(gs_gh[1])
 
     # Benchmark panels (embedded via gs_parent / ax).
@@ -1330,10 +1183,7 @@ def generate() -> None:
     # Inside legends for the biological panels + forest.
     # Panel A: larger legend; panel H (forest): same treatment. Panel B draws its
     # own composite-sized legend inside _panel_b_single and is excluded here.
-    _inside = {
-        ax_a_top: "upper right", ax_a_bot: "upper right",
-        ax_forest: "lower right",
-    }
+    _inside = {ax_forest: "lower right"}  # panel A's key goes below its axes
     for ax_target, loc in _inside.items():
         leg = ax_target.get_legend()
         if leg:
@@ -1350,6 +1200,11 @@ def generate() -> None:
                 txt.set_fontsize(max(txt.get_fontsize() * 0.55, 3.0))
 
     _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
+
+    # Panel A: both cohorts share one key, in a single row under the row of axes, placed
+    # once fonts and geometry are final. Two keys of two rows reached panel B's titles.
+    key_below_row([ax_a_top, ax_a_bot], ncol=4)
+    key_below_axes(ax_rt, ncol=2, keep_title=True)  # off the runtime curves
 
     # Compact corner titles for the four half-width benchmark panels (composite
     # suppresses their standalone titles), raised above their internal titles.
@@ -1385,7 +1240,9 @@ def generate() -> None:
                             methods=[m for m in _LEGEND_ORDER if m != "nebula"],
                             fontsize=_leg_fs, y_pad=_leg_pad, short=True)
     if bench_df is not None:
-        _bench_legend_below(fig_c, gs_cd[1], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
+        # D's common x label is figure text, below the axes' own text: clear it too.
+        _bench_legend_below(fig_c, gs_cd[1], fontsize=_leg_fs, y_pad=_leg_pad + 0.006,
+                            short=True)
         _bench_legend_below(fig_c, gs_ef[0], fontsize=_leg_fs, y_pad=_leg_pad, short=True)
 
     # Panel letters A-H at each cell's upper-left corner (forest is now H).
@@ -1397,6 +1254,7 @@ def generate() -> None:
         fig_c.text(max(x0 - 0.05, 0.003), min(y1 + 0.013, 0.998), lab,
                    fontsize=8, fontweight="bold", va="bottom", ha="left")
 
+    report_layout_problems(fig_c, FIGURE_NAME)
     plt.rcParams.update(_prev_rc)
 
     save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, MAIN_OUTPUT, close=False)
@@ -1416,7 +1274,7 @@ def generate() -> None:
     del data_tnbc
     clear_cache()
     gc.collect()
-    print("  Figure 3 complete: 8 individual panels + combined (A–H); D=QQ(top+bottom), E=λ_GC, F=runtime")
+    print("  Figure 3 complete: 8 individual panels + combined (A to H)")
 
 
 if __name__ == "__main__":

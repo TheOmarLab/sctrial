@@ -38,7 +38,6 @@ def _paired_d(deltas):
 
 def main():
     sh = _bootstrap()
-    from sctrial import TrialDesign
 
     vacc = sh.get_vaccine()
     print(f"vaccine: {vacc.n_obs:,} cells x {vacc.n_vars:,} genes")

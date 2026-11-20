@@ -8,6 +8,7 @@ style configuration, and I/O helpers used by all figure scripts.
 from __future__ import annotations
 
 import gc
+import hashlib
 import os
 import re
 import warnings
@@ -51,6 +52,47 @@ GSEA_OUTPUT = MANUSCRIPT_DIR / "GSEA"
 for _d in (MAIN_OUTPUT, SUPP_OUTPUT, GSEA_OUTPUT):
     _d.mkdir(parents=True, exist_ok=True)
 
+
+def _stats_fingerprint() -> str:
+    """Short hash of the package source that determines every estimate and gene ranking.
+
+    Fold this into the key of any cache whose content comes from ``did_fit``,
+    ``did_table``, the within-arm or between-arm comparisons, or a GSEA ranked by
+    them. A figure's own ``_CODE_VERSION`` or source hash cannot see a change to the
+    package estimator or to the ranking, so without this a cache keeps serving
+    results from the previous code, on every machine that holds one.
+    """
+    import sctrial
+
+    pkg = Path(sctrial.__file__).resolve().parent
+    h = hashlib.md5()  # noqa: S324 - cache tag, not security
+    for rel in ("stats/did.py", "utils.py", "stats/_utils.py", "stats/comparisons.py", "stats/gsea.py"):
+        h.update((pkg / rel).read_bytes())
+    return h.hexdigest()[:8]
+
+
+STATS_FINGERPRINT = _stats_fingerprint()
+
+# Covariance of the analytical gene-level DiD tests in the melanoma cohort, and of the
+# t-statistic that ranks its genes for GSEA. The responder group holds three paired
+# participants. The cluster-robust variance of the group-by-time coefficient is estimated
+# within each group, so here it rests on three participants, and its p-value uses a normal
+# reference. Over all 165 reassignments of the participants to groups of three and eight
+# it rejects 0.8% of the 1,632 variable genes at p < 0.05 and 27 times the nominal share at
+# p < 1e-5. The pooled (homoskedastic) variance uses all eleven participants and rejects
+# 2.8% at p < 0.05, 0.06% at p < 0.001 and 6.7 times the nominal share at p < 1e-5.
+# It assumes that the changes vary equally in the two groups, which does not hold for every
+# gene: among the 1,022 genes with a positive variance in both groups, the responder variance
+# is more than four times the non-responder variance in 24% (7% expected under equal
+# variances), and in 44% of those with a pooled p < 0.05, where the pooled p-value is too
+# small. Of the 58 genes with a pooled p < 0.05, 10 have a Welch p < 0.05. Under either
+# variance the number of genes with p < 0.05 lies within the range obtained under
+# reassignment. These p-values therefore describe and rank; they do not establish single
+# genes.
+# Numbers: scripts/melanoma_gene_level_calibration.py. Signature-level inference in this
+# cohort uses the wild cluster bootstrap and is not affected by this setting.
+MELANOMA_GENE_LEVEL_COV_TYPE = "nonrobust"
+
 # ---------------------------------------------------------------------------
 # Style
 # ---------------------------------------------------------------------------
@@ -87,6 +129,17 @@ def apply_style():
         "pdf.fonttype": 42,
         "ps.fonttype": 42,
     })
+
+def output_dpi() -> float:
+    """The resolution figures are written at (``savefig.dpi``; "figure" means figure.dpi).
+
+    Composites that place text from measurements are created at this resolution, so the
+    measured layout is the layout in the file: text extents measured on a coarser canvas
+    differ from the written ones by glyph-width rounding.
+    """
+    dpi = plt.rcParams["savefig.dpi"]
+    return float(plt.rcParams["figure.dpi"] if dpi == "figure" else dpi)
+
 
 def despine(ax):
     """Remove top and right spines."""
@@ -128,8 +181,10 @@ try:
         TrialDesign,
         add_log1p_cpm_layer,
         between_arm_comparison,
+        between_arm_fit_beta,
         did_fit,
         did_table,
+        get_between_arm_aggregated_df,
         get_did_aggregated_df,
         get_within_arm_aggregated_df,
         harmonize_response,
@@ -318,6 +373,1043 @@ DATASET_DISPLAY_NAMES: dict[str, str] = {
     "Sade-Feldman": "Melanoma",
     "Stephenson": "COVID-19",
 }
+
+
+# ---------------------------------------------------------------------------
+# Text labels for scatter plots
+# ---------------------------------------------------------------------------
+
+# adjustText settings, gentlest first. Every candidate is laid out and scored on
+# its defects (labels touching a label or a marker, leader lines crossing), with
+# mean leader length breaking ties; the lowest score wins. Several candidates are
+# needed because convergence depends on the font metrics of the rendering
+# machine. Crossing removal is off in the stronger settings: it swaps label pairs
+# every step and the layout oscillates instead of converging.
+_LABEL_LAYOUTS = (
+    dict(expand=(1.2, 1.4), force_text=(0.3, 0.5), force_static=(0.5, 0.7)),
+    dict(expand=(1.2, 1.4), force_text=(0.6, 0.9), force_static=(0.8, 1.0),
+         prevent_crossings=False, max_move=(20, 20)),
+    dict(expand=(1.2, 1.4), force_text=(0.6, 0.9), force_static=(1.0, 1.2),
+         force_pull=(0.0, 0.0), prevent_crossings=False, max_move=(20, 20)),
+    dict(expand=(1.1, 1.3), force_text=(0.8, 1.0), force_static=(1.0, 1.2),
+         prevent_crossings=False, max_move=(40, 40)),
+    dict(expand=(1.5, 1.8), force_text=(0.5, 0.8), force_static=(0.8, 1.0),
+         prevent_crossings=False, max_move=(20, 20)),
+)
+
+
+def _segments_cross(p1, p2, q1, q2) -> bool:
+    """True when segments p1-p2 and q1-q2 properly intersect."""
+    import numpy as np
+
+    def orient(a, b, c):
+        return np.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]))
+    return bool(orient(p1, p2, q1) * orient(p1, p2, q2) < 0
+                and orient(q1, q2, p1) * orient(q1, q2, p2) < 0)
+
+
+def _leaders(boxes, target_px, target_r_px):
+    """Per label: (label centre x, y, target x, y, gap); centre is None when attached."""
+    import numpy as np
+
+    out = []
+    for bb, (mx, my), r in zip(boxes, target_px, target_r_px):
+        gap = float(np.hypot(np.clip(mx, bb.x0, bb.x1) - mx, np.clip(my, bb.y0, bb.y1) - my))
+        out.append(((bb.x0 + bb.x1) / 2, (bb.y0 + bb.y1) / 2, mx, my, gap)
+                   if gap > r + 2 else (None, None, mx, my, gap))
+    return out
+
+
+def _crossing_pairs(leaders):
+    return [(i, j) for i, a in enumerate(leaders) for j, b in enumerate(leaders)
+            if i < j and a[0] is not None and b[0] is not None
+            and _segments_cross(a[:2], a[2:4], b[:2], b[2:4])]
+
+
+def label_layout_score(texts, target_px, target_r_px, obstacle_px, obstacle_r_px,
+                       renderer, blocked_px=(), own=None,
+                       own_slack_px: float = 0.0) -> tuple[int, float]:
+    """(defects, mean label-to-target gap in px) for a finished label layout.
+
+    Defects are label-label overlaps, labels touching any obstacle disc or any
+    blocked display-space box (e.g. a reference line), and crossing leader lines
+    (label centre to its target, counted when the label is detached). ``own``
+    gives each label's own marker as an index into the obstacles; that disc is
+    shrunk by ``own_slack_px`` so a label may sit right beside its own point.
+    """
+    import numpy as np
+
+    boxes = [t.get_window_extent(renderer) for t in texts]
+    defects = sum(boxes[i].overlaps(boxes[j])
+                  for i in range(len(boxes)) for j in range(i + 1, len(boxes)))
+    defects += sum(bb.overlaps(blk) for bb in boxes for blk in blocked_px)
+    for k, bb in enumerate(boxes):
+        radii = np.array(obstacle_r_px, dtype=float, copy=True)
+        if own is not None:
+            radii[own[k]] -= own_slack_px
+        cx = np.clip(obstacle_px[:, 0], bb.x0, bb.x1)
+        cy = np.clip(obstacle_px[:, 1], bb.y0, bb.y1)
+        defects += int(np.any((cx - obstacle_px[:, 0]) ** 2 + (cy - obstacle_px[:, 1]) ** 2
+                              < radii ** 2))
+    leaders = _leaders(boxes, target_px, target_r_px)
+    defects += len(_crossing_pairs(leaders))
+    return defects, float(np.mean([seg[4] for seg in leaders]))
+
+
+def label_points(ax, names, x, y, s, *, fontsize: float, obstacles=None,
+                 hlines=(), vlines=(), priority=None, counts=None,
+                 max_mean_leader_pt: float | None = None, fontweight: str = "bold",
+                 color: str = "black") -> list[str]:
+    """Label scatter points clear of each other and of markers, with leader lines.
+
+    ``names``, ``x``, ``y`` are the points to label (data coordinates) and ``s`` their
+    marker area in pt^2 (scalar or one per point), as passed to ``scatter``.
+    ``obstacles`` is an optional ``(xy, s)`` pair of further markers no label may
+    touch; the labelled points are always obstacles. ``hlines``/``vlines`` are
+    data-coordinate reference lines (e.g. a significance threshold) no label may
+    sit on. ``priority`` (indices into ``names``, most important first) and
+    ``counts`` (label counts to try, largest first) make the function label the top
+    ``n`` points for the first ``n`` whose layout has no defect and, when
+    ``max_mean_leader_pt`` is set, a mean label-to-point gap no longer than that:
+    the right behaviour for a cell too small to name every point. Returns the
+    names that were labelled.
+
+    Each candidate setting in ``_LABEL_LAYOUTS`` is laid out by adjustText against
+    data-space boxes around every marker (marker radius plus 1 pt), with a fixed
+    iteration budget and numpy's global RNG seeded (adjustText jitters coincident
+    labels with it), then crossing leaders are swapped while that lowers the
+    defect score; the best layout is kept. The canvas is drawn first so marker
+    sizes are measured at the figure dpi. Axis limits, the axes position and the
+    label font size must be final before calling: adjustText works in display
+    space, so a later resize moves markers under labels.
+    """
+    import numpy as np
+    from adjustText import adjust_text
+    from matplotlib.patches import FancyArrowPatch
+    from matplotlib.transforms import Bbox
+
+    names = list(names)
+    xy = np.column_stack([np.asarray(x, dtype=float), np.asarray(y, dtype=float)])
+    size = np.broadcast_to(np.asarray(s, dtype=float), (len(names),))
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    to_px = fig.dpi / 72
+
+    def _discs(points, areas):
+        px = ax.transData.transform(points)
+        return px, (np.sqrt(areas) / 2 + 1.0) * to_px
+
+    if obstacles is not None:
+        obs_xy = np.asarray(obstacles[0], dtype=float).reshape(-1, 2)
+        obs_s = np.broadcast_to(np.asarray(obstacles[1], dtype=float), (len(obs_xy),))
+        # A labelled point passed again as an obstacle would block its own label.
+        dup = np.array([np.any(np.all(np.isclose(o, xy), axis=1)) for o in obs_xy],
+                       dtype=bool)
+        all_xy = np.vstack([xy, obs_xy[~dup]])
+        all_s = np.concatenate([size, obs_s[~dup]])
+    else:
+        all_xy, all_s = xy, size
+    obstacle_px, obstacle_r = _discs(all_xy, all_s)
+    # adjustText repels from each marker's own extent; the 1 pt clearance applies
+    # only when scoring (padding the solver's boxes stalls it in dense clusters).
+    marker_r = np.sqrt(all_s) / 2 * to_px
+    inv = ax.transData.inverted()
+    lo = inv.transform(obstacle_px - marker_r[:, None])
+    hi = inv.transform(obstacle_px + marker_r[:, None])
+    boxes = [Bbox([np.minimum(a, b), np.maximum(a, b)]) for a, b in zip(lo, hi)]
+    # Reference lines become thin display-space strips (1 pt either side), and the
+    # four frame edges become strips just inside the axes, so no label sits on a
+    # line it does not describe or touches a spine.
+    frame = ax.get_window_extent(renderer)
+    half = 1.0 * to_px
+    edge = 1.5 * to_px
+    blocked_px = [
+        Bbox([[frame.x0, frame.y0], [frame.x0 + edge, frame.y1]]),
+        Bbox([[frame.x1 - edge, frame.y0], [frame.x1, frame.y1]]),
+        Bbox([[frame.x0, frame.y0], [frame.x1, frame.y0 + edge]]),
+        Bbox([[frame.x0, frame.y1 - edge], [frame.x1, frame.y1]]),
+    ]
+    for yv in hlines:
+        py = ax.transData.transform((0.0, yv))[1]
+        blocked_px.append(Bbox([[frame.x0, py - half], [frame.x1, py + half]]))
+    for xv in vlines:
+        px_ = ax.transData.transform((xv, 0.0))[0]
+        blocked_px.append(Bbox([[px_ - half, frame.y0], [px_ + half, frame.y1]]))
+    # Each setting runs twice, with and without the frame strips among the solver's
+    # obstacles (ensure_inside_axes alone lets labels rest on a spine, but the strips
+    # also perturb adjustText's initial explode step); scoring always includes them.
+    line_boxes = [Bbox(inv.transform(b.get_points())) for b in blocked_px[4:]]
+    frame_boxes = [Bbox(inv.transform(b.get_points())) for b in blocked_px[:4]]
+
+    order = list(priority) if priority is not None else list(range(len(names)))
+    tries = list(counts) if counts is not None else [len(names)]
+    tries = [n for n in tries if n <= len(names)] or [len(names)]
+
+    def _place(keep):
+        target_px, target_r = _discs(xy[keep], size[keep])
+        best = None
+        for settings, with_frame in ((s_, f_) for s_ in _LABEL_LAYOUTS for f_ in (True, False)):
+            texts = [ax.text(xy[i, 0], xy[i, 1], names[i], fontsize=fontsize,
+                             fontweight=fontweight, color=color, zorder=6) for i in keep]
+            objects = boxes + line_boxes + (frame_boxes if with_frame else [])
+            rng_state = np.random.get_state()
+            np.random.seed(0)
+            try:
+                adjust_text(texts, objects=objects, ax=ax, iter_lim=3000,
+                            ensure_inside_axes=True, **settings)
+            finally:
+                np.random.set_state(rng_state)
+            args = (target_px, target_r, obstacle_px, obstacle_r, renderer, blocked_px,
+                    keep, 1.0 * to_px)
+            score = label_layout_score(texts, *args)
+            for _ in range(len(texts)):
+                improved = False
+                cur = [t.get_window_extent(renderer) for t in texts]
+                for i, j in _crossing_pairs(_leaders(cur, target_px, target_r)):
+                    pi, pj = texts[i].get_position(), texts[j].get_position()
+                    texts[i].set_position(pj)
+                    texts[j].set_position(pi)
+                    new = label_layout_score(texts, *args)
+                    if new < score:
+                        score, improved = new, True
+                        break
+                    texts[i].set_position(pi)
+                    texts[j].set_position(pj)
+                if not improved:
+                    break
+            if best is None or score < best[0]:
+                if best is not None:
+                    for t in best[1]:
+                        t.remove()
+                best = (score, texts)
+            else:
+                for t in texts:
+                    t.remove()
+        return best
+
+    # Accept the largest count whose layout is defect-free with short leaders; if
+    # none is, fall back to the fewest defects (then more labels, shorter leaders).
+    max_gap_px = None if max_mean_leader_pt is None else max_mean_leader_pt * to_px
+    attempts, chosen = [], None
+    for n in tries:
+        keep = sorted(order[:n])
+        (defects, mean_gap), texts = _place(keep)
+        attempts.append(((defects, -n, mean_gap), keep, [t.get_position() for t in texts]))
+        for t in texts:
+            t.remove()
+        if defects == 0 and (max_gap_px is None or mean_gap <= max_gap_px):
+            chosen = attempts[-1]
+            break
+    _, keep, positions = chosen if chosen is not None else min(attempts, key=lambda a: a[0])
+    texts = [ax.text(px_, py_, names[i], fontsize=fontsize, fontweight=fontweight,
+                     color=color, ha="center", va="center", zorder=6)
+             for i, (px_, py_) in zip(keep, positions)]
+
+    target_px, target_r = _discs(xy[keep], size[keep])
+    for txt, i, (mx, my), r in zip(texts, keep, target_px, target_r):
+        bb = txt.get_window_extent(renderer)
+        gap = np.hypot(np.clip(mx, bb.x0, bb.x1) - mx, np.clip(my, bb.y0, bb.y1) - my)
+        if gap > r + 2:
+            ax.add_patch(FancyArrowPatch(
+                posA=txt.get_position(), posB=tuple(xy[i]), patchA=txt, arrowstyle="-",
+                color="gray", lw=0.4, alpha=0.7, shrinkA=0.5,
+                shrinkB=float(np.sqrt(size[i]) / 2), zorder=2, transform=ax.transData))
+    return [names[i] for i in keep]
+
+
+def key_below_axes(ax, *, ncol: int, fontsize: float | None = None, gap_pt: float = 2.0,
+                   clear_of=None, keep_title: bool = False):
+    """Move the axis legend just below the axis' own text (x tick labels and x label).
+
+    The offset is measured after a draw, in points, so the key clears the axis text at any
+    panel size and never sits on data. ``clear_of`` (axes in the same row) puts the key below
+    the lowest x-axis text of all of them, so a row of keys shares one baseline. Call it once
+    the panel's fonts are final. ``keep_title`` carries the legend's title over. Returns the
+    new legend, or None when the axis has no legend.
+    """
+    import matplotlib.transforms as mtransforms
+
+    leg = ax.get_legend()
+    if leg is None:
+        return None
+    handles = leg.legend_handles
+    labels = [t.get_text() for t in leg.get_texts()]
+    title = leg.get_title().get_text() if keep_title else ""
+    if fontsize is None:
+        fontsize = leg.get_texts()[0].get_fontsize() if labels else plt.rcParams["legend.fontsize"]
+    leg.remove()
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    axes_bottom = ax.get_window_extent(renderer).y0
+    boxes = [a.xaxis.get_tightbbox(renderer) for a in (clear_of or [ax])]
+    text_bottom = min([axes_bottom] + [b.y0 for b in boxes if b is not None])  # None: no x text
+    offset_pt = (axes_bottom - text_bottom) * 72 / fig.dpi + gap_pt
+    return ax.legend(
+        handles=handles, labels=labels, loc="upper center", bbox_to_anchor=(0.5, 0.0),
+        bbox_transform=mtransforms.offset_copy(ax.transAxes, fig=fig, y=-offset_pt,
+                                               units="points"),
+        ncol=ncol, fontsize=fontsize, frameon=True, framealpha=0.9, edgecolor="#CCCCCC",
+        borderpad=0.3, columnspacing=0.8, handlelength=0.8, handletextpad=0.3,
+        labelspacing=0.2, title=title or None, title_fontsize=fontsize,
+    )
+
+
+def key_below_row(axes, *, ncol: int, fontsize: float | None = None, gap_pt: float = 2.0):
+    """One key for a row of axes that share it, centred under the row.
+
+    Axes that show the same series repeat one key. The handles are taken from the first
+    axes' legend, the legends of all the axes are removed, and a single key is placed
+    ``gap_pt`` below the lowest x-axis text of the row, measured after a draw. Call it once
+    the row's fonts are final. Returns the new legend, or None when the first axes has none.
+    """
+    leg = axes[0].get_legend()
+    if leg is None:
+        return None
+    handles = leg.legend_handles
+    labels = [t.get_text() for t in leg.get_texts()]
+    if fontsize is None:
+        fontsize = leg.get_texts()[0].get_fontsize() if labels else plt.rcParams["legend.fontsize"]
+    for a in axes:
+        if a.get_legend() is not None:
+            a.get_legend().remove()
+    fig = axes[0].figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    extents = [a.get_window_extent(renderer) for a in axes]
+    boxes = [a.xaxis.get_tightbbox(renderer) for a in axes]
+    bottom = min([e.y0 for e in extents] + [b.y0 for b in boxes if b is not None])
+    centre = 0.5 * (min(e.x0 for e in extents) + max(e.x1 for e in extents))
+    anchor = fig.transFigure.inverted().transform((centre, bottom - gap_pt * fig.dpi / 72))
+    return axes[0].legend(
+        handles=handles, labels=labels, loc="upper center", bbox_to_anchor=tuple(anchor),
+        bbox_transform=fig.transFigure, ncol=ncol, fontsize=fontsize, frameon=True,
+        framealpha=0.9, edgecolor="#CCCCCC", borderpad=0.3, columnspacing=0.8,
+        handlelength=0.8, handletextpad=0.3, labelspacing=0.2,
+    )
+
+
+_KEY_INSIDE_ORDER = ("upper right", "upper left", "lower right", "lower left",
+                     "upper center", "lower center", "center right", "center left")
+
+
+def _drawn_boxes(ax, renderer, *, step_px: float = 3.0):
+    """Display-space boxes of what an axes draws: bars, boxes, lines, points and text.
+
+    Lines and line collections are sampled along their length, so a diagonal line counts
+    for the pixels it crosses and not for its whole bounding box. Returns two (n, 4) arrays
+    of x0, y0, x1, y1: the data and text, and the reference lines that span the axes
+    (``axhline``, ``axvline``).
+    """
+    import numpy as np
+    from matplotlib.collections import LineCollection, PathCollection
+
+    px = ax.figure.dpi / 72.0
+    data: list[tuple[float, float, float, float]] = []
+    reference: list[tuple[float, float, float, float]] = []
+    out = data
+
+    def along(points, half):
+        points = np.asarray(points, dtype=float)
+        points = points[np.isfinite(points).all(axis=1)]
+        if len(points) == 0:
+            return
+        if len(points) > 1:
+            pieces = []
+            for a, b in zip(points[:-1], points[1:]):
+                n = int(np.ceil(np.hypot(*(b - a)) / step_px)) + 1
+                pieces.append(np.linspace(a, b, n))
+            points = np.vstack(pieces)
+        out.extend((x - half, y - half, x + half, y + half) for x, y in points)
+
+    for patch in ax.patches:
+        if patch.get_visible():
+            box = patch.get_window_extent(renderer)
+            out.append((box.x0, box.y0, box.x1, box.y1))
+    for line in ax.lines:
+        if not line.get_visible():
+            continue
+        half = max(line.get_linewidth(), line.get_markersize() if line.get_marker() not in
+                   (None, "None", "", " ") else 0.0) / 2 * px
+        out = data if line.get_transform() == ax.transData else reference
+        along(line.get_transform().transform(line.get_xydata()), half)
+    out = data
+    for coll in ax.collections:
+        if not coll.get_visible():
+            continue
+        if isinstance(coll, LineCollection):
+            widths = coll.get_linewidths()
+            half = (float(np.max(widths)) if len(widths) else 1.0) / 2 * px
+            for segment in coll.get_segments():
+                along(coll.get_transform().transform(segment), half)
+        elif isinstance(coll, PathCollection):
+            offsets = coll.get_offset_transform().transform(coll.get_offsets())
+            sizes = coll.get_sizes()
+            radius = (np.sqrt(float(np.max(sizes))) if len(sizes) else 1.0) / 2 * px
+            out.extend((x - radius, y - radius, x + radius, y + radius) for x, y in offsets
+                       if np.isfinite(x) and np.isfinite(y))
+        else:
+            box = coll.get_window_extent(renderer)
+            out.append((box.x0, box.y0, box.x1, box.y1))
+    for artist in list(ax.texts) + list(ax.images):
+        if artist.get_visible() and (not hasattr(artist, "get_text") or artist.get_text()):
+            box = artist.get_window_extent(renderer)
+            out.append((box.x0, box.y0, box.x1, box.y1))
+    return (np.asarray(data, dtype=float).reshape(-1, 4),
+            np.asarray(reference, dtype=float).reshape(-1, 4))
+
+
+def key_inside_axes(ax, *, ncol: int, fontsize: float | None = None,
+                    prefer=(), band: str | None = None, keep_title: bool = False):
+    """Put the axis legend inside the axes where it covers no data and no text.
+
+    The key is measured after a draw and each location is tested against what the axes
+    draws (bars, boxes, lines, points, annotations): first those in ``prefer``, then the
+    other corners and edge centres. The first location with nothing under it is used,
+    failing that the first that covers only a reference line spanning the axes (``axhline``,
+    ``axvline``). When every location covers data or text, ``band="top"`` or
+    ``band="bottom"`` extends the y range on that side by the height of the key and puts
+    the key in the band; with ``band=None`` the location that covers least is used. Call it
+    once the panel's fonts and limits are final. Returns ``(legend, loc, covered)``: the
+    new legend, the location chosen, and the area of data and text under the key in square
+    points (0.0 when the key is clear of both). Returns None when the axis has no legend.
+    """
+    import numpy as np
+
+    leg = ax.get_legend()
+    if leg is None:
+        return None
+    handles = leg.legend_handles
+    labels = [t.get_text() for t in leg.get_texts()]
+    title = leg.get_title().get_text() if keep_title else ""
+    if fontsize is None:
+        fontsize = leg.get_texts()[0].get_fontsize() if labels else plt.rcParams["legend.fontsize"]
+    leg.remove()
+    style = dict(
+        handles=handles, labels=labels, ncol=ncol, fontsize=fontsize, frameon=True,
+        framealpha=0.85, edgecolor="#CCCCCC", borderpad=0.3, handlelength=1.0,
+        handletextpad=0.3, labelspacing=0.2, columnspacing=0.8, borderaxespad=0.4,
+        title=title or None, title_fontsize=fontsize,
+    )
+    if band not in (None, "top", "bottom"):
+        raise ValueError("band must be None, 'top' or 'bottom'.")
+    fig = ax.figure
+
+    def place(order):
+        probe = ax.legend(loc="upper right", **style)
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        key = probe.get_window_extent(renderer)
+        probe.remove()
+        frame = ax.get_window_extent(renderer)
+        data, reference = _drawn_boxes(ax, renderer)
+        pad = style["borderaxespad"] * fontsize * fig.dpi / 72.0
+        xs = {"left": frame.x0 + pad, "center": (frame.x0 + frame.x1 - key.width) / 2,
+              "right": frame.x1 - pad - key.width}
+        ys = {"lower": frame.y0 + pad, "center": (frame.y0 + frame.y1 - key.height) / 2,
+              "upper": frame.y1 - pad - key.height}
+
+        def covered(loc: str, drawn) -> float:
+            vertical, horizontal = loc.split()
+            x0, y0 = xs[horizontal], ys[vertical]
+            x1, y1 = x0 + key.width, y0 + key.height
+            if len(drawn) == 0:
+                return 0.0
+            width = np.clip(np.minimum(drawn[:, 2], x1) - np.maximum(drawn[:, 0], x0), 0, None)
+            height = np.clip(np.minimum(drawn[:, 3], y1) - np.maximum(drawn[:, 1], y0), 0, None)
+            return float((width * height).sum()) * (72.0 / fig.dpi) ** 2
+
+        on_data = {loc: covered(loc, data) for loc in order}
+        on_line = {loc: covered(loc, reference) for loc in order}
+        best = next(
+            (loc for loc in order if on_data[loc] == 0.0 and on_line[loc] == 0.0),
+            next((loc for loc in order if on_data[loc] == 0.0), min(order, key=on_data.get)),
+        )
+        return best, on_data[best], (key.height + 2 * pad) / frame.height
+
+    order = tuple(dict.fromkeys(tuple(prefer) + _KEY_INSIDE_ORDER))
+    best, area, share = place(order)
+    if area > 0.0 and band is not None and share < 0.5:
+        # Extend in the axis' own scale, so a log axis gains the same share of its height
+        scale = ax.yaxis.get_transform()
+        low, high = scale.transform(ax.get_ylim())
+        extra = (high - low) * share / (1.0 - share)
+        side = "upper" if band == "top" else "lower"
+        if (band == "top") == (high > low):
+            high += extra
+        else:
+            low -= extra
+        ax.set_ylim(*scale.inverted().transform([low, high]))
+        best, area, _ = place((f"{side} right", f"{side} left", f"{side} center"))
+    return ax.legend(loc=best, **style), best, area
+
+
+def letter_left_of_band(fig, letter: str, *, fontsize: float, left: float, top: float,
+                        boxes, gap_pt: float = 2.5) -> tuple[float, float]:
+    """Figure coordinates for a bold letter whose top is at display y ``top``.
+
+    The letter starts at display x ``left`` unless one of ``boxes`` (display-space bounding
+    boxes of the panel's text) shares its height band and starts within the letter's width;
+    then it moves left to end ``gap_pt`` before the leftmost such box.
+    """
+    import matplotlib.text as mtext
+
+    renderer = fig.canvas.get_renderer()
+    probe = mtext.Text(0, 0, letter, fontsize=fontsize, fontweight="bold")
+    probe.set_figure(fig)
+    ext = probe.get_window_extent(renderer)
+    gap = gap_pt * fig.dpi / 72
+    band = [b for b in boxes if b.y1 > top - ext.height and b.y0 < top]
+    x = left
+    if band:
+        x = min(x, min(b.x0 for b in band) - ext.width - gap)
+    return tuple(fig.transFigure.inverted().transform((x, top)))
+
+
+def letter_at_panel_corner(ax, letter: str, *, fontsize: float, top: float | None = None,
+                           keep_clear: bool = False) -> None:
+    """Put a bold panel letter at the left edge of the panel's own labels, level with its title.
+
+    For panels whose tick labels or title reach well left of the axes (heatmaps with long row
+    names, narrow panels with long titles), where a fixed axes-fraction offset lands on a label.
+    ``keep_clear`` moves the letter left of any of the panel's text in its height band, for a
+    title wider than its axes or a y label reaching up to the title.
+    """
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    own = ax.get_yticklabels() + [ax.yaxis.label] + list(ax.texts)  # row names, y label, groups
+    own = [t for t in own if t.get_visible() and t.get_text()]
+    lefts = [t.get_window_extent(renderer).x0 for t in own]
+    lefts += [ax.get_window_extent(renderer).x0]
+    if ax.get_title():
+        lefts.append(ax.title.get_window_extent(renderer).x0)
+        own.append(ax.title)
+    if top is None:  # display y of the letter's top; default level with the title
+        top = (ax.title.get_window_extent(renderer).y1 if ax.get_title()
+               else ax.get_window_extent(renderer).y1)
+    if keep_clear:
+        x, y = letter_left_of_band(fig, letter, fontsize=fontsize, left=min(lefts), top=top,
+                                   boxes=[t.get_window_extent(renderer) for t in own])
+    else:
+        x, y = fig.transFigure.inverted().transform((min(lefts), top))
+    fig.text(x, y, letter, fontsize=fontsize, fontweight="bold", va="top", ha="left")
+
+
+def group_axis_labels(ax, groups, *, fontsize: float, gap_pt: float = 1.5,
+                      axis: str = "x") -> None:
+    """Write one label per group of ticks, outside the tick labels.
+
+    ``groups`` is a list of (label, start, end) in data coordinates along ``axis``. Used where
+    each tick carries only its own short label (Pre/Post, a visit) and the shared part (dataset,
+    arm) would otherwise repeat on every tick. On the x axis the label goes under the tick labels;
+    on the y axis it goes to their left, centred on the group.
+    """
+    import matplotlib.transforms as mtransforms
+
+    if axis not in ("x", "y"):
+        raise ValueError(f"axis must be 'x' or 'y', not {axis!r}")
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    box = ax.get_window_extent(renderer)
+    if axis == "x":
+        edge = min([box.y0] + [t.get_window_extent(renderer).y0
+                               for t in ax.get_xticklabels() if t.get_text()])
+        offset_pt = (box.y0 - edge) * 72 / fig.dpi + gap_pt
+        trans = mtransforms.offset_copy(ax.get_xaxis_transform(), fig=fig, y=-offset_pt,
+                                        units="points")
+        for label, a, b in groups:
+            ax.text((a + b) / 2, 0.0, label, transform=trans, ha="center", va="top",
+                    fontsize=fontsize, clip_on=False)
+    else:
+        edge = min([box.x0] + [t.get_window_extent(renderer).x0
+                               for t in ax.get_yticklabels() if t.get_text()])
+        offset_pt = (box.x0 - edge) * 72 / fig.dpi + gap_pt
+        trans = mtransforms.offset_copy(ax.get_yaxis_transform(), fig=fig, x=-offset_pt,
+                                        units="points")
+        for label, a, b in groups:
+            ax.text(0.0, (a + b) / 2, label, transform=trans, ha="right", va="center_baseline",
+                    fontsize=fontsize, clip_on=False)
+
+
+def _oriented_box(text, renderer):
+    """Centre, half-extents and angle (radians) of a text's rotated rectangle, in display px.
+
+    get_window_extent() gives the axis-aligned box of the rotated text, which for a 30 degree
+    label is far larger than the glyphs; the rotated rectangle has the unrotated size and the
+    same centre.
+    """
+    import numpy as np
+
+    box = text.get_window_extent(renderer)
+    angle = np.deg2rad(text.get_rotation() % 180)
+    if np.isclose(angle, 0) or np.isclose(angle, np.pi / 2):
+        w, h = box.width, box.height
+        angle = 0.0
+    else:
+        rotation = text.get_rotation()
+        text.set_rotation(0)
+        flat = text.get_window_extent(renderer)
+        text.set_rotation(rotation)
+        w, h = flat.width, flat.height
+    return np.array([(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2]), np.array([w, h]) / 2, angle
+
+
+def _box_corners(centre, half, angle):
+    import numpy as np
+
+    c, s = np.cos(angle), np.sin(angle)
+    axes = np.array([[c, s], [-s, c]])
+    signs = np.array([[1, 1], [1, -1], [-1, -1], [-1, 1]])
+    return centre + (signs * half) @ axes, axes
+
+
+def _penetration(a, b) -> float:
+    """Smallest overlap of two convex boxes over their separating axes (<= 0: apart)."""
+    import numpy as np
+
+    (ca, axes_a), (cb, axes_b) = a, b
+    depth = np.inf
+    for axis in np.vstack([axes_a, axes_b]):
+        pa, pb = ca @ axis, cb @ axis
+        depth = min(depth, min(pa.max(), pb.max()) - max(pa.min(), pb.min()))
+        if depth <= 0:
+            return depth
+    return depth
+
+
+def _layout_texts(fig, renderer):
+    """Every visible, non-empty text in the figure as (owner axes or None, description, text)."""
+    items = []
+
+    def add(owner, kind, text):
+        if text is not None and text.get_visible() and text.get_text().strip():
+            items.append((owner, kind, text))
+
+    for ax in fig.axes:
+        if not ax.get_visible():
+            continue
+        for title in (ax.title, ax._left_title, ax._right_title):
+            add(ax, "title", title)
+        for text in ax.texts:
+            add(ax, "text", text)
+        if not ax.axison:  # axis("off"): titles and texts are drawn, labels and ticks are not
+            continue
+        add(ax, "x label", ax.xaxis.label)
+        add(ax, "y label", ax.yaxis.label)
+        for axis, name, bound in ((ax.xaxis, "x tick", ax.get_xbound()),
+                                  (ax.yaxis, "y tick", ax.get_ybound())):
+            lo, hi = min(bound), max(bound)
+            pad = 1e-9 * max(1.0, abs(hi - lo))
+            for tick in axis.get_major_ticks():
+                if lo - pad <= tick.get_loc() <= hi + pad:
+                    add(ax, name, tick.label1)
+                    add(ax, name, tick.label2)
+    for text in fig.texts:
+        add(None, "figure text", text)
+    return items
+
+
+def layout_problems(fig, *, min_overlap_pt: float = 0.5) -> dict[str, list[str]]:
+    """Text that collides with other text, lands on another panel, or leaves the canvas.
+
+    Checks every visible title, axis label, in-view tick label, annotation, figure-level text
+    (panel letters) and legend. Rotated labels are tested as rotated rectangles. A legend counts
+    as one box. Returns {"text overlaps", "text on another axes", "outside canvas"}, each a list of
+    readable descriptions; overlaps smaller than ``min_overlap_pt`` are ignored.
+    """
+    import numpy as np
+
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    tol = min_overlap_pt * fig.dpi / 72
+    entries = []  # (owner axes, description, corners, aabb)
+
+    def panel_name(ax):
+        if ax is None:
+            return "figure"
+        name = ax.get_title() or ax.get_title(loc="left") or ax.yaxis.label.get_text() or "untitled"
+        return " ".join(name.split())
+
+    for owner, kind, text in _layout_texts(fig, renderer):
+        centre, half, angle = _oriented_box(text, renderer)
+        corners, axes = _box_corners(centre, half, angle)
+        label = f"[{panel_name(owner)[:40]}] {kind} {' '.join(text.get_text().split())[:40]!r}"
+        entries.append((owner, label, (corners, axes), text.get_window_extent(renderer)))
+    legends = [(None, lg) for lg in fig.legends] + [(ax, ax.get_legend()) for ax in fig.axes]
+    for ax, legend in legends:
+        if legend is not None and legend.get_visible():
+            box = legend.get_window_extent(renderer)
+            centre = np.array([(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2])
+            corners, axes = _box_corners(centre, np.array([box.width, box.height]) / 2, 0.0)
+            entries.append((ax, f"[{panel_name(ax)[:40]}] legend", (corners, axes), box))
+
+    problems: dict[str, list[str]] = {"text overlaps": [], "text on another axes": [],
+                                      "outside canvas": []}
+    aabbs = np.array([[b.x0, b.y0, b.x1, b.y1] for *_, b in entries])
+    for i in range(len(entries)):
+        near = np.nonzero((aabbs[i + 1:, 0] < aabbs[i, 2]) & (aabbs[i + 1:, 2] > aabbs[i, 0])
+                          & (aabbs[i + 1:, 1] < aabbs[i, 3]) & (aabbs[i + 1:, 3] > aabbs[i, 1]))[0]
+        for j in near + i + 1:
+            depth = _penetration(entries[i][2], entries[j][2])
+            if depth > tol:
+                problems["text overlaps"].append(
+                    f"{entries[i][1]} x {entries[j][1]} ({depth * 72 / fig.dpi:.1f} pt)")
+
+    canvas = fig.bbox
+    areas = []
+    for ax in fig.axes:
+        if ax.get_visible() and ax.axison:
+            a = ax.get_window_extent(renderer)
+            areas.append((ax, a, _box_corners(np.array([(a.x0 + a.x1) / 2, (a.y0 + a.y1) / 2]),
+                                              np.array([a.width, a.height]) / 2, 0.0)))
+    for owner, label, box, aabb in entries:
+        corners = box[0]
+        beyond = max(canvas.x0 - corners[:, 0].min(), corners[:, 0].max() - canvas.x1,
+                     canvas.y0 - corners[:, 1].min(), corners[:, 1].max() - canvas.y1)
+        if beyond > tol:
+            problems["outside canvas"].append(f"{label} ({beyond * 72 / fig.dpi:.1f} pt)")
+        own = owner.get_window_extent(renderer) if owner is not None else None
+        for ax, area, ax_box in areas:
+            if ax is owner or (own is not None and np.allclose(own.extents, area.extents, atol=1)):
+                continue  # its own axes, or a twin sharing the same area
+            if aabb.x1 <= area.x0 or aabb.x0 >= area.x1 or aabb.y1 <= area.y0 or aabb.y0 >= area.y1:
+                continue
+            depth = _penetration(box, ax_box)
+            if depth > tol:
+                problems["text on another axes"].append(
+                    f"{label} on [{panel_name(ax)[:40]}] ({depth * 72 / fig.dpi:.1f} pt)")
+    return problems
+
+
+def report_layout_problems(fig, name: str, *, limit: int = 40) -> int:
+    """Print layout_problems() for a finished figure; returns the number of problems."""
+    problems = layout_problems(fig)
+    total = sum(len(v) for v in problems.values())
+    print(f"    Layout check {name}: " + ", ".join(f"{len(v)} {k}" for k, v in problems.items()))
+    for kind, rows in problems.items():
+        for row in rows[:limit]:
+            print(f"      {kind}: {row}")
+        if len(rows) > limit:
+            print(f"      {kind}: ... {len(rows) - limit} more")
+    return total
+
+
+def plot_cell_vs_participant_beta(ax, res_cell, res_part, *, title: str,
+                                  composite: bool = False,
+                                  label_fs: float | None = None) -> None:
+    """Scatter of cell-level against participant-level beta_DiD, one point per signature.
+
+    Shared by Figure 2B (TNBC) and Supp Figure 3B (melanoma). ``res_cell`` and
+    ``res_part`` are ``did_table`` outputs; ``composite`` sizes everything for the
+    small multi-panel artboard. ``label_fs`` overrides the signature-label size of
+    the standalone panel (by default the active tick-label size).
+    """
+    import matplotlib.patches as mpatches
+    from matplotlib.font_manager import FontProperties
+    from matplotlib.lines import Line2D
+    from scipy import stats
+
+    rc = res_cell.set_index("feature")
+    rp = res_part.set_index("feature")
+    common = rc.index.intersection(rp.index)
+
+    beta_cell = rc.loc[common, "beta_DiD"].values
+    beta_part = rp.loc[common, "beta_DiD"].values
+    colors = [COLORS["treated"] if b > 0 else COLORS["control"] for b in beta_part]
+
+    ax.scatter(beta_cell, beta_part, c=colors, s=15 if composite else 30,
+               edgecolors="white", linewidths=0.5, zorder=3)
+
+    lim_lo = min(beta_cell.min(), beta_part.min()) * 1.2
+    lim_hi = max(beta_cell.max(), beta_part.max()) * 1.2
+    ax.plot([lim_lo, lim_hi], [lim_lo, lim_hi], "--",
+            color=COLORS["gray"], lw=1, zorder=1)
+    ax.axhline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
+    ax.axvline(0, color=COLORS["gray"], lw=0.5, ls=":", zorder=0)
+
+    # Explicit limits guarantee every marker is inside the view; an earlier version
+    # clipped a marker below the axis while its label floated in the corner. The
+    # standalone panel shares one range so the identity line runs at 45 degrees. The
+    # composite cell is a ~3.5:1 strip where shared limits squeeze the narrow
+    # cell-level spread into the middle third, so each axis spans its own data there,
+    # with room above and below the markers for the signature labels.
+    if composite:
+        for set_lim, v, frac in ((ax.set_xlim, beta_cell, 0.15), (ax.set_ylim, beta_part, 0.45)):
+            pad = frac * (v.max() - v.min())
+            set_lim(v.min() - pad, v.max() + pad)
+    else:
+        ax.set_xlim(lim_lo, lim_hi)
+        ax.set_ylim(lim_lo, lim_hi)
+
+    ax.tick_params(axis="y", labelsize=5)
+    ax.set_xlabel(r'$\beta_{DID}$ (cell-level)', fontsize=9)
+    ax.set_ylabel(r'$\beta_{DID}$ (participant-level)', fontsize=9)
+    ax.set_title(title, fontsize=11, fontweight="bold")
+
+    # Final text sizes, fixed BEFORE label layout: the standalone export raises
+    # text to a minimum size afterwards and the composite shrinks it, and any
+    # resize after the labels are placed makes them collide.
+    if composite:
+        label_fs = 4.0
+    elif label_fs is None:
+        label_fs = max(
+            5.0, FontProperties(size=plt.rcParams["xtick.labelsize"]).get_size_in_points()
+        )
+
+    # Spearman rho, not Pearson r. The key and the rho statistic sit in one row
+    # below the axes, so nothing inside the plot competes with the labels.
+    rho, p = stats.spearmanr(beta_cell, beta_part)
+    handles = [
+        mpatches.Patch(facecolor=COLORS["treated"], label="Positive effect"),
+        mpatches.Patch(facecolor=COLORS["control"], label="Negative effect"),
+        Line2D([], [], linestyle="none", label=f"ρ = {rho:.2f}, p = {p:.1e}"),
+    ]
+    ax.legend(handles=handles, fontsize=5 if composite else label_fs, ncol=3,
+              loc="upper center", bbox_to_anchor=(0.5, -0.5 if composite else -0.12),
+              frameon=True, framealpha=0.9, handlelength=0.8, handletextpad=0.3,
+              columnspacing=1.2, borderpad=0.25)
+
+    # One label per signature, placed where it covers no marker, no other label and
+    # no reference line, with a leader back to its marker (see place_point_labels).
+    # Positions are measured on the page, so the standalone panel takes its final
+    # layout first; the composite cell is already laid out by its grid.
+    if not composite:
+        ax.figure.tight_layout()
+    (x_lo, x_hi), (y_lo, y_hi) = ax.get_xlim(), ax.get_ylim()
+    _, allowances = place_point_labels(
+        ax, beta_cell, beta_part, [sig_display(feat) for feat in common],
+        fontsize=label_fs, marker_area=15 if composite else 30,
+        lines=[((lim_lo, lim_lo), (lim_hi, lim_hi)), ((x_lo, 0.0), (x_hi, 0.0)),
+               ((0.0, y_lo), (0.0, y_hi))],
+    )
+    print(f"    scatter labels ({title}): {len(common)} placed, {allowances} under an allowance")
+    despine(ax)
+
+
+def _segments_through_boxes(start, end, boxes):
+    """Whether each segment passes through each box, by broadcasting.
+
+    ``start`` and ``end`` end in an axis of length 2 and ``boxes`` in one of length 4
+    (x0, y0, x1, y1). A segment that only touches the edge of a box does not count.
+    """
+    import numpy as np
+
+    t0, t1 = 0.0, 1.0
+    for axis in (0, 1):
+        origin, delta = start[..., axis], end[..., axis] - start[..., axis]
+        lo, hi = boxes[..., axis], boxes[..., axis + 2]
+        with np.errstate(divide="ignore", invalid="ignore"):
+            ta, tb = (lo - origin) / delta, (hi - origin) / delta
+        flat = delta == 0
+        inside = (lo < origin) & (origin < hi)
+        t0 = np.maximum(t0, np.where(flat, np.where(inside, -np.inf, np.inf), np.minimum(ta, tb)))
+        t1 = np.minimum(t1, np.where(flat, np.where(inside, np.inf, -np.inf), np.maximum(ta, tb)))
+    return t0 < t1
+
+
+def _leaders_cross(p, q, a, b):
+    """Whether the open segments p to q and a to b cross, by broadcasting over arrays."""
+    def side(u, v, w):
+        return ((v[..., 0] - u[..., 0]) * (w[..., 1] - u[..., 1])
+                - (v[..., 1] - u[..., 1]) * (w[..., 0] - u[..., 0]))
+
+    return (side(p, q, a) * side(p, q, b) < 0) & (side(a, b, p) * side(a, b, q) < 0)
+
+
+def place_point_labels(ax, xs, ys, names, *, fontsize: float, marker_area: float,
+                       lines=(), color: str | None = None, clearance_pt: float = 0.6,
+                       extra_orders: int = 42):
+    """Label scatter markers so that no label covers a marker, another label or a line.
+
+    ``label_points`` scores adjustText layouts and cannot keep labels off reference
+    lines; this function searches label positions directly under those constraints.
+
+    Each label takes the position nearest its marker, over a fine grid of positions
+    inside the axes, at which its box is clear of every marker and every placed label,
+    its leader passes through no label, and no earlier leader passes through it.
+    Three allowances carry a cost in points of leader length and are accepted when
+    they shorten the leaders by more than that: lying within one text height of
+    another signature's marker, a leader that crosses another leader, and a leader that
+    passes behind another marker. Labels choose in turn, a label left without a
+    position chooses first in a new attempt, and every label is then re-placed against
+    the final positions of the others. Six systematic orders of choice and
+    ``extra_orders`` shuffled ones (fixed seed) are tried and the layout with the
+    lowest total cost is kept, so the result depends only on the data and the size of
+    the axes. A label sits on one of ``lines`` (segments in data coordinates) only if
+    no order places every label clear of them. Returns the labels and the number
+    placed under an allowance. Raises if the labels cannot all be placed.
+    """
+    import numpy as np
+    from matplotlib.patheffects import withStroke
+
+    # What each allowance costs, in points of leader length
+    beside_marker_pt, behind_marker_pt, crossing_pt, on_line_pt = 8.0, 25.0, 80.0, 1000.0
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    px = fig.dpi / 72.0
+    points = ax.transData.transform(np.column_stack([xs, ys]))
+    n = len(points)
+    labels = [
+        ax.text(x, y, name, fontsize=fontsize, ha="left", va="bottom", alpha=0.9, zorder=5,
+                path_effects=[withStroke(linewidth=0.3 * fontsize, foreground="white")])
+        for x, y, name in zip(xs, ys, names)
+    ]
+    sizes = [(e.width, e.height) for e in (t.get_window_extent(renderer) for t in labels)]
+    frame = ax.get_window_extent(renderer)
+    segments = np.array([ax.transData.transform(np.asarray(seg, dtype=float))
+                         for seg in lines]).reshape(-1, 2, 2)
+    radius = np.sqrt(marker_area) / 2.0 * px
+    gap = clearance_pt * px
+    side_gap = 0.6 * fontsize * px
+    inset = 1.5 * px
+    grow = np.array([-1.0, -1.0, 1.0, 1.0])
+
+    def length_cost(dist):
+        # A leader twice as long costs more than twice as much
+        return dist * (1.0 + dist / (25.0 * px))
+
+    def candidates(i):
+        """Admissible boxes of label i, nearest first, with the cost each carries alone."""
+        w, h = sizes[i]
+        gx = np.arange(frame.x0 + inset, frame.x1 - inset - w, 0.375 * fontsize * px)
+        gy = np.arange(frame.y0 + inset, frame.y1 - inset - h, 0.1875 * fontsize * px)
+        x0, y0 = (g.ravel() for g in np.meshgrid(gx, gy))
+        boxes = np.column_stack([x0, y0, x0 + w, y0 + h])
+        ends = np.clip(points[i], boxes[:, :2], boxes[:, 2:])
+        dist = np.hypot(*(ends - points[i]).T)
+        keep = np.lexsort((x0, y0, dist))
+        boxes, ends, dist = boxes[keep], ends[keep], dist[keep]
+
+        def markers_within(margin):
+            zone = (boxes + margin * grow)[:, None, :]
+            return ((zone[..., 0] < points[:, 0]) & (points[:, 0] < zone[..., 2])
+                    & (zone[..., 1] < points[:, 1]) & (points[:, 1] < zone[..., 3]))
+
+        free = ~markers_within(radius + gap).any(axis=1)
+        boxes, ends, dist = boxes[free], ends[free], dist[free]
+        others = np.arange(n) != i
+        beside = markers_within(radius + fontsize * px)[:, others].sum(axis=1)
+        apart = others & (np.hypot(*(points - points[i]).T) > 2.0 * radius)
+        along = ends - points[i]
+        reach = np.maximum((along ** 2).sum(axis=1), 1e-12)
+        t = np.clip(((points[apart] - points[i]) @ along.T).T / reach[:, None], 0.0, 1.0)
+        nearest = points[i] + t[..., None] * along[:, None, :]
+        behind = (np.hypot(*np.moveaxis(nearest - points[apart], -1, 0)) < radius + gap).sum(axis=1)
+        on_line = np.zeros(len(boxes))
+        if len(segments):
+            on_line = _segments_through_boxes(
+                segments[None, :, 0, :], segments[None, :, 1, :], (boxes + gap * grow)[:, None, :]
+            ).sum(axis=1)
+        alone = length_cost(dist) + px * (beside_marker_pt * beside + behind_marker_pt * behind)
+        return boxes, ends, alone, length_cost(dist), on_line
+
+    grid = [candidates(i) for i in range(n)]
+
+    def best(i, placed, off_lines):
+        """Cheapest admissible candidate of label i given the placed labels, or None."""
+        boxes, ends, alone, _, on_line = grid[i]
+        total = np.where(on_line > 0, np.inf, alone) if off_lines else alone + on_line_pt * px * on_line
+        if placed:
+            taken = np.array([grid[j][0][k] for j, k in placed.items()])
+            taken_start = np.array([points[j] for j in placed])
+            taken_end = np.array([grid[j][1][k] for j, k in placed.items()])
+            wide = (boxes + np.array([side_gap, gap, side_gap, gap]) * grow)[:, None, :]
+            clash = ((wide[..., 0] < taken[:, 2]) & (taken[:, 0] < wide[..., 2])
+                     & (wide[..., 1] < taken[:, 3]) & (taken[:, 1] < wide[..., 3]))
+            start = np.broadcast_to(points[i], ends.shape)[:, None, :]
+            clash |= _segments_through_boxes(start, ends[:, None, :], (taken + gap * grow)[None])
+            clash |= _segments_through_boxes(
+                taken_start[None], taken_end[None], (boxes + gap * grow)[:, None, :]
+            )
+            crossing = _leaders_cross(start, ends[:, None, :], taken_start[None], taken_end[None])
+            total = np.where(
+                clash.any(axis=1), np.inf, total + crossing_pt * px * crossing.sum(axis=1)
+            )
+        if not len(total) or not np.isfinite(total).any():
+            return None
+        k = int(np.argmin(total))
+        return k, float(total[k])
+
+    def solve(order, off_lines):
+        order = list(order)
+        costs = dict.fromkeys(order, 0.0)
+        for _ in range(4 * n):
+            placed: dict[int, int] = {}
+            blocked = None
+            for i in order:
+                found = best(i, placed, off_lines)
+                if found is None:
+                    blocked = i
+                    break
+                placed[i], costs[i] = found
+            if blocked is None:
+                break
+            # A label with no free position chooses first in the next attempt
+            order.remove(blocked)
+            order.insert(0, blocked)
+        else:
+            return None
+        for _ in range(8):
+            changed = False
+            for i in order:
+                k, value = best(i, {j: c for j, c in placed.items() if j != i}, off_lines)
+                changed |= k != placed[i]
+                placed[i], costs[i] = k, value
+            if not changed:
+                break
+        return sum(costs.values()), placed, costs
+
+    crowding = [sum(np.hypot(*(points[j] - points[i])) < 6.0 * sizes[i][1] for j in range(n))
+                for i in range(n)]
+    orders = [
+        sorted(range(n), key=lambda i: (-crowding[i], i)),
+        sorted(range(n), key=lambda i: (crowding[i], i)),
+        sorted(range(n), key=lambda i: (points[i][0], i)),
+        sorted(range(n), key=lambda i: (-points[i][0], i)),
+        sorted(range(n), key=lambda i: (points[i][1], i)),
+        sorted(range(n), key=lambda i: (-points[i][1], i)),
+    ]
+    shuffle = np.random.default_rng(0)
+    orders += [list(shuffle.permutation(n)) for _ in range(extra_orders)]
+    # A label goes onto a line only if no order places every label clear of the lines
+    for off_lines in (True, False):
+        solutions = [found for found in (solve(order, off_lines) for order in orders)
+                     if found is not None]
+        if solutions:
+            break
+    else:
+        raise RuntimeError("The point labels cannot all be placed inside the axes")
+    _, placed, costs = min(solutions, key=lambda found: found[0])
+
+    to_data = ax.transData.inverted()
+    allowances = 0
+    for i, label in enumerate(labels):
+        box, end = grid[i][0][placed[i]], grid[i][1][placed[i]]
+        allowances += costs[i] - grid[i][3][placed[i]] > 1e-6
+        label.set_position(to_data.transform(box[:2]))
+        if np.hypot(*(end - points[i])) > radius + 1.5 * gap:
+            leader_to_label(ax, label, (xs[i], ys[i]), anchor=end, box=box, color=color)
+    return labels, int(allowances)
+
+
+def leader_to_label(ax, label, point, *, anchor, box, color: str | None = None,
+                    lw: float = 0.4, alpha: float = 0.6):
+    """Draw a leader from a marker to ``anchor``, a point on the edge of its label's box.
+
+    The label end is held as a fraction of the label's own box (``box`` in display
+    units), so the leader stays on the edge of the label when the axes are resized.
+    """
+    fx = (anchor[0] - box[0]) / (box[2] - box[0])
+    fy = (anchor[1] - box[1]) / (box[3] - box[1])
+    return ax.annotate(
+        "", xy=point, xycoords="data", xytext=(fx, fy), textcoords=label, zorder=2,
+        arrowprops=dict(arrowstyle="-", color=color or COLORS["gray"], lw=lw, alpha=alpha,
+                        shrinkA=0, shrinkB=0),
+    )
 
 
 def dataset_display(name: str) -> str:
@@ -778,20 +1870,53 @@ def _gsea_cache_path(
     return GSEA_OUTPUT / dataset / method / library_short / "results.csv"
 
 
-def load_or_run_gsea_did(
-    adata,
-    design,
-    visits: tuple[str, str],
-    layer: str | None,
-    dataset_name: str,
-    *,
-    force: bool = False,
-) -> object:
-    """Load cached GSEA results for *dataset_name* or run fresh.
+def _gsea_fingerprint_path(cache_csv: Path) -> Path:
+    return cache_csv.with_name("stats_fingerprint.txt")
 
-    Results are saved per-library under ``manuscript/GSEA/{dataset}/{lib}/``.
-    If cached CSV files exist and *force* is False, they are loaded directly.
-    Otherwise ``run_gsea_did`` is called for each library and results are saved.
+
+def _gsea_did_stamp(cov_type: str) -> str:
+    return f"{STATS_FINGERPRINT}:{cov_type}"
+
+
+def _gsea_cache_fresh(cache_csv: Path, stamp: str) -> bool:
+    """A GSEA cache is usable only if the current code built it.
+
+    The ranking comes from the gene-level estimator and from the ranking rules of the
+    package, so results built by other code, or with another covariance of the ranking
+    statistic, are stale even though the file path is unchanged. A missing or mismatched
+    stamp is treated as a cache miss.
+    """
+    stamp_file = _gsea_fingerprint_path(cache_csv)
+    return cache_csv.exists() and stamp_file.exists() and stamp_file.read_text().strip() == stamp
+
+
+def _order_gsea(combined):
+    """Pathways by decreasing absolute NES, ties by library and term name.
+
+    Gene sets with the same members have the same NES, and the order in which gseapy returns
+    them is not the same in every run. A panel that shows the top pathways would then list
+    tied pathways in a different order from one render to the next.
+    """
+    import pandas as pd
+
+    if "NES" not in combined.columns:
+        return combined
+    keys = [c for c in ("Library", "Term") if c in combined.columns]
+    ordered = combined.assign(_abs_nes=pd.to_numeric(combined["NES"], errors="coerce").abs())
+    ordered = ordered.sort_values(
+        ["_abs_nes", *keys], ascending=[False] + [True] * len(keys), kind="mergesort"
+    )
+    return ordered.drop(columns="_abs_nes").reset_index(drop=True)
+
+
+def _load_or_run_gsea(dataset_name: str, method: str, stamp: str, rank_genes, force: bool) -> object:
+    """Cached GSEA results of every library for one cohort, computing those that are missing.
+
+    *rank_genes* returns the gene ranking of the cohort. It fits one model per gene, so it is
+    called at most once, when the first library without a usable cache is reached; the same
+    ranking is then tested against each such library in its own ``gseapy.prerank`` run.
+    Results are saved per library under ``manuscript/GSEA/{dataset}/{method}/{library}/``
+    with *stamp*, which a later call must match to reuse them.
 
     Returns a combined DataFrame (all libraries) sorted by |NES|, or None.
     """
@@ -800,17 +1925,18 @@ def load_or_run_gsea_did(
     try:
         import gseapy as gp  # noqa: F401
 
-        from sctrial import run_gsea_did as _run_gsea
+        from sctrial import run_gsea_prerank
     except ImportError:
-        print(f"    {dataset_name}: sctrial/gseapy not available — skipping GSEA")
+        print(f"    {dataset_name}: sctrial/gseapy not available, skipping GSEA")
         return None
 
     frames: list[pd.DataFrame] = []
+    ranking = None
+    ranking_failed = False
     for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name, method="did")
+        cache_csv = _gsea_cache_path(dataset_name, short_name, method=method)
 
-        # Try loading from cache
-        if not force and cache_csv.exists():
+        if not force and _gsea_cache_fresh(cache_csv, stamp):
             df = pd.read_csv(cache_csv)
             if len(df) > 0:
                 df["Library"] = short_name
@@ -818,19 +1944,27 @@ def load_or_run_gsea_did(
                 print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
                 continue
 
-        # Run fresh
+        if ranking is None and not ranking_failed:
+            try:
+                ranking = rank_genes()
+            except Exception as exc:
+                ranking_failed = True
+                print(f"    {dataset_name}: gene ranking failed: {exc}")
+        if ranking is None:
+            continue
+
         outdir = str(cache_csv.parent)
         os.makedirs(outdir, exist_ok=True)
         try:
-            res = _run_gsea(
-                adata, gene_sets=lib_name, design=design, visits=visits,
-                layer=layer, rank_by="tstat",
+            res = run_gsea_prerank(
+                ranking, gene_sets=lib_name,
                 min_size=10, max_size=500, permutation_num=1000,
                 outdir=outdir, no_plot=True,
             )
             if isinstance(res, pd.DataFrame) and len(res) > 0:
                 res["Library"] = short_name
                 res.to_csv(cache_csv, index=False)
+                _gsea_fingerprint_path(cache_csv).write_text(stamp)
                 frames.append(res)
                 print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
             else:
@@ -840,10 +1974,33 @@ def load_or_run_gsea_did(
 
     if not frames:
         return None
-    combined = pd.concat(frames, ignore_index=True)
-    if "NES" in combined.columns:
-        combined = combined.sort_values("NES", key=abs, ascending=False)
-    return combined
+    return _order_gsea(pd.concat(frames, ignore_index=True))
+
+
+def load_or_run_gsea_did(
+    adata,
+    design,
+    visits: tuple[str, str],
+    layer: str | None,
+    dataset_name: str,
+    *,
+    cov_type: str = "cluster",
+    force: bool = False,
+) -> object:
+    """Load cached GSEA results for a two-arm longitudinal design or run fresh.
+
+    Genes are ranked by the DiD t-statistic (``rank_genes_did``); *cov_type* is the
+    covariance of its standard error. See ``_load_or_run_gsea``.
+    """
+
+    def rank_genes():
+        from sctrial import rank_genes_did
+
+        return rank_genes_did(
+            adata, design, visits, layer=layer, rank_by="tstat", cov_type=cov_type
+        )
+
+    return _load_or_run_gsea(dataset_name, "did", _gsea_did_stamp(cov_type), rank_genes, force)
 
 
 def load_or_run_gsea_cross_sectional(
@@ -855,60 +2012,18 @@ def load_or_run_gsea_cross_sectional(
     *,
     force: bool = False,
 ) -> object:
-    """Load cached GSEA results for cross-sectional design or run fresh.
+    """Load cached GSEA results for a cross-sectional design or run fresh.
 
-    Uses run_gsea_cross_sectional (between_arm_comparison) for single-visit
-    designs. Results are saved per-library under manuscript/GSEA/{dataset}/{lib}/.
-
-    Returns a combined DataFrame (all libraries) sorted by |NES|, or None.
+    Genes are ranked by the t-statistic of the between-arm difference at *visit*
+    (``rank_genes_cross_sectional``). See ``_load_or_run_gsea``.
     """
-    import pandas as pd
 
-    try:
-        import gseapy as gp  # noqa: F401
+    def rank_genes():
+        from sctrial import rank_genes_cross_sectional
 
-        from sctrial import run_gsea_cross_sectional as _run_gsea
-    except ImportError:
-        print(f"    {dataset_name}: sctrial/gseapy not available — skipping GSEA")
-        return None
+        return rank_genes_cross_sectional(adata, design, visit, layer=layer, rank_by="tstat")
 
-    frames: list[pd.DataFrame] = []
-    for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name, method="cross_sectional")
-
-        if not force and cache_csv.exists():
-            df = pd.read_csv(cache_csv)
-            if len(df) > 0:
-                df["Library"] = short_name
-                frames.append(df)
-                print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
-                continue
-
-        outdir = str(cache_csv.parent)
-        os.makedirs(outdir, exist_ok=True)
-        try:
-            res = _run_gsea(
-                adata, gene_sets=lib_name, design=design, visit=visit,
-                layer=layer, rank_by="tstat",
-                min_size=10, max_size=500, permutation_num=1000,
-                outdir=outdir, no_plot=True,
-            )
-            if isinstance(res, pd.DataFrame) and len(res) > 0:
-                res["Library"] = short_name
-                res.to_csv(cache_csv, index=False)
-                frames.append(res)
-                print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
-            else:
-                print(f"    {dataset_name}/{short_name}: no results")
-        except Exception as exc:
-            print(f"    {dataset_name}/{short_name}: {exc}")
-
-    if not frames:
-        return None
-    combined = pd.concat(frames, ignore_index=True)
-    if "NES" in combined.columns:
-        combined = combined.sort_values("NES", key=abs, ascending=False)
-    return combined
+    return _load_or_run_gsea(dataset_name, "cross_sectional", STATS_FINGERPRINT, rank_genes, force)
 
 
 def load_or_run_gsea_within_arm(
@@ -921,117 +2036,15 @@ def load_or_run_gsea_within_arm(
     *,
     force: bool = False,
 ) -> object:
-    """Load cached GSEA results for within-arm design or run fresh.
+    """Load cached GSEA results for a single-arm longitudinal design or run fresh.
 
-    Uses run_gsea_within_arm (within_arm_comparison) for longitudinal
-    single-arm designs. Results are saved per-library under
-    manuscript/GSEA/{dataset}/{lib}/.
-
-    Returns a combined DataFrame (all libraries) sorted by |NES|, or None.
+    Genes are ranked by the t-statistic of the change between *visits* within *arm*
+    (``rank_genes_within_arm``). See ``_load_or_run_gsea``.
     """
-    import pandas as pd
 
-    try:
-        import gseapy as gp  # noqa: F401
+    def rank_genes():
+        from sctrial import rank_genes_within_arm
 
-        from sctrial import run_gsea_within_arm as _run_gsea
-    except ImportError:
-        print(f"    {dataset_name}: sctrial/gseapy not available — skipping GSEA")
-        return None
+        return rank_genes_within_arm(adata, design, arm, visits, layer=layer, rank_by="tstat")
 
-    frames: list[pd.DataFrame] = []
-    for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name, method="within_arm")
-
-        if not force and cache_csv.exists():
-            df = pd.read_csv(cache_csv)
-            if len(df) > 0:
-                df["Library"] = short_name
-                frames.append(df)
-                print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
-                continue
-
-        outdir = str(cache_csv.parent)
-        os.makedirs(outdir, exist_ok=True)
-        try:
-            res = _run_gsea(
-                adata, gene_sets=lib_name, design=design, arm=arm, visits=visits,
-                layer=layer, rank_by="tstat",
-                min_size=10, max_size=500, permutation_num=1000,
-                outdir=outdir, no_plot=True,
-            )
-            if isinstance(res, pd.DataFrame) and len(res) > 0:
-                res["Library"] = short_name
-                res.to_csv(cache_csv, index=False)
-                frames.append(res)
-                print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
-            else:
-                print(f"    {dataset_name}/{short_name}: no results")
-        except Exception as exc:
-            print(f"    {dataset_name}/{short_name}: {exc}")
-
-    if not frames:
-        return None
-    combined = pd.concat(frames, ignore_index=True)
-    if "NES" in combined.columns:
-        combined = combined.sort_values("NES", key=abs, ascending=False)
-    return combined
-
-
-def load_or_run_gsea_prerank(
-    ranking,
-    dataset_name: str,
-    *,
-    force: bool = False,
-) -> object:
-    """Load cached GSEA results or run ``gseapy.prerank`` from a ranking.
-
-    Used for cross-sectional designs (e.g. Stephenson) where ``run_gsea_did``
-    is not applicable.  *ranking* is a pre-computed gene-level statistic
-    (e.g. Welch t-stat) indexed by gene name.
-    """
-    import pandas as pd
-
-    try:
-        import gseapy as gp
-    except ImportError:
-        print(f"    {dataset_name}: gseapy not available — skipping GSEA")
-        return None
-
-    frames: list[pd.DataFrame] = []
-    for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name, method="prerank")
-
-        if not force and cache_csv.exists():
-            df = pd.read_csv(cache_csv)
-            if len(df) > 0:
-                df["Library"] = short_name
-                frames.append(df)
-                print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
-                continue
-
-        outdir = str(cache_csv.parent)
-        os.makedirs(outdir, exist_ok=True)
-        try:
-            pre_res = gp.prerank(
-                rnk=ranking, gene_sets=lib_name,
-                min_size=10, max_size=500, permutation_num=1000,
-                outdir=outdir, no_plot=True,
-            )
-            res_df = pre_res.res2d if hasattr(pre_res, "res2d") else pre_res
-            if isinstance(res_df, pd.DataFrame) and len(res_df) > 0:
-                res_df["Library"] = short_name
-                res_df.to_csv(cache_csv, index=False)
-                frames.append(res_df)
-                print(f"    {dataset_name}/{short_name}: {len(res_df)} pathways")
-            else:
-                print(f"    {dataset_name}/{short_name}: no results")
-        except Exception as exc:
-            print(f"    {dataset_name}/{short_name}: {exc}")
-
-    if not frames:
-        return None
-    combined = pd.concat(frames, ignore_index=True)
-    if "NES" in combined.columns:
-        combined = combined.sort_values("NES", key=abs, ascending=False)
-    return combined
+    return _load_or_run_gsea(dataset_name, "within_arm", STATS_FINGERPRINT, rank_genes, force)

@@ -943,8 +943,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
 
-    fn = run_sensitivity_benchmark if args.sensitivity else run_benchmark
-    fn(
+    kwargs = dict(
         designs=args.designs,
         methods=args.methods,
         n_iterations=args.n_iterations,
@@ -952,3 +951,7 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         resume=not args.no_resume,
     )
+    if args.sensitivity:
+        run_sensitivity_benchmark(**kwargs)
+    else:
+        run_benchmark(**kwargs)

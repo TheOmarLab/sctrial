@@ -7,9 +7,13 @@ from sctrial.stats.power import (
     effective_sample_size,
     power_did,
     power_paired,
+    power_two_group,
     sample_size_did,
     sample_size_paired,
+    sample_size_two_group,
+    sensitivity_analysis,
     sensitivity_paired,
+    sensitivity_two_group,
 )
 
 
@@ -216,3 +220,47 @@ class TestSensitivityPaired:
         import numpy as np
 
         assert sensitivity_paired(n_participants=1) == np.inf
+
+
+class TestTwoGroup:
+    """Two groups of unequal size: cross-sectional comparisons and unbalanced DiD."""
+
+    def test_equal_groups_reproduce_the_balanced_did_functions(self):
+        for n, delta in ((6, 1.2), (20, 0.5), (40, 0.3)):
+            assert power_two_group(n, n, delta) == pytest.approx(power_did(n, delta), abs=1e-12)
+            assert sensitivity_two_group(n, n) == pytest.approx(sensitivity_analysis(n), abs=1e-12)
+        assert sample_size_two_group(0.5) == (sample_size_did(0.5), sample_size_did(0.5))
+
+    def test_unequal_allocation_has_less_power_than_equal_at_the_same_total(self):
+        assert power_two_group(3, 8, 1.0) < power_two_group(5, 6, 1.0) < 1.0
+        assert sensitivity_two_group(3, 8) > sensitivity_two_group(5, 6)
+
+    def test_known_value(self):
+        # SE = sqrt(1/5 + 1/11) = 0.5394, z = 1/0.5394 = 1.8540; Phi(1.8540 - 1.9600) = 0.4578
+        assert power_two_group(5, 11, 1.0) == pytest.approx(0.4579, abs=5e-4)
+        assert power_two_group(5, 11, -1.0) == pytest.approx(power_two_group(5, 11, 1.0))
+        assert power_two_group(5, 11, 1.0, sigma=2.0) == pytest.approx(power_two_group(5, 11, 0.5))
+
+    def test_sample_size_reaches_the_power_and_keeps_the_allocation(self):
+        for ratio in (3 / 8, 5 / 11, 1.0, 2.0):
+            n_t, n_c = sample_size_two_group(0.8, power=0.80, allocation_ratio=ratio)
+            assert power_two_group(n_t, n_c, 0.8) >= 0.80
+            assert power_two_group(n_t - 1, n_c - 1, 0.8) < 0.80
+            assert n_t / n_c == pytest.approx(ratio, rel=0.15)
+
+    def test_sensitivity_inverts_power(self):
+        mde = sensitivity_two_group(5, 11, power=0.80)
+        assert power_two_group(5, 11, mde) == pytest.approx(0.80, abs=1e-3)
+
+    def test_degenerate_inputs(self):
+        assert power_two_group(1, 10, 1.0) == 0.0
+        assert sensitivity_two_group(1, 10) == float("inf")
+        assert sample_size_two_group(50.0) == (2, 2)
+        with pytest.raises(ValueError):
+            power_two_group(0, 10, 1.0)
+        with pytest.raises(ValueError):
+            power_two_group(5.5, 10, 1.0)
+        with pytest.raises(ValueError):
+            sample_size_two_group(0.0)
+        with pytest.raises(ValueError):
+            sample_size_two_group(1.0, allocation_ratio=0.0)

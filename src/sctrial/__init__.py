@@ -5,7 +5,7 @@ from __future__ import annotations
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 
-from .adata_tools import profile_features, subset_cells, subset_primary
+from .adata_tools import profile_features, subset_arms, subset_cells, subset_primary
 from .analysis import DiDAnalyzer
 from .convenience import auto_detect_design, quick_did
 from .datasets import (
@@ -46,6 +46,7 @@ from .preprocessing import (
     exclude_artifacts_from_hvg,
     flag_artifact_genes,
     is_artifact_gene,
+    is_ribosomal_gene,
 )
 from .scoring import ScoreMethod, score_gene_sets, score_gene_sets_aucell
 from .stats._extract import extract_gene_vector
@@ -53,7 +54,9 @@ from .stats.abundance import abundance_did
 from .stats.bayes import did_table_bayes, prior_predictive_check
 from .stats.comparisons import (
     between_arm_comparison,
+    between_arm_fit_beta,
     compare_gene_in_celltype,
+    get_between_arm_aggregated_df,
     get_within_arm_aggregated_df,
     within_arm_comparison,
     within_arm_fit_beta,
@@ -78,10 +81,14 @@ from .stats.effect_size import (
     hedges_g,
 )
 from .stats.gsea import (
+    rank_genes_cross_sectional,
+    rank_genes_did,
+    rank_genes_within_arm,
     run_gsea_cross_sectional,
     run_gsea_did,
     run_gsea_did_by_celltype,
     run_gsea_did_multi,
+    run_gsea_prerank,
     run_gsea_pseudobulk,
     run_gsea_within_arm,
 )
@@ -98,10 +105,13 @@ from .stats.power import (
     power_curve,
     power_did,
     power_paired,
+    power_two_group,
     sample_size_did,
     sample_size_paired,
+    sample_size_two_group,
     sensitivity_analysis,
     sensitivity_paired,
+    sensitivity_two_group,
 )
 from .stats.pseudobulk import (
     pseudobulk_did,
@@ -141,11 +151,13 @@ __all__ = [
     "exclude_artifacts_from_hvg",
     "flag_artifact_genes",
     "is_artifact_gene",
+    "is_ribosomal_gene",
     "score_gene_sets",
     "score_gene_sets_aucell",
     "ScoreMethod",
     # Data tools
     "subset_primary",
+    "subset_arms",
     "subset_cells",
     "profile_features",
     "resolve_feature",
@@ -170,10 +182,14 @@ __all__ = [
     "did_table_bayes",
     "prior_predictive_check",
     "abundance_did",
+    "rank_genes_cross_sectional",
+    "rank_genes_did",
+    "rank_genes_within_arm",
     "run_gsea_cross_sectional",
     "run_gsea_did",
     "run_gsea_did_multi",
     "run_gsea_did_by_celltype",
+    "run_gsea_prerank",
     "run_gsea_pseudobulk",
     "run_gsea_within_arm",
     "within_arm_comparison",
@@ -181,6 +197,8 @@ __all__ = [
     "get_within_arm_aggregated_df",
     "get_did_aggregated_df",
     "between_arm_comparison",
+    "between_arm_fit_beta",
+    "get_between_arm_aggregated_df",
     "summarize_did_results",
     "pseudobulk_expression",
     "pseudobulk_within_arm",
@@ -201,8 +219,11 @@ __all__ = [
     # Power analysis
     "power_did",
     "power_paired",
+    "power_two_group",
     "sample_size_did",
     "sample_size_paired",
+    "sample_size_two_group",
+    "sensitivity_two_group",
     "power_curve",
     "design_effect",
     "effective_sample_size",
@@ -267,4 +288,4 @@ __all__ = [
 try:
     __version__ = _pkg_version("sctrial")
 except (PackageNotFoundError, ValueError):  # pragma: no cover
-    __version__ = "0.3.0"
+    __version__ = "0+unknown"

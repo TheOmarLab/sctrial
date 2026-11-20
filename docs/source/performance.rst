@@ -124,8 +124,8 @@ For many features, use ``did_table_parallel()`` to distribute work across CPU co
 
    **Do not subsample or downsample cells** to work around memory limits.
    Subsampling distorts pseudobulk means, alters cell-type composition within
-   participant groups, and changes WLS weights — especially for rare cell types
-   and low-abundance signals. Instead, use sparse storage (strategy 3), feature
+   participant groups, and changes per-group cell counts, especially for rare cell
+   types and low-abundance signals. Instead, use sparse storage (strategy 3), feature
    batching (see below), per-cell-type decomposition, or run on hardware with
    sufficient memory.
 
@@ -321,6 +321,13 @@ Optimize GSEA Analysis
        design=design,
        visits=("V1", "V2")
    )
+
+   # 4. Several gene set libraries: rank the genes once
+   # Ranking fits one model per gene and takes most of the time. Each library
+   # is then tested in its own run, with its own permutations and FDR.
+   ranking = st.rank_genes_did(adata, design, visits=("V1", "V2"), rank_by="tstat")
+   kegg = st.run_gsea_prerank(ranking, "KEGG_2021_Human")
+   hallmark = st.run_gsea_prerank(ranking, "MSigDB_Hallmark_2020")
 
 Parallel Processing (Advanced)
 -------------------------------

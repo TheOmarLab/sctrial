@@ -12,7 +12,7 @@ def test_pseudobulk_did_basic():
 
     obs_rows = []
     expr = []
-    for pid, arm in zip(participants, arms):
+    for k, (pid, arm) in enumerate(zip(participants, arms)):
         for visit in visits:
             for _ in range(10):
                 obs_rows.append(
@@ -23,10 +23,12 @@ def test_pseudobulk_did_basic():
                         "celltype": "CT1",
                     }
                 )
+                # the change differs a little between participants: with the same change in
+                # every participant of an arm the model fits exactly and there is no test
                 if arm == "Treated" and visit == "V2":
-                    expr.append([20.0, 10.0])
+                    expr.append([20.0 + k, 10.0])
                 else:
-                    expr.append([10.0, 10.0])
+                    expr.append([10.0 + (k % 3 if visit == "V2" else 0), 10.0])
 
     obs = pd.DataFrame(obs_rows)
     X = np.asarray(expr, dtype=float)
@@ -165,7 +167,7 @@ def test_did_table_surfaces_cov_type_used():
 
 
 def test_did_table_nonrobust_fallback_on_nan_se():
-    """Regression test: when cluster-robust SE is NaN, did_table falls back to
+    """Regression test: when cluster-robust SE is not finite, did_table falls back to
     nonrobust SE and emits a warning.
 
     We monkeypatch statsmodels.formula.api.ols inside the did module so that
@@ -217,7 +219,7 @@ def test_did_table_nonrobust_fallback_on_nan_se():
     def _patched_wls(formula, data, **kw):
         return _FakeModel(_orig_wls(formula, data, **kw))
 
-    # Patch both ols and wls (aggregation adds n_cells → WLS path)
+    # Patch both ols and wls so the fallback is exercised whichever estimator is used
     with (
         patch.object(did_module.smf, "ols", new=_patched_ols),
         patch.object(did_module.smf, "wls", new=_patched_wls),
@@ -240,7 +242,7 @@ def test_did_table_nonrobust_fallback_on_nan_se():
     assert res.loc[0, "cov_type_used"] == "nonrobust"
 
     # Warning emitted
-    fallback_warns = [w for w in caught if "degenerate" in str(w.message)]
+    fallback_warns = [w for w in caught if "Falling back to nonrobust" in str(w.message)]
     assert len(fallback_warns) > 0, "No fallback warning emitted"
 
 

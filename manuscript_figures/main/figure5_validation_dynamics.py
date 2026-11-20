@@ -27,8 +27,6 @@ from __future__ import annotations
 
 import gc
 import hashlib
-import multiprocessing as mp
-import os
 import pickle  # noqa: S403 — local dev cache of our own DataFrames
 import warnings
 from pathlib import Path
@@ -38,11 +36,14 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib.lines import Line2D
+from matplotlib.transforms import blended_transform_factory
 from scipy.cluster.hierarchy import leaves_list, linkage
 
+from .._relabeling import did_permutation_nulls, did_relabeling_cached, permutation_summary
 from .._shared import (
     COLORS,
     MAIN_OUTPUT,
+    STATS_FINGERPRINT,
     TrialDesign,
     add_log1p_cpm_layer,
     apply_style,
@@ -52,6 +53,10 @@ from .._shared import (
     get_stephenson,
     get_tnbc_zhang,
     harmonize_response,
+    key_below_axes,
+    key_inside_axes,
+    letter_at_panel_corner,
+    report_layout_problems,
     save_panel,
     score_signatures,
     sig_display,
@@ -61,7 +66,6 @@ warnings.filterwarnings("ignore")
 
 FIGURE_NAME = "Figure5_validation_dynamics"
 VISITS: tuple[str, str] = ("Pre", "Post")
-N_PERM = 999
 
 _CACHE_DIR = Path(__file__).resolve().parent.parent / "_cache"
 _CACHE_DIR.mkdir(exist_ok=True)
@@ -105,98 +109,6 @@ TNBC_GROUP_PALETTE = {
 }
 
 
-# ── parallel permutation test ────────────────────────────────────────────
-# The 999-permutation null was a serial loop that ran ~4 h single-threaded on the
-# largest cohort. Each permutation is independent, so we fan them out across the
-# node's cores. Workers FORK the (large, read-only) AnnData via copy-on-write, so
-# the multi-GB object is shared rather than re-pickled per worker. Every
-# permutation reseeds independently (base_seed + i), which makes the loop
-# parallelisable AND fully reproducible; the previous serial loop drew from one
-# shared RNG stream, so the exact null realisation changes (statistically
-# equivalent) and the cache key versions are bumped accordingly.
-#
-# Requires single-threaded BLAS (OMP/MKL/OPENBLAS/NUMEXPR_NUM_THREADS=1, set by the
-# SLURM scripts) so forked workers do not oversubscribe. Set FIGURE_PERM_SERIAL=1
-# to force the old serial path (e.g. on a platform without a usable fork).
-_PERM_SHARED: dict = {}
-
-
-def _one_permutation(i: int):
-    """One participant-arm label permutation + participant-visit DiD fit.
-
-    Reads the shared AnnData / arm assignment inherited via fork; returns the
-    per-gene DiD table for permutation ``i`` (or ``None`` if the fit fails).
-    """
-    s = _PERM_SHARED
-    adata = s["adata"]
-    pid_arm = s["pid_arm"]
-    rng = np.random.default_rng(s["base_seed"] + i)
-    shuffled = pd.Series(rng.permutation(pid_arm.to_numpy()), index=pid_arm.index)
-    adata.obs[s["arm_col"]] = adata.obs[s["pid_col"]].map(shuffled)
-    try:
-        df = did_table(adata, aggregate="participant_visit", **s["common_kw"])
-        df["permutation"] = i
-        return df
-    except Exception:
-        return None
-
-
-def _run_permutations(adata, design, common_kw, *, n_perm: int = N_PERM, base_seed: int = 42):
-    """Run ``n_perm`` label-permutation DiD fits and return the concatenated table.
-
-    Parallel over the node's cores by default; falls back to a serial loop when a
-    single worker is requested or fork is unavailable.
-
-    Before forking, the AnnData is slimmed to only the genes ``did_table`` will pull
-    from the matrix. The permutation features here are participant-level signature
-    SCORES held in ``adata.obs``; ``did_table`` resolves obs-column features without
-    ever indexing the gene matrix (``did.py``: ``genes_to_extract`` is empty when
-    every feature is an obs column), so the slim keeps the full ``.obs`` and drops
-    the transcriptome down to a single token gene. Forking the full 55k-gene
-    Sade-Feldman matrix across 32 workers OOM-killed the node via copy-on-write
-    refcount churn even though the matrix was never read. Slimming makes each fork a
-    few MB and leaves the numeric result bit-identical (same obs, same seeds).
-    """
-    arm_col = design.arm_col
-    pid_col = design.participant_col
-
-    # Keep only genes actually extracted from the matrix (var-name features), plus a
-    # single token gene so a valid AnnData with its layer survives when there are none.
-    feats = list(common_kw.get("features", []))
-    gene_feats = [f for f in feats if f in adata.var_names and f not in adata.obs.columns]
-    keep = gene_feats if gene_feats else list(adata.var_names[:1])
-    slim = adata[:, keep].copy()  # NB: a copy — the caller's adata is never mutated
-
-    pid_arm = slim.obs.groupby(pid_col, observed=True)[arm_col].first()
-
-    n_jobs = int(os.environ.get("SLURM_CPUS_PER_TASK") or max(1, (os.cpu_count() or 2) - 1))
-    n_jobs = max(1, min(n_jobs, n_perm))
-    serial = n_jobs == 1 or os.environ.get("FIGURE_PERM_SERIAL") == "1"
-
-    _PERM_SHARED.update(adata=slim, pid_arm=pid_arm, arm_col=arm_col,
-                        pid_col=pid_col, common_kw=common_kw, base_seed=base_seed)
-    try:
-        if serial:
-            print(f"  Running {n_perm} permutations (serial) ...")
-            results = [_one_permutation(i) for i in range(n_perm)]
-        else:
-            print(f"  Running {n_perm} permutations on {n_jobs} workers ...")
-            ctx = mp.get_context("fork")
-            # maxtasksperchild recycles workers so any residual COW growth is bounded.
-            with ctx.Pool(processes=n_jobs, maxtasksperchild=100) as pool:
-                results = pool.map(_one_permutation, range(n_perm),
-                                   chunksize=max(1, n_perm // (n_jobs * 4)))
-    finally:
-        _PERM_SHARED.clear()
-        del slim
-        gc.collect()
-
-    perm = [r for r in results if r is not None]
-    df_perm_all = pd.concat(perm, ignore_index=True)
-    print(f"  Completed {df_perm_all['permutation'].nunique()} permutations")
-    return df_perm_all
-
-
 # ── data preparation ─────────────────────────────────────────────────────
 
 def _to_array(mat) -> np.ndarray:
@@ -204,16 +116,15 @@ def _to_array(mat) -> np.ndarray:
 
 
 def _prepare_sf_data(*, use_cache: bool = True) -> dict:
-    """Load Sade-Feldman, run permutation test and compute participant deltas.
+    """Load Sade-Feldman, fit the participant-level DiD and compute participant deltas.
 
-    The permutation results and participant DiD are cached to disk because the
-    999-permutation loop takes several minutes.  Pass ``use_cache=False`` to
-    force recomputation (e.g. after changing N_PERM or DESIGN).
+    The results are cached to disk. Pass ``use_cache=False`` to force recomputation
+    (e.g. after changing DESIGN).
     """
     _code_hash = hashlib.md5(  # noqa: S324 — cache tag, not security
-        f"{N_PERM}|{DESIGN}|{VISITS}|{HETERO_FEATURES}".encode()
+        f"{DESIGN}|{VISITS}|{HETERO_FEATURES}".encode()
     ).hexdigest()[:8]
-    cache_key = f"figure6_sf_perm_v2_{_code_hash}"
+    cache_key = f"figure5_sf_delta_v3_{_code_hash}_{STATS_FINGERPRINT}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     # ── load adata fresh every time (too large to pickle) ────────────────
@@ -229,7 +140,7 @@ def _prepare_sf_data(*, use_cache: bool = True) -> dict:
 
     # ── try to restore expensive results from cache ───────────────────────
     if use_cache and cache_path.exists():
-        print(f"  Loading cached SF permutation results from {cache_path.name}")
+        print(f"  Loading cached SF results from {cache_path.name}")
         with open(cache_path, "rb") as fh:
             cached = pickle.load(fh)  # noqa: S301 — trusted local cache
         cached["adata"] = adata
@@ -250,15 +161,11 @@ def _prepare_sf_data(*, use_cache: bool = True) -> dict:
     print("  Running participant-level DiD ...")
     df_part = did_table(adata, aggregate="participant_visit", **common_kw)
 
-    # Permutation test (parallel over cores; see _run_permutations)
-    df_perm_all = _run_permutations(adata, DESIGN, common_kw)
-
     # Participant-level deltas for heterogeneity panels
     delta_df = _compute_participant_delta(adata, hetero_feats)
 
     result = {
         "df_part": df_part,
-        "df_perm_all": df_perm_all,
         "delta_df": delta_df,
     }
 
@@ -266,7 +173,7 @@ def _prepare_sf_data(*, use_cache: bool = True) -> dict:
     if use_cache:
         with open(cache_path, "wb") as fh:
             pickle.dump(result, fh, protocol=pickle.HIGHEST_PROTOCOL)
-        print(f"  Cached SF permutation results to {cache_path.name}")
+        print(f"  Cached SF results to {cache_path.name}")
 
     result["adata"] = adata
     result["sig_cols"] = sig_cols
@@ -380,13 +287,15 @@ def _prepare_tnbc_perm_data(*, use_cache: bool = True) -> dict:
     """Load TNBC, run permutation test (anti-PDL1+Chemo vs Chemo), compute deltas.
 
     Covers panels A–D: perm results feed A/B; delta_df and hetero_feats feed C/D.
-    Results (excluding adata) are cached to disk because the 999-permutation loop
-    takes several minutes.  Pass ``use_cache=False`` to force recomputation.
+    The permutation null is the relabeling table of ``_relabeling`` (every assignment
+    of the participants to the two arms), which Figure 3A and Supplementary Table 4
+    read as well. Results (excluding adata) are cached to disk. Pass
+    ``use_cache=False`` to force recomputation.
     """
     _code_hash = hashlib.md5(
-        f"{N_PERM}|{VISITS}|{HETERO_FEATURES}|arm".encode()
+        f"{VISITS}|{HETERO_FEATURES}|arm".encode()
     ).hexdigest()[:8]
-    cache_key = f"figure5_tnbc_perm_v3_{_code_hash}"
+    cache_key = f"figure5_tnbc_perm_v4_{_code_hash}_{STATS_FINGERPRINT}"
     cache_path = _CACHE_DIR / f"{cache_key}.pkl"
 
     adata = get_tnbc_zhang()
@@ -428,14 +337,14 @@ def _prepare_tnbc_perm_data(*, use_cache: bool = True) -> dict:
     print("  Running TNBC participant-level DiD ...")
     df_part = did_table(adata, aggregate="participant_visit", **common_kw)
 
-    # Permutation test (parallel over cores; see _run_permutations)
-    df_perm_all = _run_permutations(adata, tnbc_design, common_kw)
+    relabel = did_relabeling_cached(adata, sig_cols, tnbc_design, VISITS, layer=layer, tag="tnbc")
 
     delta_df = _compute_tnbc_participant_delta(adata, hetero_feats, layer)
 
     result = {
         "df_part": df_part,
-        "df_perm_all": df_perm_all,
+        "df_perm_all": relabel[["assignment", "observed", "feature", "beta_DiD"]].copy(),
+        "perm_exact": bool(relabel.attrs["exact"]),
         "delta_df": delta_df,
     }
 
@@ -490,26 +399,14 @@ def _prepare_stephenson_data() -> dict:
 
 # ── Panel A: Permutation null distributions ──────────────────────────────
 
-def _panel_a(ax, data: dict) -> None:
+def _panel_a(ax, data: dict, *, composite: bool = False) -> None:
     """Permutation null distributions overlaid for top 3 signatures."""
-    df_part = data["df_part"]
-    df_perm = data["df_perm_all"]
-    sig_cols = data["sig_cols"]
-
-    perm_pvals = {}
-    for feat in sig_cols:
-        null_betas = df_perm.loc[df_perm["feature"] == feat, "beta_DiD"].dropna()
-        if len(null_betas) == 0:
-            continue
-        obs_row = df_part.loc[df_part["feature"] == feat]
-        if obs_row.empty:
-            continue
-        obs_beta = obs_row["beta_DiD"].values[0]
-        perm_p = (
-            (np.sum(np.abs(null_betas) >= np.abs(obs_beta)) + 1)
-            / (len(null_betas) + 1)
-        )
-        perm_pvals[feat] = perm_p
+    nulls = did_permutation_nulls(data["df_perm_all"])
+    perm_pvals = {
+        feat: permutation_summary(null, obs, exact=data["perm_exact"])["permutation_p"]
+        for feat, (null, obs) in nulls.items() if feat in data["sig_cols"]
+    }
+    perm_pvals = {feat: p for feat, p in perm_pvals.items() if np.isfinite(p)}
 
     if not perm_pvals:
         ax.text(0.5, 0.5, "No permutation results",
@@ -521,62 +418,49 @@ def _panel_a(ax, data: dict) -> None:
     hist_colors = [COLORS["treated"], COLORS["control"], COLORS["neutral"]]
 
     for idx, feat in enumerate(top_feats):
-        obs_beta = df_part.loc[df_part["feature"] == feat, "beta_DiD"].values[0]
-        null_betas = df_perm.loc[df_perm["feature"] == feat, "beta_DiD"].dropna()
+        null_betas, obs_beta = nulls[feat]
         color = hist_colors[idx % len(hist_colors)]
 
+        # The permutation p rides in the key: text placed next to each observed
+        # line collided with the neighbouring lines whenever observed betas were close.
         ax.hist(
             null_betas, bins=25, color=color, alpha=0.35,
             edgecolor="none", density=True, zorder=2,
-            label=f"{sig_display(feat)} null",
+            label=f"{sig_display(feat)} null (p = {perm_pvals[feat]:.3f})",
         )
         ax.axvline(obs_beta, color=color, lw=2, ls="-", zorder=4)
-
-    ylim = ax.get_ylim()
-    y_top = ylim[1]
-    for idx, feat in enumerate(top_feats):
-        perm_p = perm_pvals[feat]
-        obs_beta = df_part.loc[df_part["feature"] == feat, "beta_DiD"].values[0]
-        color = hist_colors[idx % len(hist_colors)]
-        y_label = y_top * (0.93 - idx * 0.28)
-        if "apoptosis" in sig_display(feat).lower():
-            y_label -= y_top * 0.12
-        if "oxidative" in sig_display(feat).lower():
-            y_label -= y_top * 0.30
-        ax.text(
-            obs_beta, y_label, f"    p = {perm_p:.3f}",
-            fontsize=7, color=color, ha="left", fontweight="bold",
-        )
 
     ax.set_xlabel(r"$\beta_{\mathrm{DiD}}$ (null distribution)")
     ax.set_ylabel("Density")
     ax.set_title("Permutation Null Distributions – TNBC (Top 3)", fontsize=10, fontweight="bold")
-    ax.legend(fontsize=9, loc="upper right", frameon=True, framealpha=0.9)
+    _legend_below(ax, composite=composite, ncol=1 if not composite else 3)
     despine(ax)
+
+
+def _legend_below(ax, *, composite: bool, ncol: int, handles=None) -> None:
+    """Key below the axes, clear of the data; offsets differ for the small artboard."""
+    kw = {"handles": handles} if handles is not None else {}
+    ax.legend(
+        **kw, ncol=ncol, loc="upper center",
+        bbox_to_anchor=(0.5, -0.32 if composite else -0.14),
+        fontsize=4.5 if composite else 9, frameon=True, framealpha=0.9,
+        edgecolor="#CCCCCC", borderpad=0.3, handlelength=1, handletextpad=0.3,
+        labelspacing=0.2, columnspacing=0.8,
+    )
 
 
 # ── Panel B: Observed effects vs null range ──────────────────────────────
 
-def _panel_b(ax, data: dict) -> None:
+def _panel_b(ax, data: dict, *, composite: bool = False) -> None:
     """Observed β_DiD with 95 % null interval for every signature."""
-    df_part = data["df_part"]
-    df_perm = data["df_perm_all"]
-    sig_cols = data["sig_cols"]
-
     records = []
-    for feat in sig_cols:
-        obs_row = df_part.loc[df_part["feature"] == feat]
-        if obs_row.empty:
+    for feat, (null_betas, obs_beta) in did_permutation_nulls(data["df_perm_all"]).items():
+        if feat not in data["sig_cols"]:
             continue
-        obs_beta = obs_row["beta_DiD"].values[0]
-        null_betas = df_perm.loc[df_perm["feature"] == feat, "beta_DiD"].dropna()
-        if len(null_betas) < 10:
+        summary = permutation_summary(null_betas, obs_beta, exact=data["perm_exact"])
+        if summary["n_permutations"] < 10:
             continue
-        lo, hi = np.percentile(null_betas, [2.5, 97.5])
-        perm_p = (
-            (np.sum(np.abs(null_betas) >= np.abs(obs_beta)) + 1)
-            / (len(null_betas) + 1)
-        )
+        lo, hi = summary["null_95_lo"], summary["null_95_hi"]
         records.append({
             "feature": feat,
             "display": sig_display(feat),
@@ -584,7 +468,7 @@ def _panel_b(ax, data: dict) -> None:
             "null_lo": lo,
             "null_hi": hi,
             "significant": (obs_beta < lo) or (obs_beta > hi),
-            "perm_p": perm_p,
+            "perm_p": summary["permutation_p"],
         })
 
     rec_df = pd.DataFrame(records).sort_values("obs_beta", ascending=True)
@@ -622,9 +506,23 @@ def _panel_b(ax, data: dict) -> None:
         plt.Rectangle((0, 0), 1, 1, fc=COLORS["gray"], alpha=0.25,
                        label="95% null range"),
     ]
-    ax.legend(handles=handles, fontsize=9, loc="lower right",
-              frameon=True, framealpha=0.9)
+    _legend_below(ax, composite=composite, ncol=3, handles=handles)
     despine(ax)
+
+
+def _hedges_g_row(ax, values: list[float]) -> None:
+    """Write one Hedges' g per x category on a common baseline above the data.
+
+    The axis is extended upward by a band that holds the row, so the values clear
+    every box and each other at any panel size.
+    """
+    ylo, yhi = ax.get_ylim()
+    ax.set_ylim(ylo, yhi + 0.14 * (yhi - ylo))
+    across = blended_transform_factory(ax.transData, ax.transAxes)
+    for i, g in enumerate(values):
+        if np.isfinite(g):
+            ax.text(i, 0.985, f"{g:.2f}", transform=across, ha="center", va="top",
+                    fontsize=6.5, fontstyle="italic", color="grey")
 
 
 # ── Panel C: Individual-effect strip plot ────────────────────────────────
@@ -710,17 +608,11 @@ def _panel_d(ax, data: dict) -> None:
         tick.set_rotation(35)
         tick.set_ha("right")
         tick.set_fontsize(8)
-    for i, feat in enumerate(top):
-        t_vals = effects.loc[effects["arm"] == DESIGN.arm_treated, feat].dropna().values
-        c_vals = effects.loc[effects["arm"] == DESIGN.arm_control, feat].dropna().values
-        g = _hedges_g(t_vals, c_vals)
-        if np.isfinite(g):
-            feat_vals = long.loc[long["feature"] == feat, "effect"].dropna()
-            ymax = float(feat_vals.max()) if not feat_vals.empty else 0.0
-            y_off = -0.12 if feat in ("CD14", "LYZ") else 0.02
-            ax.text(i, ymax + y_off * (ax.get_ylim()[1] - ax.get_ylim()[0]),
-                    f"g={g:.2f}", ha="center", va="bottom", fontsize=6.5,
-                    fontstyle="italic", color="grey")
+    _hedges_g_row(ax, [
+        _hedges_g(effects.loc[effects["arm"] == DESIGN.arm_treated, feat].dropna().values,
+                  effects.loc[effects["arm"] == DESIGN.arm_control, feat].dropna().values)
+        for feat in top
+    ])
     ax.set_xlabel("")
     ax.set_ylabel("Participant Effect (Post − Pre)")
     ax.set_title(
@@ -871,20 +763,15 @@ def _panel_f(ax, tnbc_data: dict) -> None:
     ax.set_xticks(range(n_feats))
     ax.set_xticklabels(top, rotation=35, ha="right", fontsize=8)
     ax.set_xlim(-0.5, n_feats - 0.5)
+    # Room below the boxes for the four-group key
     ylo, yhi = ax.get_ylim()
-    # Hedges' g annotations: anti-PDL1+Chemo vs Chemo (pooled across response)
-    for feat_idx, feat in enumerate(top):
-        chemo_vals = effects.loc[effects["arm"] == TNBC_ARM_CHEMO, feat].dropna().values
-        combo_vals = effects.loc[effects["arm"] == TNBC_ARM_COMBO, feat].dropna().values
-        g = _hedges_g(combo_vals, chemo_vals)
-        if np.isfinite(g):
-            feat_data = long.loc[long["feature"] == feat, "effect"].dropna()
-            ymax_feat = float(np.nanpercentile(feat_data, 90)) if not feat_data.empty else yhi
-            extra = 0.25 * (yhi - ylo) if feat == "NKG7" else 0.0
-            ax.text(feat_idx, ymax_feat + 0.12 * (yhi - ylo) + extra,
-                    f"g={g:.2f}", ha="center", va="bottom", fontsize=6.5,
-                    fontstyle="italic", color="grey")
-    ax.set_ylim(ylo - 0.25 * (yhi - ylo), yhi + 0.25 * (yhi - ylo))
+    ax.set_ylim(ylo - 0.25 * (yhi - ylo), yhi)
+    # Hedges' g: anti-PDL1+Chemo vs Chemo (pooled across response)
+    _hedges_g_row(ax, [
+        _hedges_g(effects.loc[effects["arm"] == TNBC_ARM_COMBO, feat].dropna().values,
+                  effects.loc[effects["arm"] == TNBC_ARM_CHEMO, feat].dropna().values)
+        for feat in top
+    ])
     ax.set_ylabel("Participant Effect (Post − Pre)")
     ax.set_title(
         "Response-Stratified Heterogeneity - TNBC\n(Hedges' g: anti-PDL1+Chemo vs Chemo)",
@@ -1168,7 +1055,7 @@ def generate() -> None:
         fig.tight_layout()
         save_panel(fig, panel_name, FIGURE_NAME, MAIN_OUTPUT)
 
-    # ── Combined artboard (180 × 260 mm) ─────────────────────────────────
+    # ── Combined artboard, 180 mm wide ───────────────────────────────────
     _SMALL_RC = {
         "font.size": 5,
         "axes.titlesize": 5.5,
@@ -1179,6 +1066,8 @@ def generate() -> None:
         "legend.title_fontsize": 4,
     }
     _MAX_FONT_COMPOSITE = 6
+    _KEY_FS = 4.5
+    _SIGNATURE_FS = 5  # the 19 signature names of panels B, I and J
 
     def _cap_fontsize(fig, maximum):
         for ax in fig.get_axes():
@@ -1198,20 +1087,29 @@ def generate() -> None:
     _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
     plt.rcParams.update(_SMALL_RC)
 
-    _mm = 1.0 / 25.4
-    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
-
     #   Row 0: A | B     (TNBC permutation)
     #   Row 1: C | D     (TNBC heterogeneity)
-    #   Row 2: E | F     (Melanoma/SF heterogeneity)
+    #   Row 2: E | F     (Melanoma heterogeneity)
     #   Row 3: G | H     (temporal lines)
     #   Row 4: I | J     (heatmap + bar)
-    outer = fig_c.add_gridspec(
-        5, 1,
-        height_ratios=[1.35, 1, 1, 0.85, 1.6],
-        hspace=0.70,
-        left=0.10, right=0.95, top=0.97, bottom=0.05,
+    # Heights in mm. A panel with the 19 signature names at 5 pt needs 39 mm for the
+    # names to clear each other. Each gap holds the x-axis text of the row above and the
+    # titles of the row below.
+    _mm = 1.0 / 25.4
+    _rows_mm = [39.0, 26.5, 26.0, 21.0, 39.0]
+    _gaps_mm = [19.5, 15.5, 14.0, 12.0]
+    _top_mm, _bottom_mm = 7.0, 9.5
+    _height_mm = sum(_rows_mm) + sum(_gaps_mm) + _top_mm + _bottom_mm
+    fig_c = plt.figure(figsize=(180 * _mm, _height_mm * _mm))
+    _ratios = [_rows_mm[0]]
+    for _gap, _row in zip(_gaps_mm, _rows_mm[1:]):
+        _ratios += [_gap, _row]
+    grid = fig_c.add_gridspec(
+        len(_ratios), 1, height_ratios=_ratios, hspace=0,
+        left=0.10, right=0.95,
+        top=1 - _top_mm / _height_mm, bottom=_bottom_mm / _height_mm,
     )
+    outer = [grid[2 * i] for i in range(5)]
 
     gs0 = outer[0].subgridspec(1, 2, wspace=0.45)
     ax_a = fig_c.add_subplot(gs0[0])
@@ -1229,13 +1127,14 @@ def generate() -> None:
     ax_g = fig_c.add_subplot(gs3[0])
     ax_h = fig_c.add_subplot(gs3[1])
 
+    # Panel I is inset from the left: its signature names are wider than the margin
     gs4 = outer[4].subgridspec(1, 2, wspace=0.45)
-    ax_i = fig_c.add_subplot(gs4[0])
+    ax_i = fig_c.add_subplot(gs4[0].subgridspec(1, 2, width_ratios=[0.13, 1], wspace=0)[1])
     ax_j = fig_c.add_subplot(gs4[1])
 
     # Panels A–B: TNBC permutation validation
-    _panel_a(ax_a, tnbc_perm_data)
-    _panel_b(ax_b, tnbc_perm_data)
+    _panel_a(ax_a, tnbc_perm_data, composite=True)
+    _panel_b(ax_b, tnbc_perm_data, composite=True)
 
     # Panels C–D: TNBC heterogeneity
     _panel_e(ax_cc, tnbc_perm_data)
@@ -1258,73 +1157,13 @@ def generate() -> None:
         for _lbl in _ax_strip.get_xticklabels():
             _lbl.set_visible(True)
 
-    # Move legends inside plots for the composite
-    _inside = {
-        ax_a: "upper right", ax_b: "lower right",
-        ax_e: "upper right", ax_f: "upper right",
-        ax_g: "lower right",
-        ax_j: "lower right",
-    }
-    for ax_target, loc in _inside.items():
-        leg = ax_target.get_legend()
-        if leg:
-            handles = leg.legend_handles
-            labels = [t.get_text() for t in leg.get_texts()]
-            leg.remove()
-            ax_target.legend(
-                handles=handles, labels=labels,
-                fontsize=5, loc=loc,
-                frameon=True, framealpha=0.85,
-                edgecolor="#CCCCCC", borderpad=0.3,
-                handlelength=1, handletextpad=0.3,
-                labelspacing=0.2,
-            )
-
-    # Panels C and D (TNBC): 2-column legends
-    leg_cc = ax_cc.get_legend()
-    if leg_cc:
-        handles = leg_cc.legend_handles
-        labels = [t.get_text() for t in leg_cc.get_texts()]
-        leg_cc.remove()
-        ax_cc.legend(
-            handles=handles, labels=labels,
-            fontsize=5, loc="upper left", ncol=2,
-            frameon=True, framealpha=0.85,
-            edgecolor="#CCCCCC", borderpad=0.3,
-            handlelength=1, handletextpad=0.3,
-            labelspacing=0.2,
-        )
-
-    leg_d = ax_d.get_legend()
-    if leg_d:
-        handles = leg_d.legend_handles
-        labels = [t.get_text() for t in leg_d.get_texts()]
-        leg_d.remove()
-        ax_d.legend(
-            handles=handles, labels=labels,
-            fontsize=5, loc="lower right", ncol=2,
-            frameon=True, framealpha=0.85,
-            edgecolor="#CCCCCC", borderpad=0.3,
-            handlelength=1, handletextpad=0.3,
-            labelspacing=0.2,
-        )
-
-    # Panel H: 2-column legend with reduced marker size
-    leg_h = ax_h.get_legend()
-    if leg_h:
-        handles = leg_h.legend_handles
-        labels = [t.get_text() for t in leg_h.get_texts()]
-        leg_h.remove()
-        new_leg_h = ax_h.legend(
-            handles=handles, labels=labels,
-            fontsize=5, loc="upper right", ncol=2,
-            frameon=True, framealpha=0.85,
-            edgecolor="#CCCCCC", borderpad=0.3,
-            handlelength=1, handletextpad=0.3,
-            labelspacing=0.2,
-        )
-        for handle in new_leg_h.legend_handles:
+    # Panel H: marker size of the key for the artboard, and a y label that fits the row
+    if ax_h.get_legend():
+        for handle in ax_h.get_legend().legend_handles:
             handle.set_markersize(3)
+    _h_label = ax_h.get_ylabel()
+    if " (" in _h_label:
+        ax_h.set_ylabel(_h_label.replace(" (", "\n(", 1))
 
     # Panel G: extend x-axis right to make room for signature text
     xl = ax_g.get_xlim()
@@ -1332,33 +1171,49 @@ def generate() -> None:
     for txt in ax_g.texts:
         txt.set_fontsize(5.5)
 
-    # Panel I: increase heatmap annotation font and xtick/xlabel
+    # Panel I: heatmap annotation font and xtick/xlabel
     for txt in ax_i.texts:
         txt.set_fontsize(5.5)
     ax_i.tick_params(axis="x", labelsize=5.5)
     ax_i.set_xlabel("Days from Onset", fontsize=6)
 
-    # Match xlabel, ylabel, legend font size across all panels
+    # The same 19 signature names label panels B, I and J: one size for all three
+    for _ax_sig in (ax_b, ax_i, ax_j):
+        _ax_sig.tick_params(axis="y", labelsize=_SIGNATURE_FS)
+
+    # Match xlabel and ylabel font size across all panels
     _label_fs = 6
-    for ax in [ax_a, ax_b, ax_cc, ax_d, ax_e, ax_f, ax_g, ax_h, ax_i, ax_j]:
+    _all_axes = [ax_a, ax_b, ax_cc, ax_d, ax_e, ax_f, ax_g, ax_h, ax_i, ax_j]
+    for ax in _all_axes:
         ax.xaxis.label.set_fontsize(_label_fs)
         ax.yaxis.label.set_fontsize(_label_fs)
-        leg = ax.get_legend()
-        if leg:
-            for txt in leg.get_texts():
-                txt.set_fontsize(4.5)
 
     _cap_fontsize(fig_c, _MAX_FONT_COMPOSITE)
 
-    # Bold panel labels (after cap so they stay prominent)
+    # A and B carry their key below the axes; it is re-placed by measurement for this
+    # row height. The other keys stay inside the axes, each at the first place where it
+    # covers no data and no text.
+    for _ax in (ax_a, ax_b):
+        key_below_axes(_ax, ncol=3, fontsize=_KEY_FS, gap_pt=1.5, clear_of=[ax_a, ax_b])
+    _key_place = {
+        "C": (ax_cc, 2, ("upper left", "upper right"), "top"),
+        "D": (ax_d, 2, ("lower right", "lower left", "lower center"), "bottom"),
+        "E": (ax_e, 1, ("upper right", "upper left"), "top"),
+        "F": (ax_f, 2, ("lower right", "lower left", "lower center"), "bottom"),
+        "G": (ax_g, 1, ("lower right", "upper right"), "top"),
+        "H": (ax_h, 2, ("upper right", "upper center"), "top"),
+        "J": (ax_j, 1, ("lower right", "center right"), "top"),
+    }
+    for _name, (_ax, _ncol, _prefer, _band) in _key_place.items():
+        _placed = key_inside_axes(_ax, ncol=_ncol, fontsize=_KEY_FS, prefer=_prefer, band=_band)
+        if _placed is not None:
+            print(f"    key of panel {_name}: {_placed[1]}, covers {_placed[2]:.1f} pt2")
+
+    # Bold panel letters, placed after the cap so they stay prominent
     _lbl_fs = 9
-    for ax, lbl in [
-        (ax_a, "A"), (ax_b, "B"), (ax_cc, "C"), (ax_d, "D"),
-        (ax_e, "E"), (ax_f, "F"),
-        (ax_g, "G"), (ax_h, "H"), (ax_i, "I"), (ax_j, "J"),
-    ]:
-        ax.text(-0.25, 1.12, lbl, transform=ax.transAxes,
-                fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+    for ax, lbl in zip(_all_axes, "ABCDEFGHIJ"):
+        letter_at_panel_corner(ax, lbl, fontsize=_lbl_fs, keep_clear=True)
+    report_layout_problems(fig_c, FIGURE_NAME)
 
     plt.rcParams.update(_prev_rc)
 

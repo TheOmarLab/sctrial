@@ -149,7 +149,10 @@ def _pseudobulk_fe_crse(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
     for gene in gene_cols:
         try:
             y = pb[gene].values.astype(float)
-            X_base = pb[["post", "treat", "interact"]].values
+            # The arm is constant within a participant, so the participant indicators hold
+            # it; as a separate column it would only enlarge the small-sample factor of the
+            # cluster-robust covariance, which counts columns.
+            X_base = pb[["post", "interact"]].values
             X = np.column_stack([np.ones(len(y)), X_base, dummies.values])
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
@@ -158,10 +161,10 @@ def _pseudobulk_fe_crse(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
                     cov_kwds={"groups": pb["participant"].values},
                 )
             out[gene] = {
-                "beta": float(fit.params[3]),
-                "pvalue": float(fit.pvalues[3]),
-                "ci_lo": float(fit.conf_int()[3, 0]),
-                "ci_hi": float(fit.conf_int()[3, 1]),
+                "beta": float(fit.params[2]),
+                "pvalue": float(fit.pvalues[2]),
+                "ci_lo": float(fit.conf_int()[2, 0]),
+                "ci_hi": float(fit.conf_int()[2, 1]),
             }
         except Exception:
             out[gene] = {"beta": np.nan, "pvalue": np.nan, "ci_lo": np.nan, "ci_hi": np.nan}

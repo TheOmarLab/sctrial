@@ -1,8 +1,11 @@
 """Participant-label permutation for real-data null calibration.
 
-Shuffles arm labels (two-arm) or visit labels (single-arm) while
-preserving the participant structure. All core methods are run on
-each permuted dataset.
+Shuffles arm labels across participants (two-arm) or exchanges the two visit
+labels within participants (single-arm). Samples stay intact. All core methods
+are run on each permuted dataset.
+
+The cohort is mapped once to the vocabulary of the runners
+(:func:`sctrial.benchmark.contracts.canonical_cohort`) before the permutations.
 """
 
 from __future__ import annotations
@@ -21,21 +24,34 @@ logger = logging.getLogger(__name__)
 def _permute_arms(adata, participant_col: str, arm_col: str, rng):
     """Shuffle arm labels across participants (preserving within-participant structure)."""
     adata = adata.copy()
-    pids = adata.obs[participant_col].unique()
-    arms = adata.obs.groupby(participant_col)[arm_col].first()
-    shuffled_arms = rng.permutation(arms.values)
-    arm_map = dict(zip(pids, shuffled_arms))
+    # observed=True: on a Categorical participant column with unused levels the
+    # groupby would add NaN-arm rows, and the shuffled labels would no longer be a
+    # permutation of the real participants' arms.
+    arms = adata.obs.groupby(participant_col, observed=True)[arm_col].first()
+    arm_map = dict(zip(arms.index, rng.permutation(arms.values)))
     adata.obs[arm_col] = adata.obs[participant_col].map(arm_map)
     return adata
 
 
 def _permute_visits(adata, participant_col: str, visit_col: str, rng):
-    """Shuffle visit labels within each participant."""
+    """Exchange the two visit labels of a random subset of the participants.
+
+    Each participant's pair of samples is kept or exchanged as a whole, so every cell of a
+    sample carries the same label and the permuted dataset has the samples of the cohort.
+    """
     adata = adata.copy()
-    for pid in adata.obs[participant_col].unique():
-        mask = adata.obs[participant_col] == pid
-        visits = adata.obs.loc[mask, visit_col].values.copy()
-        adata.obs.loc[mask, visit_col] = rng.permutation(visits)
+    visit = adata.obs[visit_col]
+    labels = list(pd.unique(visit.dropna()))
+    if len(labels) != 2:
+        raise ValueError(f"visit permutation needs two visit labels, found {labels}.")
+    participants = pd.unique(adata.obs[participant_col])
+    exchanged = participants[rng.integers(0, 2, size=len(participants)).astype(bool)]
+    values = np.asarray(visit, dtype=object).copy()
+    first, second = values == labels[0], values == labels[1]
+    rows = adata.obs[participant_col].isin(exchanged).to_numpy()
+    values[rows & first] = labels[1]
+    values[rows & second] = labels[0]
+    adata.obs[visit_col] = pd.Series(values, index=adata.obs.index).astype(visit.dtype)
     return adata
 
 
@@ -45,41 +61,25 @@ def _run_permutation_iteration(args: tuple) -> list[dict]:
 
     warnings.filterwarnings("ignore")
 
-    (
-        perm_idx,
-        seed,
-        adata,
-        design_type,
-        gene_cols,
-        methods,
-        participant_col,
-        arm_col,
-        visit_col,
-    ) = args
+    perm_idx, seed, cohort, design_type, gene_cols, methods = args
 
     from .contracts import prepare_inputs_from_adata
     from .orchestrator import _dispatch_method
 
     rng = np.random.default_rng(seed)
 
-    # Permute
+    # Permute. ``cohort`` carries the canonical columns and labels.
     if design_type == "two_arm":
-        adata_perm = _permute_arms(adata, participant_col, arm_col, rng)
+        adata_perm = _permute_arms(cohort, "participant", "arm", rng)
     else:
-        adata_perm = _permute_visits(adata, participant_col, visit_col, rng)
+        adata_perm = _permute_visits(cohort, "participant", "visit", rng)
 
     # The SAME contracts as the simulated path: full-transcriptome normalisation,
     # full-transcriptome library sizes, panel selected afterwards. This analysis
     # previously built its own pseudobulk and normalised inside the tested panel,
     # so the real-data results characterised these methods under a different
     # normalisation scope from the simulation that was used to characterise them.
-    inputs = prepare_inputs_from_adata(
-        adata_perm,
-        gene_cols,
-        participant_col=participant_col,
-        visit_col=visit_col,
-        arm_col=arm_col,
-    )
+    inputs = prepare_inputs_from_adata(adata_perm, gene_cols, counts_layer=None)
 
     rows = []
     for method in methods:
@@ -115,6 +115,11 @@ def run_permutation_test(
     visit_col: str = "visit",
     output_path: str | Path | None = None,
     seed: int = 42,
+    *,
+    visits: tuple[str, str],
+    arm_treated: str | None = None,
+    arm_control: str | None = None,
+    counts_layer: str | None = "counts",
 ) -> pd.DataFrame:
     """Run participant-label permutation test on real data.
 
@@ -131,15 +136,39 @@ def run_permutation_test(
         Number of permutations.
     n_jobs : int
         Parallel workers.
+    visits : tuple[str, str]
+        (baseline, follow-up) labels of ``visit_col`` in this cohort.
+    arm_treated, arm_control : str
+        The two labels of ``arm_col`` in this cohort. Required for a two-arm
+        design; rows of other arms are left out with one warning.
+    counts_layer : str or None
+        Layer that holds raw counts (``None`` for ``adata.X``). The count models
+        refuse a matrix with non-integer values.
 
     Returns
     -------
     DataFrame with columns: permutation, method, gene, pvalue
     """
+    from .contracts import canonical_cohort, require_raw_counts
+
     if methods is None:
         from .orchestrator import CORE_METHODS
 
         methods = CORE_METHODS
+    if design_type not in ("two_arm", "single_arm"):
+        raise ValueError(f"design_type must be 'two_arm' or 'single_arm', got {design_type!r}")
+
+    cohort = canonical_cohort(
+        adata,
+        participant_col=participant_col,
+        visit_col=visit_col,
+        visits=visits,
+        arm_col=arm_col if design_type == "two_arm" else None,
+        arm_treated=arm_treated,
+        arm_control=arm_control,
+        counts_layer=counts_layer,
+    )
+    require_raw_counts(methods, cohort)
 
     if n_jobs == -1:
         n_jobs = mp.cpu_count()
@@ -159,17 +188,7 @@ def run_permutation_test(
     t0 = time.time()
 
     for i in range(n_permutations):
-        args = (
-            i,
-            seeds[i],
-            adata,
-            design_type,
-            gene_cols,
-            methods,
-            participant_col,
-            arm_col,
-            visit_col,
-        )
+        args = (i, seeds[i], cohort, design_type, gene_cols, methods)
         rows = _run_permutation_iteration(args)
         all_rows.extend(rows)
 

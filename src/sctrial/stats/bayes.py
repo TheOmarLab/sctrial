@@ -67,6 +67,18 @@ def _build_did_model(
     return model
 
 
+def _missing_row(feature: str, n_units: int) -> dict[str, object]:
+    """Result row of a feature whose DiD is not estimable."""
+    return {
+        "feature": feature,
+        "beta_DiD": np.nan,
+        "ci_low": np.nan,
+        "ci_high": np.nan,
+        "p_bayes": np.nan,
+        "n_units": n_units,
+    }
+
+
 def did_table_bayes(
     adata: AnnData,
     features: Sequence[str],
@@ -196,8 +208,11 @@ def did_table_bayes(
     for feat in final_features:
         select_cols = [unit, time, arm_bin, feat] + cov_cols
         df_feat = df_use[select_cols].dropna()
+        # As in did_fit: a participant left with one visit for this feature is not in the model.
+        visits_seen = df_feat.groupby(unit, observed=True)[time].nunique()
+        df_feat = df_feat[df_feat[unit].isin(visits_seen.index[visits_seen >= 2])]
         if df_feat.empty:
-            rows.append({"feature": feat, "beta_DiD": np.nan, "n_units": 0})
+            rows.append(_missing_row(feat, 0))
             continue
 
         # participant index for random intercepts (remove unused categories)
@@ -206,12 +221,17 @@ def did_table_bayes(
         n_units = int(unit_cat.cat.categories.size)
         time_vals = df_feat[time].to_numpy()
         arm_vals = df_feat[arm_bin].to_numpy()
+        if np.unique(arm_vals).size < 2:
+            # One arm has no participant in the model, so the DiD coefficient is not
+            # identified: its column is zero (control only) or equals time (treated only).
+            rows.append(_missing_row(feat, n_units))
+            continue
 
         y = df_feat[feat].astype(float).to_numpy()
         if standardize:
             y_std = y.std(ddof=1)
             if not np.isfinite(y_std) or y_std < 1e-12:
-                rows.append({"feature": feat, "beta_DiD": np.nan, "n_units": n_units})
+                rows.append(_missing_row(feat, n_units))
                 continue
             y = (y - y.mean()) / y_std
 

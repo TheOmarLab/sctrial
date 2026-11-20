@@ -191,6 +191,9 @@ sctrial includes prospective power calculations for both study designs:
 - :func:`~sctrial.stats.power.power_paired` /
   :func:`~sctrial.stats.power.sample_size_paired` for single-arm
   paired designs.
+- :func:`~sctrial.stats.power.power_two_group` /
+  :func:`~sctrial.stats.power.sample_size_two_group` for two groups of
+  unequal size (a cross-sectional comparison, or a DiD with unequal arms).
 
 These use a two-sample *t*-test power formula (two-arm) or a
 one-sample *t*-test formula (single-arm) as the basis, since the

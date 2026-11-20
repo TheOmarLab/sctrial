@@ -3,8 +3,9 @@ Supplementary Figure 5 — Sensitivity and Robustness.
 ====================================================
 
 Panels A–H characterize the sensitivity and robustness of sctrial's
-participant-level inference on the real datasets: agreement of analytical and
-bootstrap standard errors, stability of effect sizes across preprocessing and
+participant-level inference on the real datasets: the false-positive rate of the
+analytical test and of the wild cluster bootstrap under relabeling, stability of
+effect sizes across preprocessing and
 aggregation choices, cell-type stratification, leave-one-out influence, and
 empirical power under participant subsampling.
 
@@ -14,7 +15,7 @@ shared ``manuscript_figures._benchmark`` toolkit; none are duplicated here.
 
 Panels (letters match the composite artboard, left-to-right and top-to-bottom)
 --------------------------------------------------------------------------------
-  A  Analytical vs bootstrap SE (all datasets, forest plot).
+  A  Observed vs nominal rejection rate under relabeling (TNBC, melanoma).
   B  Standardized vs unstandardized effect sizes (TNBC).
   C  Mean vs median aggregation comparison (TNBC).
   D  Log-transform sensitivity (TNBC).
@@ -40,8 +41,11 @@ import pandas as pd
 import seaborn as sns
 from scipy import stats as sp_stats
 
+from .._relabeling import N_BOOT as RELABEL_N_BOOT
+from .._relabeling import did_relabeling_cached
 from .._shared import (
     COLORS,
+    STATS_FINGERPRINT,
     SUPP_OUTPUT,
     TrialDesign,
     add_log1p_cpm_layer,
@@ -57,6 +61,8 @@ from .._shared import (
     get_tnbc_zhang,
     get_vaccine,
     harmonize_response,
+    key_below_axes,
+    label_points,
     save_panel,
     score_signatures,
     within_arm_comparison,
@@ -120,12 +126,6 @@ _FEATURES = [
 _PAL = {"cell": COLORS.get("highlight", "#5B9BD5"),
         "participant": COLORS.get("treated", "#E07B54")}
 
-# Try to import adjustText; fall back to manual offsets if unavailable
-try:
-    from adjustText import adjust_text as _adjust_text
-    _HAS_ADJUSTTEXT = True
-except ImportError:
-    _HAS_ADJUSTTEXT = False
 
 
 # ======================================================================
@@ -145,7 +145,7 @@ def _load_cache(tag: str):
     (e.g. the signature gene sets) invalidates the pickle instead of silently
     serving stale results.
     """
-    p = _cache_dir() / f"_cache_{_CODE_VERSION}_{tag}.pkl"
+    p = _cache_dir() / f"_cache_{_CODE_VERSION}_{STATS_FINGERPRINT}_{tag}.pkl"
     if not p.exists():
         return None
     print(f"    [cache hit] {tag}")
@@ -155,45 +155,64 @@ def _load_cache(tag: str):
 
 def _save_cache(tag: str, obj):
     """Persist *obj* under *tag*."""
-    p = _cache_dir() / f"_cache_{_CODE_VERSION}_{tag}.pkl"
+    p = _cache_dir() / f"_cache_{_CODE_VERSION}_{STATS_FINGERPRINT}_{tag}.pkl"
     with open(p, "wb") as f:
         pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
     print(f"    [cached]    {tag}")
 
 
-def _add_gene_labels(ax, features, x_series, y_series, *, fontsize=7):
-    """Add non-overlapping gene labels to a scatter plot.
+def _pad_limits(ax, x, y, *, frac: float = 0.15) -> None:
+    """Fix both axis limits around the data so labels have room inside the frame."""
+    for set_lim, v in ((ax.set_xlim, np.asarray(x)), (ax.set_ylim, np.asarray(y))):
+        pad = frac * (v.max() - v.min())
+        set_lim(v.min() - pad, v.max() + pad)
 
-    Uses adjustText when available; otherwise falls back to manual offsets.
+
+def _add_gene_labels(ax, features, x_series, y_series, markers, *, fontsize=7,
+                     composite=False):
+    """Label genes clear of other labels and markers, with leader lines.
+
+    Labels are prioritised by departure from the linear trend (largest absolute
+    least-squares residual): the genes a concordance panel needs to name. A
+    standalone panel labels every gene unless that cannot be laid out without a
+    defect, then drops at most the eight least discordant; a composite cell labels
+    as many as fit. Axis limits and the axes position must be final first (see
+    ``label_points``).
     """
-    if _HAS_ADJUSTTEXT:
-        texts = []
-        for feat in features:
-            # White bounding box: masks any residual overlap so every gene name
-            # stays legible, and gives adjustText a box to repel from / clip the
-            # leader line at (dense clouds overprinted labels without it).
-            texts.append(
-                ax.text(x_series[feat], y_series[feat], feat,
-                        fontsize=fontsize, fontweight="bold", ha="left", zorder=6,
-                        bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="none",
-                                  alpha=0.72))
-            )
-        _adjust_text(
-            texts, ax=ax,
-            force_text=(1.7, 1.9), force_static=(0.4, 0.4),
-            force_explode=(0.5, 0.5),
-            expand=(1.6, 1.9),
-            max_move=(60, 60),
-            time_lim=8,
-            arrowprops=dict(arrowstyle="-", color="gray", lw=0.6),
-        )
-    else:
-        for feat in features:
-            ax.annotate(
-                feat, (x_series[feat], y_series[feat]),
-                fontsize=fontsize, fontweight="bold", alpha=0.85, ha="left",
-                xytext=(5, 3), textcoords="offset points",
-            )
+    feats = list(features)
+    xs = np.array([x_series[f] for f in feats], dtype=float)
+    ys = np.array([y_series[f] for f in feats], dtype=float)
+    slope, intercept = np.polyfit(xs, ys, 1)
+    priority = np.argsort(-np.abs(ys - (slope * xs + intercept)), kind="stable")
+    n = len(feats)
+    steps = (24, 16, 12, 8) if composite else (n - 4, n - 8)
+    counts = [n] + [k for k in steps if 0 < k < n]
+    label_points(ax, feats, xs, ys, markers.get_sizes()[0], fontsize=fontsize,
+                 priority=priority, counts=counts)
+
+
+def _finish_scatter(ax, features, x_series, y_series, markers, *, fontsize, composite):
+    """Fix the panel geometry, then label genes against the final axes size.
+
+    adjustText works in display space, so any later change to the axes size
+    (a standalone figure's ``tight_layout``) would move markers under labels.
+    The composite's gridspec is already final.
+    """
+    despine(ax)
+    if not composite:
+        ax.figure.tight_layout()
+    _add_gene_labels(ax, features, x_series, y_series, markers, fontsize=fontsize,
+                     composite=composite)
+
+
+def _corr_key(ax, r: float, *, composite: bool) -> None:
+    """Pearson r in a key row below the axes, clear of the labelled scatter."""
+    from matplotlib.lines import Line2D
+
+    ax.legend(handles=[Line2D([], [], linestyle="none", label=f"r = {r:.2f}")],
+              loc="upper center", bbox_to_anchor=(0.5, -0.2 if composite else -0.13),
+              fontsize=5.5 if composite else 9, frameon=True, framealpha=0.9,
+              edgecolor="#cccccc", handlelength=0, handletextpad=0, borderpad=0.3)
 
 
 # ======================================================================
@@ -234,22 +253,14 @@ def _run_sensitivity():
         layer=_layer, aggregate="participant_visit", standardize=True,
     )
 
-    # 3. Participant-level bootstrap
-    print("  participant bootstrap DiD ...")
-    out["boot"] = sctrial.did_table(
-        adata, feats, design, visits,
-        layer=_layer, aggregate="participant_visit", standardize=True,
-        use_bootstrap=True, n_boot=200, seed=42,
-    )
-
-    # 4. Unstandardized
+    # 3. Unstandardized
     print("  unstandardized DiD ...")
     out["unstd"] = sctrial.did_table(
         adata, feats, design, visits,
         layer=_layer, aggregate="participant_visit", standardize=False,
     )
 
-    # 5. Median aggregation
+    # 4. Median aggregation
     print("  median aggregation DiD ...")
     out["median"] = sctrial.did_table(
         adata, feats, design, visits,
@@ -257,7 +268,7 @@ def _run_sensitivity():
         agg="median",
     )
 
-    # 6. Raw counts (no log) — only if counts layer exists
+    # 5. Raw counts (no log), only if a counts layer exists
     if "counts" in adata.layers:
         print("  raw counts DiD ...")
         out["raw"] = sctrial.did_table(
@@ -267,7 +278,7 @@ def _run_sensitivity():
     else:
         out["raw"] = None
 
-    # 7. Cell-type stratified
+    # 6. Cell-type stratified
     ct_col = next((c for c in ["cell_type", "celltype"]
                    if c in adata.obs.columns), None)
     ct_results = {}
@@ -294,231 +305,115 @@ def _run_sensitivity():
     return out
 
 
-# ── Panel A: Multi-dataset analytical vs bootstrap SE ──────────────
+# ── Panel A: observed versus nominal rejection rate under relabeling ──────
 
-def _run_multi_bootstrap():
-    """Run analytical + bootstrap DiD on all datasets."""
+_RELABEL_COHORTS = ("TNBC", "Melanoma")
+# (p-value column of the relabeling table, key label, color)
+_RELABEL_TESTS = (
+    ("p_boot", "Wild cluster bootstrap", COLORS["treated"]),
+    ("p_analytic", "Analytical cluster-robust test", COLORS["control"]),
+)
+_RELABEL_MAX_LEVEL = 25.0  # percent, the range of nominal levels drawn
+
+
+def _run_relabeling() -> dict:
+    """Relabeling tables of the two-group cohorts, as Figure 3A computes them.
+
+    Same cohorts, signatures, designs, layers and bootstrap settings as
+    ``figure3_robustness_benchmarking``, so both figures read one cached table per
+    cohort.
+    """
     import sctrial
 
-    results = {}
-    for name, cfg in _MDE_DATASET_CFG.items():
-        try:
-            adata = cfg["loader"]()
-            if cfg.get("harmonize", False):
-                adata = harmonize_response(adata)
-            layer = cfg["layer"]
-            if layer not in adata.layers:
-                if layer == "log1p_cpm" and "counts" in adata.layers:
-                    adata = add_log1p_cpm_layer(
-                        adata, counts_layer="counts", out_layer="log1p_cpm",
-                    )
-                else:
-                    continue
+    tables = {}
+    adata = get_tnbc_zhang()
+    adata, sig_cols = score_signatures(adata, layer="log1p_norm")
+    design = sctrial.TrialDesign(
+        participant_col="participant_id", visit_col="visit", arm_col="arm",
+        arm_treated="anti-PDL1+Chemo", arm_control="Chemo", celltype_col="cell_type",
+    )
+    tables["TNBC"] = did_relabeling_cached(adata, sig_cols, design, ("Pre", "Post"),
+                                          layer="log1p_norm", tag="tnbc", n_boot=RELABEL_N_BOOT)
 
-            feats = [f for f in _FEATURES if f in adata.var_names]
-            if len(feats) < 3:
-                continue
-
-            arm_col = cfg.get("arm_col")
-            design_type = cfg.get("design", "two_arm")
-
-            if design_type == "two_arm" and arm_col:
-                design = sctrial.TrialDesign(
-                    participant_col=cfg["participant_col"],
-                    visit_col=cfg["visit_col"],
-                    arm_col=arm_col,
-                    arm_treated=cfg["arm_treated"],
-                    arm_control=cfg["arm_control"],
-                )
-                print(f"  bootstrap {name}: analytical ...")
-                part = sctrial.did_table(
-                    adata, feats, design, cfg["visits"],
-                    layer=layer, aggregate="participant_visit", standardize=True,
-                )
-                print(f"  bootstrap {name}: bootstrap ...")
-                boot = sctrial.did_table(
-                    adata, feats, design, cfg["visits"],
-                    layer=layer, aggregate="participant_visit", standardize=True,
-                    use_bootstrap=True, n_boot=200, seed=42,
-                )
-                results[name] = {"part": part, "boot": boot}
-            else:
-                # Single-arm: use within_arm_comparison
-                arm_filter = cfg.get("arm_filter")
-                arm_value = arm_filter or "All"
-                if arm_filter and arm_col and arm_col in adata.obs.columns:
-                    adata = adata[adata.obs[arm_col] == arm_filter].copy()
-                # Build a design for within-arm comparison
-                design = sctrial.TrialDesign(
-                    participant_col=cfg["participant_col"],
-                    visit_col=cfg["visit_col"],
-                    arm_col=arm_col if arm_col and arm_col in adata.obs.columns else None,
-                )
-                print(f"  bootstrap {name}: within-arm analytical ...")
-                part = sctrial.within_arm_comparison(
-                    adata, arm_value, feats, design, cfg["visits"],
-                    layer=layer, aggregate="participant_visit",
-                )
-                print(f"  bootstrap {name}: within-arm bootstrap ...")
-                boot = sctrial.within_arm_comparison(
-                    adata, arm_value, feats, design, cfg["visits"],
-                    layer=layer, aggregate="participant_visit",
-                    use_bootstrap=True, n_boot=200, seed=42,
-                )
-                results[name] = {"part": part, "boot": boot}
-            del adata
-            gc.collect()
-        except Exception as exc:
-            print(f"  bootstrap {name}: failed ({exc})")
-    return results
+    adata = get_sade_feldman()
+    if "log1p_tpm" not in adata.layers:
+        if "tpm" not in adata.layers:
+            raise RuntimeError("No tpm layer for log1p_tpm creation.")
+        adata.layers["log1p_tpm"] = np.log1p(adata.layers["tpm"])
+    adata = harmonize_response(adata)
+    adata, sig_cols = score_signatures(adata, layer="log1p_tpm")
+    design = sctrial.TrialDesign(
+        participant_col="participant_id", visit_col="visit", arm_col="response_harmonized",
+        arm_treated="Responder", arm_control="Non-responder",
+    )
+    tables["Melanoma"] = did_relabeling_cached(adata, sig_cols, design, ("Pre", "Post"),
+                                              layer="log1p_tpm", tag="melanoma",
+                                              n_boot=RELABEL_N_BOOT)
+    return tables
 
 
-def _panel_bootstrap_multi(fig, boot_data: dict, *, composite: bool = False):
-    """A: Faceted forest plot — analytical vs bootstrap SE per dataset."""
-    names = [n for n in boot_data if boot_data[n].get("part") is not None]
+def _rejection_curve(p_values: np.ndarray, max_level: float = _RELABEL_MAX_LEVEL):
+    """Nominal level against observed rejection rate (both in percent) for ``p < level``."""
+    p = np.sort(np.asarray(p_values, dtype=float))
+    if np.isnan(p).any():
+        raise ValueError("relabeling p-values contain missing values")
+    levels = np.unique(np.r_[0.0, p[p <= max_level / 100], max_level / 100])
+    rejected = np.searchsorted(p, levels, side="left") / p.size
+    return 100.0 * levels, 100.0 * rejected
+
+
+def _panel_calibration(fig, tables: dict, *, composite: bool = False):
+    """Observed against nominal rejection rate under relabeling, one axes per cohort.
+
+    Every reassignment of the participants to the two groups and every signature
+    contribute one p-value per test. A test at its nominal level follows the diagonal.
+    """
+    from matplotlib.lines import Line2D
+
+    names = [n for n in _RELABEL_COHORTS if tables.get(n) is not None and len(tables[n])]
+    axes = np.atleast_1d(fig.subplots(1, max(len(names), 1)))
     if not names:
-        ax = fig.subplots(1, 1)
-        ax.text(0.5, 0.5, "No bootstrap data", ha="center", va="center",
-                transform=ax.transAxes)
-        return
+        axes[0].text(0.5, 0.5, "No relabeling data", ha="center", va="center",
+                     transform=axes[0].transAxes)
+        return axes
 
-    ncols = len(names)
-    axes = fig.subplots(1, ncols, sharey=False)
-    if ncols == 1:
-        axes = [axes]
-
-    _ms = 2 if composite else 3
-    _elw = 0.5 if composite else 0.8
-    _cs = 1.0 if composite else 1.5
-    _ytick_fs = 4.5 if composite else 6
-    _title_fs = 5.5 if composite else 9
-
-    def _beta_col(df):
-        for c in ("beta_DiD", "beta_delta", "beta_time", "beta"):
-            if c in df.columns:
-                return c
-        return None
-
-    def _se_col(df):
-        for c in ("se_DiD", "se_delta", "se_time", "se"):
-            if c in df.columns:
-                return c
-        return None
-
-    def _se_boot_col(df):
-        for c in ("se_DiD_boot", "se_delta_boot", "se_time_boot"):
-            if c in df.columns:
-                return c
-        return None
-
+    _fs = 5.5 if composite else 10
     for ax, name in zip(axes, names):
-        part = boot_data[name]["part"]
-        boot = boot_data[name]["boot"]
-
-        bc = _beta_col(part)
-        sc_a = _se_col(part)
-        sc_b = _se_boot_col(boot)
-        if bc is None or sc_a is None or sc_b is None:
-            ax.set_title(name, fontweight="bold", fontsize=_title_fs)
-            ax.text(0.5, 0.5, "No data", ha="center", va="center",
-                    transform=ax.transAxes, fontsize=_title_fs)
-            continue
-
-        df_a = part.set_index("feature")[[bc, sc_a]].rename(
-            columns={bc: "beta", sc_a: "se_analytical"})
-        df_b = boot.set_index("feature")[[sc_b]].rename(
-            columns={sc_b: "se_boot"})
-        df = df_a.join(df_b, how="inner").reset_index()
-        df = df.drop_duplicates(subset="feature")
-        if len(df) > 15:
-            df = df.loc[df["beta"].abs().nlargest(15).index]
-        df = df.sort_values("beta", ascending=True).reset_index(drop=True)
-
-        y = np.arange(len(df))
-        off = 0.15
-
-        ax.errorbar(df["beta"], y - off, xerr=1.96 * df["se_analytical"],
-                     fmt="s", markersize=_ms, color=_PAL["cell"],
-                     elinewidth=_elw, capsize=_cs, label="Analytical")
-        ax.errorbar(df["beta"], y + off, xerr=1.96 * df["se_boot"],
-                     fmt="o", markersize=_ms, color=_PAL["participant"],
-                     elinewidth=_elw, capsize=_cs, label="Bootstrap")
-        ax.axvline(0, color="black", linewidth=0.6)
-        ax.set_yticks(y)
-        ax.set_yticklabels(df["feature"], fontsize=_ytick_fs)
-        ax.set_title(name, fontweight="bold", fontsize=_title_fs)
-        ax.set_xlabel("")
-        # Wide right margin: the forests fill the plot at every row (effects near 0
-        # with wide ±CI whiskers), so the ONLY reliably data-free region is a band
-        # to the right of every whisker cap. get_xlim() already includes the whisker
-        # extent, so adding 0.75x the range guarantees an empty right band for the
-        # legend that no row's whisker reaches.
-        _xlo, _xhi = ax.get_xlim()
-        ax.set_xlim(_xlo, _xhi + 0.75 * (_xhi - _xlo))
+        table = tables[name]
+        ax.plot([0, _RELABEL_MAX_LEVEL], [0, _RELABEL_MAX_LEVEL], ls="--", color=COLORS["gray"],
+                lw=1, zorder=1)
+        for col, _label, color in _RELABEL_TESTS:
+            levels, rejected = _rejection_curve(table[col].to_numpy())
+            ax.step(levels, rejected, where="post", color=color, lw=1.3 if composite else 2.0,
+                    zorder=3)
+        ax.set_xlim(0, _RELABEL_MAX_LEVEL)
+        ax.set_ylim(0, _RELABEL_MAX_LEVEL)
+        ax.set_box_aspect(0.62)
+        ax.set_xlabel("Nominal level (%)", fontsize=_fs)
+        ax.set_ylabel("Relabelings rejected (%)", fontsize=_fs)
+        ax.set_title(name, fontsize=6.5 if composite else 11, fontweight="bold")
+        ax.tick_params(labelsize=5 if composite else 9)
         despine(ax)
 
-    # ONE shared Analytical/Bootstrap key for the whole row, in the top-right
-    # margin created above, so it never overlaps a data marker in any subpanel.
-    from matplotlib.lines import Line2D
-    _key = [
-        Line2D([0], [0], marker="s", linestyle="", color=_PAL["cell"],
-               markersize=_ms + 1, label="Analytical"),
-        Line2D([0], [0], marker="o", linestyle="", color=_PAL["participant"],
-               markersize=_ms + 1, label="Bootstrap"),
-    ]
-    # CENTER-RIGHT of the last panel, inside the wide empty right band. Center
-    # height (not a corner) keeps it clear of the top row's larger-effect whisker
-    # and the bottom row's; every corner touched data in earlier attempts.
-    axes[-1].legend(handles=_key, fontsize=(4 if composite else 6), loc="center right",
-                    frameon=True, framealpha=0.96, edgecolor="#cccccc",
-                    handletextpad=0.3, borderpad=0.3, labelspacing=0.2)
-
-    # Centered x-axis label under the full row, rather than anchored to one
-    # subplot — robust to dataset count/order changes (e.g. adding TNBC),
-    # unlike hardcoding a specific dataset as the "middle" anchor.
-    #
-    # NOTE: in composite mode, *fig* here is a SubFigure (subfig_a). Calling
-    # subfig.text(..., transform=subfig.transFigure) does NOT position
-    # relative to the subfigure's own local 0-1 space as the name implies —
-    # it resolves in the parent figure's coordinate frame, landing the label
-    # at the bottom of the whole page instead of just below panel A. The fix
-    # (same pattern as _figure_title_above_subfig elsewhere in this file) is
-    # to get axes positions, which ARE local to the subfigure, then place the
-    # text on the true parent figure using those same local coordinates only
-    # when fig is a real top-level Figure; for a SubFigure we must instead
-    # anchor using the parent figure's transform directly.
-    _xlbl_fs = 5 if composite else 8
-    fig.canvas.draw()
-    _ax_xs = [a.get_position().x0 for a in axes] + [
-        a.get_position().x1 for a in axes
-    ]
-    _xc = 0.5 * (min(_ax_xs) + max(_ax_xs))
-    _y0 = min(a.get_position().y0 for a in axes)
-    _parent_fig = getattr(fig, "figure", fig)
-    if _parent_fig is not fig:
-        # fig is a SubFigure: translate its local axes-position fractions
-        # into true parent-figure fractions before placing text, then draw
-        # on the parent figure (not the subfigure) so the transform behaves.
-        _sf_pos = _subfig_bbox_in_figure_coords(_parent_fig, fig)
-        _xc_parent = _sf_pos.x0 + _xc * _sf_pos.width
-        _y0_parent = _sf_pos.y0 + _y0 * _sf_pos.height
-        _parent_fig.text(
-            _xc_parent, _y0_parent - 0.072, "β with 95% CI",
-            ha="center", va="top", fontsize=_xlbl_fs,
-            transform=_parent_fig.transFigure,
-        )
-    else:
-        fig.text(
-            _xc, _y0 - (0.06 if composite else 0.09), "β with 95% CI",
-            ha="center", va="top", fontsize=_xlbl_fs,
-            transform=fig.transFigure,
-        )
-
+    handles = [Line2D([], [], color=color, lw=1.3 if composite else 2.0, label=label)
+               for _col, label, color in _RELABEL_TESTS]
+    handles.append(Line2D([], [], color=COLORS["gray"], ls="--", lw=1, label="Nominal"))
+    for ax in axes[:len(names)]:
+        ax.legend(handles=handles, fontsize=5.0 if composite else 9, handlelength=1.6)
     if not composite:
-        fig.suptitle("Analytical vs bootstrap SE", fontweight="bold",
-                     fontsize=11)
-    # Composite: title is drawn on the parent figure via
-    # _figure_title_above_subfig (SubFigure.suptitle can anchor incorrectly).
+        fig.suptitle("Rejection rate under relabeling", fontweight="bold", fontsize=11)
+    # Composite: the title is drawn on the parent figure via _figure_title_above_subfig.
+    return axes
+
+
+def _standalone_calibration(tables: dict):
+    """Panel A as its own figure, keys below the axes and inside the canvas."""
+    fig = plt.figure(figsize=(10.5, 4.8))
+    axes = _panel_calibration(fig, tables)
+    fig.tight_layout(rect=[0, 0.12, 1, 0.95])
+    for ax in axes:
+        key_below_axes(ax, ncol=3)
+    return fig
 
 
 # ── Panel B: Standardized vs Unstandardized ───────────────────────
@@ -528,31 +423,25 @@ def _panel_std_vs_unstd(ax, data: dict, *, composite: bool = False):
     std = data["part"].set_index("feature")["beta_DiD"]
     unstd = data["unstd"].set_index("feature")["beta_DiD"]
     common = std.index.intersection(unstd.index)
+    common = common[np.isfinite(std[common]) & np.isfinite(unstd[common])]
     if len(common) < 2:
         ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
                 transform=ax.transAxes)
         return
 
-    _s = 18 if composite else 50
+    _s = 12 if composite else 50
     _lbl_fs = 3.8 if composite else 7
-    _r_fs = 5.5 if composite else 7
 
     x, y = std[common].values, unstd[common].values
-    ax.scatter(x, y, s=_s, alpha=0.85, color=COLORS.get("treated", "#E07B54"),
-               edgecolors="grey", linewidth=0.3)
-
-    _add_gene_labels(ax, common, std, unstd, fontsize=_lbl_fs)
-
-    r, _ = sp_stats.pearsonr(x, y)
-    ax.text(0.95, 0.05, f"r = {r:.2f}", transform=ax.transAxes,
-            fontsize=_r_fs, va="bottom", ha="right",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                      edgecolor="#ccc", alpha=0.8))
+    sc = ax.scatter(x, y, s=_s, alpha=0.85, color=COLORS.get("treated", "#E07B54"),
+                    edgecolors="grey", linewidth=0.3)
+    _pad_limits(ax, x, y)
+    _corr_key(ax, sp_stats.pearsonr(x, y)[0], composite=composite)
     ax.set_xlabel("β (standardized)")
     ax.set_ylabel("β (unstandardized)")
     ax.set_title("Standardized vs unstandardized (TNBC)",
                  fontweight="bold")
-    despine(ax)
+    _finish_scatter(ax, common, std, unstd, sc, fontsize=_lbl_fs, composite=composite)
 
 
 # ── Panel C: Mean vs Median aggregation ───────────────────────────
@@ -582,36 +471,21 @@ def _panel_mean_vs_median(ax, data: dict, *, composite: bool = False):
         despine(ax)
         return
 
-    _s = 18 if composite else 50
+    _s = 12 if composite else 50
     _lbl_fs = 3.8 if composite else 7
-    _r_fs = 5.5 if composite else 7
 
     x, y = mean_df[common].values, med_df[common].values
-    ax.scatter(x, y, s=_s, alpha=0.85, color="#7B68EE",
-               edgecolors="grey", linewidth=0.3)
-
-    _add_gene_labels(ax, common, mean_df, med_df, fontsize=_lbl_fs)
-
-    lims = [min(min(x), min(y)) - 0.1, max(max(x), max(y)) + 0.1]
-    ax.plot(lims, lims, "k--", linewidth=0.5, alpha=0.3)
-    r, _ = sp_stats.pearsonr(x, y)
-
-    if composite:
-        ax.text(0.95, 0.05, f"r = {r:.2f}", transform=ax.transAxes,
-                fontsize=_r_fs, va="bottom", ha="right",
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                          edgecolor="#ccc", alpha=0.8))
-    else:
-        ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes,
-                fontsize=_r_fs, va="top",
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                          edgecolor="#ccc", alpha=0.8))
-
+    sc = ax.scatter(x, y, s=_s, alpha=0.85, color="#7B68EE",
+                    edgecolors="grey", linewidth=0.3)
+    _pad_limits(ax, x, y)
+    lims = [min(x.min(), y.min()), max(x.max(), y.max())]
+    ax.plot(lims, lims, "k--", linewidth=0.5, alpha=0.3, zorder=1)
+    _corr_key(ax, sp_stats.pearsonr(x, y)[0], composite=composite)
     ax.set_xlabel("β (mean aggregation)")
     ax.set_ylabel("β (median aggregation)")
     ax.set_title("Mean vs median aggregation (TNBC)",
                  fontweight="bold")
-    despine(ax)
+    _finish_scatter(ax, common, mean_df, med_df, sc, fontsize=_lbl_fs, composite=composite)
 
 
 # ── Panel D: Log-transform sensitivity ────────────────────────────
@@ -630,31 +504,25 @@ def _panel_log_sensitivity(ax, data: dict, *, composite: bool = False):
 
     raw_df = raw_res.set_index("feature")["beta_DiD"]
     common = log_df.index.intersection(raw_df.index)
+    common = common[np.isfinite(log_df[common]) & np.isfinite(raw_df[common])]
     if len(common) < 2:
         ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center",
                 transform=ax.transAxes)
         return
 
-    _s = 18 if composite else 50
+    _s = 12 if composite else 50
     _lbl_fs = 3.8 if composite else 7
-    _r_fs = 5.5 if composite else 7
 
     x, y = log_df[common].values, raw_df[common].values
-    ax.scatter(x, y, s=_s, alpha=0.85, color="#2ECC71",
-               edgecolors="grey", linewidth=0.3)
-
-    _add_gene_labels(ax, common, log_df, raw_df, fontsize=_lbl_fs)
-
-    r, _ = sp_stats.pearsonr(x, y)
-    ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes,
-            fontsize=_r_fs, va="top",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                      edgecolor="#ccc", alpha=0.8))
+    sc = ax.scatter(x, y, s=_s, alpha=0.85, color="#2ECC71",
+                    edgecolors="grey", linewidth=0.3)
+    _pad_limits(ax, x, y)
+    _corr_key(ax, sp_stats.pearsonr(x, y)[0], composite=composite)
     ax.set_xlabel("β (log1p norm)")
     ax.set_ylabel("β (raw counts)")
     ax.set_title("Log-transform sensitivity (TNBC)",
                  fontweight="bold")
-    despine(ax)
+    _finish_scatter(ax, common, log_df, raw_df, sc, fontsize=_lbl_fs, composite=composite)
 
 
 # ── Panel E: Cell-type stratified heatmap ─────────────────────────
@@ -695,7 +563,10 @@ def _panel_ct_heatmap(ax, data: dict, *, composite: bool = False):
         ax.tick_params(axis="y", labelsize=4.5)
         for _tl in ax.get_xticklabels():
             _tl.set_ha("right")
-        #ax.set_xlabel("Cell type", labelpad=-3)
+        # Colour-bar label on top of the bar: on its right it abuts panel F's ticks.
+        _cbar = ax.collections[0].colorbar
+        _cbar.set_label("")
+        _cbar.ax.set_title("β", fontsize=_COMPOSITE_E_AXIS_LABEL_FS, pad=2)
     else:
         ax.tick_params(axis="x", labelsize=5.5, rotation=55, pad=1.5)
         ax.tick_params(axis="y", labelsize=7)
@@ -727,7 +598,6 @@ def _panel_rank_concordance(ax, data: dict, *, composite: bool = False):
     configs = {}
     for key, label in [("cell", "Cell-level"),
                        ("part", "Participant"),
-                       ("boot", "Bootstrap"),
                        ("unstd", "Unstandardized"),
                        ("median", "Median agg")]:
         df = data.get(key)
@@ -1062,7 +932,7 @@ _MDE_DATASET_CFG = {
 N_POWER_ITERATIONS = 200
 POWER_ALPHA = 0.05
 RNG_SEED = 42
-_CODE_VERSION = "v16"
+_CODE_VERSION = "v17"
 
 DatasetInfo = tuple[str, object, object, tuple, list[str], str]
 
@@ -1137,7 +1007,7 @@ _JSON_CACHE_DIR = Path(__file__).resolve().parent.parent / "_cache"
 
 
 def _cache_key_json(*args: str) -> str:
-    payload = "|".join([_CODE_VERSION] + list(args))
+    payload = "|".join([_CODE_VERSION, STATS_FINGERPRINT] + list(args))
     return hashlib.md5(payload.encode()).hexdigest()[:12]
 
 
@@ -1743,96 +1613,9 @@ def _figure_title_above_subfig(
 # Panel H — Mixed-signal null-gene FPR vs signal fraction (expanded from Figure 3 panel D)
 # ======================================================================
 
-def generate():
-    """Create and save Supplementary Figure 5 panels (A–H) + composite.
-
-    Layout (same order as the composite artboard):
-      A  Analytical vs bootstrap SE (all datasets, faceted forest plot)
-      B  Standardized vs unstandardized effect sizes (TNBC)
-      C  Mean vs median aggregation comparison (TNBC)
-      D  Log-transform sensitivity (TNBC)
-      E  Cell-type-stratified DiD heatmap (TNBC)
-      F  Rank-order concordance across choices (TNBC)
-      G  Leave-one-out stability matrix (all datasets)
-      H  Empirical power curves (participant subsampling; 3+3 facet grid)
-
-    The NatMeth simulation-benchmark panels live in Supp Fig 8 (drawn from the
-    shared manuscript_figures._benchmark toolkit); this figure is the empirical
-    sensitivity/robustness supplement only.
-
-    Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D | row3 E|F|G | row4 H.
-    """
-    print("Supplementary Figure 5: Sensitivity to Modeling and Preprocessing")
-
-    # ── Sensitivity (panels B–F) — cache minus large adata ────────────
-    data = _load_cache("sensitivity_tnbc")
-    if data is None:
-        data = _run_sensitivity()
-        cacheable = {k: v for k, v in data.items() if k != "adata"}
-        _save_cache("sensitivity_tnbc", cacheable)
-        if "adata" in data:
-            del data["adata"]
-
-    # ── Bootstrap (panel A) ───────────────────────────────────────────
-    boot_data = _load_cache("bootstrap")
-    if boot_data is None:
-        print("  Computing multi-dataset bootstrap ...")
-        boot_data = _run_multi_bootstrap()
-        _save_cache("bootstrap", boot_data)
-    boot_ok = {k: v for k, v in boot_data.items() if v.get("part") is not None}
-    if boot_ok:
-        ncols_a = len(boot_ok)
-        fig = plt.figure(figsize=(4.5 * ncols_a, 6.5))
-        _panel_bootstrap_multi(fig, boot_ok)
-        fig.tight_layout(rect=[0, 0, 1, 0.93])
-        save_panel(fig, "panel_A", FIGURE_NAME, SUPP_OUTPUT)
-
-    # Panels B–F: single-dataset sensitivity (TNBC)
-    panels_bf = [
-        ("panel_B", _panel_std_vs_unstd, (7.0, 6.0)),
-        ("panel_C", _panel_mean_vs_median, (7.0, 6.0)),
-        ("panel_D", _panel_log_sensitivity, (7.0, 6.0)),
-        ("panel_E", _panel_ct_heatmap, (8.8, 5.8)),
-        ("panel_F", _panel_rank_concordance, (7.2, 5.8)),
-    ]
-    for panel_name, fn, size in panels_bf:
-        fig, ax = plt.subplots(figsize=size)
-        fn(ax, data)
-        fig.tight_layout()
-        save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
-
-    # ── LOO stability (panel G) ───────────────────────────────────────
-    loo_mat = _load_cache("loo")
-    if loo_mat is None:
-        print("  Computing LOO stability ...")
-        loo_mat = _compute_loo_data()
-        _save_cache("loo", loo_mat)
-    if loo_mat is not None:
-        loo_mat = loo_mat.drop_duplicates()
-        if len(loo_mat) > 15:
-            loo_mat = loo_mat.loc[loo_mat.mean(axis=1).nlargest(15).index]
-    fig, ax = plt.subplots(figsize=(9, 6))
-    if loo_mat is not None:
-        _draw_loo_heatmap(ax, loo_mat)
-    else:
-        ax.text(0.5, 0.5, "No LOO data", ha="center", va="center",
-                transform=ax.transAxes)
-    fig.tight_layout()
-    save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
-
-    # ── Empirical power curves on real datasets (panel J) ─────────────
-    print("  Computing empirical power curves (panel J) ...")
-    try:
-        power_data = _prepare_power_data()
-    except Exception as exc:
-        print(f"  Warning: Could not compute power curves: {exc}")
-        power_data = None
-    composite_data = {**data, "power_data": power_data}
-
-    fig_j = _panel_power_curves(composite_data)
-    if fig_j is not None:
-        save_panel(fig_j, "panel_H_power_curves", FIGURE_NAME, SUPP_OUTPUT)
-
+def _build_composite(data: dict, relabel: dict, loo_mat, composite_data: dict):
+    """Lay out the 180 mm composite artboard from already-computed panel data."""
+    power_data = composite_data.get("power_data")
     # ==================================================================
     # Composite artboard  (180 mm × 215 mm)
     # ==================================================================
@@ -1891,15 +1674,12 @@ def generate():
         left=0.065, right=0.985, top=0.97, bottom=0.068,
     )
 
-    # ── Row 1: A (forest plot) ───────────────────────────────────────
+    # ── Row 1: A (rejection rate under relabeling, one axes per cohort) ──
     subfig_a = fig_c.add_subfigure(outer[0])
-    if boot_ok:
-        _panel_bootstrap_multi(subfig_a, boot_ok, composite=True)
-    else:
-        ax_a_tmp = subfig_a.subplots(1, 1)
-        ax_a_tmp.text(0.5, 0.5, "No bootstrap data", ha="center",
-                      va="center", transform=ax_a_tmp.transAxes)
-    subfig_a.subplots_adjust(wspace=0.42, left=0.04, right=0.98, top=0.80, bottom=0.14)
+    axes_a = _panel_calibration(subfig_a, relabel, composite=True)
+    subfig_a.subplots_adjust(wspace=0.30, left=0.16, right=0.86, top=0.80, bottom=0.30)
+    for ax_a in axes_a:
+        key_below_axes(ax_a, ncol=3)
 
     # ── Row 2: B | C | D ─────────────────────────────────────────────
     # (E moved to row 3)
@@ -2040,7 +1820,7 @@ def generate():
     _figure_title_above_subfig(
         fig_c,
         subfig_a,
-        "Analytical vs bootstrap SE",
+        "Rejection rate under relabeling",
         fontsize=_SMALL_RC["axes.titlesize"],
         pad_frac=0.006,
     )
@@ -2063,6 +1843,94 @@ def generate():
         )
 
     plt.rcParams.update(_prev_rc)
+    return fig_c
+
+
+def generate():
+    """Create and save Supplementary Figure 5 panels (A–H) + composite.
+
+    Layout (same order as the composite artboard):
+      A  Observed vs nominal rejection rate under relabeling (TNBC, melanoma)
+      B  Standardized vs unstandardized effect sizes (TNBC)
+      C  Mean vs median aggregation comparison (TNBC)
+      D  Log-transform sensitivity (TNBC)
+      E  Cell-type-stratified DiD heatmap (TNBC)
+      F  Rank-order concordance across choices (TNBC)
+      G  Leave-one-out stability matrix (all datasets)
+      H  Empirical power curves (participant subsampling; 3+3 facet grid)
+
+    The NatMeth simulation-benchmark panels live in Supp Fig 8 (drawn from the
+    shared manuscript_figures._benchmark toolkit); this figure is the empirical
+    sensitivity/robustness supplement only.
+
+    Composite (180 mm × ≤215 mm): row1 A | row2 B|C|D | row3 E|F|G | row4 H.
+    """
+    print("Supplementary Figure 5: Sensitivity to Modeling and Preprocessing")
+
+    # ── Sensitivity (panels B–F) — cache minus large adata ────────────
+    data = _load_cache("sensitivity_tnbc")
+    if data is None:
+        data = _run_sensitivity()
+        cacheable = {k: v for k, v in data.items() if k != "adata"}
+        _save_cache("sensitivity_tnbc", cacheable)
+        if "adata" in data:
+            del data["adata"]
+
+    # ── Relabeling (panel A) ──────────────────────────────────────────
+    relabel = _load_cache("relabeling")
+    if relabel is None:
+        print("  Computing relabeling tables ...")
+        relabel = _run_relabeling()
+        _save_cache("relabeling", relabel)
+    save_panel(_standalone_calibration(relabel), "panel_A", FIGURE_NAME, SUPP_OUTPUT)
+
+    # Panels B–F: single-dataset sensitivity (TNBC)
+    panels_bf = [
+        ("panel_B", _panel_std_vs_unstd, (7.0, 6.0)),
+        ("panel_C", _panel_mean_vs_median, (7.0, 6.0)),
+        ("panel_D", _panel_log_sensitivity, (7.0, 6.0)),
+        ("panel_E", _panel_ct_heatmap, (8.8, 5.8)),
+        ("panel_F", _panel_rank_concordance, (7.2, 5.8)),
+    ]
+    for panel_name, fn, size in panels_bf:
+        fig, ax = plt.subplots(figsize=size)
+        fn(ax, data)
+        fig.tight_layout()
+        save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
+
+    # ── LOO stability (panel G) ───────────────────────────────────────
+    loo_mat = _load_cache("loo")
+    if loo_mat is None:
+        print("  Computing LOO stability ...")
+        loo_mat = _compute_loo_data()
+        _save_cache("loo", loo_mat)
+    if loo_mat is not None:
+        loo_mat = loo_mat.drop_duplicates()
+        if len(loo_mat) > 15:
+            loo_mat = loo_mat.loc[loo_mat.mean(axis=1).nlargest(15).index]
+    fig, ax = plt.subplots(figsize=(9, 6))
+    if loo_mat is not None:
+        _draw_loo_heatmap(ax, loo_mat)
+    else:
+        ax.text(0.5, 0.5, "No LOO data", ha="center", va="center",
+                transform=ax.transAxes)
+    fig.tight_layout()
+    save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
+
+    # ── Empirical power curves on real datasets (panel J) ─────────────
+    print("  Computing empirical power curves (panel J) ...")
+    try:
+        power_data = _prepare_power_data()
+    except Exception as exc:
+        print(f"  Warning: Could not compute power curves: {exc}")
+        power_data = None
+    composite_data = {**data, "power_data": power_data}
+
+    fig_j = _panel_power_curves(composite_data)
+    if fig_j is not None:
+        save_panel(fig_j, "panel_H_power_curves", FIGURE_NAME, SUPP_OUTPUT)
+
+    fig_c = _build_composite(data, relabel, loo_mat, composite_data)
 
     save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
     pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
@@ -2075,7 +1943,7 @@ def generate():
     if "adata" in data:
         del data["adata"]
     data.clear()
-    boot_data.clear()
+    relabel.clear()
     composite_data.clear()
     del loo_mat
     if power_data is not None:

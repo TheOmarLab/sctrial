@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 import sctrial as st
 
@@ -329,3 +330,119 @@ def test_between_arm_n_units_post_drop(sample_adata, trial_design):
     assert res.iloc[0]["n_units"] == 19, (
         f"n_units should be 19 (one participant dropped), got {res.iloc[0]['n_units']}"
     )
+
+
+def test_within_arm_standard_error_ignores_a_covariate_constant_within_participant(
+    sample_adata, trial_design
+):
+    # The participant effects hold such a covariate; counted as a design column it enlarged
+    # the cluster-robust standard error without changing the estimate.
+    adata = sample_adata.copy()
+    adata.obs["site"] = adata.obs["participant_id"].map(
+        {f"P{i}": float(i % 3) for i in range(20)}
+    )
+    kw = dict(arm="Treated", features=["G0"], design=trial_design, visits=("V1", "V2"))
+    plain = st.within_arm_comparison(adata, **kw)
+    adjusted = st.within_arm_comparison(adata, covariates=["site"], **kw)
+    for col in ("beta_time", "se_time", "p_time", "ci_lo_time", "ci_hi_time"):
+        assert adjusted[col].iloc[0] == pytest.approx(plain[col].iloc[0], rel=1e-9)
+
+
+def test_within_arm_gives_no_estimate_when_a_covariate_duplicates_the_visit(
+    sample_adata, trial_design
+):
+    adata = sample_adata.copy()
+    adata.obs["second_visit"] = (adata.obs["visit"] == "V2").astype(float)
+    res = st.within_arm_comparison(
+        adata, arm="Treated", features=["G0"], design=trial_design, visits=("V1", "V2"),
+        covariates=["second_visit"],
+    )
+    assert np.isnan(res["beta_time"].iloc[0]) and np.isnan(res["p_time"].iloc[0])
+
+
+def _many_gene_adata(n_genes: int = 30):
+    """Two arms, two visits, several cells per participant and visit, and many genes."""
+    import pandas as pd
+    from anndata import AnnData
+
+    rng = np.random.default_rng(11)
+    rows = [
+        (f"{arm[0]}{i}", arm, visit)
+        for arm in ("Treated", "Control")
+        for i in range(7)
+        for visit in ("V1", "V2")
+        for _ in range(4)
+    ]
+    obs = pd.DataFrame(rows, columns=["participant_id", "arm", "visit"])
+    obs.index = obs.index.astype(str)
+    X = rng.normal(size=(len(obs), n_genes)) + rng.normal(size=(1, n_genes))
+    X[(obs["visit"] == "V2").to_numpy(), : n_genes // 2] += 0.8
+    X[:, 3] = 2.0
+    X[(obs["participant_id"] == "T2").to_numpy(), 4] = np.nan
+    adata = AnnData(X=X, obs=obs)
+    adata.var_names = [f"g{i:02d}" for i in range(n_genes)]
+    return adata
+
+
+_PER_GENE_CALLS = {
+    "within_arm": lambda adata, design, feats: st.within_arm_comparison(
+        adata, arm="Treated", features=feats, design=design, visits=("V1", "V2")
+    ),
+    "within_arm_bootstrap": lambda adata, design, feats: st.within_arm_comparison(
+        adata, arm="Treated", features=feats, design=design, visits=("V1", "V2"),
+        use_bootstrap=True, n_boot=99,
+    ),
+    "between_arm_ols": lambda adata, design, feats: st.between_arm_comparison(
+        adata, visit="V2", features=feats, design=design
+    ),
+    "between_arm_wilcoxon": lambda adata, design, feats: st.between_arm_comparison(
+        adata, visit="V2", features=feats, design=design, method="wilcoxon"
+    ),
+}
+
+
+@pytest.mark.parametrize("call", sorted(_PER_GENE_CALLS))
+def test_a_gene_has_the_same_result_alone_and_among_other_genes(trial_design, call):
+    # Each gene is fitted on a frame of its own columns. Its estimate, standard error and
+    # p-value must be those of a call with that gene only, to the last bit.
+    import warnings
+
+    import pandas as pd
+
+    adata = _many_gene_adata()
+    genes = adata.var_names.tolist()
+    run = _PER_GENE_CALLS[call]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        together = run(adata, trial_design, genes).set_index("feature")
+        for gene in ("g00", "g03", "g04", "g17", "g29"):
+            alone = run(adata, trial_design, [gene]).set_index("feature")
+            columns = [c for c in alone.columns if not c.startswith("FDR")]
+            pd.testing.assert_frame_equal(
+                together.loc[[gene], columns], alone[columns], check_exact=True
+            )
+
+
+@pytest.mark.parametrize("call,width", [("within_arm", 4), ("between_arm_ols", 4)])
+def test_the_model_frame_of_a_gene_does_not_grow_with_the_number_of_genes(
+    monkeypatch, trial_design, call, width
+):
+    # The frame of every gene held the columns of all genes and was copied once per gene,
+    # so the time per gene grew with the number of genes in the call.
+    import warnings
+
+    from sctrial.stats import comparisons
+
+    widths = []
+    real_ols = comparisons.smf.ols
+
+    def measuring_ols(formula, data, **kwargs):
+        widths.append(data.shape[1])
+        return real_ols(formula, data, **kwargs)
+
+    monkeypatch.setattr(comparisons.smf, "ols", measuring_ols)
+    adata = _many_gene_adata(n_genes=60)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        _PER_GENE_CALLS[call](adata, trial_design, adata.var_names.tolist())
+    assert len(widths) >= 58 and max(widths) == width

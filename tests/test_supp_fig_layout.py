@@ -1,0 +1,350 @@
+"""Layout helpers behind Supp Figs 2, 6 and 8: alluvial geometry, keys, tick labels."""
+
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.patches as mpatches  # noqa: E402
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+import pytest  # noqa: E402
+
+pytest.importorskip("plotly")
+pytest.importorskip("scanpy")
+
+_MM = 1 / 25.4
+
+
+@pytest.fixture
+def sf2(load_figure_module):
+    return load_figure_module("supp/supp_fig2_annotation_baseline")
+
+
+def _flows():
+    """Twelve cell types, two of them in very few participants, across two arms."""
+    counts = {"B cell": (9, 8), "CD4+ T": (10, 9), "CD8+ T": (10, 9), "DC": (8, 7),
+              "Erythroid": (1, 0), "HSC/Prog": (1, 1), "Monocyte": (10, 9), "NK": (9, 9),
+              "Other": (3, 2), "Plasma": (6, 5), "T other": (10, 9), "Treg": (9, 8)}
+    rows = [{"Cell type": ct, "Arm": arm, "count": n}
+            for ct, pair in counts.items() for arm, n in zip(("Chemo", "anti-PDL1+Chemo"), pair)
+            if n > 0]
+    return pd.DataFrame(rows)
+
+
+def _bars(ax, x0):
+    return [p for p in ax.patches
+            if isinstance(p, mpatches.Rectangle) and np.isclose(p.get_x(), x0)]
+
+
+def test_alluvial_sides_share_one_height_scale(sf2):
+    flow = _flows()
+    fig = plt.figure(figsize=(30 * _MM, 40 * _MM))
+    ax = fig.add_axes([0.35, 0.05, 0.3, 0.85])
+    sf2._draw_alluvial(ax, flow, "Arm", fontsize=4)
+    left = sum(p.get_height() for p in _bars(ax, 0.0))
+    # The right side draws coloured segments and an outline per arm; compare outlines.
+    right = sum(p.get_height() for p in _bars(ax, 0.95) if p.get_facecolor()[3] == 0)
+    assert left == pytest.approx(right)
+    per_participant = left / flow["count"].sum()
+    for p in _bars(ax, 0.0):
+        assert p.get_height() / per_participant == pytest.approx(round(p.get_height() / per_participant))
+    plt.close(fig)
+
+
+def test_alluvial_labels_never_overlap(sf2):
+    import manuscript_figures._shared as sh
+
+    fig = plt.figure(figsize=(30 * _MM, 40 * _MM))
+    ax = fig.add_axes([0.35, 0.05, 0.3, 0.8])
+    sf2._draw_alluvial(ax, _flows(), "Arm", fontsize=4)
+    problems = sh.layout_problems(fig)
+    assert problems["text overlaps"] == []
+    plt.close(fig)
+
+
+def test_standalone_alluvial_title_clears_headers(sf2):
+    import manuscript_figures._shared as sh
+
+    fig = sf2._alluvial_standalone("TNBC", {"flow": _flows(), "right_label": "Arm"})
+    problems = sh.layout_problems(fig)
+    assert problems["text overlaps"] == [] and problems["outside canvas"] == []
+    ax = fig.axes[0]
+    r = fig.canvas.get_renderer()
+    headers = max(t.get_window_extent(r).y1 for t in ax.texts if t.get_text() in ("Cell type", "Arm"))
+    assert (ax.title.get_window_extent(r).y0 - headers) * 72 / fig.dpi >= 4  # a visible gap, pt
+    plt.close(fig)
+
+
+def test_spread_labels_keeps_gap_and_bounds(sf2):
+    y = np.array([0.10, 0.11, 0.12, 0.50, 0.98, 0.99])
+    out = sf2._spread_labels(y, 0.05, 0.02, 0.98)
+    s = np.sort(out)
+    assert np.all(np.diff(s) >= 0.05 - 1e-12)
+    assert s[0] >= 0.02 - 1e-12 and s[-1] <= 0.98 + 1e-12
+    assert np.argsort(out).tolist() == np.argsort(y).tolist()  # order is preserved
+
+
+def test_key_below_axes_on_axes_without_x_text(load_figure_module):
+    load_figure_module("supp/supp_fig2_annotation_baseline")
+    import manuscript_figures._shared as sh
+
+    fig, ax = plt.subplots(figsize=(2, 2))
+    ax.scatter([0, 1], [0, 1], label="a")
+    ax.scatter([1, 0], [0, 1], label="b")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.legend()
+    leg = sh.key_below_axes(ax, ncol=2)
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    assert leg.get_window_extent(r).y1 <= ax.get_window_extent(r).y0
+    plt.close(fig)
+
+
+def test_family_tick_labels_grouped_in_a_composite_cell(load_figure_module):
+    load_figure_module("supp/supp_fig6_benchmark_calibration")
+    import manuscript_figures._benchmark as bm
+    import manuscript_figures._shared as sh
+
+    labels = ["50 cells/PV", "250 cells/PV", "1,000 cells/PV", "emp. het. yield", "10% miss",
+              "20% miss", "3:7 arm imbalance", "5:10 arm imbalance", "10:20 arm imbalance",
+              "het. effect", "comp. stress"]
+    fig = plt.figure(figsize=(180 * _MM, 40 * _MM))
+    ax = fig.add_axes([0.55, 0.45, 0.4, 0.4])  # half-width cell, as panels K to N
+    ax.set_xticks(range(len(labels)))
+    bm._family_ticklabels(ax, labels, composite=True, fontsize=3.8)
+    assert [t.get_text() for t in ax.get_xticklabels()] == [
+        "50", "250", "1,000", "emp.\nhet.\nyield", "10%", "20%", "3:7", "5:10", "10:20",
+        "het.\neffect", "comp.\nstress"]
+    assert [t.get_text() for t in ax.texts] == ["cells/PV", "missing", "arm imbalance"]
+    problems = sh.layout_problems(fig)
+    assert problems["text overlaps"] == [] and problems["outside canvas"] == []
+    plt.close(fig)
+
+    fig, ax = plt.subplots()
+    ax.set_xticks(range(len(labels)))
+    bm._family_ticklabels(ax, labels, composite=False, fontsize=8)
+    assert [t.get_text() for t in ax.get_xticklabels()] == labels  # standalone unchanged
+    assert all(t.get_rotation() == 20 for t in ax.get_xticklabels())
+    plt.close(fig)
+
+
+def test_runtime_ratio_keeps_one_decimal_below_ten(load_figure_module):
+    load_figure_module("supp/supp_fig6_benchmark_calibration")
+    import manuscript_figures._benchmark as bm
+
+    assert [bm._fold_label(r) for r in (1.0, 1.43, 5.83, 9.94, 9.96, 70.4, 87.2)] == [
+        "1.0×", "1.4×", "5.8×", "9.9×", "10×", "70×", "87×"]
+
+
+def _relabel_table(n_features=6, n_assign=40, seed=1):
+    """A relabeling table whose bootstrap rejects more often than its analytical test."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    for i in range(n_features):
+        p_boot = rng.uniform(size=n_assign)
+        for a in range(n_assign):
+            rows.append({"assignment": a, "feature": f"sig_{i}", "p_boot": p_boot[a],
+                         "p_analytic": min(1.0, 2.5 * p_boot[a]),
+                         "ci_lo_boot": 0.1 if p_boot[a] < 0.05 else -1.0, "ci_hi_boot": 1.0})
+    return pd.DataFrame(rows)
+
+
+def test_figure3_relabeling_panel_is_reproducible_and_keyed_below(load_figure_module):
+    fig3 = load_figure_module("main/figure3_robustness_benchmarking")
+    table = _relabel_table()
+    rates = fig3._panel_a_rates({"relabel": table})
+    assert rates["reject_boot"].between(0, 100).all()
+    assert (rates["reject_analytic"] <= rates["reject_boot"]).all()
+
+    def layout(global_seed):
+        np.random.seed(global_seed)  # whatever state the caller left
+        fig, ax = plt.subplots(figsize=(6.5, 2.8))
+        fig3._panel_a_single(ax, {"relabel": table}, title="t")
+        points = [c.get_offsets().copy() for c in ax.collections]
+        means = [t.get_text() for t in ax.texts]
+        fig.tight_layout(rect=(0, 0.12, 0.94, 1))
+        fig3.key_below_axes(ax, ncol=2)
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        below = ax.get_legend().get_window_extent(renderer).y1 < ax.get_window_extent(renderer).y0
+        plt.close(fig)
+        return points, means, below
+
+    points, means, below = layout(1)
+    again, _, _ = layout(2)
+    assert all((a == b).all() for a, b in zip(points, again))
+    assert below
+    # one strip of signatures and one mean diamond per test, means written as percentages
+    assert [len(p) for p in points] == [6, 1, 6, 1]
+    expected = [f"{rates[col].mean():.1f}%" for col, *_ in fig3.PANEL_A_TESTS]
+    assert means == expected
+    for (col, *_), strip, diamond in zip(fig3.PANEL_A_TESTS, points[0::2], points[1::2]):
+        np.testing.assert_allclose(np.sort(strip[:, 0]), np.sort(rates[col].to_numpy()))
+        assert diamond[0, 0] == pytest.approx(rates[col].mean())
+
+
+def test_figure3_relabeling_panels_share_one_x_scale(load_figure_module):
+    fig3 = load_figure_module("main/figure3_robustness_benchmarking")
+    fig, (top, bottom) = plt.subplots(2, 1)
+    fig3._panel_a(top, bottom, {"relabel": _relabel_table(seed=1)}, {"relabel": _relabel_table(seed=2)})
+    assert top.get_xlim() == bottom.get_xlim()
+    assert top.get_xlim()[1] >= 8.0
+    fig3._panel_a_single(top, {"relabel": pd.DataFrame()}, title="empty")
+    plt.close(fig)
+
+
+def test_key_below_row_places_one_single_row_key_under_the_row(load_figure_module):
+    """Figure 3A: two axes with the same four series share one key instead of two."""
+    fig3 = load_figure_module("main/figure3_robustness_benchmarking")
+    import manuscript_figures._shared as sh
+
+    def row():
+        fig, axes = plt.subplots(1, 2, figsize=(7.1, 1.6))
+        fig3._panel_a(axes[1], axes[0], {"relabel": _relabel_table(seed=1)},
+                      {"relabel": _relabel_table(seed=2)}, composite=True)
+        fig.subplots_adjust(bottom=0.45, top=0.85)
+        return fig, axes
+
+    fig, axes = row()
+    assert all(ax.get_legend() is not None for ax in axes)
+    leg = sh.key_below_row(list(axes), ncol=4)
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    box = leg.get_window_extent(renderer)
+    assert axes[1].get_legend() is None and len(fig.legends) == 0
+    assert len(leg.get_texts()) == 4
+    baselines = {round(t.get_window_extent(renderer).y0) for t in leg.get_texts()}
+    assert len(baselines) == 1  # one row
+    x_text = [ax.xaxis.get_tightbbox(renderer) for ax in axes]
+    assert box.y1 < min(b.y0 for b in x_text)  # below the x labels of both axes
+    extents = [ax.get_window_extent(renderer) for ax in axes]
+    row_centre = 0.5 * (min(e.x0 for e in extents) + max(e.x1 for e in extents))
+    assert abs(0.5 * (box.x0 + box.x1) - row_centre) < 1.0
+    assert box.x0 > 0 and box.x1 < fig.bbox.width
+    one_row = box.height
+    plt.close(fig)
+
+    # the two keys of two rows it replaces reach further down, by a line of text
+    fig, axes = row()
+    for ax in axes:
+        sh.key_below_axes(ax, ncol=2, clear_of=list(axes))
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    two_rows = axes[0].get_legend().get_window_extent(renderer).height
+    font_px = axes[0].get_legend().get_texts()[0].get_fontsize() * fig.dpi / 72
+    assert two_rows - one_row > 0.8 * font_px
+    plt.close(fig)
+
+    fig, axes = plt.subplots(1, 2)
+    assert sh.key_below_row(list(axes), ncol=2) is None
+    plt.close(fig)
+
+
+def test_figure3_forest_rows_grouped_and_clear(load_figure_module):
+    fig3 = load_figure_module("main/figure3_robustness_benchmarking")
+    import manuscript_figures._shared as sh
+
+    sigs = ["Cytotoxic T Cell Activity", "T Cell Exhaustion", "Inflammatory Response",
+            "Type I Interferon", "T Cell Activation"]
+    rng = np.random.default_rng(3)
+    rows = []
+    for ds, n in (("TNBC", 12), ("Sade-Feldman", 11), ("Vaccine", 6)):
+        for s in sigs:
+            d = float(rng.normal(0, 0.8))
+            rows.append({"dataset": ds, "signature": s, "d": d, "d_lower": d - 1,
+                         "d_upper": d + 1, "n_participants": n})
+    data = {"scale_data": {"effect_df": pd.DataFrame(rows)}}
+    fig, ax = plt.subplots(figsize=(4, 4))
+    fig3._panel_e_cross_dataset(ax, data)
+    fig.tight_layout()
+    labels = [t.get_text() for t in ax.get_yticklabels()]
+    assert len(labels) == 15 and "TNBC" not in labels  # no header rows
+    texts = [t.get_text() for t in ax.texts]
+    assert "TNBC\nn = 12" in texts and "Melanoma\nn = 11" in texts  # one group label each
+    assert sum(t.startswith(("+", "-")) for t in texts) == 15  # one value per row
+    problems = sh.layout_problems(fig)
+    assert problems["text overlaps"] == []
+    plt.close(fig)
+
+
+_NEBULA_LOG = """\
+MODEL-COMPATIBLE NULL: DGP matches NEBULA's assumed model exactly
+  mean beta      : -0.0003  (MCSE 0.0003)
+  FPR at 0.05    : 0.0473
+
+SIGMA_U ABLATION: is the participant-by-visit level responsible?
+   sigma_u   mean beta     MCSE  FPR@0.05  FPR MCSE  converged
+     0.000     +0.0002   0.0003    0.0489    0.0025     1.0000
+     0.250     -0.0044   0.0016    0.6837    0.0058     1.0000
+     0.500     -0.0081   0.0034    0.8158    0.0052     1.0000
+     0.768     -0.0154   0.0073    0.8651    0.0037     1.0000
+
+WORKAROUND DIAGNOSTIC: id = participant x visit, participant fixed effects
+  standard (id=participant)              FPR 0.8530 +/- 0.0080   mean beta -0.0261
+  workaround (id=participant x visit)    FPR 0.2245 +/- 0.0109   mean beta -0.0127
+"""
+
+
+@pytest.mark.parametrize("composite", [True, False])
+def test_nebula_hierarchy_annotations_do_not_overlap(load_figure_module, tmp_path, composite):
+    sf6 = load_figure_module("supp/supp_fig6_benchmark_calibration")
+    import manuscript_figures._shared as sh
+
+    (tmp_path / "nebula_hierarchy_diagnostic.log").write_text(_NEBULA_LOG)
+    sf6._DIAG_DIR = tmp_path
+    if composite:  # the panel's own cell in the composite, where the axes are 15 mm tall
+        fig, cell = sf6._composite_cells()
+        ax = fig.add_subplot(cell["DGH"].subgridspec(1, 3, width_ratios=sf6._DGH_WIDTHS,
+                                                     wspace=0.32)[1])
+        sf6._panel_nebula_hierarchy(fig, ax=ax, composite=True)
+    else:
+        fig = plt.figure(figsize=(7, 5))
+        sf6._panel_nebula_hierarchy(fig)
+        ax = fig.axes[0]
+    assert len(ax.texts) == 2  # the calibrated-sigma label and the control box
+    problems = sh.layout_problems(fig)
+    assert problems["text overlaps"] == [] and problems["outside canvas"] == []
+    plt.close(fig)
+
+
+@pytest.mark.parametrize("scale", [1.0, 0.35])
+def test_size_key_matches_dot_areas(sf2, scale):
+    fig, ax = plt.subplots(figsize=(3, 3))
+    sf2._size_key(ax, fontsize=5, title_fontsize=6, scale=scale)
+    sizes = [h.get_markersize() for h in ax.get_legend().legend_handles]
+    # a dot for a fraction f has area f * 200 * scale pt^2, i.e. diameter sqrt of that
+    assert sizes == pytest.approx([np.sqrt(f * 200 * scale) for f in (0.25, 0.5, 0.75)])
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    marks = [h.get_window_extent(r) for h in ax.get_legend().legend_handles]
+    for upper, lower in zip(marks, marks[1:]):  # rows far enough apart that circles do not touch
+        assert upper.y0 - lower.y1 >= 0
+    plt.close(fig)
+
+
+def test_key_below_axes_keeps_title_only_when_asked(load_figure_module):
+    load_figure_module("supp/supp_fig2_annotation_baseline")
+    import manuscript_figures._shared as sh
+
+    for keep in (False, True):
+        fig, ax = plt.subplots(figsize=(3, 2))
+        ax.plot([0, 1], [0, 1], label="a")
+        ax.legend(title="Runtime relative to sctrial")
+        leg = sh.key_below_axes(ax, ncol=1, keep_title=keep)
+        assert leg.get_title().get_text() == ("Runtime relative to sctrial" if keep else "")
+        plt.close(fig)
+
+
+def test_runtime_summary_is_median_of_scenario_medians(load_figure_module):
+    load_figure_module("supp/supp_fig6_benchmark_calibration")
+    import manuscript_figures._benchmark as bm
+
+    rows = [("s1", 1, 1.0), ("s1", 1, 100.0), ("s1", 2, 2.0), ("s1", 3, 9.0),
+            ("s2", 1, 4.0), ("s2", 2, 6.0)]
+    bench = pd.DataFrame([{"method": "sctrial_did", "scenario": sc, "n_genes": 50,
+                           "iteration": it, "runtime_seconds": rt} for sc, it, rt in rows])
+    scen_med, summary = bm._runtime_summary(bench)
+    assert scen_med.set_index("scenario")["runtime_seconds"].to_dict() == {"s1": 2.0, "s2": 5.0}
+    assert summary[["med", "q25", "q75"]].iloc[0].tolist() == [3.5, 2.75, 4.25]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Sequence
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
@@ -11,8 +12,10 @@ from anndata import AnnData
 from scipy.stats import wilcoxon
 from statsmodels.stats.multitest import multipletests
 
+from ..adata_tools import subset_arms
 from ..design import TrialDesign
-from ._utils import encode_visit
+from ..utils import _tie_tolerance
+from ._utils import encode_visit, fits_exactly
 
 __all__ = [
     "module_score_pseudobulk",
@@ -29,6 +32,12 @@ def _map_pool(celltype: str, pool_map: dict[str, Sequence[str]] | None) -> str |
         if celltype in labels:
             return pool
     return None
+
+
+def _stripped_labels(labels: pd.Series) -> pd.Series:
+    """Arm labels as strings without surrounding whitespace; missing labels stay missing."""
+    labels = labels.astype(object)
+    return labels.where(labels.isna(), labels.astype(str).str.strip())
 
 
 def module_score_pseudobulk(
@@ -95,8 +104,9 @@ def module_score_pseudobulk(
 
     # Build column lists conditionally — arm_col may be None for single-arm
     id_cols = [design.participant_col, design.visit_col]
+    df = df.dropna(subset=[design.participant_col])
     if design.arm_col is not None:
-        df[design.arm_col] = df[design.arm_col].astype(str).str.strip()
+        df[design.arm_col] = _stripped_labels(df[design.arm_col])
         id_cols.append(design.arm_col)
 
     # Long format: participant × visit × [arm] × pool × module
@@ -114,13 +124,16 @@ def module_score_pseudobulk(
         long_df.groupby(
             melt_id + ["module"],
             observed=True,
+            dropna=False,
         )["module_score"]
         .mean()
         .reset_index()
     )
     pb = pb[pb["module_score"].notna()].copy()
 
-    counts = df.groupby(id_cols + ["pool"], observed=True).size().reset_index(name="n_cells")
+    counts = (
+        df.groupby(id_cols + ["pool"], observed=True, dropna=False).size().reset_index(name="n_cells")
+    )
 
     pb = pb.merge(
         counts,
@@ -160,16 +173,18 @@ def _perm_test_diff(
         Two-sided permutation p-value in ``[0, 1]``.
     """
     rng = np.random.default_rng(seed)
-    values = delta.to_numpy()
+    values = delta.to_numpy(dtype=float)
+    values = values - np.mean(values)
     labels = arms.to_numpy()
     if treated_label is None:
         treated_label = labels[0]
     obs = values[labels == treated_label].mean() - values[labels != treated_label].mean()
+    tol = _tie_tolerance(values)
     count = 0
     for _ in range(n_perm):
         perm = rng.permutation(np.asarray(labels))
         perm_diff = values[perm == treated_label].mean() - values[perm != treated_label].mean()
-        if np.abs(perm_diff) >= np.abs(obs):
+        if np.abs(perm_diff) >= np.abs(obs) - tol:
             count += 1
     return float((count + 1) / (n_perm + 1))
 
@@ -226,14 +241,25 @@ def module_score_did_by_pool(
         When *fdr_within* is set and *fdr_global* is True, an additional
         ``FDR_DiD_global`` column contains the globally-corrected q-values.
     """
+    if design.arm_col is None:
+        raise ValueError(
+            "module_score_did_by_pool requires a two-arm design (arm_col must not be None); "
+            "for one arm use module_score_within_arm_by_pool."
+        )
     rows: list[dict[str, Any]] = []
     arm_treated = str(design.arm_treated).strip()
     arm_control = str(design.arm_control).strip()
 
+    # The two visits and the two named arms; arm labels are compared after stripping
+    # surrounding whitespace.
+    pb = pb[pb[design.visit_col].isin(visits)].copy()
+    pb[design.arm_col] = _stripped_labels(pb[design.arm_col])
+    pb = subset_arms(
+        pb, replace(design, arm_treated=arm_treated, arm_control=arm_control), stacklevel=3
+    )
+
     for (pool, module), sub in pb.groupby(["pool", "module"], observed=True):
-        sub = sub[sub[design.visit_col].isin(visits)].copy()
-        sub[design.arm_col] = sub[design.arm_col].astype(str).str.strip()
-        sub = sub[sub[design.arm_col].isin([arm_treated, arm_control])].copy()
+        sub = sub.copy()
         if sub[design.visit_col].nunique() < 2 or sub[design.arm_col].nunique() < 2:
             continue
 
@@ -246,8 +272,10 @@ def module_score_did_by_pool(
             # Compute mean deltas from unpaired group means
             treated = df[df["arm_bin"] == 1]
             control = df[df["arm_bin"] == 0]
-            treated_means = treated.groupby(design.visit_col)["module_score"].mean()
-            control_means = control.groupby(design.visit_col)["module_score"].mean()
+            # observed=True: with a Categorical visit, an arm missing a visit would
+            # otherwise get a NaN row for it and slip past the guard below.
+            treated_means = treated.groupby(design.visit_col, observed=True)["module_score"].mean()
+            control_means = control.groupby(design.visit_col, observed=True)["module_score"].mean()
             if visits[0] not in treated_means or visits[1] not in treated_means:
                 continue
             if visits[0] not in control_means or visits[1] not in control_means:
@@ -260,12 +288,14 @@ def module_score_did_by_pool(
             p_control = np.nan
             try:
                 fit_t = smf.ols("module_score ~ visit_num", data=treated).fit(cov_type="HC1")
-                p_treated = float(fit_t.pvalues.get("visit_num", np.nan))
+                if not fits_exactly(fit_t):
+                    p_treated = float(fit_t.pvalues.get("visit_num", np.nan))
             except (ValueError, TypeError):
                 p_treated = np.nan
             try:
                 fit_c = smf.ols("module_score ~ visit_num", data=control).fit(cov_type="HC1")
-                p_control = float(fit_c.pvalues.get("visit_num", np.nan))
+                if not fits_exactly(fit_c):
+                    p_control = float(fit_c.pvalues.get("visit_num", np.nan))
             except (ValueError, TypeError):
                 p_control = np.nan
 
@@ -279,7 +309,12 @@ def module_score_did_by_pool(
                     "mean_delta_treated": mean_delta_treated,
                     "mean_delta_control": mean_delta_control,
                     "beta_DiD": float(fit.params.get("visit_num:arm_bin", np.nan)),
-                    "p_DiD": float(fit.pvalues.get("visit_num:arm_bin", np.nan)),
+                    # an exact fit gives the estimate and no test
+                    "p_DiD": (
+                        np.nan
+                        if fits_exactly(fit)
+                        else float(fit.pvalues.get("visit_num:arm_bin", np.nan))
+                    ),
                     "p_treated": p_treated,
                     "p_control": p_control,
                     "n_units": n_units_eff,
@@ -316,7 +351,7 @@ def module_score_did_by_pool(
             sub_arm = deltas[deltas["arm"] == arm_label]
             if len(sub_arm) >= 3:
                 delta_vals = sub_arm[visits[1]].values - sub_arm[visits[0]].values
-                if np.allclose(delta_vals, 0):
+                if not np.any(delta_vals):
                     p = 1.0
                 else:
                     try:
@@ -440,10 +475,13 @@ def module_score_within_arm_by_pool(
         pre = wide[visits[0]].to_numpy(dtype=float)
         post = wide[visits[1]].to_numpy(dtype=float)
         delta = post - pre
-        try:
-            _, p_val = wilcoxon(delta)
-        except (ValueError, TypeError):
+        if not np.any(delta):
             p_val = np.nan
+        else:
+            try:
+                _, p_val = wilcoxon(delta)
+            except (ValueError, TypeError):
+                p_val = np.nan
 
         rows.append(
             {

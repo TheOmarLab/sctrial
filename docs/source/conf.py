@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath("../../src"))
 project = "sctrial"
 copyright = f"{datetime.now().year}, Omar Lab, Cedars-Sinai Medical Center"
 author = "Omar Lab, Cedars-Sinai Medical Center"
-release = "0.3.3"
+release = "1.1.0"
 
 # -- Extensions ---------------------------------------------------------------
 
@@ -36,6 +36,7 @@ exclude_patterns = []
 # -- HTML output ---------------------------------------------------------------
 
 html_theme = "pydata_sphinx_theme"
+html_baseurl = "https://www.omar-lab.com/sctrial/"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_favicon = "_static/logo_icon.svg"

@@ -3,6 +3,9 @@
 For each dataset, subsample participants at different fractions,
 run all methods, and measure ranking stability via Spearman ρ
 and top-k Jaccard overlap.
+
+The cohort is mapped once to the vocabulary of the runners
+(:func:`sctrial.benchmark.contracts.canonical_cohort`) before the resamples.
 """
 
 from __future__ import annotations
@@ -28,6 +31,12 @@ def run_subsampling(
     visit_col: str = "visit",
     output_path: str | Path | None = None,
     seed: int = 42,
+    *,
+    visits: tuple[str, str],
+    arm_treated: str | None = None,
+    arm_control: str | None = None,
+    design_type: str = "two_arm",
+    counts_layer: str | None = "counts",
 ) -> pd.DataFrame:
     """Run subsampling reproducibility on a single dataset.
 
@@ -43,6 +52,15 @@ def run_subsampling(
         Participant fractions to subsample. Default: [0.5, 0.7, 0.9].
     n_resamples : int
         Number of random subsamples per fraction.
+    visits : tuple[str, str]
+        (baseline, follow-up) labels of ``visit_col`` in this cohort.
+    arm_treated, arm_control : str
+        The two labels of ``arm_col`` in this cohort. Required for a two-arm
+        design; rows of other arms are left out with one warning.
+    design_type : {"two_arm", "single_arm"}
+    counts_layer : str or None
+        Layer that holds raw counts (``None`` for ``adata.X``). The count models
+        refuse a matrix with non-integer values.
 
     Returns
     -------
@@ -54,32 +72,40 @@ def run_subsampling(
         methods = CORE_METHODS
     if fractions is None:
         fractions = [0.5, 0.7, 0.9]
+    if design_type not in ("two_arm", "single_arm"):
+        raise ValueError(f"design_type must be 'two_arm' or 'single_arm', got {design_type!r}")
 
     from scipy.stats import spearmanr
 
-    from .contracts import prepare_inputs_from_adata
+    from .contracts import canonical_cohort, prepare_inputs_from_adata, require_raw_counts
     from .metrics import compute_topk_jaccard
     from .orchestrator import _dispatch_method
 
+    adata = canonical_cohort(
+        adata,
+        participant_col=participant_col,
+        visit_col=visit_col,
+        visits=visits,
+        arm_col=arm_col if design_type == "two_arm" else None,
+        arm_treated=arm_treated,
+        arm_control=arm_control,
+        counts_layer=counts_layer,
+    )
+    require_raw_counts(methods, adata)
+
     rng = np.random.default_rng(seed)
-    participants = adata.obs[participant_col].unique()
+    participants = adata.obs["participant"].unique()
     n_total = len(participants)
 
     # First: run full-data reference for each method
     print(f"Running full-data reference ({len(methods)} methods, {len(gene_cols)} genes)...")
     # Same contracts as the simulated path; see the note in permutation.py.
-    inputs_full = prepare_inputs_from_adata(
-        adata,
-        gene_cols,
-        participant_col=participant_col,
-        visit_col=visit_col,
-        arm_col=arm_col,
-    )
+    inputs_full = prepare_inputs_from_adata(adata, gene_cols, counts_layer=None)
 
     full_pvals = {}
     for method in methods:
         try:
-            res = _dispatch_method(method, inputs_full)
+            res = _dispatch_method(method, inputs_full, design_type=design_type)
             full_pvals[method] = pd.Series({g: res[g]["pvalue"] for g in gene_cols})
         except Exception as exc:
             logger.warning("Full-data %s failed: %s", method, exc)
@@ -97,20 +123,14 @@ def run_subsampling(
 
         for r in range(n_resamples):
             sub_pids = rng.choice(participants, size=n_sub, replace=False)
-            mask = adata.obs[participant_col].isin(sub_pids)
+            mask = adata.obs["participant"].isin(sub_pids)
             adata_sub = adata[mask].copy()
 
-            inputs_sub = prepare_inputs_from_adata(
-                adata_sub,
-                gene_cols,
-                participant_col=participant_col,
-                visit_col=visit_col,
-                arm_col=arm_col,
-            )
+            inputs_sub = prepare_inputs_from_adata(adata_sub, gene_cols, counts_layer=None)
 
             for method in methods:
                 try:
-                    res = _dispatch_method(method, inputs_sub)
+                    res = _dispatch_method(method, inputs_sub, design_type=design_type)
                     sub_pvals = pd.Series({g: res[g]["pvalue"] for g in gene_cols})
 
                     # Spearman ρ

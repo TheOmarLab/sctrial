@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from anndata import AnnData
 
+from .adata_tools import subset_arms
 from .datasets import count_paired
 from .design import TrialDesign
 from .utils import get_counts_matrix
@@ -322,7 +323,10 @@ def diagnose_trial_data(
 
     # Check cell type distribution if available
     if design.celltype_col and design.celltype_col in adata.obs.columns:
+        # Count only cell types present: a sliced Categorical keeps every level, and
+        # value_counts would report the absent ones with a count of zero.
         celltype_counts = adata.obs[design.celltype_col].value_counts()
+        celltype_counts = celltype_counts[celltype_counts > 0]
         report["n_celltypes"] = len(celltype_counts)
         report["celltype_distribution"] = celltype_counts.to_dict()
 
@@ -389,6 +393,7 @@ def check_covariate_balance(
     obs = obs[obs[design.visit_col] == visit].copy()
     if obs.empty:
         raise ValueError(f"No observations found for visit '{visit}'.")
+    obs = subset_arms(obs, design, stacklevel=3)
 
     # collapse to participant-level to avoid pseudoreplication
     group_cols = [design.participant_col, design.arm_col]

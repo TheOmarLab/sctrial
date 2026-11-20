@@ -29,7 +29,10 @@ Sample Size Recommendations
 
 Use ``st.power_did()`` and ``st.sample_size_did()`` (two-arm) or
 ``st.power_paired()`` and ``st.sample_size_paired()`` (single-arm) to
-determine whether your study is adequately powered. For fewer than 15
+determine whether your study is adequately powered. When the two groups
+differ in size, as response groups or severity groups usually do, use
+``st.power_two_group()`` and ``st.sample_size_two_group()`` with the
+group sizes or the expected allocation ratio. For fewer than 15
 participants, always use bootstrap inference (``use_bootstrap=True``).
 
 See :ref:`faq-sample-size` for detailed tables and code examples.
@@ -190,10 +193,10 @@ For **n < 15 paired participants**, use Wild Cluster Bootstrap:
    )
 
    # Bootstrap adds extra columns to the result DataFrame:
-   #   p_DiD_boot   — bootstrap p-value
-   #   se_DiD_boot  — bootstrap standard error
-   #   ci_lo_boot   — lower bound of bootstrap-t 95% CI
-   #   ci_hi_boot   — upper bound of bootstrap-t 95% CI
+   #   p_DiD_boot   : bootstrap p-value
+   #   se_DiD_boot  : bootstrap standard error
+   #   ci_lo_boot   : lower bound of the 95% CI (inverted bootstrap test)
+   #   ci_hi_boot   : upper bound of the 95% CI (inverted bootstrap test)
 
 Multiple Testing Correction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

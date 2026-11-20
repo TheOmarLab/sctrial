@@ -248,34 +248,189 @@ class TestResolveFeature:
         assert st.resolve_feature(sample_adata, "feature") == "feature"
 
 
-class TestWLSWeighting:
-    """Test that WLS weighting with n_cells is applied correctly."""
+class TestWeighting:
+    """OLS is the default; weighting by cell count is an explicit opt-in only.
 
-    def test_did_fit_uses_n_cells(self):
-        """Verify n_cells column is used for WLS weighting in did_fit."""
-        from sctrial.stats.did import did_fit
+    The fixture has treated deltas (1.0, 2.0) and control deltas (0.2, 0.1), with
+    100 and 10 cells per participant. With participant fixed effects over two
+    visits and weights constant within a participant, the DiD reduces to a
+    difference of (weighted) mean deltas, so both answers are exact:
+    OLS 1.35, and WLS by cell count (120/110 - 21/110) = 0.90.
+    """
 
-        # Create data where WLS should make a difference
-        df = pd.DataFrame(
+    OLS_BETA = 1.35
+    WLS_BETA = 0.90
+
+    @staticmethod
+    def _pv_frame():
+        return pd.DataFrame(
             {
                 "participant_id": ["P1", "P1", "P2", "P2", "P3", "P3", "P4", "P4"],
                 "visit_num": [0, 1, 0, 1, 0, 1, 0, 1],
                 "arm_bin": [1, 1, 1, 1, 0, 0, 0, 0],
                 "outcome": [1.0, 2.0, 1.0, 3.0, 1.0, 1.2, 1.0, 1.1],
-                "n_cells": [100, 100, 10, 10, 100, 100, 10, 10],  # Varied cell counts
+                "n_cells": [100, 100, 10, 10, 100, 100, 10, 10],
             }
         )
 
-        # Run did_fit - should use WLS because n_cells is present
-        result = did_fit(
-            df,
-            y="outcome",
-            unit="participant_id",
-            time="visit_num",
-            arm_bin="arm_bin",
-            standardize=False,
+    @staticmethod
+    def _fit(df, **kw):
+        from sctrial.stats.did import did_fit
+
+        return did_fit(
+            df, y="outcome", unit="participant_id", time="visit_num",
+            arm_bin="arm_bin", standardize=False, **kw,
         )
 
-        # Should return valid results (not NaN)
-        assert not pd.isna(result["beta_DiD"]), "WLS fit should produce valid beta_DiD"
-        assert result["n_units"] == 4, "Should have 4 units"
+    @staticmethod
+    def _cell_adata():
+        """Cell-level data whose participant-visit means equal ``_pv_frame``."""
+        spec = {
+            "P1": ("T", 1.0, 2.0, 100), "P2": ("T", 1.0, 3.0, 10),
+            "P3": ("C", 1.0, 1.2, 100), "P4": ("C", 1.0, 1.1, 10),
+        }
+        rows = []
+        for pid, (arm, pre, post, n) in spec.items():
+            for visit, value in (("Pre", pre), ("Post", post)):
+                rows += [{"participant": pid, "visit": visit, "arm": arm, "score": value}] * n
+        obs = pd.DataFrame(rows)
+        obs.index = obs.index.astype(str)
+        design = st.TrialDesign(
+            participant_col="participant", visit_col="visit", arm_col="arm",
+            arm_treated="T", arm_control="C", celltype_col=None,
+        )
+        return AnnData(X=np.zeros((len(obs), 1)), obs=obs), design
+
+    def test_ols_is_default_even_when_n_cells_present(self):
+        assert self._fit(self._pv_frame())["beta_DiD"] == pytest.approx(self.OLS_BETA, abs=1e-10)
+
+    def test_weight_col_opts_into_wls(self):
+        res = self._fit(self._pv_frame(), weight_col="n_cells")
+        assert res["beta_DiD"] == pytest.approx(self.WLS_BETA, abs=1e-10)
+
+    def test_weight_col_rejects_nonpositive_weights(self):
+        df = self._pv_frame()
+        df.loc[0, "n_cells"] = 0
+        with pytest.raises(ValueError, match="finite and positive"):
+            self._fit(df, weight_col="n_cells")
+
+    def test_two_visit_ols_equals_participant_first_difference(self):
+        """Equal weighting makes the FE estimate the participant first difference.
+
+        This is the estimator the frozen benchmark validated, so the applied
+        estimator and the benchmarked one must agree exactly.
+        """
+        rng = np.random.default_rng(0)
+        n = 30
+        arm = np.repeat([1, 0], n // 2)
+        pre, post = rng.normal(size=n), rng.normal(size=n) + 0.4 * arm
+        df = pd.DataFrame(
+            {
+                "participant_id": np.repeat(np.arange(n), 2),
+                "visit_num": np.tile([0, 1], n),
+                "arm_bin": np.repeat(arm, 2),
+                "outcome": np.column_stack([pre, post]).ravel(),
+                "n_cells": np.repeat(rng.integers(150, 27_000, size=n), 2),
+            }
+        )
+        delta = post - pre
+        expected = delta[arm == 1].mean() - delta[arm == 0].mean()
+        assert self._fit(df)["beta_DiD"] == pytest.approx(expected, abs=1e-10)
+
+    def test_bootstrap_uses_the_estimator_of_the_original_fit(self):
+        """An OLS fit is bootstrapped unweighted and a cell-count-weighted fit weighted.
+
+        With participant fixed effects, two visits and weights constant within a participant,
+        each unrestricted draw is the difference of the arms' (weighted) mean sign-flipped
+        residual changes, so both bootstrap standard errors are known exactly for these four
+        participants, whose residual changes are -0.5, 0.5, 0.05 and -0.05.
+        """
+        ols = self._fit(self._pv_frame(), use_bootstrap=True, seed=1)
+        wls = self._fit(self._pv_frame(), use_bootstrap=True, seed=1, weight_col="n_cells")
+        # OLS residual changes: treated +-0.5, control +-0.05; each arm mean has weights 1/2.
+        expected_ols = np.sqrt(2 * 0.25 * 0.5**2 + 2 * 0.25 * 0.05**2)
+        # WLS (weights 100 and 10): treated residual changes -1/11 and 10/11, control 1/110 and -1/11.
+        w = np.array([100.0, 10.0]) / 110.0
+        expected_wls = np.sqrt(
+            (w[0] * 1 / 11) ** 2 + (w[1] * 10 / 11) ** 2 + (w[0] * 1 / 110) ** 2 + (w[1] * 1 / 11) ** 2
+        )
+        assert ols["se_DiD_boot"] == pytest.approx(expected_ols, rel=1e-9)
+        assert wls["se_DiD_boot"] == pytest.approx(expected_wls, rel=1e-9)
+
+    def test_did_table_and_its_variants_forward_the_weighting(self):
+        adata, design = self._cell_adata()
+        kw = dict(features=["score"], design=design, visits=("Pre", "Post"), standardize=False)
+
+        def beta(res):
+            return res.set_index("feature").loc["score", "beta_DiD"]
+
+        assert beta(st.did_table(adata, **kw)) == pytest.approx(self.OLS_BETA, abs=1e-10)
+        assert beta(st.did_table(adata, weight_col="n_cells", **kw)) == pytest.approx(
+            self.WLS_BETA, abs=1e-10
+        )
+
+        cfg = st.DiDConfig(standardize=False, weight_col="n_cells")
+        cfg_res = st.did_table(adata, features=["score"], design=design,
+                               visits=("Pre", "Post"), config=cfg)
+        assert beta(cfg_res) == pytest.approx(self.WLS_BETA, abs=1e-10)
+
+        for n_jobs in (1, 2):
+            par = st.did_table_parallel(adata, weight_col="n_cells", n_jobs=n_jobs, **kw)
+            assert beta(par) == pytest.approx(self.WLS_BETA, abs=1e-10), n_jobs
+
+    def _weighted_adata(self):
+        """``_cell_adata`` with ``precision``, the cell count of each participant-visit."""
+        adata, design = self._cell_adata()
+        counts = adata.obs.groupby(["participant", "visit"], observed=True)["score"]
+        adata.obs["precision"] = counts.transform("size").astype(float)
+        return adata, design
+
+    def test_custom_weight_column_reaches_the_fit_through_every_table_function(self):
+        adata, design = self._weighted_adata()
+        kw = dict(features=["score"], design=design, visits=("Pre", "Post"), standardize=False)
+
+        def beta(res):
+            return res.set_index("feature").loc["score", "beta_DiD"]
+
+        assert beta(st.did_table(adata, weight_col="precision", **kw)) == pytest.approx(
+            self.WLS_BETA, abs=1e-10
+        )
+        cfg = st.DiDConfig(standardize=False, weight_col="precision")
+        cfg_res = st.did_table(adata, features=["score"], design=design,
+                               visits=("Pre", "Post"), config=cfg)
+        assert beta(cfg_res) == pytest.approx(self.WLS_BETA, abs=1e-10)
+        for n_jobs in (1, 2):
+            par = st.did_table_parallel(adata, weight_col="precision", n_jobs=n_jobs, **kw)
+            assert beta(par) == pytest.approx(self.WLS_BETA, abs=1e-10), n_jobs
+
+        frame, *_ = st.get_did_aggregated_df(
+            adata, ["score"], design, ("Pre", "Post"), weight_col="precision"
+        )
+        assert (frame["precision"] == frame["n_cells"]).all()
+
+    def test_cell_level_weights_reach_the_fit(self):
+        """Weights of 1 / cell count give every participant-visit a total weight of one."""
+        adata, design = self._weighted_adata()
+        adata.obs["inverse_count"] = 1.0 / adata.obs["precision"]
+        res = st.did_table(adata, features=["score"], design=design, visits=("Pre", "Post"),
+                           standardize=False, aggregate="cell", weight_col="inverse_count")
+        assert res.loc[0, "beta_DiD"] == pytest.approx(self.OLS_BETA, abs=1e-10)
+
+    def test_custom_weight_column_is_checked(self):
+        adata, design = self._weighted_adata()
+        adata.obs["uneven"] = np.arange(adata.n_obs, dtype=float) + 1.0
+        kw = dict(features=["score"], design=design, visits=("Pre", "Post"), standardize=False)
+
+        with pytest.raises(KeyError, match="weight_col 'missing' not found in adata.obs"):
+            st.did_table(adata, weight_col="missing", **kw)
+        with pytest.raises(KeyError, match="weight_col 'n_cells' not found in adata.obs"):
+            st.did_table(adata, aggregate="cell", weight_col="n_cells", **kw)
+        with pytest.raises(ValueError, match="varies within participant-visit"):
+            st.did_table(adata, weight_col="uneven", **kw)
+        with pytest.raises(ValueError, match="also a feature or a covariate"):
+            st.did_table(adata, weight_col="score", **kw)
+        with pytest.raises(ValueError, match="varies within participant-visit"):
+            st.did_table_parallel(adata, weight_col="uneven", n_jobs=2, **kw)
+
+        cell = st.did_table(adata, aggregate="cell", weight_col="uneven", **kw)
+        assert np.isfinite(cell.loc[0, "beta_DiD"])

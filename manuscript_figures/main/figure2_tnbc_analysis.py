@@ -32,121 +32,36 @@ from __future__ import annotations
 import gc
 import warnings
 from contextlib import contextmanager
-from pathlib import Path
 
 import matplotlib.gridspec as gridspec
-import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
-from scipy import stats
+from matplotlib.ticker import LogLocator, NullLocator
 
-import sctrial as st
 from sctrial import TrialDesign, did_table
-from sctrial.stats.effect_size import cohens_d_from_did
+from sctrial.stats.effect_size import hedges_g
+
+from .._shared import (
+    COLORS,
+    MAIN_OUTPUT,
+    apply_style,
+    despine,
+    get_tnbc_zhang,
+    key_below_axes,
+    key_below_row,
+    key_inside_axes,
+    letter_at_panel_corner,
+    plot_cell_vs_participant_beta,
+    report_layout_problems,
+    save_panel,
+    score_signatures,
+    sig_display,
+    verify_paired_participants,
+)
 
 warnings.filterwarnings("ignore")
-
-# ── Try to import from _shared; fall back to local definitions ────────────
-# Once _shared.py has been updated with TNBC helpers, replace the
-# try/except block below with a direct import like the melanoma script uses:
-#
-#   from .._shared import (
-#       COLORS, MAIN_OUTPUT, apply_style, despine, save_panel,
-#       score_signatures, sig_display, verify_paired_participants,
-#       get_tnbc_zhang, TNBC_DESIGN, TNBC_GENE_SIGNATURES,
-#   )
-
-try:
-    from .._shared import (  # type: ignore[import]
-        COLORS,
-        MAIN_OUTPUT,
-        apply_style,
-        despine,
-        get_tnbc_zhang,
-        save_panel,
-        score_signatures,
-        sig_display,
-        verify_paired_participants,
-    )
-    _SHARED_AVAILABLE = True
-except ImportError:
-    _SHARED_AVAILABLE = False
-
-    # ── Local fallbacks (remove once _shared.py is updated) ──────────────
-
-    COLORS = {
-        "treated":   "#4878CF",   # blue  -- anti-PDL1+Chemo
-        "control":   "#D65F5F",   # red   -- Chemo only
-        "gray":      "#888888",
-        "highlight": "#E8A838",
-    }
-
-
-    def apply_style() -> None:
-        """Minimal publication style — replace with _shared version."""
-        plt.rcParams.update({
-            "figure.facecolor": "white",
-            "axes.facecolor":   "white",
-            "font.family":      "sans-serif",
-        })
-
-    def despine(ax: plt.Axes) -> None:
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-
-    def save_panel(
-        fig: plt.Figure,
-        name: str,
-        figure_name: str,
-        output_dir: Path,
-        *,
-        close: bool = True,
-    ) -> None:
-        panel_dir = output_dir / f"{figure_name}_panels"
-        panel_dir.mkdir(parents=True, exist_ok=True)
-        path = panel_dir / f"{name}.png"
-        fig.savefig(path, dpi=200, bbox_inches="tight", facecolor="white")
-        if close:
-            plt.close(fig)
-        print(f"  Saved {path.name}")
-
-    def sig_display(col: str) -> str:
-        return col.replace("sig_", "")
-
-    def verify_paired_participants(
-        obs: pd.DataFrame,
-        visit_col: str,
-        visits: tuple[str, str],
-        participant_col: str,
-    ) -> dict:
-        counts = obs.groupby(participant_col)[visit_col].nunique()
-        n_paired = int((counts == 2).sum())
-        n_total  = int(len(counts))
-        return {"n_paired": n_paired, "n_total": n_total}
-
-    def score_signatures(
-        adata,
-        gene_sets: dict,
-        layer: str | None = None,
-        min_genes: int = 3,
-        prefix: str = "sig_",
-    ) -> tuple:
-        """Score gene sets using st.score_gene_sets (zmean method)."""
-        st.score_gene_sets(
-            adata,
-            gene_sets=gene_sets,
-            method="zmean",
-            layer=layer,
-            min_genes=min_genes,
-            prefix=prefix,
-            overwrite=True,
-        )
-        sig_cols = [f"{prefix}{name}" for name in gene_sets
-                    if f"{prefix}{name}" in adata.obs.columns]
-        return adata, sig_cols
-
 
 FIGURE_NAME = "Figure2_tnbc_analysis"
 
@@ -354,6 +269,10 @@ def _panel_a(ax: plt.Axes, data: dict) -> None:
         )
 
     ax.set_yscale("log")
+    # Headroom above the tallest bar for the note on the number of paired participants
+    ax.set_ylim(top=counts["n_cells"].max() * 3.2)
+    ax.yaxis.set_major_locator(LogLocator(base=10))
+    ax.yaxis.set_minor_locator(NullLocator())
     ax.set_xlabel("Participant", fontsize=9)
     ax.set_ylabel("Number of cells\n(log scale)", fontsize=9)
     ax.set_title("Paired Participants: Cells per Visit",
@@ -397,75 +316,11 @@ def _panel_a(ax: plt.Axes, data: dict) -> None:
 
 # ── Panel B: Beta comparison ──────────────────────────────────────────────
 
-def _panel_b(ax: plt.Axes, data: dict) -> None:
-    rc = data["res_cell"].set_index("feature")
-    rp = data["res_part"].set_index("feature")
-    common = rc.index.intersection(rp.index)
-
-    beta_cell = rc.loc[common, "beta_DiD"].values
-    beta_part = rp.loc[common, "beta_DiD"].values
-    colors    = [COL_TREAT if b > 0 else COL_CTRL for b in beta_part]
-
-    ax.scatter(beta_cell, beta_part, c=colors, s=30,
-               edgecolors="white", linewidths=0.5, zorder=3)
-
-    lim_lo = min(beta_cell.min(), beta_part.min()) * 1.2
-    lim_hi = max(beta_cell.max(), beta_part.max()) * 1.2
-    ax.plot([lim_lo, lim_hi], [lim_lo, lim_hi], "--",
-            color=COL_GRAY, lw=1, zorder=1)
-    ax.axhline(0, color=COL_GRAY, lw=0.5, ls=":", zorder=0)
-    ax.axvline(0, color=COL_GRAY, lw=0.5, ls=":", zorder=0)
-
-    # Explicit symmetric limits (with the identity-line margin) guarantee every
-    # marker is inside the view — no point can be clipped below the axis, which
-    # previously dropped a signature marker while its label floated in the corner.
-    ax.set_xlim(lim_lo, lim_hi)
-    ax.set_ylim(lim_lo, lim_hi)
-
-    # Label every signature and let adjustText resolve overlaps, drawing a thin
-    # leader line from each label back to its marker. The former hand-tuned offsets
-    # had no leader line, so a label pushed far from its point read as an orphaned
-    # marker.
-    from adjustText import adjust_text
-    texts = [ax.text(xv, yv, sig_display(feat), fontsize=5, alpha=0.9)
-             for feat, xv, yv in zip(common, beta_cell, beta_part)]
-    adjust_text(
-        texts, ax=ax, expand=(1.5, 1.8),
-        force_text=(0.3, 0.5),
-        ensure_inside_axes=True,
+def _panel_b(ax: plt.Axes, data: dict, *, composite: bool = False) -> None:
+    plot_cell_vs_participant_beta(
+        ax, data["res_cell"], data["res_part"],
+        title="Effect Size: Cell vs Participant Aggregation", composite=composite,
     )
-    _pull_closer = {"regulatory", "cytotoxic"}
-    for txt, xv, yv in zip(texts, beta_cell, beta_part):
-        if any(k in txt.get_text().lower() for k in _pull_closer):
-            tx, ty = txt.get_position()
-            txt.set_position((xv + (tx - xv) * 0.4, yv + (ty - yv) * 0.4))
-    for txt, xv, yv in zip(texts, beta_cell, beta_part):
-        tx, ty = txt.get_position()
-        ax.annotate("", xy=(xv, yv), xytext=(tx, ty),
-                    arrowprops=dict(arrowstyle="-", color=COL_GRAY, lw=0.4, alpha=0.6))
-
-    # FIX v1 Issue 6: Spearman rho not Pearson r
-    rho, p = stats.spearmanr(beta_cell, beta_part)
-    ax.text(
-        0.05, 0.95, f"ρ = {rho:.2f}, p = {p:.1e}",
-        transform=ax.transAxes, fontsize=8, va="top",
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                  edgecolor=COL_GRAY, alpha=0.8),
-    )
-
-    ax.tick_params(axis="y", labelsize=5)
-    ax.set_xlabel(r'$\beta_{DID}$ (cell-level)', fontsize=9)
-    ax.set_ylabel(r'$\beta_{DID}$ (participant-level)', fontsize=9)
-    ax.set_title("Effect Size: Cell vs Participant Aggregation",
-                 fontsize=11, fontweight="bold")
-
-    handles = [
-        mpatches.Patch(facecolor=COL_TREAT, label="Positive effect"),
-        mpatches.Patch(facecolor=COL_CTRL,  label="Negative effect"),
-    ]
-    ax.legend(handles=handles, fontsize=5, loc="lower left",
-              frameon=True, framealpha=0.9)
-    despine(ax)
 
 
 # ── Panel C: P-value inflation ────────────────────────────────────────────
@@ -475,13 +330,10 @@ def _panel_c(ax: plt.Axes, data: dict) -> None:
     rp = data["res_part"].set_index("feature")
     common = rc.index.intersection(rp.index)
 
-    # FIX v1 Issue 5: use p_DiD_perm for participant-level bars
-    perm_p = rp["p_DiD_perm"] if "p_DiD_perm" in rp.columns else rp["p_DiD"]
-
     df = pd.DataFrame({
         "feature":     common,
         "nlog10_cell": -np.log10(rc.loc[common, "p_DiD"].clip(lower=1e-300).values),
-        "nlog10_part": -np.log10(perm_p.loc[common].clip(lower=1e-300).values),
+        "nlog10_part": -np.log10(rp.loc[common, "p_DiD"].clip(lower=1e-300).values),
         "display":     [sig_display(f) for f in common],
     }).sort_values("nlog10_cell", ascending=True).reset_index(drop=True)
 
@@ -511,11 +363,7 @@ def _panel_c(ax: plt.Axes, data: dict) -> None:
 
 # ── Panel D: Forest plot ──────────────────────────────────────────────────
 def _panel_d(ax: plt.Axes, data: dict) -> None:
-    df = data["res_part"].copy()
-
-    rank_p = df["p_DiD_perm"].fillna(df["p_DiD"]) if "p_DiD_perm" in df.columns else df["p_DiD"]
-    df = df.assign(_rank_p=rank_p).sort_values("beta_DiD").drop(columns="_rank_p")
-    df = df.reset_index(drop=True)
+    df = data["res_part"].sort_values("beta_DiD").reset_index(drop=True)
     y_pos = np.arange(len(df))
 
     # Key CI values by feature name after sorting to guarantee alignment
@@ -589,13 +437,8 @@ def _panel_e(
     adata    = data["adata"]
     res_part = data["res_part"]
 
-    # FIX v1 Issue 5: rank by permutation p-value with fallback
-    if "p_DiD_perm" in res_part.columns:
-        rank_p = res_part["p_DiD_perm"].fillna(res_part["p_DiD"])
-    else:
-        rank_p = res_part["p_DiD"]
     top = (
-        res_part.assign(_rank_p=rank_p)
+        res_part.assign(_rank_p=res_part["p_DiD"])
         .sort_values("_rank_p")
         .head(n_sigs)
         .drop(columns="_rank_p")
@@ -642,10 +485,7 @@ def _panel_e(
         ax.set_xlim(-0.35, 1.35)
         ax.tick_params(axis="y", labelsize=5)
 
-        # FIX v1 Issue 5: use permutation p-value for title
-        p_val = row.get("p_DiD_perm", np.nan)
-        if pd.isna(p_val):
-            p_val = row["p_DiD"]
+        p_val = row["p_DiD"]
         p_str = f"p = {p_val:.3f}" if p_val >= 0.001 else f"p = {p_val:.1e}"
         ax.set_title(f"{sig_display(sig_col)}\n{p_str}",
                      fontsize=9, fontweight="bold", pad=5)
@@ -704,8 +544,11 @@ def _panel_f(ax: plt.Axes, data: dict) -> None:
     )
     arms = pre.loc[common_pids, DESIGN.arm_col]
 
+    # Control (Chemo) block first, as published. The order is an explicit integer:
+    # mapping a Categorical arm column returns a Categorical that sorts by category
+    # code, not by the mapped value, which silently decided the order before.
     sort_df = pd.DataFrame({
-        "arm_order":  arms.map({DESIGN.arm_treated: 0, DESIGN.arm_control: 1}).values,
+        "arm_order":  np.where(arms.astype(str) == DESIGN.arm_control, 0, 1),
         "mean_delta": -delta_mat.mean(axis=1).values,
     }, index=common_pids)
     ordered = sort_df.sort_values(["arm_order", "mean_delta"]).index.tolist()
@@ -729,9 +572,9 @@ def _panel_f(ax: plt.Axes, data: dict) -> None:
             color=color, clip_on=False,
         ))
 
-    n_treated = sum(1 for p in ordered if arms.loc[p] == DESIGN.arm_treated)
-    if 0 < n_treated < len(ordered):
-        ax.axhline(n_treated - 0.5, color="white", linewidth=2.5, zorder=5)
+    n_control = sum(1 for p in ordered if arms.loc[p] == DESIGN.arm_control)
+    if 0 < n_control < len(ordered):
+        ax.axhline(n_control - 0.5, color="white", linewidth=2.5, zorder=5)
 
     # Build same P1-P12 mapping as panel A
     counts_a = (
@@ -806,13 +649,13 @@ def _panel_f(ax: plt.Axes, data: dict) -> None:
     cbar.set_label("Score Δ", fontsize=8)
     cbar.ax.tick_params(labelsize=7)
 
+    # Arm captions centred on their blocks: control rows 0..n_control-1, then treated.
     trans = blended_transform_factory(ax.transAxes, ax.transData)
-    n_treated = sum(1 for p in ordered if arms.loc[p] == DESIGN.arm_treated)
-    n_control = len(ordered) - n_treated
+    n_treated = len(ordered) - n_control
 
-    if n_treated > 0:
+    if n_control > 0:
         ax.text(
-            -0.22, (n_treated - 1) / 2,
+            -0.22, (n_control - 1) / 2,
             "Chemo",
             transform=trans,
             color=COL_CTRL,
@@ -821,9 +664,9 @@ def _panel_f(ax: plt.Axes, data: dict) -> None:
             rotation=90, clip_on=False,
         )
 
-    if n_control > 0:
+    if n_treated > 0:
         ax.text(
-            -0.22, n_treated + (n_control - 1) / 2,
+            -0.22, n_control + (n_treated - 1) / 2,
             "anti-PDL1+\nChemo",
             transform=trans,
             color=COL_TREAT,
@@ -870,19 +713,18 @@ def _panel_j(ax: plt.Axes, data: dict) -> None:
     despine(ax)
 
 
-# ── Panel H: Cohen's d / Hedge's g ───────────────────────────────────────
+# ── Panel H: Cohen's d / Hedges' g ───────────────────────────────────────
 
 def _panel_h(ax: plt.Axes, data: dict) -> None:
     delta    = data["delta"]
     sig_cols = data["sig_cols"]
     arm      = DESIGN.arm_col
 
-    # FIX v1 Issue 7: use st.cohens_d_from_did (exact gamma correction)
     records = []
     for col in sig_cols:
         x = delta.loc[delta[arm] == DESIGN.arm_treated, col].dropna().values
         y = delta.loc[delta[arm] == DESIGN.arm_control, col].dropna().values
-        d = cohens_d_from_did(x, y)   # Hedge's g via exact gamma correction
+        d = hedges_g(x, y)  # exact small-sample correction of Cohen's d
         records.append({"feature": col, "display": sig_display(col), "d": d})
 
     df     = pd.DataFrame(records).dropna(subset=["d"]).sort_values("d")
@@ -897,7 +739,7 @@ def _panel_h(ax: plt.Axes, data: dict) -> None:
     ax.set_yticks(y_pos)
     ax.set_yticklabels(df["display"].values, fontsize=4)
     ax.set_xlabel(
-        f"Hedge's g ({DESIGN.arm_treated} - {DESIGN.arm_control})",
+        f"Hedges' g ({DESIGN.arm_treated} - {DESIGN.arm_control})",
         fontsize=9,
     )
     ax.set_title("Effect Size of Arm Separation", fontsize=11,
@@ -1329,7 +1171,7 @@ def generate() -> None:
             ("panel_B_beta_comparison",          _panel_b,  (9,  7)),
             ("panel_C_pvalue_inflation",         _panel_c,  (9,  7)),
             ("panel_D_forest",                   _panel_d,  (10, 7)),
-            ("panel_H_cohens_d",                 _panel_h,  (8,  6)),
+            ("panel_H_hedges_g",                 _panel_h,  (8,  6)),
             ("panel_I_response_did_forest",      _panel_i,  (10, 7)),
             ("panel_G_delta_by_arm_response",    _panel_g,  (10, 8)),
             ("panel_J_mean_delta_by_arm",        _panel_j,  (10, 7)),
@@ -1358,21 +1200,36 @@ def generate() -> None:
         fig_f.tight_layout()
         save_panel(fig_f, "panel_F_heatmap", FIGURE_NAME, MAIN_OUTPUT)
 
-    # ── Combined artboard (180 × 215 mm) ──────────────────────────────────
+    # ── Combined artboard (180 mm wide) ───────────────────────────────────
     _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
     plt.rcParams.update(_SMALL_RC)
 
     _mm  = 1.0 / 25.4
     _MAX = 6
+    _KEY_FS = 4.5
 
-    fig_c = plt.figure(figsize=(180 * _mm, 215 * _mm))
-
-    outer = fig_c.add_gridspec(
-        4, 1,
-        height_ratios=[1, 3.3, 2.2, 1.3],
-        hspace=0.55,
-        left=0.10, right=0.95, top=0.97, bottom=0.05,
+    # Heights in mm. A panel with the 19 signature names at 4.5 pt needs 36 mm for the
+    # names to clear each other. Each gap holds the x-axis text of the row above and the
+    # titles of the row below.
+    _row_c, _gap_cd, _row_d = 36.0, 12.0, 36.0
+    _rows_mm = [18.0, _row_c + _gap_cd + _row_d, 36.0, 36.0]
+    _gaps_mm = [20.5, 10.5, 14.5]
+    # E's two-line titles and its key reach further into the gaps than the text of C
+    # and D, and F's slanted column names further than the x label of G: E is inset at
+    # top and bottom and F ends above G, so that neither sets the gap for its row.
+    _inset_e, _short_f = 2.5, 4.0
+    _top_mm, _bottom_mm = 6.0, 9.5
+    _height_mm = sum(_rows_mm) + sum(_gaps_mm) + _top_mm + _bottom_mm
+    fig_c = plt.figure(figsize=(180 * _mm, _height_mm * _mm))
+    _ratios = [_rows_mm[0]]
+    for _gap, _row in zip(_gaps_mm, _rows_mm[1:]):
+        _ratios += [_gap, _row]
+    grid = fig_c.add_gridspec(
+        len(_ratios), 1, height_ratios=_ratios, hspace=0,
+        left=0.10, right=0.95,
+        top=1 - _top_mm / _height_mm, bottom=_bottom_mm / _height_mm,
     )
+    outer = [grid[2 * i] for i in range(4)]
 
     # Row 0: A | B
     gs0  = outer[0].subgridspec(1, 2, wspace=0.28, width_ratios=[1, 1.4])
@@ -1380,14 +1237,22 @@ def generate() -> None:
     ax_b = fig_c.add_subplot(gs0[1])
 
     # Row 1: C (top-left) + D (bottom-left) | E (right, spans both)
-    gs1  = outer[1].subgridspec(2, 2, width_ratios=[1, 1.6],
-                                 hspace=0.70, wspace=0.40)
+    gs1  = outer[1].subgridspec(3, 2, width_ratios=[1, 1.6],
+                                 height_ratios=[_row_c, _gap_cd, _row_d],
+                                 hspace=0, wspace=0.40)
     ax_c = fig_c.add_subplot(gs1[0, 0])
-    ax_d = fig_c.add_subplot(gs1[1, 0])
+    ax_d = fig_c.add_subplot(gs1[2, 0])
+
+    gs_e = gs1[:, 1].subgridspec(
+        3, 1, hspace=0,
+        height_ratios=[_inset_e, _rows_mm[1] - 2 * _inset_e, _inset_e],
+    )[1]
 
     # Row 2: F | G
     gs2  = outer[2].subgridspec(1, 2, wspace=0.55, width_ratios=[1, 1.5])
-    ax_f = fig_c.add_subplot(gs2[0])
+    ax_f = fig_c.add_subplot(
+        gs2[0].subgridspec(2, 1, hspace=0, height_ratios=[_rows_mm[2] - _short_f, _short_f])[0]
+    )
     ax_g = fig_c.add_subplot(gs2[1])
 
     # Row 3: H | I
@@ -1397,12 +1262,12 @@ def generate() -> None:
 
     # ── Draw all panels first ──────────────────────────────────────────────
     _panel_a(ax_a, data)
-    _panel_b(ax_b, data)
+    _panel_b(ax_b, data, composite=True)
     _panel_c(ax_c, data)
     _panel_d(ax_d, data)
     # Wider inner hspace so the top-row Pre/Post tick labels clear the bottom-row
     # subplot titles in the 2x3 interaction grid.
-    axes_e = _panel_e(fig_c, gs1[:, 1], data, n_sigs=6,
+    axes_e = _panel_e(fig_c, gs_e, data, n_sigs=6,
                       inner_hspace=0.85, inner_wspace=0.40)
     _panel_f(ax_f, data)
     _panel_g(ax_g, data)
@@ -1411,82 +1276,12 @@ def generate() -> None:
 
     # ── Legend overrides (all must come AFTER panels are drawn) ───────────
 
-    # Panels B, C, G — move below-axis legends inside plot
-    _inside = {
-        ax_b: "lower left",
-        ax_c: "lower right",
-    }
-    for ax_target, loc in _inside.items():
-        leg = ax_target.get_legend()
-        if leg:
-            handles = leg.legend_handles
-            labels  = [t.get_text() for t in leg.get_texts()]
-            leg.remove()
-            ax_target.legend(
-                handles=handles, labels=labels,
-                fontsize=5, loc=loc,
-                frameon=True, framealpha=0.85,
-                handlelength=0.8, handletextpad=0.2,
-                borderpad=0.2, labelspacing=0.15,
-                columnspacing=0.5,
-            )
-
-    # Panel G legend — single row above axes, title pushed up to make room
-    leg_g = ax_g.get_legend()
-    if leg_g:
-        handles_g = leg_g.legend_handles
-        labels_g  = [t.get_text() for t in leg_g.get_texts()]
-        leg_g.remove()
-        ax_g.legend(
-            handles=handles_g, labels=labels_g,
-            fontsize=5, loc="lower center", bbox_to_anchor=(0.5, 0.98),
-            ncol=4, frameon=True, framealpha=0.85,
-            handlelength=0.8, handletextpad=0.2,
-            borderpad=0.2, labelspacing=0.15, columnspacing=0.5,
-        )
-    ax_g.set_title(ax_g.get_title(), pad=12,
-                   fontsize=ax_g.title.get_fontsize(), fontweight="bold")
-
-    # Panel A legend — nudged right via bbox_to_anchor to avoid overlapping bars
-    leg_a = ax_a.get_legend()
-    if leg_a:
-        handles_a = leg_a.legend_handles
-        labels_a  = [t.get_text() for t in leg_a.get_texts()]
-        leg_a.remove()
-        ax_a.legend(
-            handles=handles_a, labels=labels_a,
-            fontsize=5,
-            loc="upper left",
-            bbox_to_anchor=(0.04, 1.08),
-            ncol=3,
-            frameon=True, framealpha=0.85,
-            handlelength=0.8, handletextpad=0.2,
-            borderpad=0.2, labelspacing=0.15,
-            columnspacing=0.5,
-        )
-
-    # Panel D legend — tighter sizing
-    leg_d = ax_d.get_legend()
-    if leg_d:
-        handles_d = leg_d.legend_handles
-        labels_d  = [t.get_text() for t in leg_d.get_texts()]
-        leg_d.remove()
-        ax_d.legend(
-            handles=handles_d, labels=labels_d,
-            fontsize=5, loc="lower right",
-            frameon=True, framealpha=0.85,
-            handlelength=0.8, handletextpad=0.2,
-            borderpad=0.2, labelspacing=0.15,
-            columnspacing=0.5,
-        )
-
     # Panel E legend
     if axes_e:
         leg_e = axes_e[-1].get_legend()
         if leg_e:
             leg_e.remove()
-        mid_ax = axes_e[min(4, len(axes_e) - 1)]
-        mid_ax.legend(
+        axes_e[3].legend(
             handles=[
                 Line2D([0], [0], color=COL_TREAT, lw=1.5, marker="o",
                        markersize=3, markeredgecolor="white",
@@ -1497,18 +1292,12 @@ def generate() -> None:
                 Line2D([0], [0], color=COL_GRAY, lw=0.6, alpha=0.4,
                        label="Individual"),
             ],
-            fontsize=5,
-            loc="upper center", bbox_to_anchor=(0.5, -0.25),
-            ncol=3, frameon=True, framealpha=0.95,
-            handlelength=2.5,  # ← wider line segments
-            handletextpad=0.6,  # ← space between line and label
-            borderpad=0.2, labelspacing=0.15,
-            columnspacing=1.5,  # ← space between columns
         )
 
-    # Panel F — shrink stars, move legend above heatmap, push title up
+    # Panel F: smaller stars in the composite; the star key goes below the left corner
+    # of the heatmap, in the space the slanted column names leave free
     for coll in ax_f.collections:
-        coll.set_sizes([12])  # smaller stars in composite
+        coll.set_sizes([12])
 
     leg_f = ax_f.get_legend()
     if leg_f:
@@ -1518,36 +1307,45 @@ def generate() -> None:
         ax_f.legend(
             handles=handles_f, labels=labels_f,
             fontsize=5,
-            loc="lower left",
-            bbox_to_anchor=(0.01, 1.01),
+            loc="upper right",
+            bbox_to_anchor=(-0.10, -0.02),
             frameon=False,
-            handletextpad=0.2, borderpad=0.3,
+            handletextpad=0.2, borderpad=0.0, borderaxespad=0.0,
             markerscale=0.8,
         )
-    ax_f.set_title(ax_f.get_title(), fontsize=ax_f.title.get_fontsize(),
-                   fontweight="bold", pad=12)
-
-    # Panel C y-axis tick labels — kept at same size as D (5 pt)
-
-    # Panel B in composite: smaller markers + slightly larger labels
-    for coll in ax_b.collections:
-        coll.set_sizes([s * 0.5 for s in coll.get_sizes()])
-    for txt in ax_b.texts:
-        txt.set_fontsize(max(txt.get_fontsize() * 0.7, 4.0))
 
     _cap_fontsize(fig_c, _MAX)
 
-    # Bold panel labels
+    # A and B carry their key below the axes on one line (A's key and its note on the
+    # number of paired participants do not fit side by side inside the axes). The keys
+    # of C, D, H and I stay inside the axes, each at the first place where it covers no
+    # data and no text, measured once fonts and limits are final.
+    for _ax, _ncol in ((ax_a, 5), (ax_b, 3)):
+        key_below_axes(_ax, ncol=_ncol, fontsize=_KEY_FS, gap_pt=1.5, clear_of=[ax_a, ax_b])
+    _key_place = {
+        "C": (ax_c, 1, ("lower right", "center right", "upper right")),
+        "D": (ax_d, 1, ("upper left", "lower right", "lower left", "upper right")),
+        "G": (ax_g, 1, ("upper right", "lower right", "upper left", "lower left")),
+        "H": (ax_h, 1, ("upper left", "lower right", "center right")),
+        "I": (ax_i, 1, ("upper left", "lower right", "lower left", "upper right")),
+    }
+    for _name, (_ax, _ncol, _prefer) in _key_place.items():
+        _placed = key_inside_axes(_ax, ncol=_ncol, fontsize=_KEY_FS, prefer=_prefer)
+        if _placed is not None:
+            print(f"    key of panel {_name}: {_placed[1]}, covers {_placed[2]:.1f} pt2")
+    if axes_e:
+        key_below_row(axes_e[3:], ncol=3, fontsize=_KEY_FS, gap_pt=1.5)
+
+    # Bold panel letters, placed after the cap so they stay prominent
     _lbl_fs = 7
     for ax, lbl in [
         (ax_a, "A"), (ax_b, "B"), (ax_c, "C"),
         (ax_d, "D"), (ax_f, "F"), (ax_g, "G"), (ax_h, "H"), (ax_i, "I"),
     ]:
-        ax.text(-0.15, 1.12, lbl, transform=ax.transAxes,
-                fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+        letter_at_panel_corner(ax, lbl, fontsize=_lbl_fs, keep_clear=True)
     if axes_e:
-        axes_e[0].text(-0.10, 1.15, "E", transform=axes_e[0].transAxes,
-                       fontsize=_lbl_fs, fontweight="bold", va="top", ha="left")
+        letter_at_panel_corner(axes_e[0], "E", fontsize=_lbl_fs, keep_clear=True)
+    report_layout_problems(fig_c, FIGURE_NAME)
 
     plt.rcParams.update(_prev_rc)
 
