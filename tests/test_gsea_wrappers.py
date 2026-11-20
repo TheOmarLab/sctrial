@@ -263,3 +263,35 @@ def test_run_gsea_did_by_celltype_counts_eligibility_after_crossover_exclusion(m
         warnings.simplefilter("ignore")
         kept = gsea.run_gsea_did_by_celltype(adata, exclude_crossovers=False, **kw)
     assert list(excluded) == ["A"] and list(kept) == ["A", "X"]
+
+
+def test_ranking_is_the_same_whatever_the_row_order_and_the_last_bits():
+    # Genes with identical data tie exactly, and equal statistics can differ in the last bits
+    # between runs. Their place in the ranked list decides enrichment scores, so the ranking
+    # must not depend on either.
+    rng = np.random.default_rng(0)
+    base = pd.DataFrame({
+        "feature": [f"g{i:03d}" for i in range(60)],
+        "beta_DiD": np.repeat(rng.normal(size=20), 3),
+        "se_DiD": np.repeat(rng.uniform(0.3, 1.0, 20), 3),
+        "p_DiD": np.repeat(rng.uniform(size=20), 3),
+        "n_units": 9,
+    })
+    reference = gsea._rank_did_results(base, "tstat", 4)
+    assert reference["rank"].duplicated().sum() == 40
+    tied = reference.groupby("rank", sort=False)["feature"].apply(list)
+    assert all(names == sorted(names) for names in tied)
+
+    shuffled = base.sample(frac=1.0, random_state=1).reset_index(drop=True)
+    noisy = shuffled.assign(beta_DiD=shuffled["beta_DiD"] * (1 + 1e-14 * rng.normal(size=60)))
+    for other in (shuffled, noisy):
+        again = gsea._rank_did_results(other, "tstat", 4)
+        assert again["feature"].tolist() == reference["feature"].tolist()
+        assert again["rank"].tolist() == reference["rank"].tolist()
+
+
+def test_duplicated_gene_names_keep_the_strongest_rank():
+    res = pd.DataFrame({"feature": ["a", "a", "b", "b"], "beta_DiD": [1.0, -3.0, 2.0, 2.0],
+                        "se_DiD": 1.0, "p_DiD": 0.5, "n_units": 9})
+    ranking = gsea._rank_did_results(res, "beta", 4)
+    assert dict(zip(ranking["feature"], ranking["rank"])) == {"b": 2.0, "a": -3.0}

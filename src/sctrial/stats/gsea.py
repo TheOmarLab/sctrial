@@ -48,16 +48,25 @@ def _finalize_ranking(valid: pd.DataFrame) -> pd.DataFrame:
     into a "float division by zero". Duplicate gene identifiers likewise break
     prerank's running-sum normalisation. So drop non-finite ranks and collapse
     duplicate features (keeping the strongest-magnitude rank) before sorting.
+
+    Genes with the same data across participants have the same statistic, and
+    statistics that are equal in exact arithmetic can differ in the last bits from
+    one run to the next. The enrichment score of a gene set depends on where its
+    genes fall among such ties, which gseapy orders arbitrarily. The ranks are
+    therefore rounded to ten significant digits and equal ranks are ordered by gene
+    name, so the same data give the same ranking in every run.
     """
     out = valid[["feature", "rank"]].copy()
     out["rank"] = out["rank"].replace([np.inf, -np.inf], np.nan)
     out = out.dropna(subset=["rank"])
+    out["rank"] = [float(f"{value:.10g}") for value in out["rank"].astype(float)]
+    out["feature"] = out["feature"].astype(str)
     if out["feature"].duplicated().any():
-        out = (
-            out.reindex(out["rank"].abs().sort_values(ascending=False).index)
-            .drop_duplicates(subset="feature", keep="first")
+        strongest_first = out.assign(_size=out["rank"].abs()).sort_values(
+            ["_size", "rank"], ascending=False, kind="mergesort"
         )
-    return out.sort_values("rank", ascending=False)
+        out = strongest_first.drop_duplicates(subset="feature", keep="first").drop(columns="_size")
+    return out.sort_values(["rank", "feature"], ascending=[False, True], kind="mergesort")
 
 
 class _NoRankableGenes(ValueError):
