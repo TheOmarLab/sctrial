@@ -1878,19 +1878,16 @@ def _gsea_did_stamp(cov_type: str) -> str:
     return f"{STATS_FINGERPRINT}:{cov_type}"
 
 
-def _gsea_did_cache_fresh(cache_csv: Path, cov_type: str) -> bool:
-    """A DiD-ranked GSEA cache is usable only if it was built by the current estimator.
+def _gsea_cache_fresh(cache_csv: Path, stamp: str) -> bool:
+    """A GSEA cache is usable only if the current code built it.
 
-    The ranking comes from ``did_table``, so results built by a different estimator,
-    or with another covariance of the ranking statistic, are stale even though the
-    file path is unchanged. A missing or mismatched stamp is treated as a cache miss.
+    The ranking comes from the gene-level estimator and from the ranking rules of the
+    package, so results built by other code, or with another covariance of the ranking
+    statistic, are stale even though the file path is unchanged. A missing or mismatched
+    stamp is treated as a cache miss.
     """
-    stamp = _gsea_fingerprint_path(cache_csv)
-    return (
-        cache_csv.exists()
-        and stamp.exists()
-        and stamp.read_text().strip() == _gsea_did_stamp(cov_type)
-    )
+    stamp_file = _gsea_fingerprint_path(cache_csv)
+    return cache_csv.exists() and stamp_file.exists() and stamp_file.read_text().strip() == stamp
 
 
 def _order_gsea(combined):
@@ -1912,16 +1909,72 @@ def _order_gsea(combined):
     return ordered.drop(columns="_abs_nes").reset_index(drop=True)
 
 
-def _gsea_cache_fresh(cache_csv: Path) -> bool:
-    """A within-arm or cross-sectional GSEA cache is usable only if the current code built it.
+def _load_or_run_gsea(dataset_name: str, method: str, stamp: str, rank_genes, force: bool) -> object:
+    """Cached GSEA results of every library for one cohort, computing those that are missing.
 
-    The ranking comes from the comparison functions and from the ranking rules of the
-    package; results built by other code are stale although the path is unchanged.
+    *rank_genes* returns the gene ranking of the cohort. It fits one model per gene, so it is
+    called at most once, when the first library without a usable cache is reached; the same
+    ranking is then tested against each such library in its own ``gseapy.prerank`` run.
+    Results are saved per library under ``manuscript/GSEA/{dataset}/{method}/{library}/``
+    with *stamp*, which a later call must match to reuse them.
+
+    Returns a combined DataFrame (all libraries) sorted by |NES|, or None.
     """
-    stamp = _gsea_fingerprint_path(cache_csv)
-    return (
-        cache_csv.exists() and stamp.exists() and stamp.read_text().strip() == STATS_FINGERPRINT
-    )
+    import pandas as pd
+
+    try:
+        import gseapy as gp  # noqa: F401
+
+        from sctrial import run_gsea_prerank
+    except ImportError:
+        print(f"    {dataset_name}: sctrial/gseapy not available, skipping GSEA")
+        return None
+
+    frames: list[pd.DataFrame] = []
+    ranking = None
+    ranking_failed = False
+    for lib_name, short_name in GSEA_LIBRARIES:
+        cache_csv = _gsea_cache_path(dataset_name, short_name, method=method)
+
+        if not force and _gsea_cache_fresh(cache_csv, stamp):
+            df = pd.read_csv(cache_csv)
+            if len(df) > 0:
+                df["Library"] = short_name
+                frames.append(df)
+                print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
+                continue
+
+        if ranking is None and not ranking_failed:
+            try:
+                ranking = rank_genes()
+            except Exception as exc:
+                ranking_failed = True
+                print(f"    {dataset_name}: gene ranking failed: {exc}")
+        if ranking is None:
+            continue
+
+        outdir = str(cache_csv.parent)
+        os.makedirs(outdir, exist_ok=True)
+        try:
+            res = run_gsea_prerank(
+                ranking, gene_sets=lib_name,
+                min_size=10, max_size=500, permutation_num=1000,
+                outdir=outdir, no_plot=True,
+            )
+            if isinstance(res, pd.DataFrame) and len(res) > 0:
+                res["Library"] = short_name
+                res.to_csv(cache_csv, index=False)
+                _gsea_fingerprint_path(cache_csv).write_text(stamp)
+                frames.append(res)
+                print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
+            else:
+                print(f"    {dataset_name}/{short_name}: no results")
+        except Exception as exc:
+            print(f"    {dataset_name}/{short_name}: {exc}")
+
+    if not frames:
+        return None
+    return _order_gsea(pd.concat(frames, ignore_index=True))
 
 
 def load_or_run_gsea_did(
@@ -1934,62 +1987,20 @@ def load_or_run_gsea_did(
     cov_type: str = "cluster",
     force: bool = False,
 ) -> object:
-    """Load cached GSEA results for *dataset_name* or run fresh.
+    """Load cached GSEA results for a two-arm longitudinal design or run fresh.
 
-    Results are saved per-library under ``manuscript/GSEA/{dataset}/{lib}/``.
-    If cached CSV files exist and *force* is False, they are loaded directly.
-    Otherwise ``run_gsea_did`` is called for each library and results are saved.
-    *cov_type* is the covariance of the standard error in the ranking t-statistic.
-
-    Returns a combined DataFrame (all libraries) sorted by |NES|, or None.
+    Genes are ranked by the DiD t-statistic (``rank_genes_did``); *cov_type* is the
+    covariance of its standard error. See ``_load_or_run_gsea``.
     """
-    import pandas as pd
 
-    try:
-        import gseapy as gp  # noqa: F401
+    def rank_genes():
+        from sctrial import rank_genes_did
 
-        from sctrial import run_gsea_did as _run_gsea
-    except ImportError:
-        print(f"    {dataset_name}: sctrial/gseapy not available — skipping GSEA")
-        return None
+        return rank_genes_did(
+            adata, design, visits, layer=layer, rank_by="tstat", cov_type=cov_type
+        )
 
-    frames: list[pd.DataFrame] = []
-    for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name, method="did")
-
-        # Try loading from cache
-        if not force and _gsea_did_cache_fresh(cache_csv, cov_type):
-            df = pd.read_csv(cache_csv)
-            if len(df) > 0:
-                df["Library"] = short_name
-                frames.append(df)
-                print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
-                continue
-
-        # Run fresh
-        outdir = str(cache_csv.parent)
-        os.makedirs(outdir, exist_ok=True)
-        try:
-            res = _run_gsea(
-                adata, gene_sets=lib_name, design=design, visits=visits,
-                layer=layer, rank_by="tstat", cov_type=cov_type,
-                min_size=10, max_size=500, permutation_num=1000,
-                outdir=outdir, no_plot=True,
-            )
-            if isinstance(res, pd.DataFrame) and len(res) > 0:
-                res["Library"] = short_name
-                res.to_csv(cache_csv, index=False)
-                _gsea_fingerprint_path(cache_csv).write_text(_gsea_did_stamp(cov_type))
-                frames.append(res)
-                print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
-            else:
-                print(f"    {dataset_name}/{short_name}: no results")
-        except Exception as exc:
-            print(f"    {dataset_name}/{short_name}: {exc}")
-
-    if not frames:
-        return None
-    return _order_gsea(pd.concat(frames, ignore_index=True))
+    return _load_or_run_gsea(dataset_name, "did", _gsea_did_stamp(cov_type), rank_genes, force)
 
 
 def load_or_run_gsea_cross_sectional(
@@ -2001,58 +2012,18 @@ def load_or_run_gsea_cross_sectional(
     *,
     force: bool = False,
 ) -> object:
-    """Load cached GSEA results for cross-sectional design or run fresh.
+    """Load cached GSEA results for a cross-sectional design or run fresh.
 
-    Uses run_gsea_cross_sectional (between_arm_comparison) for single-visit
-    designs. Results are saved per-library under manuscript/GSEA/{dataset}/{lib}/.
-
-    Returns a combined DataFrame (all libraries) sorted by |NES|, or None.
+    Genes are ranked by the t-statistic of the between-arm difference at *visit*
+    (``rank_genes_cross_sectional``). See ``_load_or_run_gsea``.
     """
-    import pandas as pd
 
-    try:
-        import gseapy as gp  # noqa: F401
+    def rank_genes():
+        from sctrial import rank_genes_cross_sectional
 
-        from sctrial import run_gsea_cross_sectional as _run_gsea
-    except ImportError:
-        print(f"    {dataset_name}: sctrial/gseapy not available — skipping GSEA")
-        return None
+        return rank_genes_cross_sectional(adata, design, visit, layer=layer, rank_by="tstat")
 
-    frames: list[pd.DataFrame] = []
-    for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name, method="cross_sectional")
-
-        if not force and _gsea_cache_fresh(cache_csv):
-            df = pd.read_csv(cache_csv)
-            if len(df) > 0:
-                df["Library"] = short_name
-                frames.append(df)
-                print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
-                continue
-
-        outdir = str(cache_csv.parent)
-        os.makedirs(outdir, exist_ok=True)
-        try:
-            res = _run_gsea(
-                adata, gene_sets=lib_name, design=design, visit=visit,
-                layer=layer, rank_by="tstat",
-                min_size=10, max_size=500, permutation_num=1000,
-                outdir=outdir, no_plot=True,
-            )
-            if isinstance(res, pd.DataFrame) and len(res) > 0:
-                res["Library"] = short_name
-                res.to_csv(cache_csv, index=False)
-                _gsea_fingerprint_path(cache_csv).write_text(STATS_FINGERPRINT)
-                frames.append(res)
-                print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
-            else:
-                print(f"    {dataset_name}/{short_name}: no results")
-        except Exception as exc:
-            print(f"    {dataset_name}/{short_name}: {exc}")
-
-    if not frames:
-        return None
-    return _order_gsea(pd.concat(frames, ignore_index=True))
+    return _load_or_run_gsea(dataset_name, "cross_sectional", STATS_FINGERPRINT, rank_genes, force)
 
 
 def load_or_run_gsea_within_arm(
@@ -2065,56 +2036,15 @@ def load_or_run_gsea_within_arm(
     *,
     force: bool = False,
 ) -> object:
-    """Load cached GSEA results for within-arm design or run fresh.
+    """Load cached GSEA results for a single-arm longitudinal design or run fresh.
 
-    Uses run_gsea_within_arm (within_arm_comparison) for longitudinal
-    single-arm designs. Results are saved per-library under
-    manuscript/GSEA/{dataset}/{lib}/.
-
-    Returns a combined DataFrame (all libraries) sorted by |NES|, or None.
+    Genes are ranked by the t-statistic of the change between *visits* within *arm*
+    (``rank_genes_within_arm``). See ``_load_or_run_gsea``.
     """
-    import pandas as pd
 
-    try:
-        import gseapy as gp  # noqa: F401
+    def rank_genes():
+        from sctrial import rank_genes_within_arm
 
-        from sctrial import run_gsea_within_arm as _run_gsea
-    except ImportError:
-        print(f"    {dataset_name}: sctrial/gseapy not available — skipping GSEA")
-        return None
+        return rank_genes_within_arm(adata, design, arm, visits, layer=layer, rank_by="tstat")
 
-    frames: list[pd.DataFrame] = []
-    for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name, method="within_arm")
-
-        if not force and _gsea_cache_fresh(cache_csv):
-            df = pd.read_csv(cache_csv)
-            if len(df) > 0:
-                df["Library"] = short_name
-                frames.append(df)
-                print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
-                continue
-
-        outdir = str(cache_csv.parent)
-        os.makedirs(outdir, exist_ok=True)
-        try:
-            res = _run_gsea(
-                adata, gene_sets=lib_name, design=design, arm=arm, visits=visits,
-                layer=layer, rank_by="tstat",
-                min_size=10, max_size=500, permutation_num=1000,
-                outdir=outdir, no_plot=True,
-            )
-            if isinstance(res, pd.DataFrame) and len(res) > 0:
-                res["Library"] = short_name
-                res.to_csv(cache_csv, index=False)
-                _gsea_fingerprint_path(cache_csv).write_text(STATS_FINGERPRINT)
-                frames.append(res)
-                print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
-            else:
-                print(f"    {dataset_name}/{short_name}: no results")
-        except Exception as exc:
-            print(f"    {dataset_name}/{short_name}: {exc}")
-
-    if not frames:
-        return None
-    return _order_gsea(pd.concat(frames, ignore_index=True))
+    return _load_or_run_gsea(dataset_name, "within_arm", STATS_FINGERPRINT, rank_genes, force)
