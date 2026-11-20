@@ -10,7 +10,7 @@ from anndata import AnnData
 from ..adata_tools import subset_arms, subset_primary
 from ..design import TrialDesign
 from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
-from ._utils import apply_fdr, drop_unused_levels, encode_visit
+from ._utils import apply_fdr, drop_unused_levels, encode_visit, fit_identified
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE
 
 
@@ -249,13 +249,16 @@ def abundance_did(
                 fit = model.fit()
                 term = "arm_bin"
             else:
-                fit = model.fit(
-                    cov_type="cluster", cov_kwds={"groups": tmp[design.participant_col]}
-                )
                 term = "visit_num:arm_bin"
+                fit = fit_identified(
+                    model,
+                    term,
+                    cov_type="cluster",
+                    cov_kwds={"groups": tmp[design.participant_col]},
+                )
 
             # Check if interaction term was estimable
-            if term not in fit.params or np.isnan(fit.params[term]):
+            if fit is None or term not in fit.params or np.isnan(fit.params[term]):
                 raise ValueError("DiD term not estimable")
 
             # Align clusters with actual model rows (statsmodels may drop rows).

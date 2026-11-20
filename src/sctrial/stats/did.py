@@ -4,7 +4,7 @@ import sys
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, TypedDict, cast
+from typing import Literal, TypedDict, cast
 
 import numpy as np
 import pandas as pd
@@ -20,7 +20,13 @@ else:
 from ..adata_tools import subset_arms, subset_primary
 from ..design import TrialDesign
 from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
-from ._utils import apply_fdr, drop_unused_levels, encode_visit, standardize_series
+from ._utils import (
+    apply_fdr,
+    drop_unused_levels,
+    encode_visit,
+    fit_identified,
+    standardize_series,
+)
 
 # Minimum number of clusters for reliable cluster-robust standard errors
 # Cameron & Miller (2015) recommend 42+, with 10 as absolute minimum
@@ -337,24 +343,6 @@ def _missing_did_fit(n_units: int) -> DidFitResult:
     }
 
 
-def _term_is_estimable(fit: Any, term: str) -> bool:
-    """Whether the regressor ``term`` is linearly independent of the other regressors.
-
-    A rank-deficient least-squares fit still returns a number for every coefficient, split
-    arbitrarily among the collinear regressors.
-    """
-    exog = np.asarray(fit.model.exog, dtype=float)
-    names = list(fit.model.exog_names)
-    if term not in names:
-        return False
-    if int(fit.model.rank) == exog.shape[1]:
-        return True
-    j = names.index(term)
-    others = np.delete(exog, j, axis=1)
-    unexplained = exog[:, j] - others @ np.linalg.lstsq(others, exog[:, j], rcond=None)[0]
-    return bool(np.linalg.norm(unexplained) > 1e-8 * np.linalg.norm(exog[:, j]))
-
-
 def did_fit(
     df: pd.DataFrame,
     y: str,
@@ -480,7 +468,9 @@ def did_fit(
 
     _validate_did_fit_inputs(df, cols)
 
-    tmp = df[cols].dropna()
+    # A row leaves the model for a missing outcome, visit, arm or covariate, never for a
+    # missing weight: the weights are checked below, on the rows that are fitted.
+    tmp = df[cols].dropna(subset=[c for c in cols if c != weight_col])
     # With participant fixed effects only a participant observed at both visits informs the
     # change over time; one left with a single visit for this outcome is not in the model.
     visits_seen = tmp.groupby(unit, observed=True)[time].nunique()
@@ -503,7 +493,7 @@ def did_fit(
     formula = _build_did_formula(time, arm_bin, unit, covariates, outcome_col="outcome_std")
 
     if weight_col is not None:
-        w = tmp[weight_col].to_numpy(dtype=float)
+        w = pd.to_numeric(tmp[weight_col], errors="coerce").to_numpy(dtype=float)
         if not (np.all(np.isfinite(w)) and np.all(w > 0)):
             raise ValueError(f"weight_col '{weight_col}' must be finite and positive.")
         model = smf.wls(formula, data=tmp, weights=w)
@@ -520,11 +510,14 @@ def did_fit(
             stacklevel=2,
         )
 
-    fit = model.fit(
-        cov_type=cov_type, cov_kwds={"groups": tmp[unit]} if cov_type == "cluster" else None
-    )
     term = f"{time}:{arm_bin}"
-    if not _term_is_estimable(fit, term):
+    fit = fit_identified(
+        model,
+        term,
+        cov_type=cov_type,
+        cov_kwds={"groups": tmp[unit]} if cov_type == "cluster" else None,
+    )
+    if fit is None or term not in fit.params:
         return _missing_did_fit(n_units)
 
     se_did = float(fit.bse.get(term, np.nan))
@@ -549,7 +542,7 @@ def did_fit(
             UserWarning,
             stacklevel=2,
         )
-        fit = model.fit()  # nonrobust
+        fit = fit.model.fit()  # nonrobust
         se_did = float(fit.bse.get(term, np.nan))
         p_did = float(fit.pvalues.get(term, np.nan))
         effective_cov_type = "nonrobust"

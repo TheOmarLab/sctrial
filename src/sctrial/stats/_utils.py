@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
+import scipy.linalg
+import statsmodels.api as sm
 from statsmodels.stats.multitest import multipletests
 
 __all__ = [
@@ -11,8 +14,48 @@ __all__ = [
     "apply_fdr",
     "drop_unused_levels",
     "encode_visit",
+    "fit_identified",
     "standardize_series",
 ]
+
+
+def _column_is_identified(exog: np.ndarray, j: int) -> bool:
+    """Whether column ``j`` of a design is linearly independent of the other columns."""
+    others = np.delete(exog, j, axis=1)
+    unexplained = exog[:, j] - others @ np.linalg.lstsq(others, exog[:, j], rcond=None)[0]
+    return bool(np.linalg.norm(unexplained) > 1e-8 * np.linalg.norm(exog[:, j]))
+
+
+def fit_identified(model: Any, term: str, **fit_kwargs: Any) -> Any | None:
+    """Fit a least-squares model whose design may hold redundant columns.
+
+    A full-rank design is fitted as it is. Otherwise the fit returns ``None`` when the
+    regressor ``term`` is a linear combination of the others: least squares would still
+    report a number for it, split arbitrarily among the collinear regressors. When
+    ``term`` is identified, the model is refitted on a maximal set of independent columns.
+    The coefficients of identified regressors are the same, but statsmodels counts the
+    columns of the design, not its rank, in the small-sample factor of a cluster-robust
+    covariance, so a regressor that the others determine (a covariate that is constant
+    within participant, beside participant effects) would enlarge every standard error.
+    """
+    fit = model.fit(**fit_kwargs)
+    exog = np.asarray(fit.model.exog, dtype=float)
+    names = list(fit.model.exog_names)
+    rank = int(fit.model.rank)
+    if rank == exog.shape[1]:
+        return fit
+    if term in names and not _column_is_identified(exog, names.index(term)):
+        return None
+    pivots = scipy.linalg.qr(exog, mode="r", pivoting=True)[1]
+    keep = np.sort(pivots[:rank])
+    rows = fit.model.data.row_labels
+    design = pd.DataFrame(exog[:, keep], columns=[names[i] for i in keep], index=rows)
+    outcome = pd.Series(np.asarray(fit.model.endog, dtype=float), index=rows, name=fit.model.endog_names)
+    if isinstance(fit.model, sm.OLS):
+        reduced = sm.OLS(outcome, design)
+    else:
+        reduced = sm.WLS(outcome, design, weights=np.asarray(fit.model.weights, dtype=float))
+    return reduced.fit(**fit_kwargs)
 
 
 def drop_unused_levels(df: pd.DataFrame) -> pd.DataFrame:

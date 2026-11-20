@@ -14,7 +14,13 @@ from scipy.stats import t as t_dist
 from ..adata_tools import subset_arms, subset_cells
 from ..design import TrialDesign
 from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
-from ._utils import apply_fdr, drop_unused_levels, encode_visit, standardize_series
+from ._utils import (
+    apply_fdr,
+    drop_unused_levels,
+    encode_visit,
+    fit_identified,
+    standardize_series,
+)
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE, AggregateFunc, AggregateMode, _ensure_paired
 
 
@@ -588,7 +594,9 @@ def within_arm_comparison(
         # guard, not the usual path.
         effective_cov_type = "cluster"
         try:
-            fit = model.fit(cov_type="cluster", cov_kwds={"groups": clusters_aligned})
+            fit = fit_identified(
+                model, "visit_num", cov_type="cluster", cov_kwds={"groups": clusters_aligned}
+            )
         except (ZeroDivisionError, ValueError, np.linalg.LinAlgError) as exc:
             warnings.warn(
                 f"Cluster-robust fit failed for feature '{feat}' with "
@@ -598,8 +606,21 @@ def within_arm_comparison(
                 UserWarning,
                 stacklevel=2,
             )
-            fit = model.fit()
+            fit = fit_identified(model, "visit_num")
             effective_cov_type = "nonrobust"
+        if fit is None:
+            # A covariate that duplicates the visit leaves the change over time unidentified.
+            rows.append(
+                {
+                    "feature": feat,
+                    "beta_time": np.nan,
+                    "se_time": np.nan,
+                    "p_time": np.nan,
+                    "n_units": n_units_feat,
+                    "resid_sd": np.nan,
+                }
+            )
+            continue
 
         beta = float(fit.params.get("visit_num", np.nan))
         se = float(fit.bse.get("visit_num", np.nan))
@@ -615,7 +636,7 @@ def within_arm_comparison(
                 UserWarning,
                 stacklevel=2,
             )
-            fit = model.fit()  # nonrobust
+            fit = fit.model.fit()  # nonrobust
             se = float(fit.bse.get("visit_num", np.nan))
             p_val = float(fit.pvalues.get("visit_num", np.nan))
             effective_cov_type = "nonrobust"

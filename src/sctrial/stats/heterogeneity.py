@@ -10,7 +10,13 @@ import statsmodels.formula.api as smf
 from anndata import AnnData
 
 from ..design import TrialDesign
-from ._utils import apply_fdr, drop_unused_levels, encode_visit, standardize_series
+from ._utils import (
+    apply_fdr,
+    drop_unused_levels,
+    encode_visit,
+    fit_identified,
+    standardize_series,
+)
 from .did import (
     MIN_CLUSTERS_FOR_ROBUST_SE,
     AggregateFunc,
@@ -38,11 +44,13 @@ def test_treatment_heterogeneity(
 ) -> pd.DataFrame:
     """Test treatment effect heterogeneity via a 3-way interaction.
 
-    Fits: outcome ~ visit + arm + biomarker + visit:arm + visit:biomarker
-         + arm:biomarker + visit:arm:biomarker + C(participant)
+    Fits: outcome ~ visit + visit:arm + visit:biomarker + visit:arm:biomarker
+         + C(participant)
 
     The coefficient of the 3-way interaction (visit:arm:biomarker) tests whether
-    the DiD effect differs by biomarker subgroup.
+    the DiD effect differs by biomarker subgroup. The arm, the biomarker group and
+    their product do not change within a participant, so the participant effects
+    absorb them and they are not separate terms of the model.
 
     The model uses the participants observed at both visits. The biomarker is a
     participant attribute: a participant's value is the mean of ``biomarker_col``
@@ -129,9 +137,30 @@ def test_treatment_heterogeneity(
 
     grp_cols = [unit, design.visit_col, design.arm_col]
     use_cols = list(final_features) + [arm_bin]
+    # Covariates travel with the participant-visit rows: a numeric one as its mean over the
+    # cells, any other as its value, which must be the same for every cell of the row.
+    cov_agg: dict[str, str] = {}
+    for c in covariates or []:
+        if c not in adata.obs.columns:
+            raise KeyError(f"covariate '{c}' not found in adata.obs")
+        if c in final_features or c in use_cols:
+            raise ValueError(f"covariate '{c}' is also a feature of the model.")
+        obs_feat[c] = adata.obs.loc[obs_feat.index, c].to_numpy()
+        if pd.api.types.is_numeric_dtype(obs_feat[c]):
+            cov_agg[c] = "mean"
+        else:
+            if obs_feat.groupby(grp_cols, observed=True)[c].nunique().max() > 1:
+                raise ValueError(
+                    f"Covariate '{c}' varies within participant-visit; "
+                    "use numeric or constant covariates only."
+                )
+            cov_agg[c] = "first"
     df_use = (
         obs_feat.groupby(grp_cols, observed=True)[use_cols].mean(numeric_only=True).reset_index()
     )
+    if cov_agg:
+        cov_rows = obs_feat.groupby(grp_cols, observed=True)[list(cov_agg)].agg(cov_agg)
+        df_use = df_use.merge(cov_rows.reset_index(), on=grp_cols, how="left")
     df_use = _ensure_paired(df_use, unit=unit, time=design.visit_col, visits=visits)
     df_use[unit] = df_use[unit].astype(object)
 
@@ -221,19 +250,30 @@ def test_treatment_heterogeneity(
             )
             continue
 
+        # The arm, the biomarker group and their product are constant within a participant,
+        # so the participant effects absorb them; only the terms that involve time enter.
         formula = (
-            f"outcome_std ~ {time} + {arm_bin} + biomarker_high + "
-            f"{time}:{arm_bin} + {time}:biomarker_high + {arm_bin}:biomarker_high + "
+            f"outcome_std ~ {time} + {time}:{arm_bin} + {time}:biomarker_high + "
             f"{time}:{arm_bin}:biomarker_high + C({unit})"
         )
         if covariates:
             formula += " + " + " + ".join(covariates)
 
-        fit = smf.ols(formula, data=df).fit(
-            cov_type="cluster",
-            cov_kwds={"groups": df[unit]},
-        )
         term = "visit_num:arm_bin:biomarker_high"
+        fit = fit_identified(
+            smf.ols(formula, data=df), term, cov_type="cluster", cov_kwds={"groups": df[unit]}
+        )
+        if fit is None:
+            rows.append(
+                {
+                    "feature": feat,
+                    "beta_heterogeneity": np.nan,
+                    "p_heterogeneity": np.nan,
+                    "n_units": int(df[unit].nunique()),
+                    "threshold": threshold,
+                }
+            )
+            continue
         # Report effective participant count after model row drops
         model_row_idx = fit.model.data.row_labels
         n_units_eff = int(df[unit].loc[model_row_idx].nunique())

@@ -205,3 +205,53 @@ def test_did_fit_gives_no_estimate_when_a_covariate_duplicates_the_interaction()
 
     assert np.isnan(duplicated["beta_DiD"]) and np.isnan(duplicated["p_DiD"])
     assert harmless["beta_DiD"] == pytest.approx(did_fit(df, **kw)["beta_DiD"], rel=1e-10)
+
+
+@pytest.mark.parametrize("use_bootstrap", [False, True])
+def test_a_covariate_constant_within_participant_leaves_the_standard_error_unchanged(use_bootstrap):
+    # The participant effects hold such a covariate. statsmodels counts design columns, not
+    # rank, in the cluster correction, so the extra column used to enlarge the standard error.
+    df = _two_visit_frame()
+    df["site"] = df["unit"].map({u: float(i % 3) for i, u in enumerate(sorted(df["unit"].unique()))})
+    kw = dict(y="y", unit="unit", time="time", arm_bin="arm_bin", standardize=False,
+              use_bootstrap=use_bootstrap, n_boot=199)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        plain, adjusted = did_fit(df, **kw), did_fit(df, covariates=["site"], **kw)
+    for key in plain:
+        if isinstance(plain[key], float):
+            assert adjusted[key] == pytest.approx(plain[key], rel=1e-9), key
+
+
+@pytest.mark.parametrize("bad", [np.nan, np.inf, 0.0, -1.0])
+def test_did_fit_refuses_a_missing_or_non_positive_weight(bad):
+    # A row with a missing weight used to be dropped, and its participant with it.
+    df = _two_visit_frame().assign(w=1.0)
+    df.loc[(df["unit"] == "a1p2") & (df["time"] == 1), "w"] = bad
+    with pytest.raises(ValueError, match="finite and positive"):
+        did_fit(df, y="y", unit="unit", time="time", arm_bin="arm_bin", weight_col="w")
+
+
+def test_did_fit_ignores_the_weight_of_a_row_without_an_outcome():
+    df = _two_visit_frame().assign(w=2.0)
+    gone = (df["unit"] == "a1p2") & (df["time"] == 1)
+    df.loc[gone, ["y", "w"]] = np.nan
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        out = did_fit(df, y="y", unit="unit", time="time", arm_bin="arm_bin", weight_col="w")
+    assert out["n_units"] == 11 and np.isfinite(out["beta_DiD"])
+
+
+def test_did_fit_checks_weights_on_the_rows_it_fits_only():
+    # A participant seen at one visit is not in the model, and neither is its weight; a
+    # feature with too few participants gives a missing estimate whatever the weights.
+    df = _two_visit_frame().assign(w=1.0)
+    unpaired = pd.DataFrame([{"unit": "solo", "time": 0, "arm_bin": 1, "y": 0.3, "w": np.nan}])
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        out = did_fit(pd.concat([df, unpaired], ignore_index=True), y="y", unit="unit", time="time",
+                      arm_bin="arm_bin", weight_col="w")
+        few = df[df["unit"].isin(["a1p0", "a0p0"])].assign(w=0.0)
+        missing = did_fit(few, y="y", unit="unit", time="time", arm_bin="arm_bin", weight_col="w")
+    assert out["n_units"] == 12 and np.isfinite(out["beta_DiD"])
+    assert missing["n_units"] == 2 and np.isnan(missing["beta_DiD"])

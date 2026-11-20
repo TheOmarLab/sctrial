@@ -224,3 +224,51 @@ def test_heterogeneity_drops_a_participant_missing_the_feature_at_one_visit():
     assert res["n_units"].iloc[0] == 15
     for col in ("beta_heterogeneity", "p_heterogeneity"):
         assert res[col].iloc[0] == pytest.approx(ref[col].iloc[0], rel=1e-10)
+
+
+def test_heterogeneity_matches_the_model_without_time_invariant_terms():
+    # Arm, biomarker group and their product are constant within a participant. As extra
+    # columns beside the participant effects they changed nothing but the standard error.
+    import statsmodels.formula.api as smf
+
+    adata, design = _heterogeneity_fixture()
+    pid = adata.obs["participant_id"]
+    adata.obs["bmk"] = pid.map({f"P{i:02d}": float(i % 2) for i in range(16)})
+    res = st.test_treatment_heterogeneity(
+        adata, features=["sig1"], design=design, visits=("V1", "V2"), biomarker_col="bmk",
+        standardize=False,
+    )
+
+    cells = adata.obs
+    pv = cells.groupby(["participant_id", "visit", "arm", "bmk"], observed=True)["sig1"].mean().reset_index()
+    pv["t"] = (pv["visit"] == "V2").astype(int)
+    pv["a"] = (pv["arm"] == "Treated").astype(int)
+    lean = smf.ols("sig1 ~ t + t:a + t:bmk + t:a:bmk + C(participant_id)", data=pv).fit(
+        cov_type="cluster", cov_kwds={"groups": pv["participant_id"]}
+    )
+    full = smf.ols("sig1 ~ t + a + bmk + t:a + t:bmk + a:bmk + t:a:bmk + C(participant_id)", data=pv).fit(
+        cov_type="cluster", cov_kwds={"groups": pv["participant_id"]}
+    )
+    assert lean.model.exog.shape[1] == np.linalg.matrix_rank(lean.model.exog)
+    assert full.bse["t:a:bmk"] > 1.1 * lean.bse["t:a:bmk"]
+    assert res["beta_heterogeneity"].iloc[0] == pytest.approx(lean.params["t:a:bmk"], rel=1e-9)
+    assert res["p_heterogeneity"].iloc[0] == pytest.approx(lean.pvalues["t:a:bmk"], rel=1e-9)
+
+
+def test_heterogeneity_is_unchanged_by_a_covariate_constant_within_participant():
+    adata, design = _heterogeneity_fixture()
+    pid = adata.obs["participant_id"]
+    adata.obs["bmk"] = pid.map({f"P{i:02d}": float(i % 2) for i in range(16)})
+    adata.obs["site"] = pid.map({f"P{i:02d}": float(i % 3) for i in range(16)})
+    plain = _heterogeneity(adata, design)
+    adjusted = _heterogeneity(adata, design, covariates=["site"])
+    for col in ("beta_heterogeneity", "p_heterogeneity"):
+        assert adjusted[col].iloc[0] == pytest.approx(plain[col].iloc[0], rel=1e-9)
+
+
+def test_heterogeneity_refuses_a_covariate_that_is_also_a_feature():
+    adata, design = _heterogeneity_fixture()
+    with pytest.raises(ValueError, match="also a feature"):
+        _heterogeneity(adata, design, covariates=["sig1"])
+    with pytest.raises(KeyError, match="not found in adata.obs"):
+        _heterogeneity(adata, design, covariates=["absent"])

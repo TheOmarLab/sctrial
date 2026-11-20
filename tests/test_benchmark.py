@@ -335,3 +335,32 @@ class TestPanelEligibility:
         n_eligible = len(eligible_panel_genes(cfg))
         with pytest.raises(ValueError, match="expected counts per cell"):
             nested_panels(cfg, sizes=(n_eligible + 1,), rng=np.random.default_rng(1))
+
+
+def test_fixed_effect_ablation_rung_uses_a_full_rank_design():
+    # The arm is constant within a participant. As a column beside the participant
+    # indicators it left the estimate alone and enlarged the cluster-robust standard error.
+    import statsmodels.formula.api as smf
+
+    from sctrial.benchmark.ablation import _pseudobulk_fe_crse
+
+    rng = np.random.default_rng(0)
+    rows = []
+    for i in range(12):
+        arm, base = ("Treated" if i < 6 else "Control"), rng.normal()
+        for visit in ("Pre", "Post"):
+            lift = 0.9 if (arm == "Treated" and visit == "Post") else 0.0
+            rows.append({"participant": f"p{i:02d}", "visit": visit, "arm": arm,
+                         "g": base + lift + rng.normal(0, 0.5)})
+    pb = pd.DataFrame(rows)
+    out = _pseudobulk_fe_crse(pb, ["g"])["g"]
+
+    pb["t"] = (pb["visit"] == "Post").astype(int)
+    pb["a"] = (pb["arm"] == "Treated").astype(int)
+    ref = smf.ols("g ~ t + t:a + C(participant)", data=pb).fit(
+        cov_type="cluster", cov_kwds={"groups": pb["participant"]}
+    )
+    assert ref.model.exog.shape[1] == np.linalg.matrix_rank(ref.model.exog)
+    assert out["beta"] == pytest.approx(ref.params["t:a"], rel=1e-9)
+    assert out["pvalue"] == pytest.approx(ref.pvalues["t:a"], rel=1e-9)
+    assert (out["ci_lo"], out["ci_hi"]) == pytest.approx(tuple(ref.conf_int().loc["t:a"]), rel=1e-9)

@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 import sctrial as st
 
@@ -329,3 +330,31 @@ def test_between_arm_n_units_post_drop(sample_adata, trial_design):
     assert res.iloc[0]["n_units"] == 19, (
         f"n_units should be 19 (one participant dropped), got {res.iloc[0]['n_units']}"
     )
+
+
+def test_within_arm_standard_error_ignores_a_covariate_constant_within_participant(
+    sample_adata, trial_design
+):
+    # The participant effects hold such a covariate; counted as a design column it enlarged
+    # the cluster-robust standard error without changing the estimate.
+    adata = sample_adata.copy()
+    adata.obs["site"] = adata.obs["participant_id"].map(
+        {f"P{i}": float(i % 3) for i in range(20)}
+    )
+    kw = dict(arm="Treated", features=["G0"], design=trial_design, visits=("V1", "V2"))
+    plain = st.within_arm_comparison(adata, **kw)
+    adjusted = st.within_arm_comparison(adata, covariates=["site"], **kw)
+    for col in ("beta_time", "se_time", "p_time", "ci_lo_time", "ci_hi_time"):
+        assert adjusted[col].iloc[0] == pytest.approx(plain[col].iloc[0], rel=1e-9)
+
+
+def test_within_arm_gives_no_estimate_when_a_covariate_duplicates_the_visit(
+    sample_adata, trial_design
+):
+    adata = sample_adata.copy()
+    adata.obs["second_visit"] = (adata.obs["visit"] == "V2").astype(float)
+    res = st.within_arm_comparison(
+        adata, arm="Treated", features=["G0"], design=trial_design, visits=("V1", "V2"),
+        covariates=["second_visit"],
+    )
+    assert np.isnan(res["beta_time"].iloc[0]) and np.isnan(res["p_time"].iloc[0])
