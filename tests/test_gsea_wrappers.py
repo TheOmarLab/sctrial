@@ -1,4 +1,5 @@
 import types
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -188,3 +189,77 @@ def test_run_gsea_pseudobulk(monkeypatch):
         visits=("V1", "V2"),
     )
     assert isinstance(res, pd.DataFrame)
+
+
+@pytest.mark.parametrize(
+    "rank_fn,beta,se,p",
+    [
+        ("_rank_did_results", "beta_DiD", "se_DiD", "p_DiD"),
+        ("_rank_between_arm_results", "beta_arm", "se_arm", "p_arm"),
+        ("_rank_within_arm_results", "beta_time", "se_time", "p_time"),
+    ],
+)
+def test_ranking_leaves_out_genes_without_an_estimate(rank_fn, beta, se, p):
+    # c and e could not be fitted. Ranked at zero they sat in the middle of the list and
+    # counted against every gene set; d has an estimate and no standard error.
+    res = pd.DataFrame({
+        "feature": list("abcdef"),
+        beta: [1.0, -2.0, np.nan, 0.5, np.nan, 0.0],
+        se: [0.5, 1.0, np.nan, np.nan, np.nan, 0.4],
+        p: [0.04, 0.03, np.nan, 0.5, np.nan, 1.0],
+        "n_units": [11, 11, 11, 11, 3, 11],
+    })
+    rank = getattr(gsea, rank_fn)
+    by_t = rank(res, "tstat", 4)
+    assert dict(zip(by_t["feature"], by_t["rank"])) == pytest.approx({"a": 2.0, "f": 0.0, "b": -2.0})
+    assert list(rank(res, "beta", 4)["feature"]) == ["a", "d", "f", "b"]
+    assert list(rank(res, "signed_confidence", 4)["feature"]) == ["a", "d", "f", "b"]
+
+    with pytest.raises(ValueError, match="No genes have an estimate"):
+        rank(res.assign(**{beta: np.nan}), "tstat", 4)
+    with pytest.raises(ValueError, match="Unknown rank_by"):
+        rank(res, "other", 4)
+
+
+def test_ranking_of_estimated_genes_is_unchanged_by_genes_without_an_estimate():
+    rng = np.random.default_rng(0)
+    res = pd.DataFrame({"feature": [f"g{i}" for i in range(50)], "beta_DiD": rng.normal(size=50),
+                        "se_DiD": rng.uniform(0.2, 1.0, 50), "p_DiD": rng.uniform(size=50), "n_units": 9})
+    padded = pd.concat([res, pd.DataFrame({"feature": [f"u{i}" for i in range(10)], "beta_DiD": np.nan,
+                                           "se_DiD": np.nan, "p_DiD": np.nan, "n_units": 9})])
+    for rank_by in ("tstat", "beta", "signed_confidence"):
+        pd.testing.assert_frame_equal(
+            gsea._rank_did_results(padded, rank_by, 4).reset_index(drop=True),
+            gsea._rank_did_results(res, rank_by, 4).reset_index(drop=True),
+        )
+
+
+def test_run_gsea_did_by_celltype_counts_eligibility_after_crossover_exclusion(monkeypatch):
+    # Cell type X has control participants only among the crossovers. Counted before their
+    # exclusion it passed, every gene came back without an estimate, and a ranking of zeros
+    # went to GSEA.
+    monkeypatch.setattr(gsea, "gp", types.SimpleNamespace(prerank=_dummy_prerank))
+    rows = []
+
+    def add(celltype, arm, participants, crossover=False):
+        for pid in participants:
+            rows.extend({"celltype": celltype, "arm": arm, "participant_id": pid, "visit": v,
+                         "is_crossover": crossover} for v in ("V1", "V2") for _ in range(3))
+
+    add("A", "Treated", ["t1", "t2", "t3"])
+    add("A", "Control", ["c1", "c2", "c3"])
+    add("X", "Treated", ["t1", "t2", "t3", "t4"])
+    add("X", "Control", ["x1", "x2"], crossover=True)
+    obs = pd.DataFrame(rows)
+    obs.index = obs.index.astype(str)
+    adata = AnnData(X=np.random.default_rng(0).poisson(3.0, size=(len(obs), 5)).astype(float), obs=obs)
+    adata.var_names = [f"g{i}" for i in range(5)]
+    design = TrialDesign(celltype_col="celltype", crossover_col="is_crossover")
+    kw = dict(gene_sets={"S": ["g0", "g1"]}, design=design, visits=("V1", "V2"), min_units=4)
+
+    with pytest.warns(UserWarning, match="1 cell types were skipped.*X"):
+        excluded = gsea.run_gsea_did_by_celltype(adata, **kw)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        kept = gsea.run_gsea_did_by_celltype(adata, exclude_crossovers=False, **kw)
+    assert list(excluded) == ["A"] and list(kept) == ["A", "X"]

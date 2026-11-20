@@ -49,3 +49,59 @@ def test_loader_ranks_with_the_requested_covariance_and_stamps_it(tmp_path, monk
     stamp = sh._gsea_fingerprint_path(sh._gsea_cache_path("Cohort", "A", method="did"))
     assert stamp.read_text() == sh._gsea_did_stamp("nonrobust")
 
+
+
+@pytest.mark.parametrize("loader,runner", [
+    ("load_or_run_gsea_within_arm", "run_gsea_within_arm"),
+    ("load_or_run_gsea_cross_sectional", "run_gsea_cross_sectional"),
+])
+def test_within_arm_and_cross_sectional_caches_need_the_stamp_of_the_current_code(
+    tmp_path, monkeypatch, sh, loader, runner
+):
+    # These caches were reused whenever the file existed, so a change to the ranking of the
+    # genes kept serving results ranked by the previous code.
+    import sctrial
+
+    monkeypatch.setattr(sh, "GSEA_OUTPUT", tmp_path)
+    monkeypatch.setattr(sh, "GSEA_LIBRARIES", [("Library_A", "A")])
+    calls = []
+
+    def fake_run(adata, **kwargs):
+        calls.append(kwargs["rank_by"])
+        return pd.DataFrame({"Term": ["T1"], "NES": [float(len(calls))]})
+
+    monkeypatch.setattr(sctrial, runner, fake_run)
+    args = (dict(arm="Treated", visits=("Pre", "Post")) if "within" in loader else dict(visit="D7"))
+    run = lambda: getattr(sh, loader)(None, None, layer=None, dataset_name="Cohort", **args)  # noqa: E731
+
+    assert run()["NES"].tolist() == [1.0]
+    assert run()["NES"].tolist() == [1.0] and len(calls) == 1
+    method = "within_arm" if "within" in loader else "cross_sectional"
+    stamp = sh._gsea_fingerprint_path(sh._gsea_cache_path("Cohort", "A", method=method))
+    assert stamp.read_text() == sh.STATS_FINGERPRINT
+
+    stamp.write_text("built by other code")
+    assert run()["NES"].tolist() == [2.0]
+    stamp.unlink()
+    assert run()["NES"].tolist() == [3.0]
+
+
+def test_fingerprint_covers_the_estimators_and_the_gene_ranking(sh):
+    import inspect
+
+    source = inspect.getsource(sh._stats_fingerprint)
+    for module in ("stats/did.py", "utils.py", "stats/_utils.py", "stats/comparisons.py", "stats/gsea.py"):
+        assert module in source
+
+
+def test_tied_pathways_keep_one_order_whatever_order_they_arrive_in(sh):
+    # Two gene sets with the same members have the same NES; gseapy does not return them in
+    # the same order in every run, and a panel of top pathways must not depend on that.
+    rows = pd.DataFrame({
+        "Term": ["Set B", "Set A", "Set C", "Set D"],
+        "NES": [2.5, 2.5, -3.0, 1.0],
+        "Library": ["GO", "GO", "GO", "GO"],
+    })
+    first = sh._order_gsea(rows)
+    second = sh._order_gsea(rows.iloc[[1, 0, 3, 2]].reset_index(drop=True))
+    assert first["Term"].tolist() == second["Term"].tolist() == ["Set C", "Set A", "Set B", "Set D"]

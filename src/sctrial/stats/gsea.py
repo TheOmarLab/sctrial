@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from anndata import AnnData
 
-from ..adata_tools import subset_arms
+from ..adata_tools import subset_arms, subset_primary
 from ..design import TrialDesign
 from .comparisons import between_arm_comparison, within_arm_comparison
 from .did import did_table
@@ -61,88 +61,53 @@ def _finalize_ranking(valid: pd.DataFrame) -> pd.DataFrame:
 
 
 class _NoRankableGenes(ValueError):
-    """No gene of a DiD table has enough participants to be ranked."""
+    """No gene of a results table can be ranked."""
 
 
-def _rank_did_results(
-    res: pd.DataFrame,
-    rank_by: str,
-    min_units: int,
+def _rank_results(
+    res: pd.DataFrame, rank_by: str, min_units: int, *, beta: str, se: str, p: str
 ) -> pd.DataFrame:
-    """Rank the DiD results."""
-    valid = res[res["n_units"] >= min_units].copy()
+    """Rank the genes of a results table by ``rank_by``.
+
+    A gene enters the ranking only with the quantities its rank is made of: the estimate,
+    and its standard error (``"tstat"``) or p-value (``"signed_confidence"``). A gene whose
+    model could not be fitted has no place in the ranked list; given a rank of zero it would
+    sit in the middle of the list and count as a gene outside every set.
+    """
+    needs = {"signed_confidence": (beta, p), "beta": (beta,), "tstat": (beta, se)}
+    if rank_by not in needs:
+        raise ValueError(f"Unknown rank_by: {rank_by}")
+    valid = res[res["n_units"] >= min_units]
+    estimated = np.isfinite(valid[list(needs[rank_by])].to_numpy(dtype=float)).all(axis=1)
+    valid = valid[estimated].copy()
     if len(valid) == 0:
         raise _NoRankableGenes(
-            f"No genes have sufficient data (min_units={min_units}). "
+            f"No genes have an estimate from at least min_units={min_units} participants. "
             f"Try reducing min_units or checking your data."
         )
 
     if rank_by == "signed_confidence":
-        valid["rank"] = np.sign(valid["beta_DiD"].fillna(0)) * -np.log10(
-            valid["p_DiD"].fillna(1) + 1e-12
-        )
+        valid["rank"] = np.sign(valid[beta]) * -np.log10(valid[p] + 1e-12)
     elif rank_by == "beta":
-        valid["rank"] = valid["beta_DiD"].fillna(0)
-    elif rank_by == "tstat":
-        valid["rank"] = valid["beta_DiD"].fillna(0) / (valid["se_DiD"].fillna(1) + 1e-12)
+        valid["rank"] = valid[beta]
     else:
-        raise ValueError(f"Unknown rank_by: {rank_by}")
-
+        valid["rank"] = valid[beta] / (valid[se] + 1e-12)
     return _finalize_ranking(valid)
 
 
-def _rank_between_arm_results(
-    res: pd.DataFrame,
-    rank_by: str,
-    min_units: int,
-) -> pd.DataFrame:
+def _rank_did_results(res: pd.DataFrame, rank_by: str, min_units: int) -> pd.DataFrame:
+    """Rank the DiD results."""
+    return _rank_results(res, rank_by, min_units, beta="beta_DiD", se="se_DiD", p="p_DiD")
+
+
+def _rank_between_arm_results(res: pd.DataFrame, rank_by: str, min_units: int) -> pd.DataFrame:
     """Rank the between-arm comparison results."""
-    valid = res[res["n_units"] >= min_units].copy()
-    if len(valid) == 0:
-        raise ValueError(
-            f"No genes have sufficient data (min_units={min_units}). "
-            f"Try reducing min_units or checking your data."
-        )
-
-    if rank_by == "signed_confidence":
-        valid["rank"] = np.sign(valid["beta_arm"].fillna(0)) * -np.log10(
-            valid["p_arm"].fillna(1) + 1e-12
-        )
-    elif rank_by == "beta":
-        valid["rank"] = valid["beta_arm"].fillna(0)
-    elif rank_by == "tstat":
-        valid["rank"] = valid["beta_arm"].fillna(0) / (valid["se_arm"].fillna(1) + 1e-12)
-    else:
-        raise ValueError(f"Unknown rank_by: {rank_by}")
-
-    return _finalize_ranking(valid)
+    return _rank_results(res, rank_by, min_units, beta="beta_arm", se="se_arm", p="p_arm")
 
 
-def _rank_within_arm_results(
-    res: pd.DataFrame,
-    rank_by: str,
-    min_units: int,
-) -> pd.DataFrame:
+def _rank_within_arm_results(res: pd.DataFrame, rank_by: str, min_units: int) -> pd.DataFrame:
     """Rank the within-arm comparison results."""
-    valid = res[res["n_units"] >= min_units].copy()
-    if len(valid) == 0:
-        raise ValueError(
-            f"No genes have sufficient data (min_units={min_units}). "
-            f"Try reducing min_units or checking your data."
-        )
-
-    if rank_by == "signed_confidence":
-        valid["rank"] = np.sign(valid["beta_time"].fillna(0)) * -np.log10(
-            valid["p_time"].fillna(1) + 1e-12
-        )
-    elif rank_by == "beta":
-        valid["rank"] = valid["beta_time"].fillna(0)
-    elif rank_by == "tstat":
-        valid["rank"] = valid["beta_time"].fillna(0) / (valid["se_time"].fillna(1) + 1e-12)
-    else:
-        raise ValueError(f"Unknown rank_by: {rank_by}")
-
-    return _finalize_ranking(valid)
+    return _rank_results(res, rank_by, min_units, beta="beta_time", se="se_time", p="p_time")
 
 
 def run_gsea_cross_sectional(
@@ -378,8 +343,7 @@ def run_gsea_did(
         cov_type=cov_type,
     )
 
-    # 2. Filter genes with insufficient data
-    # Genes with n_units < min_units will have NaN beta_DiD
+    # 2. Rank the genes that have an estimate from at least min_units participants
     ranking = _rank_did_results(res, rank_by=rank_by, min_units=min_units)
 
     # 3. Run GSEA Prerank
@@ -484,8 +448,11 @@ def run_gsea_did_by_celltype(
     if celltypes is None:
         celltypes = sorted(adata.obs[design.celltype_col].dropna().unique())
 
-    # The DiD of a cell type needs, in each arm, a participant with cells at both visits.
-    obs = adata.obs
+    # The DiD of a cell type needs, in each arm, a participant with cells at both visits,
+    # counted on the rows the DiD will use.
+    obs = subset_primary(
+        adata, design, visits=visits, exclude_crossovers=kwargs.get("exclude_crossovers", True)
+    ).obs
     visits_seen = obs.groupby(
         [design.celltype_col, design.arm_col, design.participant_col], observed=True
     )[design.visit_col].nunique()
@@ -584,7 +551,7 @@ def run_gsea_pseudobulk(
         for ct, ct_res in res.groupby("celltype"):
             try:
                 ct_ranking = _rank_did_results(ct_res, rank_by=rank_by, min_units=min_units)
-            except ValueError:
+            except _NoRankableGenes:
                 continue
             ct_pre = gp.prerank(rnk=ct_ranking, gene_sets=gene_sets, **kwargs)
             if return_obj:

@@ -2150,12 +2150,15 @@ def _panel_tnbc_response_celltype_hm(ax, data_tnbc: dict, *, arm: str) -> None:
     gene_order += [g for g in effect_mat.index if g not in gene_order]
     effect_mat = effect_mat.reindex(gene_order)
 
-    arr = effect_mat.fillna(0).values
-    vmax = max(np.abs(arr).max(), 0.01)
+    # A cell without an estimate is left out of the colour scale and shows the grey face of
+    # the axes; drawn as zero it would read as no effect.
+    arr = np.ma.masked_invalid(effect_mat.to_numpy(dtype=float))
+    vmax = max(float(np.nanmax(np.abs(effect_mat.to_numpy(dtype=float)))), 0.01)
 
     im = ax.imshow(arr, aspect="auto", cmap="RdBu_r",
                    vmin=-vmax, vmax=vmax,
                    interpolation="nearest", origin="upper")
+    ax.set_facecolor((0.95, 0.95, 0.95))
 
     for i in range(arr.shape[0] + 1):
         ax.axhline(i - 0.5, color="white", linewidth=0.5, zorder=2)

@@ -54,19 +54,19 @@ for _d in (MAIN_OUTPUT, SUPP_OUTPUT, GSEA_OUTPUT):
 
 
 def _stats_fingerprint() -> str:
-    """Short hash of the package source that determines every DiD estimate.
+    """Short hash of the package source that determines every estimate and gene ranking.
 
     Fold this into the key of any cache whose content comes from ``did_fit``,
-    ``did_table`` or DiD-ranked GSEA. A figure's own ``_CODE_VERSION`` or source
-    hash cannot see a change to the package estimator, so without this a cache
-    keeps serving results from the previous estimator, on every machine that
-    holds one.
+    ``did_table``, the within-arm or between-arm comparisons, or a GSEA ranked by
+    them. A figure's own ``_CODE_VERSION`` or source hash cannot see a change to the
+    package estimator or to the ranking, so without this a cache keeps serving
+    results from the previous code, on every machine that holds one.
     """
     import sctrial
 
     pkg = Path(sctrial.__file__).resolve().parent
     h = hashlib.md5()  # noqa: S324 - cache tag, not security
-    for rel in ("stats/did.py", "utils.py"):
+    for rel in ("stats/did.py", "utils.py", "stats/_utils.py", "stats/comparisons.py", "stats/gsea.py"):
         h.update((pkg / rel).read_bytes())
     return h.hexdigest()[:8]
 
@@ -1893,6 +1893,37 @@ def _gsea_did_cache_fresh(cache_csv: Path, cov_type: str) -> bool:
     )
 
 
+def _order_gsea(combined):
+    """Pathways by decreasing absolute NES, ties by library and term name.
+
+    Gene sets with the same members have the same NES, and the order in which gseapy returns
+    them is not the same in every run. A panel that shows the top pathways would then list
+    tied pathways in a different order from one render to the next.
+    """
+    import pandas as pd
+
+    if "NES" not in combined.columns:
+        return combined
+    keys = [c for c in ("Library", "Term") if c in combined.columns]
+    ordered = combined.assign(_abs_nes=pd.to_numeric(combined["NES"], errors="coerce").abs())
+    ordered = ordered.sort_values(
+        ["_abs_nes", *keys], ascending=[False] + [True] * len(keys), kind="mergesort"
+    )
+    return ordered.drop(columns="_abs_nes").reset_index(drop=True)
+
+
+def _gsea_cache_fresh(cache_csv: Path) -> bool:
+    """A within-arm or cross-sectional GSEA cache is usable only if the current code built it.
+
+    The ranking comes from the comparison functions and from the ranking rules of the
+    package; results built by other code are stale although the path is unchanged.
+    """
+    stamp = _gsea_fingerprint_path(cache_csv)
+    return (
+        cache_csv.exists() and stamp.exists() and stamp.read_text().strip() == STATS_FINGERPRINT
+    )
+
+
 def load_or_run_gsea_did(
     adata,
     design,
@@ -1958,10 +1989,7 @@ def load_or_run_gsea_did(
 
     if not frames:
         return None
-    combined = pd.concat(frames, ignore_index=True)
-    if "NES" in combined.columns:
-        combined = combined.sort_values("NES", key=abs, ascending=False)
-    return combined
+    return _order_gsea(pd.concat(frames, ignore_index=True))
 
 
 def load_or_run_gsea_cross_sectional(
@@ -1994,7 +2022,7 @@ def load_or_run_gsea_cross_sectional(
     for lib_name, short_name in GSEA_LIBRARIES:
         cache_csv = _gsea_cache_path(dataset_name, short_name, method="cross_sectional")
 
-        if not force and cache_csv.exists():
+        if not force and _gsea_cache_fresh(cache_csv):
             df = pd.read_csv(cache_csv)
             if len(df) > 0:
                 df["Library"] = short_name
@@ -2014,6 +2042,7 @@ def load_or_run_gsea_cross_sectional(
             if isinstance(res, pd.DataFrame) and len(res) > 0:
                 res["Library"] = short_name
                 res.to_csv(cache_csv, index=False)
+                _gsea_fingerprint_path(cache_csv).write_text(STATS_FINGERPRINT)
                 frames.append(res)
                 print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
             else:
@@ -2023,10 +2052,7 @@ def load_or_run_gsea_cross_sectional(
 
     if not frames:
         return None
-    combined = pd.concat(frames, ignore_index=True)
-    if "NES" in combined.columns:
-        combined = combined.sort_values("NES", key=abs, ascending=False)
-    return combined
+    return _order_gsea(pd.concat(frames, ignore_index=True))
 
 
 def load_or_run_gsea_within_arm(
@@ -2061,7 +2087,7 @@ def load_or_run_gsea_within_arm(
     for lib_name, short_name in GSEA_LIBRARIES:
         cache_csv = _gsea_cache_path(dataset_name, short_name, method="within_arm")
 
-        if not force and cache_csv.exists():
+        if not force and _gsea_cache_fresh(cache_csv):
             df = pd.read_csv(cache_csv)
             if len(df) > 0:
                 df["Library"] = short_name
@@ -2081,6 +2107,7 @@ def load_or_run_gsea_within_arm(
             if isinstance(res, pd.DataFrame) and len(res) > 0:
                 res["Library"] = short_name
                 res.to_csv(cache_csv, index=False)
+                _gsea_fingerprint_path(cache_csv).write_text(STATS_FINGERPRINT)
                 frames.append(res)
                 print(f"    {dataset_name}/{short_name}: {len(res)} pathways")
             else:
@@ -2090,66 +2117,4 @@ def load_or_run_gsea_within_arm(
 
     if not frames:
         return None
-    combined = pd.concat(frames, ignore_index=True)
-    if "NES" in combined.columns:
-        combined = combined.sort_values("NES", key=abs, ascending=False)
-    return combined
-
-
-def load_or_run_gsea_prerank(
-    ranking,
-    dataset_name: str,
-    *,
-    force: bool = False,
-) -> object:
-    """Load cached GSEA results or run ``gseapy.prerank`` from a ranking.
-
-    Used for cross-sectional designs (e.g. Stephenson) where ``run_gsea_did``
-    is not applicable.  *ranking* is a pre-computed gene-level statistic
-    (e.g. Welch t-stat) indexed by gene name.
-    """
-    import pandas as pd
-
-    try:
-        import gseapy as gp
-    except ImportError:
-        print(f"    {dataset_name}: gseapy not available — skipping GSEA")
-        return None
-
-    frames: list[pd.DataFrame] = []
-    for lib_name, short_name in GSEA_LIBRARIES:
-        cache_csv = _gsea_cache_path(dataset_name, short_name, method="prerank")
-
-        if not force and cache_csv.exists():
-            df = pd.read_csv(cache_csv)
-            if len(df) > 0:
-                df["Library"] = short_name
-                frames.append(df)
-                print(f"    {dataset_name}/{short_name}: {len(df)} pathways (cached)")
-                continue
-
-        outdir = str(cache_csv.parent)
-        os.makedirs(outdir, exist_ok=True)
-        try:
-            pre_res = gp.prerank(
-                rnk=ranking, gene_sets=lib_name,
-                min_size=10, max_size=500, permutation_num=1000,
-                outdir=outdir, no_plot=True,
-            )
-            res_df = pre_res.res2d if hasattr(pre_res, "res2d") else pre_res
-            if isinstance(res_df, pd.DataFrame) and len(res_df) > 0:
-                res_df["Library"] = short_name
-                res_df.to_csv(cache_csv, index=False)
-                frames.append(res_df)
-                print(f"    {dataset_name}/{short_name}: {len(res_df)} pathways")
-            else:
-                print(f"    {dataset_name}/{short_name}: no results")
-        except Exception as exc:
-            print(f"    {dataset_name}/{short_name}: {exc}")
-
-    if not frames:
-        return None
-    combined = pd.concat(frames, ignore_index=True)
-    if "NES" in combined.columns:
-        combined = combined.sort_values("NES", key=abs, ascending=False)
-    return combined
+    return _order_gsea(pd.concat(frames, ignore_index=True))
