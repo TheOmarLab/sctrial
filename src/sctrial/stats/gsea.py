@@ -73,6 +73,21 @@ def _finalize_ranking(valid: pd.DataFrame) -> pd.DataFrame:
     return out.sort_values(["rank", "feature"], ascending=[False, True], kind="mergesort")
 
 
+def _order_enrichment(res: pd.DataFrame) -> pd.DataFrame:
+    """Rows as gseapy orders them, by decreasing absolute NES, with equal NES by term name.
+
+    Gene sets that hold the same ranked genes have the same NES, and gseapy returns them in
+    an order that changes from run to run.
+    """
+    if "NES" not in res.columns or "Term" not in res.columns:
+        return res
+    size = pd.to_numeric(res["NES"], errors="coerce").abs()
+    ordered = res.assign(_size=size).sort_values(
+        ["_size", "Term"], ascending=[False, True], kind="mergesort"
+    )
+    return ordered.drop(columns="_size").reset_index(drop=True)
+
+
 class _NoRankableGenes(ValueError):
     """No gene of a results table can be ranked."""
 
@@ -334,7 +349,8 @@ def run_gsea_prerank(
     Returns
     -------
     pd.DataFrame or gseapy.Prerank
-        Enrichment results or the gseapy result object.
+        Enrichment results or the gseapy result object. The results table is ordered by
+        decreasing absolute NES, gene sets with the same NES by name.
     """
     _ensure_gseapy()
     missing = {"feature", "rank"} - set(ranking.columns)
@@ -345,12 +361,11 @@ def run_gsea_prerank(
         )
     pre_res = gp.prerank(rnk=_finalize_ranking(ranking), gene_sets=gene_sets, **kwargs)
 
-    if return_obj:
-        return pre_res
     # Handle both gseapy >= 1.0 (has .res2d) and potentially older versions
-    if hasattr(pre_res, "res2d"):
-        return pre_res.res2d
-    return pre_res
+    if not hasattr(pre_res, "res2d"):
+        return pre_res
+    pre_res.res2d = _order_enrichment(pre_res.res2d)
+    return pre_res if return_obj else pre_res.res2d
 
 
 def run_gsea_cross_sectional(
@@ -778,11 +793,11 @@ def run_gsea_pseudobulk(
                 ct_ranking = _rank_did_results(ct_res, rank_by=rank_by, min_units=min_units)
             except _NoRankableGenes:
                 continue
-            ct_pre = gp.prerank(rnk=ct_ranking, gene_sets=gene_sets, **kwargs)
+            ct_pre = run_gsea_prerank(ct_ranking, gene_sets, return_obj=return_obj, **kwargs)
             if return_obj:
                 obj_results[ct] = ct_pre
             else:
-                ct_df = ct_pre.res2d if hasattr(ct_pre, "res2d") else pd.DataFrame(ct_pre)
+                ct_df = ct_pre if isinstance(ct_pre, pd.DataFrame) else pd.DataFrame(ct_pre)
                 ct_df["celltype"] = ct
                 all_results.append(ct_df)
         if return_obj:
@@ -792,15 +807,4 @@ def run_gsea_pseudobulk(
         return pd.concat(all_results, ignore_index=True)
 
     ranking = _rank_did_results(res, rank_by=rank_by, min_units=min_units)
-
-    pre_res = gp.prerank(
-        rnk=ranking,
-        gene_sets=gene_sets,
-        **kwargs,
-    )
-
-    if return_obj:
-        return pre_res
-    if hasattr(pre_res, "res2d"):
-        return pre_res.res2d
-    return pre_res
+    return run_gsea_prerank(ranking, gene_sets, return_obj=return_obj, **kwargs)

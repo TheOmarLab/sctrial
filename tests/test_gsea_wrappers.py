@@ -376,7 +376,7 @@ def test_run_gsea_did_multi_ranks_the_genes_once(monkeypatch, sample_adata, tria
         sample_adata, _LIBRARIES, trial_design, _VISITS, rank_by="tstat", cov_type="nonrobust"
     )
     assert tables == ["nonrobust"]
-    assert [list(r["Term"]) for r in res.values()] == [list(sets) for sets in _LIBRARIES.values()]
+    assert [sorted(r["Term"]) for r in res.values()] == [sorted(sets) for sets in _LIBRARIES.values()]
     assert len(rankings) == 3 and len({id(r) for r in rankings}) == 3
     assert all(r.equals(rankings[0]) for r in rankings)
 
@@ -446,3 +446,42 @@ def test_a_finalized_ranking_is_unchanged_by_finalizing_it_again():
     assert once["feature"].tolist() == twice["feature"].tolist()
     assert once["rank"].to_numpy().tobytes() == twice["rank"].to_numpy().tobytes()
     assert once.index.tolist() == twice.index.tolist()
+
+
+def test_enrichment_rows_keep_one_order_whatever_order_gseapy_returns_them_in():
+    # Gene sets with the same ranked genes have the same NES; gseapy returns them in an order
+    # that changes from run to run, so a cached table differed between identical runs.
+    rows = pd.DataFrame({
+        "Term": ["Set B", "Set A", "Strong", "Weak", "Unscored", "Set C"],
+        "NES": [-1.5, -1.5, 2.5, 0.25, np.nan, -1.5],
+        "FDR q-val": [0.2, 0.2, 0.0, 0.9, np.nan, 0.2],
+    })
+    expected = ["Strong", "Set A", "Set B", "Set C", "Weak", "Unscored"]
+    for arrival in ([0, 1, 2, 3, 4, 5], [5, 1, 0, 4, 3, 2], [4, 3, 5, 2, 1, 0]):
+        ordered = gsea._order_enrichment(rows.iloc[arrival].reset_index(drop=True))
+        assert ordered["Term"].tolist() == expected
+        assert ordered.index.tolist() == list(range(6)) and list(ordered.columns) == list(rows.columns)
+
+    text_scores = rows.assign(NES=rows["NES"].astype(object))
+    assert gsea._order_enrichment(text_scores)["Term"].tolist() == expected
+    other = pd.DataFrame({"gene_set": ["x"], "score": [1.0]})
+    assert gsea._order_enrichment(other) is other
+
+
+@pytest.mark.parametrize("return_obj", [False, True])
+def test_gene_sets_with_the_same_members_come_back_in_name_order(sample_adata, trial_design, return_obj):
+    pytest.importorskip("gseapy")
+    members = [f"G{i}" for i in range(12)]
+    names = ["twin delta", "twin alpha", "twin charlie", "twin bravo"]
+    others = {"up": [f"G{i}" for i in range(5)], "tail": [f"G{i}" for i in range(70, 95)]}
+    ranking = gsea.rank_genes_did(sample_adata, trial_design, _VISITS, rank_by="tstat")
+    tables = []
+    for order in (names, names[::-1], sorted(names)):
+        sets = {**{name: members for name in order}, **others}
+        res = gsea.run_gsea_prerank(ranking, sets, return_obj=return_obj, **_PRERANK)
+        tables.append(res.res2d if return_obj else res)
+    twins = tables[0][tables[0]["Term"].str.startswith("twin")]
+    assert twins["NES"].nunique() == 1 and twins["Term"].tolist() == sorted(names)
+    assert tables[0]["NES"].astype(float).abs().is_monotonic_decreasing
+    for other in tables[1:]:
+        pd.testing.assert_frame_equal(other, tables[0], check_exact=True)
