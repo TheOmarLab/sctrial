@@ -2,6 +2,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+import pytest
 from anndata import AnnData
 
 import sctrial as st
@@ -104,3 +105,27 @@ def test_within_arm_by_pool_gives_no_p_value_for_constant_module():
     assert np.isnan(by_module.loc["flat", "p_time"])
     assert by_module.loc["flat", "mean_delta"] == 0
     assert 0 < by_module.loc["moving", "p_time"] <= 1
+
+
+def test_module_score_permutation_does_not_depend_on_the_origin():
+    from sctrial.stats.module_scores import _perm_test_diff
+
+    delta = pd.Series([0.0, 1, 2, 3, 4, 5, 6, 7])
+    arms = pd.Series(["T"] * 4 + ["C"] * 4)
+    reference = _perm_test_diff(delta, arms, 3000, 42, treated_label="T")
+    assert reference == pytest.approx(2 / 70, abs=0.01)
+    for shift in (2.0**32, -2.0**32):
+        assert _perm_test_diff(delta + shift, arms, 3000, 42, treated_label="T") == reference
+
+
+def test_within_arm_by_pool_tests_small_changes_that_are_not_zero():
+    # Changes of 1e-9 are small, not absent. An absolute tolerance treated them as all zero.
+    rows = []
+    for pid in range(8):
+        for visit, value in (("V1", 1.0), ("V2", 1.0 + 1e-9 * (pid + 1))):
+            rows.append({"participant_id": f"P{pid}", "visit": visit, "pool": "T", "module": "tiny",
+                         "module_score": value})
+    pb = pd.DataFrame(rows)
+    design = st.TrialDesign(participant_col="participant_id", visit_col="visit", arm_col=None)
+    res = st.module_score_within_arm_by_pool(pb, design, visits=("V1", "V2"), min_paired=3)
+    assert res["p_time"].iloc[0] == pytest.approx(2 / 2**8)

@@ -228,6 +228,32 @@ def test_noise_far_from_the_estimate_does_not_set_the_bound():
     assert _p_at(model, pid, term, res.ci_hi + eps) < 0.05 <= _p_at(model, pid, term, res.ci_hi - eps)
 
 
+@pytest.mark.parametrize("cov_type", ["nonrobust", "cluster"])
+@pytest.mark.parametrize("scale", [1.0, 0.1, 7.3])
+def test_draws_without_residual_variance_count_whatever_the_coding_or_the_units(cov_type, scale):
+    # Changes [4, 4] against [2, -2, -2, -2, -2, -2]: four of the 256 assignments make every
+    # change equal within each arm, so the model fits them exactly and the statistic is
+    # unbounded. They are as extreme as any observed statistic: 16 of 256 with the 12 others.
+    changes = scale * np.array([4, 4, 2, -2, -2, -2, -2, -2], dtype=float)
+    y = np.ravel([[0.0, d] for d in changes])
+    model, pid, term = _from_outcomes(y, n_treated=2)
+    fit = _fit(model, pid, cov_type)
+    res = wild_cluster_bootstrap_t(fit, fit.model.exog, pid, term, B=999, cov_type=cov_type)
+
+    reversed_coding = smf.ols(
+        "y ~ time + time:arm + C(pid)",
+        data=pd.DataFrame(
+            {"y": y, "pid": pid, "time": np.tile([0.0, 1.0], 8), "arm": np.repeat(np.arange(8) >= 2, 2).astype(float)}
+        ),
+    )
+    fit_r = _fit(reversed_coding, pid, cov_type)
+    res_r = wild_cluster_bootstrap_t(fit_r, fit_r.model.exog, pid, term, B=999, cov_type=cov_type)
+
+    assert res.p_boot == res_r.p_boot == 16 / 256
+    assert res.ci_lo <= 0.0 <= res.ci_hi
+    assert (res_r.ci_lo, res_r.ci_hi) == pytest.approx((-res.ci_hi, -res.ci_lo), abs=1e-6 * scale)
+
+
 @pytest.mark.parametrize("weighted", [False, True])
 def test_standard_error_is_that_of_the_unrestricted_bootstrap(weighted):
     """Exactly the cluster-robust SE without small-sample correction, whatever the effect size."""

@@ -204,15 +204,23 @@ _BOOT_COV_TYPES = ("cluster", "nonrobust")
 # an interval that reaches that far is reported as unbounded.
 _BOOT_CI_MAX_RADIUS_SE = 1e4
 # Two statistics that are equal in exact arithmetic can differ in the last bits once computed
-# along different paths. A resampled statistic within this relative margin of the observed one
-# is a tie; the margin is far above rounding error and far below any difference between two
-# statistics that are not equal.
+# along different paths. A bootstrap t statistic within this relative margin of the observed
+# one is a tie; the margin is far above rounding error and far below any difference between
+# two statistics that are not equal.
 _TIE_RTOL = 1e-9
+# A bootstrap variance below this fraction of the largest variance among the draws is zero.
+_ZERO_VARIANCE_RTOL = 1e-12
 
 
-def _tie_tolerance(values: np.ndarray) -> float:
-    """Margin below which two means of ``values`` count as equal, on the scale of the values."""
-    return _TIE_RTOL * float(np.max(np.abs(values), initial=0.0))
+def _tie_tolerance(centred: np.ndarray) -> float:
+    """Bound on the rounding error of a difference of two means of ``centred`` values.
+
+    Summing n values of magnitude at most m in two different orders gives results that differ
+    by at most about n * eps * m. The values must be centred: the difference of two means does
+    not depend on the origin of the measurements, and neither may the bound.
+    """
+    scale = float(np.max(np.abs(centred), initial=0.0))
+    return 8.0 * centred.size * float(np.finfo(float).eps) * scale
 
 
 def _sum_by_cluster(values: np.ndarray, order: np.ndarray, starts: np.ndarray) -> np.ndarray:
@@ -449,10 +457,19 @@ def wild_cluster_bootstrap_t(
     def _p_values(beta_nulls: np.ndarray) -> np.ndarray:
         b = np.asarray(beta_nulls, dtype=float)[:, None]
         var_star = var_scale * (q_yy_f - 2.0 * b * q_xy_f + b**2 * q_xx_f)
-        valid = np.isfinite(var_star) & (var_star > 0)
-        t_star = (num_y_f - b * num_x_f) / np.sqrt(np.where(valid, var_star, 1.0))
+        valid = np.isfinite(var_star)
+        # A draw that the model fits exactly has no residual variance and an unbounded
+        # statistic, so it is at least as extreme as any observed one. Rounding leaves such a
+        # variance a hair above or below zero; it is recognised against the largest variance
+        # among the draws, not by its sign.
+        largest = np.max(np.where(valid, var_star, 0.0), axis=1, keepdims=True, initial=var_obs)
+        unbounded = valid & (var_star <= _ZERO_VARIANCE_RTOL * largest)
+        regular = valid & ~unbounded
+        t_star = (num_y_f - b * num_x_f) / np.sqrt(np.where(regular, var_star, 1.0))
         t_obs = np.abs(beta_hat - b) / se_obs
-        extreme = valid & (np.abs(t_star) >= t_obs - _TIE_RTOL * np.maximum(1.0, t_obs))
+        extreme = unbounded | (
+            regular & (np.abs(t_star) >= t_obs - _TIE_RTOL * np.maximum(1.0, t_obs))
+        )
         n_extreme = np.count_nonzero(extreme, axis=1) + n_ties
         n_valid = np.count_nonzero(valid, axis=1) + n_ties
         if enumerate_all:
@@ -588,9 +605,12 @@ def permutation_pvalue(
     H0: mean(group1) = mean(group2)
     """
     rng = np.random.default_rng(seed)
-    obs_diff = np.mean(group1) - np.mean(group2)
-    combined = np.concatenate([group1, group2])
     n1 = len(group1)
+    # The difference of two means does not depend on the origin of the measurements, so the
+    # pooled values are centred: the contrasts keep their precision whatever the origin.
+    combined = np.concatenate([np.asarray(group1, dtype=float), np.asarray(group2, dtype=float)])
+    combined = combined - np.mean(combined)
+    obs_diff = np.mean(combined[:n1]) - np.mean(combined[n1:])
     # A permutation that reproduces the observed split sums the same values in another order.
     tol = _tie_tolerance(combined)
 
@@ -632,8 +652,9 @@ def permutation_pvalue_paired(
     H0: mean(y - x) = 0
     """
     rng = np.random.default_rng(seed)
-    diff = np.asarray(y) - np.asarray(x)
+    diff = np.asarray(y, dtype=float) - np.asarray(x, dtype=float)
     obs_mean = np.mean(diff)
+    # The paired differences are free of the origin already; a sign flip keeps their size.
     tol = _tie_tolerance(diff)
 
     count = 0

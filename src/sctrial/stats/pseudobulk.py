@@ -445,7 +445,7 @@ def pseudobulk_within_arm(
                         "delta": float(dv),
                     }
                 )
-            if len(delta) < min_paired or np.allclose(delta.values, 0):
+            if len(delta) < min_paired or not np.any(delta.values):
                 p_val = np.nan
             else:
                 try:

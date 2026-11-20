@@ -173,7 +173,8 @@ def _perm_test_diff(
         Two-sided permutation p-value in ``[0, 1]``.
     """
     rng = np.random.default_rng(seed)
-    values = delta.to_numpy()
+    values = delta.to_numpy(dtype=float)
+    values = values - np.mean(values)
     labels = arms.to_numpy()
     if treated_label is None:
         treated_label = labels[0]
@@ -343,7 +344,7 @@ def module_score_did_by_pool(
             sub_arm = deltas[deltas["arm"] == arm_label]
             if len(sub_arm) >= 3:
                 delta_vals = sub_arm[visits[1]].values - sub_arm[visits[0]].values
-                if np.allclose(delta_vals, 0):
+                if not np.any(delta_vals):
                     p = 1.0
                 else:
                     try:
@@ -467,7 +468,7 @@ def module_score_within_arm_by_pool(
         pre = wide[visits[0]].to_numpy(dtype=float)
         post = wide[visits[1]].to_numpy(dtype=float)
         delta = post - pre
-        if np.allclose(delta, 0):
+        if not np.any(delta):
             p_val = np.nan
         else:
             try:

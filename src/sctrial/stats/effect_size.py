@@ -572,6 +572,15 @@ def bootstrap_effect_size_ci(
         else:
             boot_d[b] = cohens_d(b1, b2)
 
+    undefined = int(np.count_nonzero(~np.isfinite(boot_d)))
+    if undefined:
+        warnings.warn(
+            f"{undefined} of {n_boot} bootstrap samples have no within-group variation and no "
+            "effect size; the interval is computed from the others.",
+            UserWarning,
+            stacklevel=2,
+        )
+
     # Percentile CI
     lower = np.nanpercentile(boot_d, 100 * alpha / 2)
     upper = np.nanpercentile(boot_d, 100 * (1 - alpha / 2))
