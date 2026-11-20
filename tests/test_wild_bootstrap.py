@@ -326,11 +326,19 @@ _NEAR_FITS = {
 }
 
 
-@pytest.mark.parametrize("cov_type", ["nonrobust", "cluster"])
-@pytest.mark.parametrize("nudge", [1e-3, 1e-6, 1e-11])
-@pytest.mark.parametrize("baseline", [0.0, 100.0, 1e7, 2.0**32])
-@pytest.mark.parametrize("scale", [1.0, 1e-3, 1e3])
-@pytest.mark.parametrize("case", list(_NEAR_FITS))
+# every combination in which doubles at the baseline hold the nudge
+_NUDGED = [
+    pytest.param(case, scale, baseline, nudge, cov_type, id=f"{case}-{scale:g}-{baseline:g}-{nudge:g}-{cov_type}")
+    for case in _NEAR_FITS
+    for scale in (1.0, 1e-3, 1e3)
+    for baseline in (0.0, 100.0, 1e7, 2.0**32)
+    for nudge in (1e-3, 1e-6, 1e-11)
+    for cov_type in ("nonrobust", "cluster")
+    if np.spacing(scale * baseline) <= 1e-3 * scale * nudge
+]
+
+
+@pytest.mark.parametrize("case,scale,baseline,nudge,cov_type", _NUDGED)
 def test_a_draw_with_a_small_variance_is_not_a_draw_without_variance(case, scale, baseline, nudge, cov_type):
     # Changes [-1, -1, -1] against [1, 1, 1, 1, -1] leave four assignments that the model fits
     # exactly. Nudging one change gives each of them a small positive variance, and two of them
@@ -339,8 +347,6 @@ def test_a_draw_with_a_small_variance_is_not_a_draw_without_variance(case, scale
     changes, n_treated = _NEAR_FITS[case]
     changes = scale * (np.array(changes) + np.r_[nudge, np.zeros(len(changes) - 1)])
     y = np.ravel([[scale * baseline, scale * baseline + d] for d in changes])
-    if np.spacing(scale * baseline) > 1e-3 * scale * nudge:
-        pytest.skip("doubles at this baseline do not hold the nudge")
     exact, n_zero = _exact_count(y, n_treated, cov_type, margin=Fraction(1, 10**9))
     assert n_zero == 0
     # not a case that the width of the tie margin decides

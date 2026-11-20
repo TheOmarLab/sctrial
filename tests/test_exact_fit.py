@@ -159,15 +159,21 @@ def _paired_frame(changes, baselines):
     return pd.DataFrame(rows, columns=["pid", "visit_num", "arm_bin", "y"])
 
 
-@pytest.mark.parametrize("swap", [False, True])
-@pytest.mark.parametrize("shift", [0.0, 1.0, 1024.0, 2.0**20])
-@pytest.mark.parametrize("scale", [2.0**-20, 1.0, 2.0**20])
+# every combination in which doubles at the origin hold the nudge of 2**-17 times the unit
+_ORIGINS_AND_UNITS = [
+    pytest.param(scale, shift, swap, id=f"{scale:g}-{shift:g}-{'swapped' if swap else 'as_coded'}")
+    for scale in (2.0**-20, 1.0, 2.0**20)
+    for shift in (0.0, 1.0, 1024.0, 2.0**20)
+    for swap in (False, True)
+    if 16 * np.spacing(shift) <= scale * 2.0**-17
+]
+
+
+@pytest.mark.parametrize("scale,shift,swap", _ORIGINS_AND_UNITS)
 def test_the_criterion_follows_the_outcome_not_its_origin_or_its_unit(scale, shift, swap):
     # Baselines and changes are multiples of 1/8 and the shifts and scales powers of two, so
     # every outcome below is exact in double precision: the same change for each participant
     # of an arm stays the same change after shifting and scaling.
-    if 16 * np.spacing(shift) > scale * 2.0**-17:
-        pytest.skip("doubles at this origin do not hold the nudge")
     baselines = [0.0, 1.75, -0.5, 2.25, 0.875, 3.125, -1.25, 0.5]
     exact = _paired_frame([0.5] * 4 + [-0.25] * 4, baselines)
     nudged = _paired_frame([0.5, 0.5, 0.5, 0.5 + 2.0**-17] + [-0.25] * 4, baselines)
