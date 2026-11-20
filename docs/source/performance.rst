@@ -322,6 +322,13 @@ Optimize GSEA Analysis
        visits=("V1", "V2")
    )
 
+   # 4. Several gene set libraries: rank the genes once
+   # Ranking fits one model per gene and takes most of the time. Each library
+   # is then tested in its own run, with its own permutations and FDR.
+   ranking = st.rank_genes_did(adata, design, visits=("V1", "V2"), rank_by="tstat")
+   kegg = st.run_gsea_prerank(ranking, "KEGG_2021_Human")
+   hallmark = st.run_gsea_prerank(ranking, "MSigDB_Hallmark_2020")
+
 Parallel Processing (Advanced)
 -------------------------------
 

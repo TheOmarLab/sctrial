@@ -58,10 +58,10 @@ def test_run_gsea_did_multi(monkeypatch):
             visits=("V1", "V2"),
         )
     assert set(res.keys()) == {"A", "B"}
-    # one restriction before the loop: one warning, and every ranking sees two arms
+    # one restriction and one gene-level table for the two collections
     assert len([w for w in caught if "excluded" in str(w.message)]) == 1
-    assert len(received) == 2
-    assert all(set(a.obs["arm"]) == {"Treated", "Control"} and a.n_obs == 4 for a in received)
+    assert len(received) == 1
+    assert set(received[0].obs["arm"]) == {"Treated", "Control"} and received[0].n_obs == 4
 
 
 def test_run_gsea_did_by_celltype(monkeypatch):
@@ -295,3 +295,154 @@ def test_duplicated_gene_names_keep_the_strongest_rank():
                         "se_DiD": 1.0, "p_DiD": 0.5, "n_units": 9})
     ranking = gsea._rank_did_results(res, "beta", 4)
     assert dict(zip(ranking["feature"], ranking["rank"])) == {"b": 2.0, "a": -3.0}
+
+
+_VISITS = ("V1", "V2")
+_LIBRARIES = {
+    "first": {
+        "up": [f"G{i}" for i in range(10)],
+        "mid": [f"G{i}" for i in range(20, 40)],
+        "wide": [f"G{i}" for i in range(5, 60, 2)],
+    },
+    "second": {
+        "low": [f"G{i}" for i in range(60, 75)],
+        "mixed": [f"G{i}" for i in (0, 3, 11, 29, 47, 68, 90)],
+    },
+    "third": {"tail": [f"G{i}" for i in range(80, 100)], "all_up": [f"G{i}" for i in range(5)]},
+}
+_PRERANK = dict(permutation_num=50, min_size=3, max_size=100, no_plot=True, outdir=None)
+
+
+def _one_call_and_ranking(kind, adata, design):
+    """The one-call GSEA of a design and the ranking it is built on."""
+    if kind == "did":
+        return (
+            lambda sets: gsea.run_gsea_did(adata, sets, design, _VISITS, rank_by="tstat", **_PRERANK),
+            lambda: gsea.rank_genes_did(adata, design, _VISITS, rank_by="tstat"),
+        )
+    if kind == "within_arm":
+        return (
+            lambda sets: gsea.run_gsea_within_arm(adata, sets, design, "Treated", _VISITS, **_PRERANK),
+            lambda: gsea.rank_genes_within_arm(adata, design, "Treated", _VISITS),
+        )
+    return (
+        lambda sets: gsea.run_gsea_cross_sectional(adata, sets, design, "V2", **_PRERANK),
+        lambda: gsea.rank_genes_cross_sectional(adata, design, "V2"),
+    )
+
+
+@pytest.mark.parametrize("kind", ["did", "within_arm", "cross_sectional"])
+def test_one_ranking_gives_each_library_the_result_of_its_own_call(sample_adata, trial_design, kind):
+    # The gene-level table was computed again for every library. One ranking, reused, must
+    # give each library exactly what a call of its own gives.
+    pytest.importorskip("gseapy")
+    one_call, rank_genes = _one_call_and_ranking(kind, sample_adata, trial_design)
+    ranking = rank_genes()
+    untouched = ranking.copy()
+    assert list(ranking.columns) == ["feature", "rank"]
+    assert ranking["rank"].is_monotonic_decreasing
+    for sets in _LIBRARIES.values():
+        pd.testing.assert_frame_equal(
+            gsea.run_gsea_prerank(ranking, sets, **_PRERANK), one_call(sets), check_exact=True
+        )
+    pd.testing.assert_frame_equal(ranking, untouched)
+
+
+def test_run_gsea_did_multi_equals_one_call_per_library(sample_adata, trial_design):
+    pytest.importorskip("gseapy")
+    kw = dict(rank_by="tstat", cov_type="nonrobust", min_units=5, **_PRERANK)
+    multi = gsea.run_gsea_did_multi(sample_adata, _LIBRARIES, trial_design, _VISITS, **kw)
+    assert list(multi) == list(_LIBRARIES)
+    for label, sets in _LIBRARIES.items():
+        alone = gsea.run_gsea_did(sample_adata, sets, trial_design, _VISITS, **kw)
+        pd.testing.assert_frame_equal(multi[label], alone, check_exact=True)
+
+
+def test_run_gsea_did_multi_ranks_the_genes_once(monkeypatch, sample_adata, trial_design):
+    tables, rankings = [], []
+    real_did_table = gsea.did_table
+
+    def counting_did_table(*args, **kwargs):
+        tables.append(kwargs["cov_type"])
+        return real_did_table(*args, **kwargs)
+
+    def recording_prerank(rnk, gene_sets, **kwargs):
+        rankings.append(rnk)
+        return types.SimpleNamespace(res2d=pd.DataFrame({"Term": list(gene_sets), "NES": 1.0}))
+
+    monkeypatch.setattr(gsea, "did_table", counting_did_table)
+    monkeypatch.setattr(gsea, "gp", types.SimpleNamespace(prerank=recording_prerank))
+    res = gsea.run_gsea_did_multi(
+        sample_adata, _LIBRARIES, trial_design, _VISITS, rank_by="tstat", cov_type="nonrobust"
+    )
+    assert tables == ["nonrobust"]
+    assert [list(r["Term"]) for r in res.values()] == [list(sets) for sets in _LIBRARIES.values()]
+    assert len(rankings) == 3 and len({id(r) for r in rankings}) == 3
+    assert all(r.equals(rankings[0]) for r in rankings)
+
+    objects = gsea.run_gsea_did_multi(sample_adata, _LIBRARIES, trial_design, _VISITS, return_obj=True)
+    assert len(tables) == 2 and list(objects) == list(_LIBRARIES)
+    assert all(hasattr(obj, "res2d") for obj in objects.values())
+
+
+def test_run_gsea_prerank_keeps_the_ranking_it_is_given(monkeypatch):
+    # gseapy renames, sorts and drops rows of a ranking in place. A ranking reused for the
+    # next library must not carry what the previous run did to it.
+    received = []
+
+    def editing_prerank(rnk, gene_sets, **kwargs):
+        received.append(rnk.copy())
+        rnk.columns = ["gene_name", "prerank"]
+        rnk.drop(rnk.index[:1], inplace=True)
+        return types.SimpleNamespace(res2d=pd.DataFrame({"Term": ["S"], "NES": [1.0]}))
+
+    monkeypatch.setattr(gsea, "gp", types.SimpleNamespace(prerank=editing_prerank))
+    ranking = pd.DataFrame({"feature": ["a", "b", "c"], "rank": [2.0, 1.0, -1.0]})
+    untouched = ranking.copy()
+    for _ in range(2):
+        gsea.run_gsea_prerank(ranking, {"S": ["a", "b"]})
+    pd.testing.assert_frame_equal(ranking, untouched)
+    pd.testing.assert_frame_equal(received[0], received[1])
+    pd.testing.assert_frame_equal(received[0], untouched)
+
+
+def test_run_gsea_prerank_prepares_a_ranking_made_elsewhere(monkeypatch):
+    received = []
+
+    def recording_prerank(rnk, gene_sets, **kwargs):
+        received.append(rnk)
+        return types.SimpleNamespace(res2d=pd.DataFrame({"Term": ["S"], "NES": [1.0]}))
+
+    monkeypatch.setattr(gsea, "gp", types.SimpleNamespace(prerank=recording_prerank))
+    ranking = pd.DataFrame({
+        "feature": ["b", "a", "c", "c", "d", "e"],
+        "rank": [1.0, 1.0, 0.5, -3.0, np.inf, np.nan],
+        "note": "x",
+    })
+    gsea.run_gsea_prerank(ranking, {"S": ["a", "b"]})
+    assert list(received[0].columns) == ["feature", "rank"]
+    assert received[0]["feature"].tolist() == ["a", "b", "c"]
+    assert received[0]["rank"].tolist() == [1.0, 1.0, -3.0]
+
+    gsea.run_gsea_prerank(pd.DataFrame({"feature": ["a", "b"], "rank": [-1, 2]}), {"S": ["a", "b"]})
+    assert received[1]["feature"].tolist() == ["b", "a"]
+    assert received[1]["rank"].tolist() == [2.0, -1.0] and received[1]["rank"].dtype == float
+
+    with pytest.raises(ValueError, match="needs the columns 'feature' and 'rank'; missing: rank"):
+        gsea.run_gsea_prerank(pd.DataFrame({"feature": ["a"], "score": [1.0]}), {"S": ["a"]})
+
+
+def test_a_finalized_ranking_is_unchanged_by_finalizing_it_again():
+    # run_gsea_prerank finalizes every ranking, including one the rank_genes functions have
+    # finalized already; the second pass must not move a gene or a bit.
+    rng = np.random.default_rng(3)
+    values = np.concatenate([
+        rng.normal(size=200) / 3.0, np.repeat(rng.normal(size=20), 3),
+        [1e-17, -1e-17, 0.0, 123456789.123456789, -2.0 / 3.0, 5e-324],
+    ])
+    raw = pd.DataFrame({"feature": [f"g{i:03d}" for i in range(len(values))], "rank": values})
+    once = gsea._finalize_ranking(raw.sample(frac=1.0, random_state=0))
+    twice = gsea._finalize_ranking(once)
+    assert once["feature"].tolist() == twice["feature"].tolist()
+    assert once["rank"].to_numpy().tobytes() == twice["rank"].to_numpy().tobytes()
+    assert once.index.tolist() == twice.index.tolist()

@@ -22,10 +22,14 @@ except ImportError:
     gp = None
 
 __all__ = [
+    "rank_genes_cross_sectional",
+    "rank_genes_did",
+    "rank_genes_within_arm",
     "run_gsea_cross_sectional",
     "run_gsea_did",
     "run_gsea_did_by_celltype",
     "run_gsea_did_multi",
+    "run_gsea_prerank",
     "run_gsea_pseudobulk",
     "run_gsea_within_arm",
 ]
@@ -119,6 +123,236 @@ def _rank_within_arm_results(res: pd.DataFrame, rank_by: str, min_units: int) ->
     return _rank_results(res, rank_by, min_units, beta="beta_time", se="se_time", p="p_time")
 
 
+def rank_genes_cross_sectional(
+    adata: AnnData,
+    design: TrialDesign,
+    visit: str,
+    layer: str | None = None,
+    rank_by: str = "tstat",
+    min_units: int = 4,
+) -> pd.DataFrame:
+    """Rank all genes by the between-arm difference at one visit.
+
+    The gene-level table of `between_arm_comparison` is computed once. The ranking
+    can then be given to `run_gsea_prerank` for any number of gene-set collections.
+
+    Parameters
+    ----------
+    adata
+        AnnData object containing expression data.
+    design
+        A `TrialDesign` object.
+    visit
+        The visit label to analyze (single timepoint).
+    layer
+        Layer to extract gene expression from.
+    rank_by
+        Metric for ranking genes: 'signed_confidence', 'beta', or 'tstat'.
+    min_units
+        Minimum number of participants required per gene.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns ``feature`` and ``rank``, by decreasing rank. Genes without an
+        estimate are left out.
+    """
+    res = between_arm_comparison(
+        adata,
+        visit=visit,
+        features=adata.var_names.tolist(),
+        design=design,
+        layer=layer,
+        aggregate="participant_visit",
+        standardize=True,
+        method="ols",
+    )
+    return _rank_between_arm_results(res, rank_by=rank_by, min_units=min_units)
+
+
+def rank_genes_within_arm(
+    adata: AnnData,
+    design: TrialDesign,
+    arm: str,
+    visits: tuple[str, str],
+    layer: str | None = None,
+    rank_by: str = "tstat",
+    min_units: int = 4,
+) -> pd.DataFrame:
+    """Rank all genes by the change between two visits within one arm.
+
+    The gene-level table of `within_arm_comparison` is computed once. The ranking
+    can then be given to `run_gsea_prerank` for any number of gene-set collections.
+
+    Parameters
+    ----------
+    adata
+        AnnData object containing expression data.
+    design
+        A `TrialDesign` object.
+    arm
+        The arm to analyze (e.g., design.arm_treated).
+    visits
+        Tuple of (baseline, followup) visit labels.
+    layer
+        Layer to extract gene expression from.
+    rank_by
+        Metric for ranking genes: 'signed_confidence', 'beta', or 'tstat'.
+    min_units
+        Minimum number of participants required per gene.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns ``feature`` and ``rank``, by decreasing rank. Genes without an
+        estimate are left out.
+    """
+    res = within_arm_comparison(
+        adata,
+        arm=arm,
+        features=adata.var_names.tolist(),
+        design=design,
+        visits=visits,
+        layer=layer,
+        aggregate="participant_visit",
+        standardize=True,
+    )
+    return _rank_within_arm_results(res, rank_by=rank_by, min_units=min_units)
+
+
+def rank_genes_did(
+    adata: AnnData,
+    design: TrialDesign,
+    visits: tuple[str, str],
+    layer: str | None = None,
+    exclude_crossovers: bool = True,
+    celltype: str | None = None,
+    rank_by: str = "signed_confidence",
+    use_bootstrap: bool = False,
+    n_boot: int = 999,
+    min_units: int = 4,
+    cov_type: str = "cluster",
+) -> pd.DataFrame:
+    """Rank all genes by their Difference-in-Differences (DiD) estimate.
+
+    The gene-level table of `did_table` is computed once. The ranking can then be
+    given to `run_gsea_prerank` for any number of gene-set collections.
+
+    Parameters
+    ----------
+    adata
+        AnnData object containing expression data.
+    design
+        A `TrialDesign` object.
+    visits
+        A tuple of (baseline, followup) visit labels.
+    layer
+        Layer to extract gene expression from. Recommended to use a
+        normalized layer (e.g., 'log1p_cpm').
+    exclude_crossovers
+        Whether to exclude crossover cells from the DiD ranking.
+    celltype
+        Restrict the DiD to one cell type of `design.celltype_col`.
+    rank_by
+        Metric for ranking genes:
+
+        - 'signed_confidence': sign(beta_DiD) * -log10(p_DiD). Highlights
+          genes with high effect and high significance.
+        - 'beta': ranks genes solely by the DiD effect size.
+        - 'tstat': ranks genes by the t-statistic (beta_DiD / se_DiD).
+    use_bootstrap
+        Whether to use Wild Cluster Bootstrap for DiD p-values (used if
+        rank_by is 'signed_confidence').
+    n_boot
+        Number of bootstrap permutations.
+    min_units
+        Minimum number of paired participants required for a gene to be
+        included in the ranking. Default is 4.
+    cov_type
+        Covariance of the gene-level standard error and p-value that enter the
+        ranking (``'tstat'`` and ``'signed_confidence'``): ``'cluster'`` (default)
+        or ``'nonrobust'``, as in `did_table`.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns ``feature`` and ``rank``, by decreasing rank. Genes without an
+        estimate are left out.
+
+    Examples
+    --------
+    >>> ranking = rank_genes_did(adata, design, visits=("V1", "V2"), rank_by="tstat")
+    >>> kegg = run_gsea_prerank(ranking, "KEGG_2021_Human")
+    >>> hallmark = run_gsea_prerank(ranking, "MSigDB_Hallmark_2020")
+    """
+    res = did_table(
+        adata,
+        features=adata.var_names.tolist(),
+        design=design,
+        visits=visits,
+        celltype=celltype,
+        exclude_crossovers=exclude_crossovers,
+        layer=layer,
+        aggregate="participant_visit",
+        use_bootstrap=use_bootstrap,
+        n_boot=n_boot,
+        cov_type=cov_type,
+    )
+    return _rank_did_results(res, rank_by=rank_by, min_units=min_units)
+
+
+def run_gsea_prerank(
+    ranking: pd.DataFrame,
+    gene_sets: str | dict[str, list[str]],
+    return_obj: bool = False,
+    **kwargs,
+) -> pd.DataFrame | gp.Prerank:
+    """Run `gseapy.prerank` on a gene ranking.
+
+    Ranking the genes is the expensive step of a trial-aware GSEA, because it fits
+    one model per gene. A ranking from `rank_genes_did`, `rank_genes_within_arm` or
+    `rank_genes_cross_sectional` is computed once and tested here against one
+    gene-set collection per call. Each collection is its own analysis, with its own
+    permutations and its own FDR.
+
+    Parameters
+    ----------
+    ranking
+        Table with the columns ``feature`` (gene) and ``rank`` (ranking metric).
+        Non-finite ranks are dropped, a repeated gene keeps its strongest rank and
+        equal ranks are ordered by gene name; the table itself is not modified.
+    gene_sets
+        A library name (e.g. 'KEGG_2021_Human') or a dictionary mapping
+        pathway names to gene lists.
+    return_obj
+        Whether to return the full gseapy object. If False (default),
+        returns the results DataFrame (`res2d`).
+    **kwargs
+        Additional parameters passed to `gseapy.prerank` (e.g., `permutation_num`,
+        `outdir`, `min_size`, `max_size`).
+
+    Returns
+    -------
+    pd.DataFrame or gseapy.Prerank
+        Enrichment results or the gseapy result object.
+    """
+    _ensure_gseapy()
+    missing = {"feature", "rank"} - set(ranking.columns)
+    if missing:
+        raise ValueError(
+            "ranking needs the columns 'feature' and 'rank'; missing: "
+            + ", ".join(sorted(missing))
+        )
+    pre_res = gp.prerank(rnk=_finalize_ranking(ranking), gene_sets=gene_sets, **kwargs)
+
+    if return_obj:
+        return pre_res
+    # Handle both gseapy >= 1.0 (has .res2d) and potentially older versions
+    if hasattr(pre_res, "res2d"):
+        return pre_res.res2d
+    return pre_res
+
+
 def run_gsea_cross_sectional(
     adata: AnnData,
     gene_sets: str | dict[str, list[str]],
@@ -134,7 +368,9 @@ def run_gsea_cross_sectional(
 
     Similar to run_gsea_did but for cross-sectional designs (single visit).
     Uses between_arm_comparison to rank genes by treatment vs control
-    difference at a fixed visit, then runs gseapy.prerank.
+    difference at a fixed visit, then runs gseapy.prerank. For several gene-set
+    collections, rank once with `rank_genes_cross_sectional` and call
+    `run_gsea_prerank` per collection.
 
     Parameters
     ----------
@@ -164,27 +400,10 @@ def run_gsea_cross_sectional(
         Enrichment results or the gseapy result object.
     """
     _ensure_gseapy()
-
-    genes = adata.var_names.tolist()
-    res = between_arm_comparison(
-        adata,
-        visit=visit,
-        features=genes,
-        design=design,
-        layer=layer,
-        aggregate="participant_visit",
-        standardize=True,
-        method="ols",
+    ranking = rank_genes_cross_sectional(
+        adata, design, visit, layer=layer, rank_by=rank_by, min_units=min_units
     )
-
-    ranking = _rank_between_arm_results(res, rank_by=rank_by, min_units=min_units)
-    pre_res = gp.prerank(rnk=ranking, gene_sets=gene_sets, **kwargs)
-
-    if return_obj:
-        return pre_res
-    if hasattr(pre_res, "res2d"):
-        return pre_res.res2d
-    return pre_res
+    return run_gsea_prerank(ranking, gene_sets, return_obj=return_obj, **kwargs)
 
 
 def run_gsea_within_arm(
@@ -203,6 +422,8 @@ def run_gsea_within_arm(
 
     Similar to run_gsea_did but uses within_arm_comparison instead of DiD.
     Ranks genes by pre→post change within a single arm, then runs gseapy.prerank.
+    For several gene-set collections, rank once with `rank_genes_within_arm` and
+    call `run_gsea_prerank` per collection.
 
     Parameters
     ----------
@@ -234,27 +455,10 @@ def run_gsea_within_arm(
         Enrichment results or the gseapy result object.
     """
     _ensure_gseapy()
-
-    genes = adata.var_names.tolist()
-    res = within_arm_comparison(
-        adata,
-        arm=arm,
-        features=genes,
-        design=design,
-        visits=visits,
-        layer=layer,
-        aggregate="participant_visit",
-        standardize=True,
+    ranking = rank_genes_within_arm(
+        adata, design, arm, visits, layer=layer, rank_by=rank_by, min_units=min_units
     )
-
-    ranking = _rank_within_arm_results(res, rank_by=rank_by, min_units=min_units)
-    pre_res = gp.prerank(rnk=ranking, gene_sets=gene_sets, **kwargs)
-
-    if return_obj:
-        return pre_res
-    if hasattr(pre_res, "res2d"):
-        return pre_res.res2d
-    return pre_res
+    return run_gsea_prerank(ranking, gene_sets, return_obj=return_obj, **kwargs)
 
 
 def run_gsea_did(
@@ -278,7 +482,9 @@ def run_gsea_did(
     This function calculates Difference-in-Differences (DiD) effect sizes for
     all genes, ranks them, and performs GSEA using `gseapy.prerank`. This approach
     ensures that enriched pathways represent treatment effects rather than
-    baseline differences.
+    baseline differences. For several gene-set collections, use
+    `run_gsea_did_multi`, or rank once with `rank_genes_did` and call
+    `run_gsea_prerank` per collection.
 
     Parameters
     ----------
@@ -296,6 +502,8 @@ def run_gsea_did(
         normalized layer (e.g., 'log1p_cpm').
     exclude_crossovers
         Whether to exclude crossover cells from the DiD ranking.
+    celltype
+        Restrict the DiD to one cell type of `design.celltype_col`.
     rank_by
         Metric for ranking genes:
 
@@ -335,41 +543,25 @@ def run_gsea_did(
     >>> print(res.head())
     """
     _ensure_gseapy()
-
-    # 1. Run DiD for all genes
-    genes = adata.var_names.tolist()
-    res = did_table(
+    ranking = rank_genes_did(
         adata,
-        features=genes,
-        design=design,
-        visits=visits,
-        celltype=celltype,
-        exclude_crossovers=exclude_crossovers,
+        design,
+        visits,
         layer=layer,
-        aggregate="participant_visit",
+        exclude_crossovers=exclude_crossovers,
+        celltype=celltype,
+        rank_by=rank_by,
         use_bootstrap=use_bootstrap,
         n_boot=n_boot,
+        min_units=min_units,
         cov_type=cov_type,
     )
-
-    # 2. Rank the genes that have an estimate from at least min_units participants
-    ranking = _rank_did_results(res, rank_by=rank_by, min_units=min_units)
-
-    # 3. Run GSEA Prerank
-    pre_res = gp.prerank(rnk=ranking, gene_sets=gene_sets, **kwargs)
-
-    if return_obj:
-        return pre_res
-
-    # Handle both gseapy >= 1.0 (has .res2d) and potentially older versions
-    if hasattr(pre_res, "res2d"):
-        return pre_res.res2d
-    return pre_res
+    return run_gsea_prerank(ranking, gene_sets, return_obj=return_obj, **kwargs)
 
 
 def _two_arm_rows(adata: AnnData, design: TrialDesign, visits: tuple[str, str]) -> AnnData:
-    """The rows of the two visits and the two named arms, for wrappers that loop over
-    ``run_gsea_did``: excluded rows are reported once, not once per iteration."""
+    """The rows of the two visits and the two named arms, for wrappers of the DiD ranking:
+    excluded rows are reported once, to the caller of the wrapper."""
     in_visits = adata.obs[design.visit_col].isin(list(visits)).to_numpy()
     return subset_arms(adata[in_visits], design, stacklevel=4)
 
@@ -379,9 +571,22 @@ def run_gsea_did_multi(
     gene_sets: dict[str, str | dict[str, list[str]]],
     design: TrialDesign,
     visits: tuple[str, str],
+    *,
+    layer: str | None = None,
+    exclude_crossovers: bool = True,
+    celltype: str | None = None,
+    rank_by: str = "signed_confidence",
+    use_bootstrap: bool = False,
+    n_boot: int = 999,
+    min_units: int = 4,
+    return_obj: bool = False,
+    cov_type: str = "cluster",
     **kwargs,
 ) -> dict[str, pd.DataFrame | gp.Prerank]:
     """Run GSEA across multiple gene-set collections.
+
+    The genes are ranked once and the same ranking is tested against every
+    collection, each in its own `gseapy.prerank` run.
 
     Parameters
     ----------
@@ -393,6 +598,10 @@ def run_gsea_did_multi(
         TrialDesign object.
     visits
         Tuple of (baseline, followup) visit labels.
+    layer, exclude_crossovers, celltype, rank_by, use_bootstrap, n_boot, min_units, cov_type
+        The gene ranking, as in `run_gsea_did`.
+    return_obj
+        Whether to return the full gseapy objects instead of the results tables.
     **kwargs
         Additional parameters passed to `gseapy.prerank` (e.g., `permutation_num`,
         `outdir`, `min_size`, `max_size`).
@@ -404,16 +613,23 @@ def run_gsea_did_multi(
     """
     _ensure_gseapy()
     adata = _two_arm_rows(adata, design, visits)
-    results: dict[str, pd.DataFrame | gp.Prerank] = {}
-    for label, gs in gene_sets.items():
-        results[label] = run_gsea_did(
-            adata,
-            gene_sets=gs,
-            design=design,
-            visits=visits,
-            **kwargs,
-        )
-    return results
+    ranking = rank_genes_did(
+        adata,
+        design,
+        visits,
+        layer=layer,
+        exclude_crossovers=exclude_crossovers,
+        celltype=celltype,
+        rank_by=rank_by,
+        use_bootstrap=use_bootstrap,
+        n_boot=n_boot,
+        min_units=min_units,
+        cov_type=cov_type,
+    )
+    return {
+        label: run_gsea_prerank(ranking, gs, return_obj=return_obj, **kwargs)
+        for label, gs in gene_sets.items()
+    }
 
 
 def run_gsea_did_by_celltype(

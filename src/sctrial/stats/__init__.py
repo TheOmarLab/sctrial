@@ -57,10 +57,14 @@ from .effect_size import (
     hedges_g,
 )
 from .gsea import (
+    rank_genes_cross_sectional,
+    rank_genes_did,
+    rank_genes_within_arm,
     run_gsea_cross_sectional,
     run_gsea_did,
     run_gsea_did_by_celltype,
     run_gsea_did_multi,
+    run_gsea_prerank,
     run_gsea_pseudobulk,
     run_gsea_within_arm,
 )
@@ -106,9 +110,13 @@ __all__ = [
     "prior_predictive_check",
     "DiDConfig",
     "abundance_did",
+    "rank_genes_did",
+    "rank_genes_within_arm",
+    "rank_genes_cross_sectional",
     "run_gsea_did",
     "run_gsea_did_multi",
     "run_gsea_did_by_celltype",
+    "run_gsea_prerank",
     "run_gsea_pseudobulk",
     "run_gsea_cross_sectional",
     "run_gsea_within_arm",
