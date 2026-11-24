@@ -3,11 +3,11 @@ Figure 4 — Biological Discovery & Multi-Dataset Generalization
 ===============================================================
 
 Fourteen-panel combined figure integrating gene/pathway-level biological
-discovery from the TNBC cohort (panels A–E) with cross-dataset
-generalization analyses (panels F–M).
+discovery from the TNBC cohort (panels A–F) with cross-dataset
+generalization analyses (panels G–N).
 
-Melanoma biological discovery panels have been moved to Supplementary
-Figure 6 (panels A–E).
+Melanoma biological discovery panels are in Supplementary Figure 7
+(panels A–E), which imports their data and helpers from this module.
 
 Panels
 ------
@@ -22,7 +22,7 @@ H  Vaccine paired forest plot.
 I  AML within-arm forest plot.
 J  CAR-T forest plot.
 K  Melanoma DiD forest plot.
-L  TNBC within-arm forest plot.
+L  TNBC two-arm DiD forest plot.
 M  Cross-dataset effect-size heatmap (includes TNBC).
 N  Cross-dataset GSEA heatmap — replicated pathways (includes TNBC).
 """
@@ -89,7 +89,7 @@ FIGURE_NAME = "Figure4_biological_discovery_multi_dataset"
 
 
 # ======================================================================
-# FIGURE 5 — Biological Discovery (Melanoma)
+# Biological discovery: melanoma data (panels of Supplementary Figure 7)
 # ======================================================================
 
 # ── Cache directory for expensive computations ─────────────────────────
@@ -617,14 +617,14 @@ def _run_multi_dataset_gsea(sf_gsea_results: pd.DataFrame | None = None) -> dict
     # 6. COVID-19 (cross-sectional - use between_arm_comparison)
     try:
         covid = get_stephenson()
-        # Add log1p_cpm layer if not present (consistent with Figure 5A / Supp Table 3)
+        # Add log1p_cpm layer if not present (consistent with panel G / Supp Table 3)
         if "log1p_cpm" not in covid.layers and "counts" in covid.layers:
             from .._shared import add_log1p_cpm_layer
             covid = add_log1p_cpm_layer(
                 covid, counts_layer="counts", out_layer="log1p_cpm",
             )
         covid, _ = score_signatures(covid, layer="log1p_cpm")
-        # Fixed DFO bin to match Figure 5A and Supp Table 3
+        # Fixed DFO bin to match panel G and Supp Table 3
         target_bin = "DFO_8-14"
         if "dfo_bin" in covid.obs.columns:
             available_bins = sorted(covid.obs["dfo_bin"].dropna().unique())
@@ -1137,7 +1137,7 @@ def _tnbc_leading_edge(ax, data: dict, *, composite: bool = False):
             if len(shared_genes) >= TOTAL_GENES:
                 break
 
-    print(f"  Panel C: {len(pos_genes)} genes from NES>0 pathways, "
+    print(f"  Panel D: {len(pos_genes)} genes from NES>0 pathways, "
           f"{len(neg_genes)} genes from NES≤0 pathways")
 
     # Build binary matrix and prune zero rows/cols
@@ -1157,7 +1157,7 @@ def _tnbc_leading_edge(ax, data: dict, *, composite: bool = False):
 
     n_pw_kept = sum(1 for p in pathways if pathway_nes.get(p, 0) > 0)
     n_neg_kept = sum(1 for p in pathways if pathway_nes.get(p, 0) <= 0)
-    print(f"  Panel C: {n_pw_kept} NES>0 + {n_neg_kept} NES≤0 pathways "
+    print(f"  Panel D: {n_pw_kept} NES>0 + {n_neg_kept} NES≤0 pathways "
           f"retained, {len(shared_genes)} genes")
 
     if matrix.size == 0 or not shared_genes:
@@ -1380,7 +1380,7 @@ def panel_D(ax, data: dict):
 
 
 # ======================================================================
-# Panel E -- Gene-level volcano plot
+# Panel A: gene-level volcano plot
 # ======================================================================
 
 def _tnbc_volcano(ax, data: dict, *, composite: bool = False):
@@ -1568,7 +1568,7 @@ def gene_volcano(ax, gene_results, *, title: str, up_label: str, down_label: str
 
 
 # ======================================================================
-# Panel C (new) -- Replicated pathways across cohorts
+# Panel N: replicated pathways across cohorts
 # ======================================================================
 
 def panel_C_replicated(ax, data: dict):
@@ -1664,11 +1664,12 @@ def panel_C_replicated(ax, data: dict):
                 float(fdr_matrix[_i, _j]) if not np.isnan(fdr_matrix[_i, _j]) else None
                 for _i in range(len(all_pathways))
             ]
+        # panel N; the file keeps the name under which the table was first saved
         _csv_df.to_csv(csv_dir / "panel_M_replicated_pathways.csv", index=False)
-        print(f"  Panel M: saved all {len(all_pathways)} pathways × "
+        print(f"  Panel N: saved all {len(all_pathways)} pathways × "
               f"{len(all_datasets)} datasets → panel_M_replicated_pathways.csv")
     except Exception as _exc:
-        print(f"  Panel M: CSV save failed ({_exc})")
+        print(f"  Panel N: CSV save failed ({_exc})")
 
     # ── Coverage-constrained greedy pathway selection ────────────────────
     # Goal: ≥50% of the top_n selected pathways must be non-NaN for every
@@ -1737,7 +1738,7 @@ def panel_C_replicated(ax, data: dict):
     for _d, _ds in enumerate(all_datasets):
         n_sig  = int((score_matrix[selected_indices, _d] == 2).sum())
         n_pres = int((score_matrix[selected_indices, _d] >= 1).sum())
-        print(f"  Panel M: {_ds:12s}  non-NaN {n_pres}/{top_n}  "
+        print(f"  Panel N: {_ds:12s}  non-NaN {n_pres}/{top_n}  "
               f"(significant {n_sig})")
         if n_pres < min_coverage:
             print(f"    ↳ WARNING: below 50% target — GSEA results are "
@@ -1817,15 +1818,14 @@ def panel_C_replicated(ax, data: dict):
 
 
 # ======================================================================
-# Panel J — TNBC cell-type within-arm effect heatmap
+# Panel E: TNBC cell-type DiD effect heatmap
 # ======================================================================
 
 def _panel_tnbc_celltype_hm(ax, data_tnbc: dict):
-    """Cell-type-resolved within-arm effect heatmap for TNBC.
+    """Cell-type-resolved DiD effect heatmap for TNBC.
 
-    Rows = top genes by |β_within|, columns = cell types.
-    Color = mean Post-Pre expression change within the treatment arm,
-    per cell type.  Analogous to panel_F (melanoma) but for within-arm.
+    Rows = top genes, columns = cell types. Color = difference between the arms
+    in the mean Post-Pre expression change, per cell type.
     """
     gene_results = data_tnbc.get("gene_results")
     adata = data_tnbc.get("adata")
@@ -2527,12 +2527,16 @@ def _tnbc_response_gsea_control(ax, data_tnbc: dict) -> None:
 
 
 # ======================================================================
-# FIGURE 5 — Multi-Dataset Generalization
+# Multi-dataset generalization (panels G to N)
 # ======================================================================
 
 
-def effect_size_ci(g: float, n1: int, n2: int, alpha: float = 0.05):
-    """Approximate CI for Hedges' g (Hedges & Olkin 1985, normal approx)."""
+def _hedges_g_normal_ci(g: float, n1: int, n2: int, alpha: float = 0.05):
+    """Approximate CI for Hedges' g (Hedges & Olkin 1985, normal approx).
+
+    Named apart from ``sctrial.effect_size_ci``, which uses t critical values and
+    another variance term. Supplementary Table 2 computes the same interval.
+    """
     from scipy.stats import norm
     se = np.sqrt(1 / n1 + 1 / n2 + g ** 2 / (2 * (n1 + n2)))
     z = norm.ppf(1 - alpha / 2)
@@ -2667,9 +2671,9 @@ def _prepare_multi_dataset_data() -> dict[str, Any]:
     """
     data: dict[str, Any] = {}
 
-    # ── Panel A: COVID-19 Stephenson (cross-sectional) ────────────────────
+    # ── Panel G: COVID-19 Stephenson (cross-sectional) ────────────────────
     try:
-        print("  [A] Loading Stephenson COVID-19 ...")
+        print("  [G] Loading Stephenson COVID-19 ...")
         adata_covid = get_stephenson()
         if "log1p_cpm" not in adata_covid.layers and "counts" in adata_covid.layers:
             adata_covid = add_log1p_cpm_layer(
@@ -2727,7 +2731,7 @@ def _prepare_multi_dataset_data() -> dict[str, Any]:
             if len(mild) >= 3 and len(severe) >= 3:
                 g = hedges_g(severe, mild)
                 n1, n2 = len(severe), len(mild)
-                ci_lo, ci_hi = effect_size_ci(g, n1, n2)
+                ci_lo, ci_hi = _hedges_g_normal_ci(g, n1, n2)
                 _, p_welch = stats.ttest_ind(severe, mild, equal_var=False)
                 g_rows.append({
                     "feature": sig,
@@ -2761,14 +2765,14 @@ def _prepare_multi_dataset_data() -> dict[str, Any]:
         print(f"       {adata_covid.n_obs:,} cells, "
               f"{adata_covid.obs['participant_id'].nunique()} participants")
     except Exception as exc:
-        print(f"  [A] COVID-19 error: {exc}")
+        print(f"  [G] COVID-19 error: {exc}")
         import traceback
         traceback.print_exc()
         data["covid_effects"] = None
 
-    # ── Panel B: Vaccine within-arm paired ────────────────────────────────
+    # ── Panel H: Vaccine within-arm paired ────────────────────────────────
     try:
-        print("  [B] Loading Vaccine (GSE171964) ...")
+        print("  [H] Loading Vaccine (GSE171964) ...")
         adata_vax = get_vaccine()
         adata_vax, sig_cols_vax = score_signatures(adata_vax, layer="log1p_norm")
 
@@ -2858,10 +2862,10 @@ def _prepare_multi_dataset_data() -> dict[str, Any]:
         print(f"       {adata_vax.n_obs:,} cells, "
               f"{adata_vax.obs['participant_id'].nunique()} participants")
     except Exception as exc:
-        print(f"  [B] Vaccine error: {exc}")
+        print(f"  [H] Vaccine error: {exc}")
         data["vax_effects"] = None
 
-    # ── Panels C & D: AML and CAR-T ──────────────────────────────────────
+    # ── Panels I & J: AML and CAR-T ──────────────────────────────────────
     # Both use within-arm (Treatment only) Pre→Post comparisons.
     # AML has two nominal arms but Control has no Post timepoint
     # (healthy BM donors at baseline only), so a DiD interaction is
@@ -2869,7 +2873,7 @@ def _prepare_multi_dataset_data() -> dict[str, Any]:
     # Treatment arm longitudinally, matching CAR-T's single-arm design.
     _TREATED_ARM = {"aml": "Treatment", "cart": "CAR-T"}  # cart is single-arm
     _LOADERS = {"aml": get_aml, "cart": get_cart}
-    for tag, name, panel_label in [("aml", "aml", "C"), ("cart", "cart", "D")]:
+    for tag, name, panel_label in [("aml", "aml", "I"), ("cart", "cart", "J")]:
         try:
             print(f"  [{panel_label}] Loading {name.upper()} ...")
             adata_clin = _LOADERS[name]()
@@ -2959,7 +2963,7 @@ def _prepare_multi_dataset_data() -> dict[str, Any]:
 
     # ── Melanoma (Sade-Feldman): DiD responder vs non-responder ──────────
     try:
-        print("  [E] Loading Melanoma (Sade-Feldman) ...")
+        print("  [K] Loading Melanoma (Sade-Feldman) ...")
         adata_mel = get_sade_feldman()
         if "log1p_tpm" not in adata_mel.layers:
             raise RuntimeError("log1p_tpm layer missing from Sade-Feldman dataset.")
@@ -2990,7 +2994,7 @@ def _prepare_multi_dataset_data() -> dict[str, Any]:
         print(f"       {adata_mel.n_obs:,} cells, "
               f"{adata_mel.obs['participant_id'].nunique()} participants")
     except Exception as exc:
-        print(f"  [E] Melanoma error: {exc}")
+        print(f"  [K] Melanoma error: {exc}")
         import traceback
         traceback.print_exc()
         data["mel_effects"] = None
@@ -3012,9 +3016,9 @@ def _prepare_multi_dataset_data() -> dict[str, Any]:
             mel["FDR_DiD"] = mel["FDR_DiD_boot"].fillna(mel["FDR_DiD"])
         data["mel_effects"] = mel
 
-    # ── Panel P: TNBC two-arm DiD signature forest ───────────────────────
+    # ── Panel L: TNBC two-arm DiD signature forest ───────────────────────
     try:
-        print("  [P] Loading TNBC (Zhang) for DiD analysis ...")
+        print("  [L] Loading TNBC (Zhang) for DiD analysis ...")
         adata_tnbc = get_tnbc_zhang()
         _tnbc_layer_p = "log1p_norm" if "log1p_norm" in adata_tnbc.layers else None
         adata_tnbc, sig_cols_tnbc = score_signatures(adata_tnbc, layer=_tnbc_layer_p)
@@ -3053,7 +3057,7 @@ def _prepare_multi_dataset_data() -> dict[str, Any]:
               f"{adata_tnbc.obs[pid_col_tnbc].nunique()} participants "
               f"(DiD: {_TNBC_TREATED_ARM} vs {_TNBC_CONTROL_ARM})")
     except Exception as exc:
-        print(f"  [P] TNBC error: {exc}")
+        print(f"  [L] TNBC error: {exc}")
         import traceback
         traceback.print_exc()
         data["tnbc_effects"] = None
@@ -3073,8 +3077,8 @@ def _build_heatmap_data(
     (standardised); Melanoma uses DiD β (standardised).  AML is
     analysed within-arm (Treatment only) because the Control arm
     lacks Post timepoint data, making DiD degenerate.  All metrics
-    are on a roughly comparable standardised scale — the panel
-    footnote communicates the estimator differences.
+    are on a roughly comparable standardised scale, although the estimators
+    differ between the datasets as listed above.
     """
 
     records: list[dict[str, Any]] = []
@@ -3167,7 +3171,7 @@ def _build_heatmap_data(
 # ── panel functions ───────────────────────────────────────────────────────
 
 def panel_a_covid(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
-    """Panel A: COVID-19 Stephenson cross-sectional (Severe vs Mild)."""
+    """Panel G: COVID-19 Stephenson cross-sectional (Severe vs Mild)."""
     ax.set_title("COVID-19", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "A", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
@@ -3195,7 +3199,7 @@ def panel_a_covid(ax, data: dict[str, Any], *, order: list[str] | None = None) -
 
 
 def panel_b_vaccine(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
-    """Panel B: Vaccine within-arm paired Pre->Post."""
+    """Panel H: Vaccine within-arm paired Pre->Post."""
     ax.set_title("Vaccine (GSE171964)", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "B", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
@@ -3223,7 +3227,7 @@ def panel_b_vaccine(ax, data: dict[str, Any], *, order: list[str] | None = None)
 
 
 def panel_c_aml(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
-    """Panel C: AML clinical dataset (within-arm Pre→Post)."""
+    """Panel I: AML clinical dataset (within-arm Pre→Post)."""
     ax.set_title("AML (GSE116256)", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "C", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
@@ -3251,7 +3255,7 @@ def panel_c_aml(ax, data: dict[str, Any], *, order: list[str] | None = None) -> 
 
 
 def panel_d_cart(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
-    """Panel D: CAR-T clinical dataset (within-arm)."""
+    """Panel J: CAR-T clinical dataset (within-arm)."""
     ax.set_title("CAR-T (GSE290722)", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "D", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
@@ -3279,7 +3283,7 @@ def panel_d_cart(ax, data: dict[str, Any], *, order: list[str] | None = None) ->
 
 
 def panel_e_melanoma(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
-    """Panel E: Melanoma (Sade-Feldman) DiD — Responder vs Non-responder."""
+    """Panel K: Melanoma (Sade-Feldman) DiD, Responder vs Non-responder."""
     ax.set_title("Melanoma", fontsize=6, fontweight="bold", loc="left", pad=8)
     ax.text(-0.12, 1.05, "E", transform=ax.transAxes, fontsize=14,
             fontweight="bold", va="bottom")
@@ -3307,7 +3311,7 @@ def panel_e_melanoma(ax, data: dict[str, Any], *, order: list[str] | None = None
 
 
 def panel_p_tnbc(ax, data: dict[str, Any], *, order: list[str] | None = None) -> None:
-    """Panel P: TNBC within-arm (anti-PDL1+Chemo) Pre→Post forest plot."""
+    """Panel L: TNBC two-arm DiD forest plot (anti-PDL1+Chemo vs Chemo)."""
     ax.set_title("TNBC", fontsize=6, fontweight="bold",
                  loc="left", pad=8)
     ax.text(-0.12, 1.05, "P", transform=ax.transAxes, fontsize=14,
@@ -3336,7 +3340,7 @@ def panel_p_tnbc(ax, data: dict[str, Any], *, order: list[str] | None = None) ->
 
 
 def panel_f_heatmap(ax, data: dict[str, Any]) -> None:
-    """Panel Q (was F): Cross-dataset standardised effect-size heatmap."""
+    """Panel M: Cross-dataset standardised effect-size heatmap."""
     import seaborn as sns
 
     # pad leaves room for the significance key drawn just above the cells
@@ -3816,7 +3820,7 @@ def _build_composite(data_tnbc: dict, data5: dict) -> None:
 
     # ── Bold panel labels A–N ─────────────────────────────────────────
     _lbl_fs = 7.5
-    # Row 0 — A, B narrow; C wide (rows 2, 4 and 6 are placed from measured text below)
+    # Row 0: A, B narrow; C wide (rows 2, 4 and 6 are placed from measured text below)
     _x3a, _y3a = -0.26, 1.08   # narrow panels (A, B)
     _x3c, _y3c = -0.10, 1.08   # wide panel (C), level with A and B
     _x3 = -0.22                # A

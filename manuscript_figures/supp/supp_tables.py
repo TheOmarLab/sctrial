@@ -322,25 +322,25 @@ def table2_all_results(datasets: Collection[str] | None = None) -> pd.DataFrame:
             raise RuntimeError("Supplementary Table 2: TNBC failed") from exc
 
     # ── Stephenson / COVID-19 (cross-sectional Hedges' g at DFO_8-14)
-    # Must match Figure 5 exactly: DFO_8-14 bin, log1p_cpm layer,
+    # Must match Figure 4 panel G exactly: DFO_8-14 bin, log1p_cpm layer,
     # between_arm_comparison + hedges_g on participant-level means.
     if _selected("COVID-19", datasets):
         try:
             from scipy import stats as sp_stats
 
             adata_st = get_stephenson()
-            # Add log1p_cpm layer (matching Figure 5 and Supp Table 3)
+            # Add log1p_cpm layer (matching Figure 4 and Supp Table 3)
             if "log1p_cpm" not in adata_st.layers:
                 adata_st = add_log1p_cpm_layer(
                     adata_st, counts_layer="counts", out_layer="log1p_cpm",
                 )
             adata_st, sig_cols = score_signatures(adata_st, layer="log1p_cpm")
 
-            # Filter to DFO_8-14 bin (matching Figure 5)
+            # Filter to DFO_8-14 bin (matching Figure 4)
             target_visit = _covid_target_visit(adata_st)
             ad_visit = adata_st[adata_st.obs["dfo_bin"] == target_visit].copy()
 
-            # Compute Hedges' g on participant-level means (matching Figure 5)
+            # Compute Hedges' g on participant-level means (matching Figure 4)
             df_agg = (
                 ad_visit.obs
                 .groupby(["participant_id", "severity"], observed=True)[sig_cols]
@@ -355,6 +355,7 @@ def table2_all_results(datasets: Collection[str] | None = None) -> pd.DataFrame:
                     continue
                 g = hedges_g(x_sev, x_mild)
                 n1, n2 = len(x_sev), len(x_mild)
+                # the normal-approximation interval of Figure 4 (_hedges_g_normal_ci)
                 se_g = np.sqrt((n1 + n2) / (n1 * n2) + g**2 / (2 * (n1 + n2)))
                 _, p = sp_stats.ttest_ind(x_sev, x_mild, equal_var=False)
                 g_rows.append({
@@ -539,7 +540,7 @@ def table3_gsea_results(datasets: Collection[str] | None = None) -> dict[str, pd
             raise RuntimeError("Supplementary Table 3: TNBC GSEA failed") from exc
 
     # ── COVID-19 (cross-sectional: severe vs mild) ───────────────────
-    # Must match Figure 5: DFO_8-14 bin, log1p_cpm layer
+    # Must match Figure 4: DFO_8-14 bin, log1p_cpm layer
     if _selected("COVID-19", datasets):
         try:
             adata_st = get_stephenson()
@@ -549,7 +550,7 @@ def table3_gsea_results(datasets: Collection[str] | None = None) -> dict[str, pd
                     adata_st, counts_layer="counts", out_layer="log1p_cpm",
                 )
             adata_st, _ = score_signatures(adata_st, layer="log1p_cpm")
-            # Fixed DFO bin to match Figure 5 COVID analysis
+            # Fixed DFO bin to match the Figure 4 COVID analysis
             target_visit = _covid_target_visit(adata_st)
             covid_design = TrialDesign(
                 participant_col="participant_id",
@@ -630,7 +631,7 @@ def table3_gsea_results(datasets: Collection[str] | None = None) -> dict[str, pd
 
 
 def _covid_target_visit(adata_st) -> str:
-    """Days-from-onset bin used by every COVID-19 analysis (Figure 5, Supp Tables 2-4).
+    """Days-from-onset bin of the cross-sectional COVID-19 analyses (Figure 4, Supp Tables 2-4).
 
     DFO_8-14 when present; otherwise the first bin, in sorted order, holding both
     severity groups.

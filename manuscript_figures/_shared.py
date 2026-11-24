@@ -53,21 +53,34 @@ for _d in (MAIN_OUTPUT, SUPP_OUTPUT, GSEA_OUTPUT):
     _d.mkdir(parents=True, exist_ok=True)
 
 
-def _stats_fingerprint() -> str:
-    """Short hash of the package source that determines every estimate and gene ranking.
+def _fingerprint_sources(pkg: Path) -> list[Path]:
+    """Package files whose change can alter an estimate, a score or a gene ranking.
 
-    Fold this into the key of any cache whose content comes from ``did_fit``,
-    ``did_table``, the within-arm or between-arm comparisons, or a GSEA ranked by
-    them. A figure's own ``_CODE_VERSION`` or source hash cannot see a change to the
-    package estimator or to the ranking, so without this a cache keeps serving
-    results from the previous code, on every machine that holds one.
+    Every module of ``sctrial.stats`` (estimators, comparisons, abundance, power, effect
+    sizes, GSEA ranking) and the modules that prepare their input.
     """
-    import sctrial
+    top = ("utils.py", "scoring.py", "adata_tools.py", "preprocessing.py", "design.py")
+    return [*sorted((pkg / "stats").glob("*.py")), *(pkg / name for name in top)]
 
-    pkg = Path(sctrial.__file__).resolve().parent
+
+def _stats_fingerprint(pkg: Path | None = None) -> str:
+    """Short hash of the package source that the cached results come from.
+
+    Fold this into the key of any cache whose content comes from the package
+    statistics: ``did_fit``, ``did_table``, the within-arm or between-arm comparisons,
+    the abundance and power functions, the effect sizes, or a GSEA ranked by them. A
+    figure's own ``_CODE_VERSION`` or source hash cannot see a change to the package,
+    so without this a cache keeps serving results from the previous code, on every
+    machine that holds one. The files are listed by :func:`_fingerprint_sources`.
+    """
+    if pkg is None:
+        import sctrial
+
+        pkg = Path(sctrial.__file__).resolve().parent
     h = hashlib.md5()  # noqa: S324 - cache tag, not security
-    for rel in ("stats/did.py", "utils.py", "stats/_utils.py", "stats/comparisons.py", "stats/gsea.py"):
-        h.update((pkg / rel).read_bytes())
+    for path in _fingerprint_sources(pkg):
+        h.update(path.relative_to(pkg).as_posix().encode())
+        h.update(path.read_bytes())
     return h.hexdigest()[:8]
 
 

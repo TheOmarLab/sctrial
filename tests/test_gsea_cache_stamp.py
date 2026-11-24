@@ -156,12 +156,49 @@ def test_loader_does_not_repeat_a_ranking_that_failed(tmp_path, monkeypatch, sh,
     assert capsys.readouterr().out.count("gene ranking failed: No genes have an estimate") == 1
 
 
-def test_fingerprint_covers_the_estimators_and_the_gene_ranking(sh):
-    import inspect
+def test_fingerprint_covers_every_statistics_module(sh):
+    from pathlib import Path
 
-    source = inspect.getsource(sh._stats_fingerprint)
-    for module in ("stats/did.py", "utils.py", "stats/_utils.py", "stats/comparisons.py", "stats/gsea.py"):
-        assert module in source
+    import sctrial
+
+    pkg = Path(sctrial.__file__).resolve().parent
+    hashed = {p.relative_to(pkg).as_posix() for p in sh._fingerprint_sources(pkg)}
+    assert {p.relative_to(pkg).as_posix() for p in (pkg / "stats").glob("*.py")} <= hashed
+    for module in (
+        "stats/did.py",
+        "stats/_utils.py",
+        "stats/comparisons.py",
+        "stats/gsea.py",
+        "stats/abundance.py",
+        "stats/power.py",
+        "stats/effect_size.py",
+        "utils.py",
+        "scoring.py",
+    ):
+        assert module in hashed
+    assert all(p.is_file() for p in sh._fingerprint_sources(pkg))
+
+
+def test_fingerprint_changes_with_any_hashed_file(sh, tmp_path):
+    import shutil
+    from pathlib import Path
+
+    import sctrial
+
+    pkg = Path(sctrial.__file__).resolve().parent
+    copy = tmp_path / "sctrial"
+    for path in sh._fingerprint_sources(pkg):
+        target = copy / path.relative_to(pkg)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(path, target)
+    reference = sh._stats_fingerprint(copy)
+    assert reference == sh._stats_fingerprint(pkg) == sh.STATS_FINGERPRINT
+    for name in ("stats/abundance.py", "stats/power.py", "stats/did.py", "scoring.py"):
+        original = (copy / name).read_bytes()
+        (copy / name).write_bytes(original + b"\n# changed\n")
+        assert sh._stats_fingerprint(copy) != reference, name
+        (copy / name).write_bytes(original)
+    assert sh._stats_fingerprint(copy) == reference
 
 
 def test_tied_pathways_keep_one_order_whatever_order_they_arrive_in(sh):

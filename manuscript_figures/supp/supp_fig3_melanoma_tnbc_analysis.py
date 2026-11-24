@@ -242,7 +242,7 @@ def _pseudobulk_all(adata, sig_cols: list[str]) -> pd.DataFrame:
     )
 
 
-# ── Panel A: Paired-participant verification (from Figure 1B) ────────────
+# ── Panel A: Paired-participant verification ─────────────────────────────
 
 def _panel_a_paired_verification(ax: plt.Axes, data: dict) -> None:
     """Grouped bar chart of cells per participant × visit, colored by response."""
@@ -308,7 +308,7 @@ def _panel_a_paired_verification(ax: plt.Axes, data: dict) -> None:
     despine(ax)
 
 
-# ── Panel B: Coefficient comparison (from Figure 1C) ────────────────────
+# ── Panel B: Coefficient comparison ──────────────────────────────────────
 
 def _panel_b_beta_comparison(ax: plt.Axes, data: dict, *, composite: bool = False) -> None:
     """Scatter of cell-level vs participant-level beta_DiD (the Figure 2B panel, melanoma)."""
@@ -320,7 +320,7 @@ def _panel_b_beta_comparison(ax: plt.Axes, data: dict, *, composite: bool = Fals
     )
 
 
-# ── Panel C: P-value inflation (from Figure 1D) ─────────────────────────
+# ── Panel C: P-value comparison ──────────────────────────────────────────
 
 def _panel_c_pvalue_inflation(ax: plt.Axes, data: dict) -> None:
     """Horizontal bar chart of -log10(p) at cell vs participant level."""
@@ -559,7 +559,7 @@ def _panel_g_forest(ax: plt.Axes, data: dict) -> None:
     despine(ax)
 
 
-# ── Panel E: Small-multiple interaction plots ────────────────────────────
+# ── Panel H: Small-multiple interaction plots ────────────────────────────
 
 def _panel_h_interaction_grid(
     fig: plt.Figure,
@@ -695,7 +695,7 @@ def _panel_h_interaction_grid(
     return axes, ax_hdr
 
 
-# ── Panel F: Per-participant change heatmap ──────────────────────────────
+# ── Panel I: Per-participant change heatmap ──────────────────────────────
 
 def _panel_i_heatmap(ax: plt.Axes, data: dict) -> None:
     """Heatmap of per-participant pre→post Δ across all signatures."""
@@ -817,7 +817,7 @@ def _panel_i_heatmap(ax: plt.Axes, data: dict) -> None:
     )
 
 
-# ── Panel G: Mean Δ score by response group ─────────────────────────────
+# ── Panel J: Mean Δ score by response group ─────────────────────────────
 
 def _panel_j_delta_by_response(ax: plt.Axes, data: dict) -> None:
     """Grouped bar plot of mean Δ scores for responders vs non-responders."""
@@ -866,7 +866,7 @@ def _panel_j_delta_by_response(ax: plt.Axes, data: dict) -> None:
 
 # ── Panel K: Hedges' g ──────────────────────────────────────────────────
 
-def _panel_k_cohens_d(ax: plt.Axes, data: dict) -> None:
+def _panel_k_hedges_g(ax: plt.Axes, data: dict) -> None:
     """Horizontal lollipop of Hedges' g (responder − non-responder) on Δ."""
     delta = data["delta"]
     sig_cols = data["sig_cols"]
@@ -901,74 +901,6 @@ def _panel_k_cohens_d(ax: plt.Axes, data: dict) -> None:
     ]
     ax.legend(handles=legend_handles, fontsize=16, loc="lower right",
               frameon=True, framealpha=0.9)
-    despine(ax)
-
-
-# ── Panel I: Individual trajectories for top signature ──────────────────
-
-def _panel_i_individual_trajectories(ax: plt.Axes, data: dict) -> None:
-    """Pre→Post spaghetti plot for the memory T cell signature."""
-    pb = data["pb"]
-    sig_cols = data["sig_cols"]
-
-    target = None
-    for col in sig_cols:
-        if "Memory" in col:
-            target = col
-            break
-    if target is None:
-        target = sig_cols[0]
-
-    visit_counts = pb.groupby(DESIGN.participant_col)[DESIGN.visit_col].nunique()
-    paired_pids = visit_counts[visit_counts == 2].index
-    pb_paired = pb[pb[DESIGN.participant_col].isin(paired_pids)].copy()
-
-    for pid in paired_pids:
-        rows = pb_paired[pb_paired[DESIGN.participant_col] == pid]
-        if len(rows) != 2:
-            continue
-        arm = rows[DESIGN.arm_col].iloc[0]
-        color = COL_RESP if arm == "Responder" else COL_NRESP
-        pre_val = rows.loc[rows[DESIGN.visit_col] == "Pre", target].values
-        post_val = rows.loc[rows[DESIGN.visit_col] == "Post", target].values
-        if len(pre_val) == 0 or len(post_val) == 0:
-            continue
-        ax.plot(
-            [0, 1], [pre_val[0], post_val[0]],
-            color=color, alpha=0.5, lw=1.2, zorder=2,
-        )
-        ax.scatter(
-            [0, 1], [pre_val[0], post_val[0]],
-            color=color, s=25, edgecolor="white", linewidth=0.4, zorder=3,
-        )
-
-    # Group means
-    for arm_label, color in [
-        ("Responder", COL_RESP),
-        ("Non-responder", COL_NRESP),
-    ]:
-        arm_rows = pb_paired[pb_paired[DESIGN.arm_col] == arm_label]
-        pre_mean = arm_rows.loc[
-            arm_rows[DESIGN.visit_col] == "Pre", target
-        ].mean()
-        post_mean = arm_rows.loc[
-            arm_rows[DESIGN.visit_col] == "Post", target
-        ].mean()
-        ax.plot([0, 1], [pre_mean, post_mean], color=color, lw=3, zorder=5)
-
-    ax.set_xticks([0, 1])
-    ax.set_xticklabels(["Pre", "Post"])
-    ax.set_ylabel(f"{sig_display(target)} Score")
-    ax.set_title(f"Individual Trajectories ({sig_display(target)})", fontsize=10,
-                 fontweight="bold")
-
-    handles = [
-        Line2D([0], [0], color=COL_RESP, lw=2, label="Responder"),
-        Line2D([0], [0], color=COL_NRESP, lw=2, label="Non-responder"),
-    ]
-    ax.legend(handles=handles, fontsize=8,
-              loc="upper center", bbox_to_anchor=(0.5, -0.15),
-              ncol=2, frameon=True, framealpha=0.9)
     despine(ax)
 
 
@@ -1017,7 +949,7 @@ def _enforce_min_fontsize(fig, minimum: float = _MIN_FONT) -> None:
 
 
 def generate() -> None:
-    """Create and save all Figure 2 panels (A–K)."""
+    """Create and save all Supplementary Figure 3 panels (A–K)."""
     print("Supp Fig 3: Pseudoreplication Bias & Melanoma/TNBC Primary Analysis")
     data      = _prepare_data()
     tnbc_data = _prepare_tnbc_data()
@@ -1084,7 +1016,8 @@ def generate() -> None:
         # Panels J, K: simple single-axis panels (Melanoma)
         simple_panels = [
             ("panel_J_delta_by_response", _panel_j_delta_by_response),
-            ("panel_K_cohens_d",          _panel_k_cohens_d),
+            # the file keeps the name under which the panel was first saved
+            ("panel_K_cohens_d",          _panel_k_hedges_g),
         ]
         for panel_name, func in simple_panels:
             fig, ax = plt.subplots(figsize=(7, 5.5))
@@ -1182,7 +1115,7 @@ def generate() -> None:
     )
     _panel_i_heatmap(ax_i, data)
     _panel_j_delta_by_response(ax_j, data)
-    _panel_k_cohens_d(ax_k, data)
+    _panel_k_hedges_g(ax_k, data)
 
     # ── Combined-panel-only adjustments ───────────────────────────────────
 

@@ -65,60 +65,6 @@ DATASETS = [
     ("CAR-T", lambda: get_cart()),
 ]
 
-# ── dataset metadata ──────────────────────────────────────────────────
-
-_DESIGN_META = {
-    "Melanoma": {
-        "design": "Pre/post anti-PD-1",
-        "pairing": "Partially paired",
-        "arms": "Responder vs Non-responder",
-        "indication": "Melanoma",
-        "visits": "Pre, Post",
-        "estimand": "DiD (two-arm)",
-    },
-    "COVID-19": {
-        "design": "COVID-19 severity comparison",
-        "pairing": "Multi-visit (grouped by severity)",
-        "arms": "Severity groups",
-        "indication": "COVID-19",
-        "visits": "Multiple collection days",
-        "estimand": "DiD (two-arm)",
-    },
-    "Vaccine": {
-        "design": "Pre/post vaccination",
-        "pairing": "Paired",
-        "arms": "Single arm",
-        "indication": "Influenza",
-        "visits": "Pre, Post",
-        "estimand": "Δ (single-arm)",
-    },
-    "AML": {
-        "design": "Pre/post treatment",
-        "pairing": "Paired (partial); control largely pre-only",
-        "arms": "Treatment vs Control",
-        "indication": "AML",
-        "visits": "Pre, Post",
-        "estimand": "Δ (two-arm)",
-    },
-    "CAR-T": {
-        "design": "Pre/post CAR-T infusion",
-        "pairing": "Partially paired",
-        "arms": "Single arm (CAR-T)",
-        "indication": "B-ALL / DLBCL",
-        "visits": "Pre, Post",
-        "estimand": "Δ (single-arm)",
-    },
-    "TNBC": {
-        "design": "Pre/post anti-PD-L1 + chemo vs chemo",
-        "pairing": "Paired",
-        "arms": "anti-PDL1+Chemo vs Chemo",
-        "indication": "Triple-negative breast cancer",
-        "visits": "Pre, Post",
-        "estimand": "DiD (two-arm)",
-    },
-}
-
-
 # ── helpers ──────────────────────────────────────────────────────────
 
 
@@ -502,9 +448,6 @@ def _panel_cells_per_pid_arm(ax, loaded: dict):
 
     ax.set_xticks(range(len(ds_order)))
     ax.set_xticklabels(ds_order)
-
-    ax.set_xticks(range(len(ds_order)))
-    ax.set_xticklabels(ds_order)
     ax.set_xlabel("")
     ax.set_ylabel(r"$\log_{10}$(cells per participant + 1)")
     ax.set_title("Cells per Participant by Arm", fontweight="bold")
@@ -754,7 +697,8 @@ def _panel_qc_waterfall(ax, loaded: dict, compact: bool = False):
         for label, filt_fn in thresholds:
             if filt_fn is not None:
                 stage_mask = filt_fn(ngenes, total_counts, pct_mito)
-                # NaN values → fail the threshold (conservative)
+                # A cell with a missing metric fails the comparison above; this line
+                # only turns the mask into a plain array.
                 stage_mask = np.where(np.isnan(stage_mask), False, stage_mask)
                 mask = mask & stage_mask
             counts_at_stage.append(int(mask.sum()))

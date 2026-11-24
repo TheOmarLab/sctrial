@@ -237,7 +237,9 @@ def _cell_ink(fig, renderer, cell, *, title=None, reach_left_mm: float = 16.0):
 
 
 # Composite rows (name, height ratio); "s" rows are spacers holding tick labels, keys
-# and the next row's titles.
+# and the next row's titles. The row names are identifiers from an earlier lettering:
+# "AB" holds panels A and B, "DGH" C to E, "FG" F and G, "HI" H and I, "J" J,
+# "LM" K and L, "NO" M and N.
 _COMPOSITE_LAYOUT = [
     ("AB",  0.82), ("s", 0.95),
     ("DGH", 0.78), ("s", 0.95),
@@ -386,6 +388,9 @@ def generate() -> None:
     core = _load_core_benchmark_data()
     print(f"  sensitivity rows {len(bench):,}  core rows {len(core):,}")
 
+    # The standalone files below keep the letters of an earlier layout, so that the
+    # installed folder does not change. The letters of the composite are those of the
+    # module docstring.
 
     # A: mixed-signal FPR, balanced + one-directional
     for arch, sfx in (("balanced", "balanced"), ("one_directional", "onedir")):

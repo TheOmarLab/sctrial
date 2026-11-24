@@ -19,7 +19,7 @@ D : Forest plot of DiD effects across all gene signatures.
 E : Small-multiple interaction plots for the top 6 signatures.
 F : Per-participant change heatmap across signatures.
 G : Signature changes by arm and response (four-group bar chart).
-H : Cohen's d effect sizes (anti-PDL1+Chemo - Chemo) on delta scores.
+H : Hedges' g effect sizes (anti-PDL1+Chemo - Chemo) on delta scores.
 I : Response-stratified second-order DiD forest plot (DID₂ = DID_R − DID_NR).
 J : Bar plot of mean delta score (post - pre) by arm.
 K : Within-arm response DID forest plot — Chemo arm.
@@ -713,7 +713,7 @@ def _panel_j(ax: plt.Axes, data: dict) -> None:
     despine(ax)
 
 
-# ── Panel H: Cohen's d / Hedges' g ───────────────────────────────────────
+# ── Panel H: Hedges' g ───────────────────────────────────────────────────
 
 def _panel_h(ax: plt.Axes, data: dict) -> None:
     delta    = data["delta"]
@@ -1364,7 +1364,7 @@ def generate() -> None:
     del data
     gc.collect()
     print(f"\nAll panels saved to {MAIN_OUTPUT}")
-    print("Figure 2 complete: 11 individual panels (A-K) + combined artboard\n")
+    print("Figure 2 complete: 12 individual panels (A-L) + combined artboard\n")
 # ── CLI entry point ───────────────────────────────────────────────────────
 
 if __name__ == "__main__":

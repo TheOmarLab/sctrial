@@ -10,7 +10,7 @@ aggregation choices, cell-type stratification, leave-one-out influence, and
 empirical power under participant subsampling.
 
 The NatMeth simulation-benchmark panels (calibration, power and robustness on
-the hierarchical gamma-Poisson simulator) live in Supp Fig 8, drawn from the
+the hierarchical gamma-Poisson simulator) live in Supp Fig 6, drawn from the
 shared ``manuscript_figures._benchmark`` toolkit; none are duplicated here.
 
 Panels (letters match the composite artboard, left-to-right and top-to-bottom)
@@ -847,7 +847,7 @@ def _panel_loo_stability(ax):
 
 
 # ======================================================================
-# Legacy dataset config (shared by panel G LOO heatmap and panel A bootstrap)
+# Dataset config of the panel G leave-one-out heatmap
 # ======================================================================
 
 _MDE_DATASET_CFG = {
@@ -926,7 +926,7 @@ _MDE_DATASET_CFG = {
 
 
 # ======================================================================
-# Multi-dataset power constants, loaders, and helpers (panel J)
+# Multi-dataset power constants, loaders, and helpers (panel H)
 # (duplicated from manuscript_figures/main/figure3_robustness_benchmarking.py
 #  per design choice; json cache helpers renamed to *_json_* to avoid
 #  collision with the pickle-based _load_cache/_save_cache above)
@@ -1507,7 +1507,7 @@ def _panel_power_grid(
 
 
 def _panel_power_curves(data: dict) -> plt.Figure | None:
-    """Standalone figure for panel J: power curves across datasets."""
+    """Standalone figure for panel H: power curves across datasets."""
     power_data = data.get("power_data")
     if power_data is None:
         return None
@@ -1528,11 +1528,8 @@ def _panel_power_curves(data: dict) -> plt.Figure | None:
 
 
 # ======================================================================
-# NatMeth signal-fraction benchmark CSV (H: mixed-signal null-gene FPR; I: pure-null Type I error; J: power curves)
+# Layout helpers of the composite
 # ======================================================================
-
-# See figure3: derive from MANUSCRIPT_DIR so the HPC checkout depth is honoured.
-# Path resolution lives in figure3's loader, which this delegates to.
 
 def _subfig_bbox_in_figure_coords(fig, subfig) -> mtransforms.Bbox:
     """Return *subfig* bounds in normalized figure coordinates (0–1).
@@ -1613,7 +1610,7 @@ def _figure_title_above_subfig(
 
 
 # ======================================================================
-# Panel H — Mixed-signal null-gene FPR vs signal fraction (expanded from Figure 3 panel D)
+# Composite artboard
 # ======================================================================
 
 def _build_composite(data: dict, relabel: dict, loo_mat, composite_data: dict):
@@ -1803,7 +1800,7 @@ def _build_composite(data: dict, relabel: dict, loo_mat, composite_data: dict):
             fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
         )
 
-    # Empirical power curves are now panel H (benchmark H/I moved to Supp Fig 8).
+    # Empirical power curves are panel H (the benchmark panels are in Supp Fig 6).
     _label_axes_panel(power_axes, "H", x=-0.30, y=1.42)
 
     # E & G: heatmaps — label slightly lower to clear title/colorbar
@@ -1862,7 +1859,7 @@ def generate():
       G  Leave-one-out stability matrix (all datasets)
       H  Empirical power curves (participant subsampling; 3+3 facet grid)
 
-    The NatMeth simulation-benchmark panels live in Supp Fig 8 (drawn from the
+    The NatMeth simulation-benchmark panels live in Supp Fig 6 (drawn from the
     shared manuscript_figures._benchmark toolkit); this figure is the empirical
     sensitivity/robustness supplement only.
 
@@ -1870,7 +1867,7 @@ def generate():
     """
     print("Supplementary Figure 5: Sensitivity to Modeling and Preprocessing")
 
-    # ── Sensitivity (panels B–F) — cache minus large adata ────────────
+    # ── Sensitivity (panels B–F): cache minus large adata ─────────────
     data = _load_cache("sensitivity_tnbc")
     if data is None:
         data = _run_sensitivity()
@@ -1920,8 +1917,8 @@ def generate():
     fig.tight_layout()
     save_panel(fig, "panel_G", FIGURE_NAME, SUPP_OUTPUT)
 
-    # ── Empirical power curves on real datasets (panel J) ─────────────
-    print("  Computing empirical power curves (panel J) ...")
+    # ── Empirical power curves on real datasets (panel H) ─────────────
+    print("  Computing empirical power curves (panel H) ...")
     try:
         power_data = _prepare_power_data()
     except Exception as exc:

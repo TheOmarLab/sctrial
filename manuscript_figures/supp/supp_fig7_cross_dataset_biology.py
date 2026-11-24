@@ -94,7 +94,7 @@ def _panel_A_signature_waterfall(ax, data: dict):
 
 
 # ======================================================================
-# Panel B -- GSEA Enrichment Bar Chart
+# Fallback for panel B: signature waterfall
 # ======================================================================
 
 
@@ -119,7 +119,7 @@ def _panel_B_signature_waterfall(ax, data: dict):
 
 
 # ======================================================================
-# Panel C -- Leading-edge gene overlap heatmap
+# Fallback for panel C: DiD summary
 # ======================================================================
 
 
@@ -144,7 +144,7 @@ def _panel_C_did_summary(ax, data: dict):
 
 
 # ======================================================================
-# Panel D -- Signature DiD forest plot with bootstrap CIs
+# Panel A: gene-level volcano (melanoma)
 # ======================================================================
 
 
@@ -156,7 +156,7 @@ def panel_A(ax, data: dict, *, composite: bool = False):
 
 
 # ======================================================================
-# Panel C (new) -- Replicated pathways across cohorts
+# Panel B: top genes ranked by effect size (melanoma)
 # ======================================================================
 
 
@@ -482,7 +482,7 @@ def panel_D(ax, data: dict, *, composite: bool = False):
             if len(shared_genes) >= TOTAL_GENES:
                 break
 
-    print(f"  Panel C: {len(pos_genes)} genes from NES>0 pathways, "
+    print(f"  Panel D: {len(pos_genes)} genes from NES>0 pathways, "
           f"{len(neg_genes)} genes from NES≤0 pathways")
 
     # Build binary matrix and prune zero rows/cols
@@ -502,7 +502,7 @@ def panel_D(ax, data: dict, *, composite: bool = False):
 
     n_pw_kept = sum(1 for p in pathways if pathway_nes.get(p, 0) > 0)
     n_neg_kept = sum(1 for p in pathways if pathway_nes.get(p, 0) <= 0)
-    print(f"  Panel C: {n_pw_kept} NES>0 + {n_neg_kept} NES≤0 pathways "
+    print(f"  Panel D: {n_pw_kept} NES>0 + {n_neg_kept} NES≤0 pathways "
           f"retained, {len(shared_genes)} genes")
 
     if matrix.size == 0 or not shared_genes:
@@ -812,7 +812,7 @@ def panel_E(ax, data: dict):
 
 
 # ======================================================================
-# Panel J — TNBC cell-type within-arm effect heatmap
+# Cross-dataset consistency (panels F to M): constants and helpers
 # ======================================================================
 
 

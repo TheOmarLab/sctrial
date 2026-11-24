@@ -8,7 +8,7 @@ groups are comparable before DiD analysis.
 Panels:
   A  UMAP per dataset coloured by cell type (mini-UMAPs).
   B  UMAP per dataset coloured by grouping variable (arm/visit).
-  C  Marker gene dot plot (top 3 markers per cell type, pooled).
+  C  Marker gene dot plot (top 3 markers per cell type, averaged across datasets).
   D  Embedding quality: silhouette + kNN purity (merged 1×2).
   E  Cell-type × dataset cross-tabulation heatmap (normalised).
   F  Quantitative baseline arm overlap (kNN arm-mixing score).

@@ -24,7 +24,7 @@ def _delta(arm_col, arms, n=(6, 6)):
 
 @pytest.mark.parametrize("rel, func, arms, n", [
     ("main/figure2_tnbc_analysis", "_panel_h", ("anti-PDL1+Chemo", "Chemo"), (6, 6)),
-    ("supp/supp_fig3_melanoma_tnbc_analysis", "_panel_k_cohens_d", ("Responder", "Non-responder"), (3, 8)),
+    ("supp/supp_fig3_melanoma_tnbc_analysis", "_panel_k_hedges_g", ("Responder", "Non-responder"), (3, 8)),
 ])
 def test_panel_plots_hedges_g_and_says_so(load_figure_module, rel, func, arms, n):
     mod = load_figure_module(rel)

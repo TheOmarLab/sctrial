@@ -746,7 +746,7 @@ def _panel_b(ax_top, ax_bottom, data_sf: dict, data_tnbc: dict, *, composite: bo
 # Recorded runtime per dataset (drawn in Supp Fig 4, panel I)
 # ======================================================================
 
-def _panel_c(ax, data: dict) -> None:
+def _panel_runtime_per_dataset(ax, data: dict) -> None:
     scale_data = data.get("scale_data")
     if scale_data is None:
         ax.text(0.5, 0.5, "Runtime data unavailable", ha="center", va="center", transform=ax.transAxes, fontsize=10)
@@ -820,7 +820,7 @@ def _panel_c(ax, data: dict) -> None:
 # Panel H: Cross-dataset Cohen's d forest
 # ======================================================================
 
-def _panel_e_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
+def _panel_h_cross_dataset(ax, data: dict, *, composite: bool = False) -> None:
     """Forest of design-specific standardized effects, five endpoints per dataset.
 
     Rows are grouped by dataset; each group is named once, with its participant count,
@@ -1067,7 +1067,7 @@ def generate() -> None:
         save_panel(fig_3g, "panel_3G_runtime", FIGURE_NAME, MAIN_OUTPUT)
 
     fig, ax = plt.subplots(figsize=(10, 9))
-    _panel_e_cross_dataset(ax, data)
+    _panel_h_cross_dataset(ax, data)
     fig.tight_layout()
     report_layout_problems(fig, "panel_H_cross_dataset_effects")
     save_panel(fig, "panel_H_cross_dataset_effects", FIGURE_NAME, MAIN_OUTPUT)
@@ -1176,7 +1176,7 @@ def generate() -> None:
     # Biological panels (A, B) and the cross-dataset forest (I).
     _panel_a(ax_a_bot, ax_a_top, data, data_tnbc, composite=True)
     _panel_b(ax_b_bot, ax_b_top, data, data_tnbc, composite=True)
-    _panel_e_cross_dataset(ax_forest, data, composite=True)
+    _panel_h_cross_dataset(ax_forest, data, composite=True)
 
     fig_c.canvas.draw()
 

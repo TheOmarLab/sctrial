@@ -19,8 +19,8 @@ Panels:
      inference comparison across all datasets (β scatter, −log10(p),
      SE bars).
 
-Non-overlap guardrail: no sensitivity analysis (→ SF4), no cross-dataset
-biological concordance (→ SF5), no heterogeneity (→ SF6).
+Non-overlap guardrail: no sensitivity analysis (→ SF5), no cross-dataset
+biological concordance (→ SF7), no heterogeneity (→ SF8).
 """
 
 from __future__ import annotations
@@ -1194,8 +1194,8 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
 
 
 def generate():
-    """Create and save all Supplementary Figure 3 panels."""
-    print("Supplementary Figure 3: Model Diagnostics and Assumption Checks")
+    """Create and save all Supplementary Figure 4 panels."""
+    print("Supplementary Figure 4: Model Diagnostics and Assumption Checks")
     results = _load_results()
     if not results:
         print("  No valid datasets found; skipping.")
@@ -1297,6 +1297,8 @@ def generate():
         fig_pr = _panel_pseudoreplication_single(ds_name, pr, ds_design)
         if fig_pr is not None:
             pseudo_idx += 1
+            # Panel J of the composite. The files keep the letter I under which they
+            # were first saved, so the installed folder does not change.
             panel_label = f"panel_I{pseudo_idx}_{ds_name.replace('-', '_')}"
             save_panel(fig_pr, panel_label, FIGURE_NAME, SUPP_OUTPUT)
         else:
@@ -1305,7 +1307,9 @@ def generate():
         print("  Pseudoreplication: no datasets had valid cell+participant stats.")
 
     # I: Runtime per dataset (Cleveland dot plot of the recorded measurements)
-    from ..main.figure3_robustness_benchmarking import _panel_c as _runtime_panel
+    from ..main.figure3_robustness_benchmarking import (
+        _panel_runtime_per_dataset as _runtime_panel,
+    )
 
     scale_data = {"timing_df": load_recorded_runtime()}
     fig_rt, ax_rt = plt.subplots(figsize=(8, 5.5))

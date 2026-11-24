@@ -257,7 +257,7 @@ def test_figure3_forest_rows_grouped_and_clear(load_figure_module):
                          "d_upper": d + 1, "n_participants": n})
     data = {"scale_data": {"effect_df": pd.DataFrame(rows)}}
     fig, ax = plt.subplots(figsize=(4, 4))
-    fig3._panel_e_cross_dataset(ax, data)
+    fig3._panel_h_cross_dataset(ax, data)
     fig.tight_layout()
     labels = [t.get_text() for t in ax.get_yticklabels()]
     assert len(labels) == 15 and "TNBC" not in labels  # no header rows

@@ -11,7 +11,7 @@ Panels
 A  Permutation null distributions (top 3 most significant signatures, TNBC; anti-PDL1+Chemo vs Chemo).
 B  Observed effects vs 95 % null range for all signatures (TNBC; anti-PDL1+Chemo vs Chemo).
 C  Individual-effect strip plot (TNBC), colored by treatment arm; responders
-   marked with black outline, non-responders with grey outline.
+   marked with black outline, non-responders without outline.
 D  Response- and arm-stratified heterogeneity boxplots (TNBC): 4 groups per
    gene (Chemo-Responder, Chemo-Non-responder, anti-PDL1+Chemo-Responder,
    anti-PDL1+Chemo-Non-responder).
@@ -641,7 +641,7 @@ def _panel_e(ax, tnbc_data: dict) -> None:
         return
 
     avail = [f for f in features if f in effects.columns]
-    # Use SF-derived order when available (matches panel C), else fall back to TNBC mean
+    # Order the features by their mean effect in this cohort
     feat_order = effects[avail].mean().sort_values().index.tolist()
     long = effects.melt(
         id_vars=["participant_id", "arm", "response"], value_vars=feat_order,
@@ -712,7 +712,7 @@ def _panel_f(ax, tnbc_data: dict) -> None:
         return
 
     avail = [f for f in features if f in effects.columns]
-    # Use SF-derived top-gene order when available (matches panel D)
+    # The eight features with the largest spread of effects in this cohort
     top = effects[avail].std().sort_values(ascending=False).head(8).index.tolist()
 
     effects = effects.copy()
