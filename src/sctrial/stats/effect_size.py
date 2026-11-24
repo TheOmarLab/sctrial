@@ -10,6 +10,7 @@ the difference between groups in standard deviation units, enabling comparison
 across studies with different scales.
 
 **Cohen's d vs Bootstrap CI**: These serve complementary purposes:
+
 - Cohen's d: Standardized effect size for meta-analysis and interpretation
 - Bootstrap CI: Uncertainty quantification on any estimator
 
@@ -17,8 +18,9 @@ across studies with different scales.
 AND confidence intervals (for statistical inference). Bootstrap CI on Cohen's d
 provides the best of both worlds.
 
-**Hedges' g vs Cohen's d**: Hedges' g applies a small-sample correction factor
-(J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)) that reduces upward bias in small samples. Use Hedges' g when
+**Hedges' g vs Cohen's d**: Hedges' g applies a small-sample correction factor J
+(computed exactly from the gamma function; J ≈ 1 - 3/(4*df - 1) with df = n₁+n₂-2 is
+the common approximation) that reduces upward bias in small samples. Use Hedges' g when
 n < 20 per group; for larger samples they are nearly identical.
 
 Mathematical Definitions
@@ -31,9 +33,10 @@ Cohen's d for DiD:
 Hedges' g:
     g = d × J
 
-    where J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)  (Hedges' correction factor)
+    where J = Γ(df/2) / (√(df/2) × Γ((df-1)/2)) ≈ 1 - 3/(4*df - 1), df = n₁+n₂-2
+    (Hedges' correction factor; the functions use the exact form)
 
-95% CI via noncentral t-distribution:
+95% CI (Wald type, t critical values at df = n₁+n₂-2):
     SE(d) ≈ sqrt((n₁+n₂)/(n₁×n₂) + d²/(2(n₁+n₂-2)))
 """
 
@@ -56,6 +59,7 @@ __all__ = [
     "cohens_d_from_did",
     "cohens_d_from_did_approx",
     "effect_size_ci",
+    "bootstrap_effect_size_ci",
     "add_effect_sizes_to_did",
     "EffectSizeMethod",
 ]
@@ -93,6 +97,7 @@ def cohens_d(
     Notes
     -----
     Interpretation guidelines (Cohen, 1988):
+
     - ``|d|`` ≈ 0.2: small effect
     - ``|d|`` ≈ 0.5: medium effect
     - ``|d|`` ≈ 0.8: large effect
@@ -137,7 +142,7 @@ def hedges_g(
     upward bias in small samples:
 
         g = d × J
-        J = 1 - 3/(4(n₁+n₂-2) - 1)  (equivalently 1 - 3/(4*df - 1))
+        J ≈ 1 - 3/(4*df - 1), df = n₁+n₂-2  (the exact form is in the Notes)
 
     Parameters
     ----------
@@ -407,6 +412,7 @@ def add_effect_sizes_to_did(
     -------
     pd.DataFrame
         Input DataFrame with added columns:
+
         - 'effect_size': Cohen's d or Hedges' g
         - 'effect_size_lower': Lower 95% CI bound
         - 'effect_size_upper': Upper 95% CI bound

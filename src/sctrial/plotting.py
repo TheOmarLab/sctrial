@@ -152,6 +152,7 @@ def plot_trial_interaction(
     layer: str | None = None,
     color_palette: dict | None = None,
     ax: Axes | None = None,
+    seed: int | None = 0,
 ) -> Axes:
     """Plot mean expression (interaction plot) by arm and visit.
 
@@ -174,6 +175,10 @@ def plot_trial_interaction(
         Optional colour mapping for arms.
     ax
         Optional matplotlib axes.
+    seed
+        Seed of the bootstrap that gives the error bars (95% confidence intervals of
+        the mean over participants, drawn by seaborn). The default gives the same
+        bars on every call; ``None`` draws new ones each time.
 
     Returns
     -------
@@ -224,6 +229,7 @@ def plot_trial_interaction(
         palette=color_palette,
         dodge=True,
         capsize=0.1,
+        seed=seed,
         ax=ax,
     )
     ax.set_title(f"Trial interaction: {feature}")
@@ -238,6 +244,7 @@ def plot_parallel_trends(
     *,
     layer: str | None = None,
     ax: Axes | None = None,
+    seed: int | None = 0,
 ) -> Axes:
     """Plot pre-treatment trends by arm to visually assess parallel trends.
 
@@ -258,6 +265,10 @@ def plot_parallel_trends(
         Layer for gene expression (``None`` uses ``adata.X``).
     ax
         Optional matplotlib axes; a new figure is created if ``None``.
+    seed
+        Seed of the bootstrap that gives the error bars (95% confidence intervals of
+        the mean over participants, drawn by seaborn). The default gives the same
+        bars on every call; ``None`` draws new ones each time.
 
     Returns
     -------
@@ -302,6 +313,7 @@ def plot_parallel_trends(
         hue=design.arm_col,
         dodge=True,
         capsize=0.1,
+        seed=seed,
         ax=ax,
     )
     ax.set_title(f"Parallel trends (pre-treatment): {feature}")
@@ -809,6 +821,7 @@ def plot_abundance_interaction(
     design: TrialDesign,
     visits: tuple[str, str] | None = None,
     ax: Axes | None = None,
+    seed: int | None = 0,
 ) -> Axes:
     """Plot cell type abundance (proportion) by arm and visit.
 
@@ -824,6 +837,10 @@ def plot_abundance_interaction(
         Tuple of (baseline, followup) visit labels.
     ax
         Optional matplotlib axes.
+    seed
+        Seed of the bootstrap that gives the error bars (95% confidence intervals of
+        the mean over participants, drawn by seaborn). The default gives the same
+        bars on every call; ``None`` draws new ones each time.
 
     Returns
     -------
@@ -886,6 +903,7 @@ def plot_abundance_interaction(
         hue=design.arm_col,  # None → no hue coloring
         dodge=True,
         capsize=0.1,
+        seed=seed,
         ax=ax,
     )
     ax.set_title(f"Abundance: {celltype}")
@@ -1185,6 +1203,15 @@ def plot_gsea_heatmap(
         Only include pathways that are significant (FDR < thresh) in at least one pool.
     top_n
         Number of top pathways to show (ranked by minimum FDR across pools).
+    pool_col
+        Column that identifies the pools (cell types). A table without it is drawn
+        as one pool named "Global".
+    term_col
+        Column with the pathway names.
+    nes_col
+        Column with the NES values that fill the heatmap.
+    fdr_col
+        Column with the FDR values used to select and rank the pathways.
     figsize
         Figure size.
     title
