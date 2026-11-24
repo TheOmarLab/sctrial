@@ -155,7 +155,8 @@ For single-arm paired designs,
 model with participant fixed effects on pseudobulk means, regressing the
 outcome on a visit indicator (``outcome ~ visit_num + C(participant)``).
 The coefficient on the visit term estimates the average
-within-participant change, and inference uses cluster-robust standard
+within-participant change, in standard deviations of the outcome with the
+default ``standardize=True``, and inference uses cluster-robust standard
 errors (or bootstrap when specified).
 
 For cross-sectional between-arm comparisons at a fixed visit,
@@ -184,7 +185,7 @@ Effect sizes are computed from participant-level aggregates via
 Power analysis
 --------------
 
-sctrial includes prospective power calculations for both study designs:
+sctrial includes prospective power calculations for each supported study design:
 
 - :func:`~sctrial.stats.power.power_did` /
   :func:`~sctrial.stats.power.sample_size_did` for two-arm DiD.

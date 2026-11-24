@@ -25,11 +25,13 @@ Mixed Effects:
 **When to Use Each**:
 
 Use Fixed Effects when:
+
 - Participant effects may correlate with treatment assignment
 - Small number of time points
 - Interest is purely in within-participant changes
 
 Use Mixed Effects when:
+
 - Random sample of participants from a population
 - Interest in generalizing to new participants
 - Want to estimate variance components
@@ -113,7 +115,8 @@ def did_mixed(
     participant_col
         Column identifying participants (random effect grouping).
     time_col
-        Column with time/visit indicators (binary: 0=pre, 1=post).
+        Column that holds the two visit labels. Any two distinct values are accepted;
+        ``visits`` names which one is the baseline.
     arm_col
         Column with treatment arm labels.
     arm_treated
@@ -146,6 +149,7 @@ def did_mixed(
     -------
     dict
         Results dictionary with keys:
+
         - beta_DiD: DiD coefficient
         - se_DiD: Standard error
         - p_DiD: P-value
@@ -154,6 +158,8 @@ def did_mixed(
         - var_residual: Residual variance
         - icc: Intraclass correlation
         - converged: Model convergence status
+        - var_slope: Random slope variance (only with ``random_slope=True``)
+        - error: Reason, when the model was not fitted (only in that case)
     """
     try:
         import statsmodels.formula.api as smf
@@ -388,6 +394,7 @@ def did_table_mixed(
     -------
     pd.DataFrame
         Results with columns:
+
         - feature: Feature name
         - beta_DiD, se_DiD, p_DiD, FDR_DiD: DiD statistics
         - ci_lower, ci_upper: 95% CI
@@ -582,6 +589,7 @@ def compare_fixed_vs_mixed(
     -------
     pd.DataFrame
         Combined results with columns:
+
         - feature
         - beta_fixed, se_fixed, p_fixed: Fixed effects results
         - beta_mixed, se_mixed, p_mixed, icc: Mixed effects results

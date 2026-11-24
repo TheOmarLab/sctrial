@@ -105,6 +105,7 @@ def design_effect(
         Average number of observations per cluster (e.g., cells per participant).
     icc
         Intraclass correlation coefficient (0 to 1).
+
         - ICC ≈ 0: observations within clusters are independent
         - ICC ≈ 1: observations within clusters are identical
 
@@ -117,7 +118,7 @@ def design_effect(
     --------
     >>> # 100 cells per participant, ICC=0.05
     >>> deff = design_effect(100, 0.05)
-    >>> print(f"Design effect: {deff:.1f}")
+    >>> print(f"Design effect: {deff:.2f}")
     Design effect: 5.95
     """
     if not (0 <= icc <= 1):

@@ -110,10 +110,11 @@ Missing Required Columns
 Statistical Issues
 ------------------
 
-Insufficient Participants Warning
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Too Few Paired Participants
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Warning**: ``n_units < 4, returning NaN``
+**Symptom**: the DiD columns (``beta_DiD``, ``se_DiD``, ``p_DiD``) are ``NaN`` and
+``n_units`` is below 4. No warning is raised.
 
 **Cause**: DiD requires at least 4 paired participants for statistical estimation.
 

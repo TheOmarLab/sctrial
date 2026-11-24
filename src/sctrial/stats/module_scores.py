@@ -78,8 +78,10 @@ def module_score_pseudobulk(
     Returns
     -------
     pd.DataFrame
-        Long-format table with columns: participant, visit, arm, pool,
-        module, ``module_score``, and ``n_cells``.
+        Long-format table with one row per participant, visit, pool and module.
+        Columns: the participant and visit columns of the design, its arm column
+        when the design has one, ``pool``, ``module``, ``module_score`` and
+        ``n_cells``.
     """
     df = adata.obs.copy()
     if exclude_crossovers and design.crossover_col and design.crossover_col in df.columns:
@@ -223,6 +225,9 @@ def module_score_did_by_pool(
         TrialDesign object.
     visits
         Tuple of (baseline, followup) visit labels.
+    min_paired
+        Minimum number of participants with both visits that a pool and module need
+        for the paired test. Not used with ``allow_unpaired=True``.
     n_perm
         Number of permutations for DiD p-values.
     seed
@@ -252,6 +257,12 @@ def module_score_did_by_pool(
         ``p_DiD``, ``p_treated``, ``p_control``, ``n_units``, ``FDR_DiD``.
         When *fdr_within* is set and *fdr_global* is True, an additional
         ``FDR_DiD_global`` column contains the globally-corrected q-values.
+
+    Raises
+    ------
+    ValueError
+        If the design has no arm column. For one arm use
+        :func:`module_score_within_arm_by_pool`.
     """
     if design.arm_col is None:
         raise ValueError(

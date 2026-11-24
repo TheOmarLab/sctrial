@@ -292,11 +292,17 @@ def run_method_comparison(
 
     Parameters
     ----------
+    n_participants, n_genes, effect_sizes, noise_sd, n_cells_per_participant
+        Passed to :func:`simulate_did_data` for every iteration.
     methods : list of str
         Methods to compare. Options: ``"sctrial_did"``, ``"mixed_did"``,
         ``"pseudobulk_ols"``, ``"wilcoxon"``.  Default: all four.
     n_iterations : int
         Number of simulation repetitions.
+    seed : int
+        Seed from which the seed of each iteration is drawn.
+    **sim_kwargs
+        Further arguments of :func:`simulate_did_data`.
     n_jobs : int, optional
         Number of parallel workers.  Defaults to ``min(cpu_count, 8)``.
         Set to 1 to disable parallelisation.

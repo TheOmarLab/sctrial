@@ -40,6 +40,7 @@ def abundance_did(
 
     Statistical Assumptions
     -----------------------
+
     - Requires `min_units` paired participants (default 5) per cell type.
     - Requires both treatment arms to be represented among paired participants.
     - Cell types with no variation in the transformed outcome are skipped.
@@ -89,6 +90,12 @@ def abundance_did(
         - se_DiD: Cluster-robust standard error
         - p_DiD: P-value for the treatment effect
         - FDR_DiD: Benjamini-Hochberg FDR-corrected p-value
+        - beta_time: Coefficient of the visit (missing when the model is fitted on the
+          within-participant changes)
+        - p_time: P-value of the visit coefficient
+
+        With ``use_bootstrap=True`` the table also holds ``p_DiD_boot`` (wild cluster
+        bootstrap p-value), ``se_DiD_boot``, ``ci_lo_boot`` and ``ci_hi_boot``.
 
     Interpretation notes
     --------------------

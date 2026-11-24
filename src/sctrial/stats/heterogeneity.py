@@ -90,12 +90,22 @@ def test_treatment_heterogeneity(
     covariates
         Additional covariates for the model.
     fdr
-        FDR correction mode: per feature or across all results.
+        ``"feature"`` or ``"all"``. Both give the same correction: Benjamini-Hochberg
+        over the p-values of all features in the table.
 
     Returns
     -------
     pd.DataFrame
-        Table with heterogeneity effects for each feature.
+        One row per feature with columns:
+
+        - feature: Feature name
+        - beta_heterogeneity: Coefficient of the visit by arm by biomarker interaction
+        - p_heterogeneity: Its p-value (missing when the interaction is not estimable
+          or the model fits the outcome exactly)
+        - n_units: Participants in the model
+        - threshold: Value that splits the biomarker into low and high (missing for a
+          biomarker coded 0 and 1 when no threshold is given)
+        - FDR_heterogeneity: Benjamini-Hochberg FDR of ``p_heterogeneity``
 
     Examples
     --------

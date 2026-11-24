@@ -397,7 +397,8 @@ def did_fit(
     - **No anticipation**: Treatment effect only after treatment starts.
     - **SUTVA**: No spillover between participants.
     - Requires at least 4 unique units (participants) to estimate fixed effects.
-      Returns NaN for all estimates if n_units < 4.
+      Returns NaN for all estimates if n_units < 4, if only one arm has participants
+      with both visits, or if the data do not identify the interaction.
     - Features with near-zero variance (std < 1e-8) return NaN.
     - Cluster-robust standard errors account for within-participant correlation.
 
@@ -456,7 +457,9 @@ def did_fit(
     -------
     DidFitResult
         Dictionary with keys ``beta_DiD``, ``se_DiD``, ``p_DiD``,
-        ``beta_time``, ``p_time``, ``n_units``, ``cov_type_used``.
+        ``beta_time``, ``p_time``, ``n_units``, ``resid_sd``, ``cov_type_used``.
+        A result without an estimate (see Assumptions) holds the first six keys only,
+        with NaN for the estimates.
         When ``use_bootstrap=True``, also includes ``p_DiD_boot``,
         ``se_DiD_boot``, ``ci_lo_boot``, ``ci_hi_boot``.
         When the model fits the outcome exactly (for example when no participant
@@ -873,6 +876,8 @@ def did_table_parallel(
         Joblib backend ("loky", "multiprocessing", or "threading").
     batch_size
         Optional joblib batch size. If None, joblib chooses.
+    weight_col
+        Column of weights for weighted least squares, as in `did_table`.
     cov_type
         Covariance of the analytical test, as in `did_table`.
     """

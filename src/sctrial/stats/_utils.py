@@ -160,6 +160,7 @@ def standardize_series(
     -------
     tuple[pd.Series, bool]
         A tuple containing the standardized column and a boolean indicating if standardization is valid.
+
         - The standardized column is a Series with the same index as df.
         - The boolean indicates if standardization is valid.
         - If standardization is not valid, the standardized column is a Series with NaN values.

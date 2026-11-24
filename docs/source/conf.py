@@ -87,5 +87,5 @@ html_context = {
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
-    "anndata": ("https://anndata.readthedocs.io/en/latest/", None),
+    "anndata": ("https://anndata.scverse.org/en/stable/", None),
 }

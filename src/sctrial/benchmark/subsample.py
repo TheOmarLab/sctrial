@@ -64,7 +64,8 @@ def run_subsampling(
 
     Returns
     -------
-    DataFrame with: fraction, resample, method, spearman_rho, jaccard_top20
+    DataFrame with: fraction, resample, method, spearman_rho, jaccard_top20,
+    n_participants
     """
     if methods is None:
         from .orchestrator import CORE_METHODS

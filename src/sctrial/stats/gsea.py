@@ -662,7 +662,8 @@ def run_gsea_did_by_celltype(
     adata
         AnnData object.
     gene_sets
-        Dictionary of gene-set collections.
+        A library name (e.g. 'KEGG_2021_Human') or a dictionary mapping
+        pathway names to gene lists.
     design
         TrialDesign object.
     visits
@@ -747,7 +748,8 @@ def run_gsea_pseudobulk(
     adata
         AnnData object.
     gene_sets
-        Dictionary of gene-set collections.
+        A library name (e.g. 'KEGG_2021_Human') or a dictionary mapping
+        pathway names to gene lists.
     design
         TrialDesign object.
     visits
@@ -770,8 +772,11 @@ def run_gsea_pseudobulk(
     Returns
     -------
     pd.DataFrame | gp.Prerank | dict[str, gp.Prerank]
-        A DataFrame of enrichment results (if return_obj=False) or the
-        gseapy result object.
+        A DataFrame of enrichment results, or the gseapy result object with
+        ``return_obj=True``. With ``celltype_col``, the results of all cell types in
+        one DataFrame with a ``celltype`` column (empty when no cell type has genes
+        to rank), or a dictionary of gseapy objects by cell type with
+        ``return_obj=True``.
     """
     _ensure_gseapy()
 

@@ -164,6 +164,7 @@ def get_counts_matrix(adata: AnnData) -> tuple[np.ndarray | None, str | None]:
     -------
     tuple[np.ndarray | None, str | None]
         A tuple containing the counts matrix and its source label.
+
         - The counts matrix is the raw counts matrix.
         - The source label is the layer name where the counts matrix is stored.
         - If no counts matrix is found, returns (None, None).
@@ -184,7 +185,15 @@ def get_counts_matrix(adata: AnnData) -> tuple[np.ndarray | None, str | None]:
 def warn_unbounded_bootstrap_intervals(
     res: pd.DataFrame, lo_col: str = "ci_lo_boot", hi_col: str = "ci_hi_boot"
 ) -> None:
-    """Warn once when a results table holds unbounded bootstrap intervals."""
+    """Warn once when a results table holds unbounded bootstrap intervals.
+
+    Parameters
+    ----------
+    res
+        Results table. Nothing happens when it lacks either column.
+    lo_col, hi_col
+        Columns with the lower and upper bounds of the bootstrap interval.
+    """
     if lo_col not in res.columns or hi_col not in res.columns:
         return
     unbounded = np.isinf(res[lo_col].to_numpy(dtype=float)) | np.isinf(

@@ -240,9 +240,12 @@ def diagnose_trial_data(
     -------
     dict
         Diagnostic summary with keys including:
+
         - n_cells, n_genes, n_participants, n_visits, n_arms
         - paired_participants (dict of visit pairs -> counts)
-        - cells_per_participant (pd.Series)
+        - cells_per_participant_visit_mean, cells_per_participant_visit_median,
+          cells_per_participant_visit_min (numbers of cells per participant and
+          visit), or cells_per_participant_mean when the data have no visit column
         - warnings (list of strings)
         - recommendations (list of strings)
 

@@ -1436,6 +1436,11 @@ def load_vaccine_gse171964(
         If True, download missing files from GEO automatically.
     force_reprocess : bool
         If True, reprocess even when a cached file exists.
+    days : sequence of int
+        Days of the time course to keep (default: 0 and 7).
+    min_cells_per_participant_visit : int
+        Participant-visit groups with fewer cells are named in a log warning. No cell
+        is removed.
 
     Returns
     -------
@@ -1714,6 +1719,7 @@ def verify_paired_participants(
     -------
     dict
         A dictionary containing the following keys:
+
         - paired_ids: set of participant IDs with both visits (and non-NaN features if provided)
         - dropped_ids: list of participant IDs dropped by validation
         - n_paired: count of paired_ids
@@ -2071,8 +2077,9 @@ def load_aml(
         ``<data_dir>/processed/``.
     processed_name : str
         Filename for the cached processed h5ad file.
-    max_cells_per_sample : int
-        Maximum cells to keep per sample after subsampling.
+    max_cells_per_sample : int or None
+        Maximum number of cells kept per sample, drawn at random. If None (default),
+        every cell is kept.
     seed : int
         Random seed for reproducibility.
     allow_download : bool
@@ -2485,8 +2492,9 @@ def load_cart(
         ``<data_dir>/processed/``.
     processed_name : str
         Filename for the cached processed h5ad file.
-    max_cells_per_sample : int
-        Maximum cells to keep per sample after subsampling.
+    max_cells_per_sample : int or None
+        Maximum number of cells kept per sample, drawn at random. If None (default),
+        every cell is kept.
     seed : int
         Random seed for reproducibility.
     allow_download : bool
@@ -2897,6 +2905,7 @@ def load_tnbc_zhang(
     breast cancer. 12 paired patients with Pre- and Post-treatment tumor biopsies.
 
     Processing pipeline (identical to AML and CAR-T loaders):
+
     - QC: min_genes=200, max_genes=6000, pct_mt<20, min_cells=10
     - Normalization: normalize_total(1e4) + log1p -> log1p_norm layer
     - Embedding: HVG(2000) -> PCA(50) -> neighbors(15, 30PCs) -> UMAP
@@ -3161,7 +3170,8 @@ def ensure_fdr(df: pd.DataFrame, p_col: str = "p_time", fdr_col: str = "FDR_time
     Returns
     -------
     pd.DataFrame
-        A copy of the DataFrame with the FDR-corrected p-value column added.
+        ``df`` itself, with the FDR column added in place. A table that is empty,
+        already holds ``fdr_col`` or lacks ``p_col`` is returned unchanged.
     """
     if df.empty:
         return df

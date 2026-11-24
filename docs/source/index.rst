@@ -27,25 +27,26 @@ biological units in the study.
 Key Applications
 ----------------
 
-- **Difference-in-Differences (DiD)** — Participant fixed-effects regression with wild cluster
-  bootstrap inference for treatment effect estimation across arms and timepoints.
+- **Difference-in-Differences (DiD)**: Participant fixed-effects regression for treatment
+  effect estimation across arms and timepoints, with cluster-robust inference by default
+  and an optional wild cluster bootstrap for small cohorts.
 
-- **Paired within-arm contrasts** — Pre→post comparisons with paired statistical tests and
-  effect sizes (Cohen's d, Hedges' g, log₂ fold-change).
+- **Paired within-arm contrasts**: Pre→post comparisons with paired statistical tests and
+  effect sizes (Cohen's d, Hedges' g).
 
-- **Between-arm comparisons** — Cross-sectional tests between treatment and control arms at
+- **Between-arm comparisons**: Cross-sectional tests between treatment and control arms at
   fixed timepoints with pseudobulk replication.
 
-- **Cell-type abundance** — Composition changes across conditions using proportion-based
+- **Cell-type abundance**: Composition changes across conditions using proportion-based
   statistics and participant-level aggregation.
 
-- **Gene Set Enrichment Analysis** — GSEA on DiD-ranked gene lists with support for Hallmark,
+- **Gene Set Enrichment Analysis**: GSEA on DiD-ranked gene lists with support for Hallmark,
   KEGG, Reactome, and custom gene set collections.
 
-- **Power analysis** — Sample size calculations, power curves, and minimum detectable effect
-  sizes for two-arm DiD and single-arm paired designs.
+- **Power analysis**: Sample size calculations, power curves, and minimum detectable effect
+  sizes for two-arm DiD, single-arm paired and two-group designs.
 
-- **Effect size estimation** — Confidence intervals on all key estimands.
+- **Effect size estimation**: Confidence intervals on all key estimands.
 
 Getting Started
 ---------------

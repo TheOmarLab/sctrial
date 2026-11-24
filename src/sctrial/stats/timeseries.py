@@ -31,6 +31,7 @@ For studies with >2 timepoints, several approaches are available:
 
 Model Selection Guidance
 ------------------------
+
 - 3-4 timepoints: Linear trend interaction is usually sufficient
 - 5+ timepoints: Consider polynomial or spline models
 - Irregular intervals: Use actual time values, not ordinal indices
@@ -161,14 +162,21 @@ def trend_interaction(
     -------
     pd.DataFrame
         Results with columns:
+
         - feature: Feature name
         - beta_trend: Main time effect (in control)
         - beta_treat_trend: Treatment × time interaction (linear)
+        - se_treat_trend: Standard error of the linear interaction (cluster-robust by
+          participant)
         - p_treat_trend: P-value for linear interaction
-        - beta_treat_trend2: Treatment × time² interaction (if quadratic)
-        - p_treat_trend2: P-value for quadratic interaction
         - n_units: Number of participants
         - n_timepoints: Number of visits
+        - beta_treat_trend2: Treatment × time² interaction (quadratic and cubic models)
+        - p_treat_trend2: P-value for quadratic interaction (quadratic and cubic models)
+        - beta_treat_trend3: Treatment × time³ interaction (cubic model)
+        - p_treat_trend3: P-value for cubic interaction (cubic model)
+        - FDR_treat_trend: Benjamini-Hochberg FDR of the linear interaction across features
+        - error: Message of a fit that raised (present only when a fit raised)
 
         A feature has no estimate (missing values in its row) when both arms are not
         among its participants, or when the design does not identify the interaction,
@@ -390,13 +398,19 @@ def event_study_did(
     Returns
     -------
     pd.DataFrame
-        Long-format results with columns:
+        Long-format results, one row per feature and post-baseline visit, with the
+        columns of :func:`did_table` and:
+
         - feature: Feature name
         - visit: Post-baseline visit
+        - reference: Reference visit
         - beta_DiD: DiD effect vs reference
         - se_DiD: Standard error
         - p_DiD: P-value
+        - FDR_DiD: Benjamini-Hochberg FDR across all visit-feature tests (recomputed over
+          the combined table, not within each visit)
         - n_units: Sample size
+        - error: Message of a visit whose table raised (present only in that case)
 
     Examples
     --------
@@ -499,10 +513,13 @@ def polynomial_trend(
     Returns
     -------
     dict
-        Model results including:
+        Model results:
+
         - coefficients: All model coefficients
+        - pvalues: P-value of each coefficient
         - predictions: Predicted values per arm×time
         - aic, bic: Model fit statistics
+        - rsquared: R-squared of the model
         - residuals: Model residuals
 
     Raises
@@ -624,11 +641,14 @@ def test_parallel_trends(
     -------
     pd.DataFrame
         Results with:
+
         - feature: Feature name
         - beta_pretrend: Pre-treatment trend difference
         - p_pretrend: P-value for non-parallel trends
+        - FDR_pretrend: Benjamini-Hochberg FDR of ``p_pretrend`` across features
         - warning: "Potential violation" if p < 0.10, "OK" otherwise, and
           "Not estimable" when the feature has no test (see trend_interaction)
+        - n_units: Number of participants
 
     Examples
     --------

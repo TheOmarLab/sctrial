@@ -264,12 +264,21 @@ def pseudobulk_did(
     Returns
     -------
     pd.DataFrame
-        A DataFrame with the results of the DiD analysis.
-        - feature: Name of the feature.
-        - beta_DiD: Effect size (difference in means between arms).
-        - p_DiD: P-value for the DiD analysis.
-        - FDR_DiD: False Discovery Rate corrected p-value.
-        - n_units: Number of unique units (participants) included in the analysis.
+        One row per gene, or per gene and cell type when ``celltype_col`` is given,
+        with the keys of :func:`sctrial.stats.did.did_fit`:
+
+        - feature: Name of the gene.
+        - beta_DiD: DiD coefficient on the standardized outcome.
+        - se_DiD, p_DiD: Its standard error and p-value.
+        - beta_time, p_time: Coefficient of the visit and its p-value.
+        - resid_sd: Residual standard deviation of the model.
+        - cov_type_used: Covariance the row reports.
+        - n_units: Number of participants in the model.
+        - FDR_DiD: Benjamini-Hochberg FDR over all rows.
+        - celltype, FDR_DiD_celltype: Cell type and the FDR within it (only with
+          ``celltype_col``).
+        - p_DiD_boot, se_DiD_boot, ci_lo_boot, ci_hi_boot: Wild cluster bootstrap
+          results (only with ``use_bootstrap=True``).
     """
     genes = [g for g in genes if g in adata.var_names]
     if not genes:

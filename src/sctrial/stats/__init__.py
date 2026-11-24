@@ -5,6 +5,7 @@ clinical trial data with single-cell resolution.
 
 Core Methods
 ------------
+
 - **did_table**: Difference-in-Differences with fixed effects
 - **abundance_did**: Cell-type proportion changes
 - **within_arm_comparison**: Paired longitudinal contrasts
@@ -12,6 +13,7 @@ Core Methods
 
 Advanced Methods
 ----------------
+
 - **did_table_mixed**: Mixed effects DiD models
 - **trend_interaction**: Multi-timepoint trend analysis
 - **event_study_did**: Generalized event study design
@@ -20,6 +22,7 @@ Advanced Methods
 
 Effect Sizes & Power
 --------------------
+
 - **add_effect_sizes_to_did**: Cohen's d / Hedges' g for DiD
 - **power_did** / **power_paired**: Power calculations (two-arm DiD / single-arm paired)
 - **sample_size_did** / **sample_size_paired**: Sample size determination

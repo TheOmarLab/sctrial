@@ -109,6 +109,7 @@ def did_table_bayes(
 
     Prior specification
     -------------------
+
     - alpha_i ~ Normal(0, prior_scale) (participant random intercepts)
     - beta_time ~ Normal(0, prior_scale)
     - beta_arm ~ Normal(0, prior_scale)
@@ -134,7 +135,8 @@ def did_table_bayes(
     celltype
         If provided, subset to this cell type before analysis.
     aggregate
-        Aggregation mode (``"participant_visit"`` or ``"cell"``).
+        Aggregation mode (``"participant_visit"``, ``"participant_visit_celltype"``
+        or ``"cell"``).
     layer
         Expression layer for gene features (``None`` uses ``adata.X``).
     standardize
@@ -165,6 +167,7 @@ def did_table_bayes(
     -------
     pd.DataFrame
         Columns:
+
         - feature: Feature name
         - beta_DiD: Posterior mean of the DiD effect
         - ci_low: 2.5th percentile of posterior

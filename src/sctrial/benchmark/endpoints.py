@@ -8,6 +8,7 @@ Null scenarios
     ``fpr``                 fraction of evaluable null genes with p < alpha
     ``pvalue_ks``           KS distance of null p-values from Uniform(0,1)
     ``lambda_gc``           genomic inflation factor, secondary diagnostic
+                            (computed by ``benchmark.metrics``, not in this module)
     ``evaluability``        see below
 
 Mixed-signal scenarios
@@ -15,7 +16,8 @@ Mixed-signal scenarios
     ``tpr``                 after BH at q, TP / (all true signal genes)
     ``power_tested``        p < alpha among signal genes the method EVALUATED
     ``power_end_to_end``    p < alpha among ALL signal genes in the panel
-    ``null_fpr``            null-gene false positives in the presence of signal
+    ``fpr``                 null-gene false positives in the presence of signal
+                            (the same key as in null scenarios)
     ``direction_accuracy``  sign agreement on genes the method called
     ``evaluability``        see below
 

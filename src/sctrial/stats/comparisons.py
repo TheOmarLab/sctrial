@@ -489,16 +489,23 @@ def within_arm_comparison(
         Table with columns:
 
         - **feature** : Name of the feature.
-        - **beta_time** : Estimated pre→post change (visit coefficient).
-        - **se_time** : Cluster-robust standard error of the time coefficient.
-        - **ci_lo_time** / **ci_hi_time** : 95 % confidence interval bounds
-          (``beta ± t_crit × se`` with residual df from the OLS fit).
+        - **beta_time** : Estimated pre→post change (visit coefficient), in standard
+          deviations of the outcome with the default ``standardize=True``.
+        - **se_time** : Standard error of the time coefficient, cluster-robust by
+          participant unless ``cov_type_used`` is ``nonrobust``.
+        - **ci_lo_time** / **ci_hi_time** : 95 % confidence interval bounds from the
+          fitted model: ``beta ± z × se`` with the normal quantile for the
+          cluster-robust covariance, ``beta ± t_crit × se`` with the residual df in
+          the nonrobust fallback.
         - **p_time** : P-value for the time coefficient
           (cluster-robust Wald test; bootstrap if ``use_bootstrap=True``).
         - **n_units** : Number of unique participants.
         - **resid_sd** : Residual standard deviation of the fitted model. With two
           visits per participant, ``sqrt(2) * resid_sd`` is the standard deviation
           of the participant changes.
+        - **cov_type_used** : Covariance behind ``se_time`` and ``p_time``:
+          ``cluster``, or ``nonrobust`` when the model has no residual degrees of
+          freedom for the cluster-robust estimate or that estimate is not finite.
         - **FDR_time** : Benjamini–Hochberg corrected p-value.
 
         When ``use_bootstrap=True``, additional columns are included:
@@ -777,7 +784,10 @@ def between_arm_comparison(
         Table with columns:
 
         - **feature** : Name of the feature.
-        - **beta_arm** : Effect size (treated − control difference in means).
+        - **beta_arm** : Arm effect (treated − control). For OLS it is the coefficient
+          of the arm, on the standardized outcome with the default
+          ``standardize=True`` and adjusted for the covariates when given. For
+          Wilcoxon it is the difference in means.
         - **se_arm** : Standard error of the arm coefficient. For OLS this is
           the analytical SE from the model fit; for Wilcoxon it is the pooled
           SE of the difference in means (√(s₁²/n₁ + s₂²/n₂)).
@@ -924,6 +934,7 @@ def compare_gene_in_celltype(
     -------
     tuple[dict, pd.DataFrame]
         A tuple containing a dictionary with the results and a DataFrame with the participant-level summaries
+
         - The dictionary contains the results of the comparison.
         - The DataFrame contains the participant-level summaries.
     """

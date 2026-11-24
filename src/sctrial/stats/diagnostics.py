@@ -31,6 +31,7 @@ def check_did_assumptions(
     -------
     dict
         Dictionary with diagnostic statistics:
+
         - bp_pvalue: Breusch-Pagan p-value for heteroscedasticity
         - jb_pvalue: Jarque-Bera p-value for normality
         - resid_mean, resid_std

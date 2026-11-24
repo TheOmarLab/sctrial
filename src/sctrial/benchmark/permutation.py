@@ -135,7 +135,8 @@ def run_permutation_test(
     n_permutations : int
         Number of permutations.
     n_jobs : int
-        Parallel workers.
+        Not used for the computation: the permutations run one after another. The
+        value appears in the progress message only.
     visits : tuple[str, str]
         (baseline, follow-up) labels of ``visit_col`` in this cohort.
     arm_treated, arm_control : str

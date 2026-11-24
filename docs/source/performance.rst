@@ -13,17 +13,12 @@ Performance Overview
 Typical Performance
 ~~~~~~~~~~~~~~~~~~~
 
-On a standard laptop (16GB RAM):
+With participant-level aggregation (the default), a DiD table costs one pass over the
+cells to aggregate them and one small regression per feature.
 
-- **10K cells, 50 features**: < 5 seconds
-- **100K cells, 500 features**: ~30-60 seconds
-- **500K cells, 2000 features**: ~5-10 minutes
-
-Memory requirements:
-
-- **100K cells**: ~2-4 GB
-- **500K cells**: ~8-12 GB
-- **1M+ cells**: Requires optimization strategies below
+The :doc:`stress test tutorial <tutorials/stress_test_real_scale>` reports measured run
+times and memory for a real cohort at several numbers of genes and cells. Datasets
+with more than a million cells usually need the strategies below.
 
 Optimization Strategies
 -----------------------
@@ -53,10 +48,12 @@ Optimization Strategies
        adata,
        features=features,
        design=design,
+       visits=("V1", "V2"),
        aggregate="cell"  # Not recommended
    )
 
-**Performance impact**: 10-100x faster with pseudobulk
+**Performance impact**: with pseudobulk each model is fitted on one row per participant
+and visit instead of one row per cell.
 
 2. Analyze Gene Sets, Not All Genes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -83,7 +80,7 @@ vs.
    features = adata.var_names.tolist()
    res = st.did_table(adata, features=features, design=design, visits=("V1", "V2"))
 
-**Performance impact**: 100-400x faster with gene sets
+**Performance impact**: a panel of 50 gene sets needs 50 models instead of about 20,000.
 
 3. Use Sparse Matrices
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -101,7 +98,8 @@ Ensure counts are stored as sparse matrices:
    if not sp.issparse(adata.layers["counts"]):
        adata.layers["counts"] = sp.csr_matrix(adata.layers["counts"])
 
-**Memory savings**: 10-50x reduction for typical scRNA-seq data
+**Memory savings**: a sparse matrix stores only the nonzero entries, a small fraction
+of a typical scRNA-seq count matrix.
 
 4. Use Built-in Parallelization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -180,6 +178,7 @@ For genome-wide analysis, process genes in batches:
 
 .. code-block:: python
 
+   import numpy as np
    import pandas as pd
 
    def process_in_batches(adata, all_features, design, visits, batch_size=1000):
@@ -248,13 +247,15 @@ Monitor Memory Usage
        print(f"Memory usage: {mem:.2f} GB")
 
    print_memory_usage()  # Before analysis
-   res = st.did_table(...)
+   res = st.did_table(adata, features=features, design=design, visits=("V1", "V2"))
    print_memory_usage()  # After analysis
 
 Reduce Memory Footprint
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
+
+   import numpy as np
 
    # 1. Use float32 instead of float64
    adata.X = adata.X.astype(np.float32)
