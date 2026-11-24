@@ -26,7 +26,23 @@ from collections.abc import Callable
 import numpy as np
 import pandas as pd
 
+from ..stats._utils import fits_exactly
+
 logger = logging.getLogger(__name__)
+
+
+def _coefficient_row(fit, j: int) -> dict:
+    """Estimate, p-value and interval of coefficient ``j`` of a least-squares fit.
+
+    A model that fits its outcome exactly (a gene without variation) has an estimate and
+    no test: its standard error would be made of rounding error.
+    """
+    beta = float(np.asarray(fit.params)[j])
+    if fits_exactly(fit):
+        return {"beta": beta, "pvalue": np.nan, "ci_lo": np.nan, "ci_hi": np.nan}
+    lo, hi = np.asarray(fit.conf_int())[j]
+    pvalue = float(np.asarray(fit.pvalues)[j])
+    return {"beta": beta, "pvalue": pvalue, "ci_lo": float(lo), "ci_hi": float(hi)}
 
 
 def _cell_level_ols(adata, gene_cols: list[str], cell_lib_size=None) -> dict:
@@ -65,12 +81,7 @@ def _cell_level_ols(adata, gene_cols: list[str], cell_lib_size=None) -> dict:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 fit = sm.OLS(y, X).fit()
-            out[gene] = {
-                "beta": float(fit.params[3]),
-                "pvalue": float(fit.pvalues[3]),
-                "ci_lo": float(fit.conf_int()[3, 0]),
-                "ci_hi": float(fit.conf_int()[3, 1]),
-            }
+            out[gene] = _coefficient_row(fit, 3)
         except Exception:
             out[gene] = {"beta": np.nan, "pvalue": np.nan, "ci_lo": np.nan, "ci_hi": np.nan}
     return out
@@ -93,12 +104,7 @@ def _pseudobulk_ols(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 fit = sm.OLS(y, X).fit()
-            out[gene] = {
-                "beta": float(fit.params[3]),
-                "pvalue": float(fit.pvalues[3]),
-                "ci_lo": float(fit.conf_int()[3, 0]),
-                "ci_hi": float(fit.conf_int()[3, 1]),
-            }
+            out[gene] = _coefficient_row(fit, 3)
         except Exception:
             out[gene] = {"beta": np.nan, "pvalue": np.nan, "ci_lo": np.nan, "ci_hi": np.nan}
     return out
@@ -124,12 +130,7 @@ def _pseudobulk_fe(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
                 warnings.simplefilter("ignore")
                 fit = sm.OLS(y, X).fit()
             # interaction is at index 3
-            out[gene] = {
-                "beta": float(fit.params[3]),
-                "pvalue": float(fit.pvalues[3]),
-                "ci_lo": float(fit.conf_int()[3, 0]),
-                "ci_hi": float(fit.conf_int()[3, 1]),
-            }
+            out[gene] = _coefficient_row(fit, 3)
         except Exception:
             out[gene] = {"beta": np.nan, "pvalue": np.nan, "ci_lo": np.nan, "ci_hi": np.nan}
     return out
@@ -160,12 +161,7 @@ def _pseudobulk_fe_crse(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
                     cov_type="cluster",
                     cov_kwds={"groups": pb["participant"].values},
                 )
-            out[gene] = {
-                "beta": float(fit.params[2]),
-                "pvalue": float(fit.pvalues[2]),
-                "ci_lo": float(fit.conf_int()[2, 0]),
-                "ci_hi": float(fit.conf_int()[2, 1]),
-            }
+            out[gene] = _coefficient_row(fit, 2)
         except Exception:
             out[gene] = {"beta": np.nan, "pvalue": np.nan, "ci_lo": np.nan, "ci_hi": np.nan}
     return out
@@ -200,8 +196,12 @@ def run_ablation(
 
     Returns
     -------
-    dict : variant_name → {gene → {"beta", "pvalue", "ci_lo", "ci_hi"}}
+    dict : variant_name -> {gene -> {"beta", "pvalue", "ci_lo", "ci_hi", "converged",
+        "failure_mode"}}. A gene without a finite p-value is recorded as not tested
+        (:func:`sctrial.benchmark.runners.finalize_results`).
     """
+    from .runners import finalize_results
+
     if variants is None:
         variants = list(ABLATION_VARIANTS.keys())
 
@@ -222,4 +222,4 @@ def run_ablation(
         elif fn is not None:
             results[var_name] = fn(inputs["participant_log1p_cpm"], gene_cols)
 
-    return results
+    return {name: finalize_results(rows) for name, rows in results.items()}

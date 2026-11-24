@@ -591,6 +591,18 @@ def _run_single_iteration(args: tuple) -> list[dict]:
 
 
 def _dispatch_method(method: str, inputs: dict, design_type: str = "two_arm") -> dict:
+    """Run one method on its contracted input and return its rows.
+
+    A gene without a finite p-value leaves here as not tested (not converged, with a
+    failure mode), whatever its runner recorded: see
+    :func:`sctrial.benchmark.runners.finalize_results`.
+    """
+    from .runners import finalize_results
+
+    return finalize_results(_call_runner(method, inputs, design_type))
+
+
+def _call_runner(method: str, inputs: dict, design_type: str) -> dict:
     """Route to a runner with its CONTRACTED input representation.
 
     See :mod:`sctrial.benchmark.contracts` for the contract table. Nothing is
