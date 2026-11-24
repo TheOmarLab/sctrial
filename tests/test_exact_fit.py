@@ -250,3 +250,51 @@ def test_module_scores_give_no_test_for_scores_without_spread():
     for column in ("p_DiD", "p_treated", "p_control"):
         assert np.isnan(res.loc["flat", column]), column
         assert np.isfinite(res.loc["noisy", column]), column
+
+
+def test_module_scores_give_no_within_arm_test_without_residual_degrees_of_freedom():
+    # One treated participant-visit at each visit: the within-arm model has two rows and two
+    # parameters. Its robust standard error is infinite, and the p-value read 1.0.
+    rng = np.random.default_rng(4)
+    design = TrialDesign(participant_col="participant_id", visit_col="visit", arm_col="arm",
+                         arm_treated="Treated", arm_control="Control", celltype_col=None)
+    rows = [("T0", "Treated", VISITS[0], "all", "m", 1.0), ("T1", "Treated", VISITS[1], "all", "m", 2.0)]
+    for p in range(5):
+        for visit in VISITS:
+            rows.append((f"C{p}", "Control", visit, "all", "m", rng.normal()))
+    pb = pd.DataFrame(rows, columns=["participant_id", "arm", "visit", "pool", "module", "module_score"])
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res = module_score_did_by_pool(pb, design, VISITS, allow_unpaired=True).iloc[0]
+
+    assert res["mean_delta_treated"] == pytest.approx(1.0)
+    assert np.isnan(res["p_treated"])
+    assert np.isfinite(res["p_control"]) and np.isfinite(res["beta_DiD"])
+
+
+def test_module_scores_give_no_did_test_for_one_row_per_arm_and_visit():
+    # Four rows and four parameters. The robust standard error of the interaction is infinite
+    # and its p-value read 1.0, which then entered the FDR family of the other modules.
+    rng = np.random.default_rng(8)
+    design = TrialDesign(participant_col="participant_id", visit_col="visit", arm_col="arm",
+                         arm_treated="Treated", arm_control="Control", celltype_col=None)
+    rows = [("T0", "Treated", VISITS[0], "all", "thin", 1.0), ("T1", "Treated", VISITS[1], "all", "thin", 2.5),
+            ("C0", "Control", VISITS[0], "all", "thin", 0.5), ("C1", "Control", VISITS[1], "all", "thin", 0.7)]
+    for arm in ("Treated", "Control"):
+        for p in range(5):
+            for visit in VISITS:
+                rows.append((f"{arm[0]}{p + 2}", arm, visit, "all", "full", rng.normal()))
+    pb = pd.DataFrame(rows, columns=["participant_id", "arm", "visit", "pool", "module", "module_score"])
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res = module_score_did_by_pool(pb, design, VISITS, allow_unpaired=True).set_index("module")
+
+    assert res.loc["thin", "beta_DiD"] == pytest.approx(1.3)
+    assert res.loc["thin", ["p_DiD", "p_treated", "p_control"]].isna().all()
+    assert np.isfinite(res.loc["full", ["p_DiD", "p_treated", "p_control"]].astype(float)).all()
+    fdr_columns = [c for c in res.columns if c.startswith("FDR")]
+    assert fdr_columns
+    for column in fdr_columns:
+        assert np.isnan(res.loc["thin", column]) and res.loc["full", column] == pytest.approx(res.loc["full", "p_DiD"])

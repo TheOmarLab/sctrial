@@ -19,6 +19,7 @@ __all__ = [
     "fit_identified",
     "fits_exactly",
     "standardize_series",
+    "unidentified_terms",
 ]
 
 
@@ -68,6 +69,20 @@ def fit_identified(model: Any, term: str, **fit_kwargs: Any) -> Any | None:
     if plain.df_resid <= 0:
         return plain
     return model.fit(**fit_kwargs)
+
+
+def unidentified_terms(model: Any, terms: Sequence[str]) -> list[str]:
+    """The regressors among ``terms`` that the other regressors of ``model`` determine.
+
+    For an unfitted least-squares model. A coefficient of such a regressor is not
+    identified: a fit on independent columns either drops it or gives it the share of the
+    regressors it is collinear with.
+    """
+    exog = np.asarray(model.exog, dtype=float)
+    names = list(model.exog_names)
+    if np.linalg.matrix_rank(exog) == exog.shape[1]:
+        return []
+    return [t for t in terms if t in names and not _column_is_identified(exog, names.index(t))]
 
 
 def fits_exactly(fit: Any) -> bool:

@@ -10,7 +10,14 @@ from anndata import AnnData
 from ..adata_tools import subset_arms, subset_primary
 from ..design import TrialDesign
 from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
-from ._utils import apply_fdr, drop_unused_levels, encode_visit, fit_identified, fits_exactly
+from ._utils import (
+    apply_fdr,
+    drop_unused_levels,
+    encode_visit,
+    fit_identified,
+    fits_exactly,
+    unidentified_terms,
+)
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE
 
 
@@ -255,8 +262,8 @@ def abundance_did(
                 )
             # Use cluster-robust standard errors for consistency with did_fit
             if use_diff:
-                fit = model.fit()
                 term = "arm_bin"
+                fit = fit_identified(model, term)
             else:
                 term = "visit_num:arm_bin"
                 fit = fit_identified(
@@ -299,14 +306,19 @@ def abundance_did(
                 ci_lo_boot = boot_res.ci_lo
                 ci_hi_boot = boot_res.ci_hi
 
+            # A covariate that changes by the same amount for everyone between the visits is
+            # the visit regressor: the interaction is identified, the time effect is not.
+            aliased = unidentified_terms(model, ["visit_num"]) if covariates else []
+            time_effect = fit.params.drop(aliased, errors="ignore")
+            time_test = fit.pvalues.drop(aliased, errors="ignore")
             row_dict: dict = {
                 "celltype": ct,
                 "n_participants": n_units_eff,
                 "beta_DiD": float(fit.params[term]),
                 "se_DiD": np.nan if exact else float(fit.bse[term]),
                 "p_DiD": p_val,
-                "beta_time": float(fit.params.get("visit_num", np.nan)),
-                "p_time": np.nan if exact else float(fit.pvalues.get("visit_num", np.nan)),
+                "beta_time": float(time_effect.get("visit_num", np.nan)),
+                "p_time": np.nan if exact else float(time_test.get("visit_num", np.nan)),
             }
             if use_bootstrap:
                 row_dict["p_DiD_boot"] = p_val
@@ -352,9 +364,10 @@ def abundance_did(
                 if covariates:
                     fallback_formula += " + " + " + ".join(covariates)
                 model = smf.ols(fallback_formula, data=df_delta)
-                fit = model.fit()
                 term = "arm_bin"
-                if term not in fit.params or np.isnan(fit.params[term]):
+                # no estimate when a covariate holds the arm
+                fit = fit_identified(model, term)
+                if fit is None or term not in fit.params or np.isnan(fit.params[term]):
                     continue
                 fallback_row: dict = {
                     "celltype": ct,

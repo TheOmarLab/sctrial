@@ -779,18 +779,21 @@ def _compute_loo_data():
                         loo_betas.append(
                             df_loo.set_index("feature")[_find_beta_col(df_loo)]
                         )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    print(f"  LOO {name}: no table without {pid} ({exc})")
+                    loo_betas.append(pd.Series(np.nan, index=full_betas.index))
                 finally:
                     del sub
                     gc.collect()
 
-            if len(loo_betas) < 3:
+            loo_mat = pd.DataFrame(loo_betas)
+            if int(loo_mat.notna().any(axis=1).sum()) < 3:
                 continue
 
-            loo_mat = pd.DataFrame(loo_betas)
             deviations = loo_mat.subtract(full_betas, axis=1).abs()
-            max_dev = deviations.max() / (full_betas.abs() + 0.01)
+            # The largest deviation over the folds is known only when every fold has an
+            # estimate: a fold without one is not a fold without deviation.
+            max_dev = deviations.max(skipna=False) / (full_betas.abs() + 0.01)
             rows[name] = max_dev
             print(f"  LOO {name}: {len(pids)} pids, {len(feats)} feats")
             del adata

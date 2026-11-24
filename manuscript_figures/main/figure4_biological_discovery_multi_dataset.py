@@ -1322,7 +1322,9 @@ def panel_D(ax, data: dict):
     """
     did_sig = data["did_sig"]
 
-    df = did_sig.copy()
+    # A signature without an estimate or a test has no direction and is not among the
+    # signatures tested: it is neither drawn nor counted.
+    df = did_sig.dropna(subset=["beta_DiD", "FDR_DiD"]).copy()
     df["display"] = df["feature"].map(sig_display)
     df = df.sort_values("beta_DiD", ascending=True).reset_index(drop=True)
 

@@ -189,6 +189,18 @@ def _perm_test_diff(
     return float((count + 1) / (n_perm + 1))
 
 
+def _tested_p(fit, term: str) -> float:
+    """The p-value of ``term``, or NaN when the fit gives the estimate and no test.
+
+    That is a fit without residual degrees of freedom (as many rows as parameters: the
+    robust standard error is infinite and the p-value would read 1.0) or one that fits its
+    outcome exactly (the standard error would be made of rounding error).
+    """
+    if fit.df_resid <= 0 or fits_exactly(fit):
+        return np.nan
+    return float(fit.pvalues.get(term, np.nan))
+
+
 def module_score_did_by_pool(
     pb: pd.DataFrame,
     design: TrialDesign,
@@ -288,14 +300,12 @@ def module_score_did_by_pool(
             p_control = np.nan
             try:
                 fit_t = smf.ols("module_score ~ visit_num", data=treated).fit(cov_type="HC1")
-                if not fits_exactly(fit_t):
-                    p_treated = float(fit_t.pvalues.get("visit_num", np.nan))
+                p_treated = _tested_p(fit_t, "visit_num")
             except (ValueError, TypeError):
                 p_treated = np.nan
             try:
                 fit_c = smf.ols("module_score ~ visit_num", data=control).fit(cov_type="HC1")
-                if not fits_exactly(fit_c):
-                    p_control = float(fit_c.pvalues.get("visit_num", np.nan))
+                p_control = _tested_p(fit_c, "visit_num")
             except (ValueError, TypeError):
                 p_control = np.nan
 
@@ -309,12 +319,7 @@ def module_score_did_by_pool(
                     "mean_delta_treated": mean_delta_treated,
                     "mean_delta_control": mean_delta_control,
                     "beta_DiD": float(fit.params.get("visit_num:arm_bin", np.nan)),
-                    # an exact fit gives the estimate and no test
-                    "p_DiD": (
-                        np.nan
-                        if fits_exactly(fit)
-                        else float(fit.pvalues.get("visit_num:arm_bin", np.nan))
-                    ),
+                    "p_DiD": _tested_p(fit, "visit_num:arm_bin"),
                     "p_treated": p_treated,
                     "p_control": p_control,
                     "n_units": n_units_eff,

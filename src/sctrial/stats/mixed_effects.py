@@ -586,7 +586,8 @@ def compare_fixed_vs_mixed(
         - beta_fixed, se_fixed, p_fixed: Fixed effects results
         - beta_mixed, se_mixed, p_mixed, icc: Mixed effects results
         - beta_diff: Difference in estimates
-        - agreement: Whether both methods agree on significance direction
+        - agreement: Whether both methods agree on significance and direction. Missing
+          (``pd.NA``) when either model gave no estimate or no test.
 
     Examples
     --------
@@ -646,6 +647,9 @@ def compare_fixed_vs_mixed(
     mixed_sig = comparison["p_mixed"] < alpha
     same_direction = np.sign(comparison["beta_fixed"]) == np.sign(comparison["beta_mixed"])
 
-    comparison["agreement"] = (fixed_sig == mixed_sig) & same_direction
+    # Neither an agreement nor a disagreement when one of the models gave no estimate or
+    # no test: a missing p-value compares as "not significant" and would agree with one.
+    compared = comparison[["beta_fixed", "beta_mixed", "p_fixed", "p_mixed"]].notna().all(axis=1)
+    comparison["agreement"] = ((fixed_sig == mixed_sig) & same_direction).astype("boolean").where(compared)
 
     return comparison

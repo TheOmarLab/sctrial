@@ -234,7 +234,7 @@ def test_trend_table_has_its_columns_when_no_feature_has_an_estimate():
 
     pre = parallel_trends(flat, GENES, design, pre_visits=visits)
     assert list(pre["feature"]) == GENES
-    assert pre["p_pretrend"].isna().all() and (pre["warning"] == "OK").all()
+    assert pre["p_pretrend"].isna().all() and (pre["warning"] == "Not estimable").all()
 
 
 ABUNDANCE_KEYS = ("beta_DiD", "se_DiD", "p_DiD", "beta_time", "p_time", "n_participants")

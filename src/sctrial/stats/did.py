@@ -29,6 +29,7 @@ from ._utils import (
     fit_identified,
     fits_exactly,
     standardize_series,
+    unidentified_terms,
 )
 
 # Minimum number of clusters for reliable cluster-robust standard errors
@@ -565,12 +566,15 @@ def did_fit(
     model_row_idx = fit.model.data.row_labels
     n_units_eff = int(tmp[unit].loc[model_row_idx].nunique())
 
+    # A covariate that changes by the same amount for everyone between the visits is the
+    # time regressor: the interaction is identified, the time effect is not.
+    aliased = unidentified_terms(model, [time]) if covariates else []
     res = {
         "beta_DiD": float(fit.params.get(term, np.nan)),
         "se_DiD": se_did,
         "p_DiD": p_did,
-        "beta_time": float(fit.params.get(time, np.nan)),
-        "p_time": np.nan if exact else float(fit.pvalues.get(time, np.nan)),
+        "beta_time": float(fit.params.drop(aliased, errors="ignore").get(time, np.nan)),
+        "p_time": np.nan if exact else float(fit.pvalues.drop(aliased, errors="ignore").get(time, np.nan)),
         "n_units": n_units_eff,
         "resid_sd": float(np.sqrt(fit.scale)),
         "cov_type_used": effective_cov_type,

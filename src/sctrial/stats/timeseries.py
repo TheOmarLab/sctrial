@@ -56,7 +56,7 @@ from anndata import AnnData
 
 from ..adata_tools import subset_arms
 from ..design import TrialDesign
-from ._utils import apply_fdr, drop_unused_levels, fits_exactly
+from ._utils import apply_fdr, drop_unused_levels, fit_identified, fits_exactly, unidentified_terms
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE, AggregateMode
 
 __all__ = [
@@ -170,6 +170,10 @@ def trend_interaction(
         - n_units: Number of participants
         - n_timepoints: Number of visits
 
+        A feature has no estimate (missing values in its row) when both arms are not
+        among its participants, or when the design does not identify the interaction,
+        for example a cubic model on three visits.
+
     Examples
     --------
     >>> # 4-timepoint study: Day 0, 7, 14, 28
@@ -215,6 +219,11 @@ def trend_interaction(
         "se_treat_trend": np.nan,
         "p_treat_trend": np.nan,
     }
+    higher_terms = {"linear": [], "quadratic": ["2"], "cubic": ["2", "3"]}.get(model, [])
+    for power in higher_terms:
+        no_estimate[f"beta_treat_trend{power}"] = np.nan
+        no_estimate[f"p_treat_trend{power}"] = np.nan
+    interaction = "arm_bin:time_num"
 
     model_cols = [design.participant_col, design.visit_col, "time_num", "arm_bin"]
     rows = []
@@ -264,14 +273,34 @@ def trend_interaction(
                     UserWarning,
                     stacklevel=2,
                 )
-            fit = smf.ols(formula, data=df_feat).fit(
-                cov_type="cluster", cov_kwds={"groups": df_feat[design.participant_col]}
+            trend_model = smf.ols(formula, data=df_feat)
+            fit = fit_identified(
+                trend_model,
+                interaction,
+                cov_type="cluster",
+                cov_kwds={"groups": df_feat[design.participant_col]},
             )
+            if fit is None:
+                # One arm among the participants of this feature (the interaction column
+                # then equals the time column or is zero), more terms than the visits
+                # allow, or a time coding that repeats a value.
+                rows.append(
+                    {
+                        "feature": feat,
+                        **no_estimate,
+                        "n_units": n_units,
+                        "n_timepoints": n_timepoints,
+                    }
+                )
+                continue
 
-            # An exact fit gives the estimates and no test.
+            # An exact fit gives the estimates and no test; so does a term that the other
+            # regressors determine.
             exact = fits_exactly(fit)
-            errors = fit.bse * np.nan if exact else fit.bse
-            tested = fit.pvalues * np.nan if exact else fit.pvalues
+            blank = unidentified_terms(trend_model, [f"{interaction}{p}" for p in higher_terms])
+            errors = fit.bse * np.nan if exact else fit.bse.drop(blank, errors="ignore")
+            tested = fit.pvalues * np.nan if exact else fit.pvalues.drop(blank, errors="ignore")
+            estimates = fit.params.drop(blank, errors="ignore")
             result = {
                 "feature": feat,
                 "beta_trend": float(fit.params.get("time_num", np.nan)),
@@ -283,11 +312,11 @@ def trend_interaction(
             }
 
             if model in ["quadratic", "cubic"]:
-                result["beta_treat_trend2"] = float(fit.params.get("arm_bin:time_num2", np.nan))
+                result["beta_treat_trend2"] = float(estimates.get("arm_bin:time_num2", np.nan))
                 result["p_treat_trend2"] = float(tested.get("arm_bin:time_num2", np.nan))
 
             if model == "cubic":
-                result["beta_treat_trend3"] = float(fit.params.get("arm_bin:time_num3", np.nan))
+                result["beta_treat_trend3"] = float(estimates.get("arm_bin:time_num3", np.nan))
                 result["p_treat_trend3"] = float(tested.get("arm_bin:time_num3", np.nan))
 
             rows.append(result)
@@ -304,6 +333,16 @@ def trend_interaction(
             )
 
     res = pd.DataFrame(rows)
+    if rows:
+        # one column order, whichever feature comes first and whether or not it has an estimate
+        order = [
+            "feature",
+            *list(no_estimate)[:4],
+            "n_units",
+            "n_timepoints",
+            *list(no_estimate)[4:],
+        ]
+        res = res[[*order, *(c for c in res.columns if c not in order)]]
 
     # FDR correction for linear trend
     if "p_treat_trend" in res.columns:
@@ -465,6 +504,14 @@ def polynomial_trend(
         - predictions: Predicted values per arm×time
         - aic, bic: Model fit statistics
         - residuals: Model residuals
+
+    Raises
+    ------
+    ValueError
+        If the data do not identify a time term or an arm-by-time term: fewer distinct
+        time points than the degree plus one, or one arm only with a value of the feature.
+        Least squares would still return coefficients, p-values and a curve between the
+        time points, each split arbitrarily among the terms that determine each other.
     """
     import statsmodels.formula.api as smf
 
@@ -495,7 +542,15 @@ def polynomial_trend(
     interact = " + ".join([f"arm_bin:{t}" for t in terms])
     formula = f"outcome_std ~ {fixed} + {interact} + C({design.participant_col})"
 
-    fit = smf.ols(formula, data=df).fit()
+    polynomial = smf.ols(formula, data=df)
+    undetermined = unidentified_terms(polynomial, [*terms, *(f"arm_bin:{t}" for t in terms)])
+    if undetermined:
+        raise ValueError(
+            f"polynomial_trend: {', '.join(undetermined)} not identified for '{feature}'. A "
+            f"polynomial of degree {degree} needs {degree + 1} distinct time points, and "
+            "participants of both arms with a value of the feature."
+        )
+    fit = polynomial.fit()
 
     # Generate population-average predictions by averaging across all
     # participant fixed effects.
@@ -572,7 +627,8 @@ def test_parallel_trends(
         - feature: Feature name
         - beta_pretrend: Pre-treatment trend difference
         - p_pretrend: P-value for non-parallel trends
-        - warning: "Potential violation" if p < 0.10, otherwise "OK"
+        - warning: "Potential violation" if p < 0.10, "OK" otherwise, and
+          "Not estimable" when the feature has no test (see trend_interaction)
 
     Examples
     --------
@@ -608,6 +664,11 @@ def test_parallel_trends(
     )
 
     # Flag potential violations
-    res["warning"] = np.where(res["p_pretrend"] < 0.10, "Potential violation", "OK")
+    # A feature without a test is neither a pass nor a violation.
+    res["warning"] = np.select(
+        [res["p_pretrend"].isna(), res["p_pretrend"] < 0.10],
+        ["Not estimable", "Potential violation"],
+        default="OK",
+    )
 
     return res[["feature", "beta_pretrend", "p_pretrend", "FDR_pretrend", "warning", "n_units"]]

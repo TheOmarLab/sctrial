@@ -480,6 +480,8 @@ def _run_pseudobulk_ols(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
     """
     import statsmodels.formula.api as smf
 
+    from ._utils import fit_identified
+
     pb = pb.copy()
     pb["arm_bin"] = (pb["arm"] == "Treated").astype(float)
     pb["visit_bin"] = (pb["visit"] == "Post").astype(float)
@@ -490,7 +492,12 @@ def _run_pseudobulk_ols(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
     for g in gene_cols:
         try:
             # Backtick-quote gene names for formula safety
-            fit = smf.ols(f"Q('{g}') ~ arm_bin + visit_bin + interaction", data=pb).fit()
+            fit = fit_identified(
+                smf.ols(f"Q('{g}') ~ arm_bin + visit_bin + interaction", data=pb), "interaction"
+            )
+            if fit is None:
+                # an arm seen at one visit only: the interaction is the arm or the visit column
+                raise ValueError("interaction not identified")
             beta = fit.params["interaction"]
             pval = fit.pvalues["interaction"]
             ci = fit.conf_int().loc["interaction"]

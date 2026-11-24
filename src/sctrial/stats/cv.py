@@ -411,14 +411,16 @@ def influence_diagnostics(
         - excluded: ID of excluded participant
         - influence: Influence score for this participant
         - beta_DiD: DiD estimate without this participant
-        - is_influential: Whether influence > threshold
+        - is_influential: Whether influence > threshold. Missing (``pd.NA``) when the
+          influence is missing: the fit without this participant or the fit on everyone
+          gave no estimate, or the fit on everyone has no standard error.
     """
     if loo_results.empty:
         return pd.DataFrame()
 
-    # Return per-participant results with influence flag
     result = loo_results.copy()
-    result["is_influential"] = result["influence"].abs() > threshold
+    influence = result["influence"].abs()
+    result["is_influential"] = (influence > threshold).astype("boolean").mask(influence.isna())
     return result[["feature", "excluded", "influence", "beta_DiD", "beta_full", "is_influential"]]
 
 

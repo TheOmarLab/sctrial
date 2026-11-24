@@ -189,8 +189,19 @@ def _ols_between_arm(
             "p_arm": np.nan,
             "n_units": int(df_feat.loc[in_model, design.participant_col].nunique()),
         }
-    model = smf.ols(formula, data=df_feat)
-    fit = model.fit()
+    # A covariate that holds the arm (a site that enrolled one arm, a dose that is zero in the
+    # control arm) leaves the arm difference unidentified.
+    fit = fit_identified(smf.ols(formula, data=df_feat), "arm_bin")
+    if fit is None:
+        return {
+            "feature": feat,
+            "beta_arm": np.nan,
+            "se_arm": np.nan,
+            "ci_lo_arm": np.nan,
+            "ci_hi_arm": np.nan,
+            "p_arm": np.nan,
+            "n_units": int(df_feat.loc[in_model, design.participant_col].nunique()),
+        }
 
     # An exact fit (no spread within the arms) gives the difference and no test.
     exact = fits_exactly(fit)
