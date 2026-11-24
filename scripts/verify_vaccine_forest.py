@@ -12,6 +12,7 @@ import importlib.util
 import sys
 
 import numpy as np
+from scipy import stats
 
 
 def _bootstrap():
@@ -33,7 +34,9 @@ def _paired_d(deltas):
     mean, sd = d.mean(), d.std(ddof=1)
     dz = mean / sd if sd > 0 else np.nan
     se = np.sqrt(1.0 / n + dz**2 / (2 * n))
-    return dz, dz - 1.96 * se, dz + 1.96 * se, mean, sd
+    # the interval of the Figure 3 forest: Student t with n - 1 degrees of freedom
+    t_crit = stats.t.ppf(0.975, n - 1)
+    return dz, dz - t_crit * se, dz + t_crit * se, mean, sd
 
 
 def main():

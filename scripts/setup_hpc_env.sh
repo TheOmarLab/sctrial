@@ -18,7 +18,7 @@ set -euo pipefail
 # ── 0. Configuration ─────────────────────────────────────────
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_YML="$REPO_ROOT/src/sctrial/benchmark/sctrial_bench_environment.yml"
-ENV_NAME="sctrial"   # must match the slurm scripts, which all run `micromamba run -n sctrial`
+ENV_NAME="sctrial"   # the slurm launchers run `conda run -n sctrial_benchmark`; make the two agree (BENCHMARK_HPC_SETUP.md, Step 4)
 
 echo "============================================"
 echo "sctrial HPC environment setup (Python)"
