@@ -276,7 +276,8 @@ def test_gsea_wrappers_restrict_once_before_they_loop():
     assert set(rows.obs["visit"].astype(str)) == {"V1", "V3"}
     assert set(rows.obs["arm"].astype(str)) == {"Treated", "Control"}
     with warnings.catch_warnings():
-        warnings.simplefilter("error")
+        # the restriction must not warn a second time; warnings of other libraries are theirs
+        warnings.filterwarnings("error", message=f".*{EXCLUDED}")
         again = _two_arm_rows(rows, DESIGN, ("V1", "V3"))
     assert again.n_obs == rows.n_obs
 
