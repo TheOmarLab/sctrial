@@ -83,7 +83,8 @@ def subset_primary(
     if exclude_crossovers and design.crossover_col:
         _require_cols(obs, [design.crossover_col])
         cross = _to_bool_series(obs[design.crossover_col]).to_numpy(dtype=bool)
-        mask &= ~cross
+        # a new array: the mask can be a read-only view of the obs column (pandas 3)
+        mask = mask & ~cross
 
     return adata[mask].copy()
 

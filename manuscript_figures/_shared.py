@@ -1456,7 +1456,7 @@ def _resolve_scoring_layer(adata, layer):
     if adata.layers:
         raise KeyError(
             f"No normalised expression layer found. Looked for {_SCORING_LAYERS}; "
-            f"available layers: {sorted(adata.layers)}. Normalise before scoring "
+            f"available layers: {sorted(str(k) for k in adata.layers if k is not None)}. Normalise before scoring "
             "(e.g. add_log1p_cpm_layer) instead of scoring raw counts."
         )
     return None  # no layers at all -> adata.X, which loaders leave normalised

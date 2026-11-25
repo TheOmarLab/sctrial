@@ -62,7 +62,7 @@ def _summarised_by_hand(adata, how, by=("participant_id", "visit")):
         X = np.where(np.isnan(X), np.nan, (X > 0) * 100.0)
     else:
         missing = np.isnan(X)
-        X = pd.DataFrame(X).groupby(keys.to_numpy()).transform("median").to_numpy()
+        X = pd.DataFrame(X).groupby(keys.to_numpy()).transform("median").to_numpy().copy()
         X[missing] = np.nan
     obs = adata.obs.copy()
     obs["score"] = X[:, -1]

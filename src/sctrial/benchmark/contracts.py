@@ -190,6 +190,11 @@ def truth_for(method: str, oracle: dict, gene: str, injected: float) -> float:
     return float(table.get(gene, injected))
 
 
+def _layer_names(adata) -> list[str]:
+    """Names of the layers, sorted. anndata 0.13 also lists ``X`` under the key ``None``."""
+    return sorted(str(name) for name in adata.layers if name is not None)
+
+
 def _count_matrix(adata, counts_layer: str | None):
     """The matrix the caller named as raw counts; ``None`` names ``adata.X``.
 
@@ -200,7 +205,7 @@ def _count_matrix(adata, counts_layer: str | None):
         return adata.X
     if counts_layer not in adata.layers:
         raise KeyError(
-            f"counts layer {counts_layer!r} not found (layers: {sorted(adata.layers)}). "
+            f"counts layer {counts_layer!r} not found (layers: {_layer_names(adata)}). "
             "Name the layer that holds the counts, or pass counts_layer=None if they "
             "are in adata.X."
         )

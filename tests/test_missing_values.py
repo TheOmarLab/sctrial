@@ -74,7 +74,7 @@ def _rows(adata, participant, visit=None):
     obs = adata.obs
     mask = (obs["participant_id"] == participant).to_numpy()
     if visit is not None:
-        mask &= (obs["visit"] == visit).to_numpy()
+        mask = mask & (obs["visit"] == visit).to_numpy()
     return mask
 
 
