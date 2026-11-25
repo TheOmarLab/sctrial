@@ -271,7 +271,8 @@ def test_gsea_wrappers_restrict_once_before_they_loop():
     adata = _cells(TWO_ARMS + [(f"O{i}", "Other") for i in range(4)], visits=SERIES)
     with pytest.warns(UserWarning, match=EXCLUDED) as caught:
         rows = _two_arm_rows(adata, DESIGN, ("V1", "V3"))
-    assert len(caught) == 1
+    # the restriction warns once; warnings of other libraries are not counted
+    assert sum(EXCLUDED in str(w.message) for w in caught) == 1
     assert set(rows.obs["visit"].astype(str)) == {"V1", "V3"}
     assert set(rows.obs["arm"].astype(str)) == {"Treated", "Control"}
     with warnings.catch_warnings():
