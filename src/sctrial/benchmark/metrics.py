@@ -152,7 +152,7 @@ def compute_ci_coverage(
     """
     mask = ~(np.isnan(ci_lo) | np.isnan(ci_hi) | np.isnan(true))
     if mask.sum() == 0:
-        return None  # N/A — method does not produce intervals
+        return None  # N/A: method does not produce intervals
 
     lo = ci_lo[mask]
     hi = ci_hi[mask]

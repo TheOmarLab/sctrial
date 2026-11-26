@@ -742,7 +742,8 @@ def plot_trial_dotplot(
 ) -> Any:
     """Dotplot of features across cell types and trial arms.
 
-    Replicates the 'celltype_treatment' dotplot pattern.
+    Cells are grouped by cell type and, for two-arm designs, by arm
+    (control then treated) within each cell type.
 
     Parameters
     ----------
@@ -883,7 +884,7 @@ def plot_abundance_interaction(
     counts["n"] = counts["n"].fillna(0)
     counts["prop"] = counts["n"] / counts["total"]
 
-    # Filter for specific celltype — use merge to keep participant-visits
+    # Filter for specific celltype: use merge to keep participant-visits
     # that have zero cells of this type.
     pv_frame = obs.groupby(id_cols, observed=True).size().reset_index(name="_n").drop(columns="_n")
     ct_counts = counts[counts[design.celltype_col] == celltype].copy()

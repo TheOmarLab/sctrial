@@ -14,9 +14,9 @@ across studies with different scales.
 - Cohen's d: Standardized effect size for meta-analysis and interpretation
 - Bootstrap CI: Uncertainty quantification on any estimator
 
-**Recommendation**: Report BOTH standardized effect sizes (for interpretation/meta-analysis)
-AND confidence intervals (for statistical inference). Bootstrap CI on Cohen's d
-provides the best of both worlds.
+**Recommendation**: report both a standardized effect size (for interpretation and
+meta-analysis) and a confidence interval (for inference). A bootstrap confidence interval
+on Cohen's d supplies both from a single procedure.
 
 **Hedges' g vs Cohen's d**: Hedges' g applies a small-sample correction factor J
 (computed exactly from the gamma function; J ≈ 1 - 3/(4*df - 1) with df = n₁+n₂-2 is
@@ -520,8 +520,8 @@ def bootstrap_effect_size_ci(
 ) -> tuple[float, float, float]:
     """Compute effect size with bootstrap confidence interval.
 
-    This provides the most robust CI for effect sizes, especially
-    with non-normal distributions or small samples.
+    The percentile bootstrap does not assume a parametric sampling distribution
+    for the effect size, which is useful with non-normal data or small samples.
 
     Parameters
     ----------

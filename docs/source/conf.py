@@ -1,13 +1,15 @@
 import os
+import shutil
 import sys
 from datetime import datetime
+from pathlib import Path
 
 sys.path.insert(0, os.path.abspath("../../src"))
 
 project = "sctrial"
 copyright = f"{datetime.now().year}, Omar Lab, Cedars-Sinai Medical Center"
 author = "Omar Lab, Cedars-Sinai Medical Center"
-release = "1.1.0"
+release = "2.0.0"
 
 # -- Extensions ---------------------------------------------------------------
 
@@ -89,3 +91,26 @@ intersphinx_mapping = {
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
     "anndata": ("https://anndata.scverse.org/en/stable/", None),
 }
+
+# -- Feature clips -------------------------------------------------------------
+
+
+def _copy_feature_clips(app, exception):
+    """Copy the player of the study-design clips into the built site.
+
+    The Study Designs page plays the scenes of ``clips/web`` live; they are kept in one
+    place and copied at build time.
+    """
+    if exception is not None or app.builder.format != "html":
+        return
+    source = Path(__file__).resolve().parents[2] / "clips" / "web"
+    if not source.is_dir():
+        from sphinx.util import logging
+
+        logging.getLogger(__name__).warning("clips/web was not found: the Study Designs page has no player")
+        return
+    shutil.copytree(source, Path(app.outdir) / "_static" / "clips" / "web", dirs_exist_ok=True)
+
+
+def setup(app):
+    app.connect("build-finished", _copy_feature_clips)

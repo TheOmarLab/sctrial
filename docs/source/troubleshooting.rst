@@ -49,7 +49,7 @@ Missing Features Error
 
 **Solution**:
 
-1. Check that you've run ``score_gene_sets()`` before DiD analysis:
+1. Check that you've run ``score_gene_sets()`` before difference-in-differences (DiD) analysis:
 
 .. code-block:: python
 
@@ -175,18 +175,18 @@ Non-Significant Results
 
 **Problem**: No features reach statistical significance
 
-**Not necessarily a problem!** This could indicate:
+A non-significant result is itself a valid finding. It can reflect several situations:
 
-1. **No true treatment effect** - This is a valid scientific finding
-2. **Insufficient power** - Try:
+1. **No detectable treatment effect** - a non-significant result does not by itself establish that there is no effect
+2. **Limited sample size** - With few participants the cluster-robust Wald test is unreliable, and the wild cluster bootstrap gives better-calibrated p-values. This improves the validity of small-sample inference but does not increase statistical power:
 
 .. code-block:: python
 
-   # Use bootstrap for small samples
+   # Wild cluster bootstrap for few participants
    res = st.did_table(
        adata, features=features, design=design,
        visits=("V1", "V2"),
-       use_bootstrap=True,  # More robust for small N
+       use_bootstrap=True,  # better-calibrated p-values with few participants
        n_boot=999  # 999 is usually sufficient; use 9999 for final results
    )
 
@@ -211,7 +211,7 @@ Out of Memory Errors
 
 **Solutions**:
 
-1. **Use sparse layers** (often the biggest win):
+1. **Use sparse layers** (often the largest memory saving):
 
 .. code-block:: python
 
@@ -246,8 +246,8 @@ Out of Memory Errors
    adata = sc.read_h5ad("large_dataset.h5ad", backed='r')
    adata = adata[:, genes_of_interest].to_memory()
 
-4. **Use hardware with sufficient memory.** Do not subsample or downsample cells —
-   this distorts pseudobulk means, alters cell-type composition, and changes the
+4. **Use hardware with sufficient memory.** Do not subsample or downsample cells.
+   This distorts pseudobulk (participant-level aggregated) means, alters cell-type composition, and changes the
    per-group cell counts. See the :doc:`performance` guide for recommended hardware by dataset size.
 
 Performance Issues
@@ -317,7 +317,7 @@ Missing Plot Elements
 
    # Verify feature exists
    if "ms_OXPHOS" not in adata.obs.columns:
-       print("Feature not found!")
+       print("Feature not found")
 
 2. **Check visit filtering**:
 
@@ -348,7 +348,7 @@ Before running analysis, diagnose your data:
 
    # Check recommendations
    for r in diagnostics['recommendations']:
-       print(f"  💡 {r}")
+       print(f"  - {r}")
 
 Validate Before Analysis
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -361,9 +361,9 @@ Validate Before Analysis
    if issues:
        print("Validation issues:")
        for issue in issues:
-           print(f"  ⚠️  {issue}")
+           print(f"  - {issue}")
    else:
-       print("✓ Data validated successfully!")
+       print("No validation issues found")
 
 Common Error Messages
 ---------------------

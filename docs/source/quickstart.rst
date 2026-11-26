@@ -1,7 +1,7 @@
 Quickstart
 ==========
 
-`sctrial` provides a streamlined, trial‑aware API for single‑cell clinical studies.
+`sctrial` provides a trial‑aware API for the analysis of single‑cell data from clinical studies.
 
 Minimal end‑to‑end example
 --------------------------
@@ -41,7 +41,7 @@ Minimal end‑to‑end example
        prefix="ms_",
    )
 
-   # 4. Run DiD
+   # 4. Run difference-in-differences (DiD)
    res = st.did_table(
        adata,
        features=["ms_Signature1"],
@@ -128,6 +128,6 @@ Common add‑ons
 Next steps
 ----------
 
-- :doc:`tutorials/example_vaccine_immport` — vaccine trial with paired longitudinal data.
-- :doc:`tutorials/example_immunotherapy_sade_feldman` — immunotherapy observational study.
-- :doc:`tutorials/example_covid19_stephenson` — COVID-19 cross-sectional severity comparison.
+- :doc:`tutorials/example_vaccine_immport`: vaccine trial with paired longitudinal data.
+- :doc:`tutorials/example_immunotherapy_sade_feldman`: immunotherapy observational study.
+- :doc:`tutorials/example_covid19_stephenson`: COVID-19 cross-sectional severity comparison.

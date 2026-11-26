@@ -1,4 +1,4 @@
-sctrial — Design-Aware Participant-Level Inference for Longitudinal Single-Cell Studies
+sctrial: Design-Aware Participant-Level Inference for Longitudinal Single-Cell Studies
 ==============================================================================================
 
 .. image:: https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml/badge.svg?branch=main
@@ -14,13 +14,13 @@ sctrial — Design-Aware Participant-Level Inference for Longitudinal Single-Cel
 
 **sctrial** is a Python package for participant-level differential analysis of longitudinal
 single-cell RNA-seq data. Built on `AnnData <https://anndata.readthedocs.io>`_, it
-aggregates cell-level measurements to participant-level replicates and applies
-design-specific statistical methods — difference-in-differences, paired contrasts, and
-cross-sectional comparisons — so that inference reflects the actual number of independent
+aggregates cell-level measurements to participant-level summaries (pseudobulk) and applies
+design-specific statistical methods (difference-in-differences, paired contrasts, and
+cross-sectional comparisons) so that inference reflects the actual number of independent
 biological units in the study.
 
 .. image:: _static/overview_figurev2.png
-   :alt: sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs
+   :alt: sctrial overview: from scRNA-seq input through trial-aware analysis to statistical outputs
    :width: 100%
    :align: center
 
@@ -28,14 +28,14 @@ Key Applications
 ----------------
 
 - **Difference-in-Differences (DiD)**: Participant fixed-effects regression for treatment
-  effect estimation across arms and timepoints, with cluster-robust inference by default
+  effect estimation across arms and time points, with cluster-robust inference by default
   and an optional wild cluster bootstrap for small cohorts.
 
-- **Paired within-arm contrasts**: Pre→post comparisons with paired statistical tests and
+- **Paired within-arm contrasts**: Baseline to post-treatment comparisons with paired statistical tests and
   effect sizes (Cohen's d, Hedges' g).
 
-- **Between-arm comparisons**: Cross-sectional tests between treatment and control arms at
-  fixed timepoints with pseudobulk replication.
+- **Between-group comparisons**: Cross-sectional tests between two groups at a fixed time
+  point, with cells aggregated to one value per participant.
 
 - **Cell-type abundance**: Composition changes across conditions using proportion-based
   statistics and participant-level aggregation.
@@ -86,6 +86,7 @@ If you use **sctrial** in your research, please cite:
    :hidden:
    :caption: Getting Started
 
+   study_designs
    installation
    quickstart
    concepts

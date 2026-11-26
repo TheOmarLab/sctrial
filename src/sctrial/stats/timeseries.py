@@ -42,7 +42,7 @@ Key Assumptions
 1. Parallel trends in pre-treatment period (for causal inference)
 2. No anticipation effects
 3. Treatment effect timing is correctly specified
-4. Panel is balanced or missingness is random (MCAR)
+4. Panel is balanced or data are missing completely at random (MCAR)
 """
 
 from __future__ import annotations

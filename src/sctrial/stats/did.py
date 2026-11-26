@@ -58,7 +58,7 @@ class DiDConfig:
     use_bootstrap: bool = False
     """If True, use wild cluster bootstrap for p-values."""
     n_boot: int = 999
-    """Number of bootstrap permutations."""
+    """Number of bootstrap replicates."""
     seed: int = 42
     """Random seed for bootstrap reproducibility."""
     exclude_crossovers: bool = True
@@ -446,7 +446,7 @@ def did_fit(
         If True, z-score the outcome before fitting (recommended for
         interpretable effect sizes).
     use_bootstrap : bool
-        If True, use Wild Cluster Bootstrap for p-values (recommended
+        If True, use the wild cluster bootstrap for p-values (recommended
         when n_participants < 15).
     n_boot : int
         Number of bootstrap iterations (999 or 1999 for publication).
@@ -683,10 +683,10 @@ def did_table(
         group. Non-numeric covariates are aggregated with "first" and will raise
         an error if they vary within a participant-visit (or participant-visit-celltype).
     use_bootstrap
-        If True, uses Wild Cluster Bootstrap to calculate p-values. Recommended
+        If True, uses the wild cluster bootstrap to calculate p-values. Recommended
         for small sample sizes (e.g. < 15 participants per group).
     n_boot
-        Number of bootstrap permutations.
+        Number of bootstrap replicates.
     seed
         Random seed for bootstrap.
     weight_col
@@ -709,8 +709,8 @@ def did_table(
     -------
     pd.DataFrame
         One row per feature with the interaction estimate (``beta_DiD``), analytical
-        95% confidence interval (``ci_lo_DiD``, ``ci_hi_DiD``), p-value and
-        FDR-corrected significance.
+        95% confidence interval (``ci_lo_DiD``, ``ci_hi_DiD``), p-value (``p_DiD``),
+        and Benjamini-Hochberg FDR-adjusted p-value (``FDR_DiD``).
 
     Examples
     --------
@@ -1034,7 +1034,7 @@ def did_table_by_celltype(
     covariates
         Obs columns to include as covariates.
     use_bootstrap
-        Use Wild Cluster Bootstrap for p-values.
+        Use the wild cluster bootstrap for p-values.
     n_boot
         Number of bootstrap iterations.
     seed

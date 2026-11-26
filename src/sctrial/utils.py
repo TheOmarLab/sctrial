@@ -103,7 +103,7 @@ def ensure_unique_index(df: pd.DataFrame, *, agg: str = "mean") -> pd.DataFrame:
     df
         DataFrame to ensure unique index.
     agg
-        Aggregation method: "mean" or "sum" (extend later if needed).
+        Aggregation method: "mean" or "sum".
     Returns
     -------
     pd.DataFrame

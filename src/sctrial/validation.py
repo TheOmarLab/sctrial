@@ -27,7 +27,7 @@ __all__ = [
 
 
 class TrialDataValidator:
-    """Comprehensive validation for trial analysis data."""
+    """Validation checks for trial analysis data."""
 
     @staticmethod
     def validate_adata(
@@ -225,7 +225,7 @@ def diagnose_trial_data(
     design: TrialDesign,
     verbose: bool = True,
 ) -> dict[str, Any]:
-    """Comprehensive diagnostic report for trial data.
+    """Diagnostic report for trial data.
 
     Parameters
     ----------

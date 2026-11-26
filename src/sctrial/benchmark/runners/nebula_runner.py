@@ -1,7 +1,7 @@
 """NEBULA runner for cell-level benchmarking.
 
 NEBULA is a subject-aware negative binomial mixed model (NBLMM)
-that operates at the cell level — it does NOT aggregate to pseudobulk.
+that operates at the cell level; it does not aggregate to pseudobulk.
 This makes it a distinct methodological class from edgeR/limma/dreamlet.
 
 Requires: install.packages("nebula") in R.
