@@ -104,6 +104,11 @@ def _copy_feature_clips(app, exception):
     if exception is not None or app.builder.format != "html":
         return
     source = Path(__file__).resolve().parents[2] / "clips" / "web"
+    if not source.is_dir():
+        from sphinx.util import logging
+
+        logging.getLogger(__name__).warning("clips/web was not found: the Study Designs page has no player")
+        return
     shutil.copytree(source, Path(app.outdir) / "_static" / "clips" / "web", dirs_exist_ok=True)
 
 

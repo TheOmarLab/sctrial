@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/source/_static/logo.svg" alt="sctrial" width="280">
+  <img src="https://raw.githubusercontent.com/TheOmarLab/sctrial/main/docs/source/_static/logo.svg" alt="sctrial" width="280">
 </p>
 <p align="center"><strong>Design-Aware Participant-Level Inference for Longitudinal Single-Cell Studies</strong></p>
 
@@ -37,7 +37,7 @@
 - **Effect size** estimation with confidence intervals
 
 <p align="center">
-  <img src="docs/source/_static/overview_figurev2.png" alt="sctrial overview: from scRNA-seq input through trial-aware analysis to statistical outputs" width="100%">
+  <img src="https://raw.githubusercontent.com/TheOmarLab/sctrial/main/docs/source/_static/overview_figurev2.png" alt="sctrial overview: from scRNA-seq input through trial-aware analysis to statistical outputs" width="100%">
 </p>
 
 ## Study Designs
@@ -45,17 +45,17 @@
 sctrial matches the analysis to the design of the study. A two-arm longitudinal study is analyzed with a difference-in-differences, a single-arm longitudinal study with the within-participant change, and a cross-sectional study with a comparison of two groups at one time point. In every design the unit of inference is the participant.
 
 <p align="center">
-  <img src="docs/source/_static/clips/reel.gif" alt="Schematic animation of five sctrial capabilities: two-arm longitudinal and single-arm longitudinal designs, cross-sectional comparison, repeated visits, and small-cohort inference" width="100%">
+  <img src="https://raw.githubusercontent.com/TheOmarLab/sctrial/main/docs/source/_static/clips/reel.gif" alt="Schematic animation of five sctrial capabilities: two-arm longitudinal and single-arm longitudinal designs, cross-sectional comparison, repeated visits, and small-cohort inference" width="100%">
 </p>
 
 <table>
   <tr>
-    <td width="50%"><strong>Participant-level inference</strong><br><img src="docs/source/_static/clips/participants.gif" alt="The cells of each participant at each visit are summarized as one value" width="100%"></td>
-    <td width="50%"><strong>Incomplete and unbalanced data</strong><br><img src="docs/source/_static/clips/incomplete.gif" alt="Participants observed at one visit and participants of an arm outside the design do not enter the paired comparison" width="100%"></td>
+    <td width="50%"><strong>Participant-level inference</strong><br><img src="https://raw.githubusercontent.com/TheOmarLab/sctrial/main/docs/source/_static/clips/participants.gif" alt="The cells of each participant at each visit are summarized as one value" width="100%"></td>
+    <td width="50%"><strong>Incomplete and unbalanced data</strong><br><img src="https://raw.githubusercontent.com/TheOmarLab/sctrial/main/docs/source/_static/clips/incomplete.gif" alt="Participants observed at one visit and participants of an arm outside the design do not enter the paired comparison" width="100%"></td>
   </tr>
   <tr>
-    <td width="50%"><strong>Cell-type-specific analysis</strong><br><img src="docs/source/_static/clips/cell-types.gif" alt="The cells of a sample are split by cell type, each participant contributes one value per cell type, and one estimate with its confidence interval is obtained per cell type" width="100%"></td>
-    <td width="50%"><strong>Power and sample size</strong><br><img src="docs/source/_static/clips/power.gif" alt="Power increases with the number of participants per arm until it reaches the target" width="100%"></td>
+    <td width="50%"><strong>Cell-type-specific analysis</strong><br><img src="https://raw.githubusercontent.com/TheOmarLab/sctrial/main/docs/source/_static/clips/cell-types.gif" alt="The cells of a sample are split by cell type, each participant contributes one value per cell type, and one estimate with its confidence interval is obtained per cell type" width="100%"></td>
+    <td width="50%"><strong>Power and sample size</strong><br><img src="https://raw.githubusercontent.com/TheOmarLab/sctrial/main/docs/source/_static/clips/power.gif" alt="Power increases with the number of participants per arm until it reaches the target" width="100%"></td>
   </tr>
 </table>
 
@@ -144,14 +144,14 @@ sctrial includes loaders (`st.load_*()`) for six real datasets from clinical tri
 
 | Design | Description | Dataset | Source | Tutorial |
 |--------|-------------|---------|--------|----------|
-| **Two-group paired DiD** | Pre/post × responder/non-responder group interaction | Sade-Feldman et al., *Cell* 2018, melanoma immunotherapy | [GSE120575](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575) | [Immunotherapy](tutorials/example_immunotherapy_sade_feldman.ipynb) |
-| **Two-arm paired DiD** | Pre/post × treatment/control interaction | Zhang et al., *Cell* 2021, TNBC immunotherapy (anti-PD-L1+Chemo vs Chemo) | [GSE169246](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE169246) | [TNBC](tutorials/example_tnbc_zhang.ipynb) |
-| **Single-arm pre/post** | Paired within-arm contrasts over time | ImmPort GSE171964, PBMC vaccine response | [GSE171964](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE171964) | [Vaccine](tutorials/example_vaccine_immport.ipynb) |
+| **Two-group paired DiD** | Pre/post × responder/non-responder group interaction | Sade-Feldman et al., *Cell* 2018, melanoma immunotherapy | [GSE120575](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120575) | [Immunotherapy](https://github.com/TheOmarLab/sctrial/blob/main/tutorials/example_immunotherapy_sade_feldman.ipynb) |
+| **Two-arm paired DiD** | Pre/post × treatment/control interaction | Zhang et al., *Cell* 2021, TNBC immunotherapy (anti-PD-L1+Chemo vs Chemo) | [GSE169246](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE169246) | [TNBC](https://github.com/TheOmarLab/sctrial/blob/main/tutorials/example_tnbc_zhang.ipynb) |
+| **Single-arm pre/post** | Paired within-arm contrasts over time | ImmPort GSE171964, PBMC vaccine response | [GSE171964](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE171964) | [Vaccine](https://github.com/TheOmarLab/sctrial/blob/main/tutorials/example_vaccine_immport.ipynb) |
 | **Single-arm pre/post** | Paired within-arm contrasts across several time points | van Galen et al., *Cell* 2019, AML chemotherapy | [GSE116256](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE116256) | Not available |
 | **Single-arm, several time points** | Longitudinal tracking across 4 visits | GSE290722, CAR-T cell therapy (ZUMA-1) | [GSE290722](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE290722) | Not available |
-| **Cross-sectional between-group** | Between-group comparison at one time point | Stephenson et al., *Nature Medicine* 2021, COVID-19 severity | [E-MTAB-10026](https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-10026) | [COVID-19](tutorials/example_covid19_stephenson.ipynb) |
+| **Cross-sectional between-group** | Between-group comparison at one time point | Stephenson et al., *Nature Medicine* 2021, COVID-19 severity | [E-MTAB-10026](https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-10026) | [COVID-19](https://github.com/TheOmarLab/sctrial/blob/main/tutorials/example_covid19_stephenson.ipynb) |
 
-Additional tutorial: [Scalability Benchmark](tutorials/stress_test_real_scale.ipynb), performance testing on the Sade-Feldman dataset.
+Additional tutorial: [Scalability Benchmark](https://github.com/TheOmarLab/sctrial/blob/main/tutorials/stress_test_real_scale.ipynb), performance testing on the Sade-Feldman dataset.
 
 ## Documentation
 
@@ -180,4 +180,4 @@ If you use **sctrial** in your research, please cite:
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License - see [LICENSE](https://github.com/TheOmarLab/sctrial/blob/main/LICENSE) for details.
