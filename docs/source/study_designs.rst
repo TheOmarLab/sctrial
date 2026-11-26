@@ -5,7 +5,8 @@ Study Designs
 
 sctrial matches the analysis to the design of the study. Each clip below illustrates one design or
 one property of the analysis. The clips are schematic: a sphere stands for one participant, a small
-dot for one cell, and no clip shows data. Select an item to play it.
+dot for one cell, a capped bar for a confidence interval and a double-headed arrow for a contrast
+between two levels. No clip shows data. Select an item to play it.
 
 .. raw:: html
 

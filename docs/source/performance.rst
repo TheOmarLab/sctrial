@@ -13,8 +13,10 @@ Performance Overview
 Typical Performance
 ~~~~~~~~~~~~~~~~~~~
 
-With participant-level aggregation (the default), a DiD table costs one pass over the
-cells to aggregate them and one small regression per feature.
+With participant-level aggregation (the default), a difference-in-differences (DiD)
+table costs one pass over the cells to aggregate them and one regression per feature.
+Here DiD is the change from baseline in one arm minus the change from baseline in the
+other arm.
 
 The :doc:`stress test tutorial <tutorials/stress_test_real_scale>` reports measured run
 times and memory for a real cohort at several numbers of genes and cells. Datasets
@@ -23,14 +25,18 @@ with more than a million cells usually need the strategies below.
 Optimization Strategies
 -----------------------
 
-1. Use Pseudobulk Aggregation (Most Important!)
+1. Aggregate to Pseudobulk
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Always use** ``aggregate="participant_visit"`` (the default):
+Pseudobulk aggregation reduces each participant's cells within a visit to a single value
+per feature, by default their mean, giving one row per participant and visit before
+testing. This avoids pseudoreplication (treating cells from one participant as
+independent observations) and is faster than fitting at the cell level. Use the default
+``aggregate="participant_visit"``:
 
 .. code-block:: python
 
-   # ✓ FAST: Aggregates to ~100-1000 participant-visit combinations
+   # Aggregates to roughly 100 to 1000 participant-visit combinations
    res = st.did_table(
        adata,
        features=features,
@@ -43,7 +49,7 @@ Optimization Strategies
 
 .. code-block:: python
 
-   # ✗ SLOW: Fits regression on millions of cells
+   # Fits each regression on all cells (millions of rows)
    res = st.did_table(
        adata,
        features=features,
@@ -60,7 +66,7 @@ and visit instead of one row per cell.
 
 .. code-block:: python
 
-   # ✓ FAST: Test 10-50 gene sets
+   # Test 10 to 50 gene sets
    gene_sets = {
        "OXPHOS": ["COX7A1", "ATP5F1A", ...],
        "Glycolysis": ["PKM", "LDHA", ...],
@@ -76,7 +82,7 @@ vs.
 
 .. code-block:: python
 
-   # ✗ SLOWER: Test all ~20,000 genes
+   # Test all ~20,000 genes
    features = adata.var_names.tolist()
    res = st.did_table(adata, features=features, design=design, visits=("V1", "V2"))
 
@@ -116,7 +122,7 @@ For many features, use ``did_table_parallel()`` to distribute work across CPU co
        n_jobs=4  # Number of CPU cores
    )
 
-**Performance impact**: Near-linear speedup with core count
+**Performance impact**: speedup is roughly proportional to the number of cores when the features greatly outnumber the cores
 
 .. note::
 
@@ -169,7 +175,7 @@ Workflow for 1M+ Cells
        n_jobs=4
    )
 
-   print(f"Analysis complete! Tested {len(features)} features.")
+   print(f"Analysis complete. Tested {len(features)} features.")
 
 Batch Processing
 ~~~~~~~~~~~~~~~~
@@ -303,7 +309,7 @@ Optimize GSEA Analysis
    import scanpy as sc
    sc.pp.filter_genes(adata, min_counts=50)
 
-   # 2. Reduce permutations for speed (at cost of precision)
+   # 2. Reduce permutations for speed (coarser p-value resolution)
    res = st.run_gsea_did(
        adata,
        gene_sets="KEGG_2021_Human",
@@ -456,24 +462,24 @@ Before running large-scale analysis:
 
 .. code-block:: python
 
-   # ✓ 1. Check data format
+   # 1. Check data format
    import scipy.sparse as sp
-   assert sp.issparse(adata.X), "Convert to sparse!"
+   assert sp.issparse(adata.X), "adata.X is not sparse; convert it to a sparse matrix"
 
-   # ✓ 2. Use pseudobulk
-   aggregate = "participant_visit"  # Not "cell"!
+   # 2. Use pseudobulk aggregation
+   aggregate = "participant_visit"  # not "cell"
 
-   # ✓ 3. Analyze gene sets, not all genes
+   # 3. Analyze gene sets rather than all genes
    n_features = len(features)
-   assert n_features < 1000, f"Too many features ({n_features}), use gene sets!"
+   assert n_features < 1000, f"{n_features} features is large; consider gene-set scoring"
 
-   # ✓ 4. Use parallelization for many features
+   # 4. Use parallelization for many features
    # res = st.did_table_parallel(adata, features, design, visits, n_jobs=4)
 
-   # ✓ 5. Monitor memory
+   # 5. Monitor memory
    print_memory_usage()
 
-   # NOW run analysis
+   # Run the analysis
    res = st.did_table(
        adata,
        features=features,

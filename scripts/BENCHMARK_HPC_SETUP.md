@@ -151,11 +151,11 @@ are saved as they finish, so partial results are preserved if the job times out.
 
 ## How the Code Is Used
 
-sctrial is installed as an **editable install** (`pip install -e .`). This means Python imports directly from `src/sctrial/` in your repo checkout — **the branch you have checked out is the code that runs**. After pulling changes:
+sctrial is installed as an **editable install** (`pip install -e .`). This means Python imports directly from `src/sctrial/` in your repo checkout, so **the branch you have checked out is the code that runs**. After pulling changes:
 
 ```bash
 git pull
-# No reinstall needed — editable install picks up changes automatically
+# No reinstall needed: the editable install picks up changes automatically
 sbatch scripts/slurm_benchmark.sh sensitivity 200 two_arm
 ```
 

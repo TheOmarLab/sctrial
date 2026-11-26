@@ -1,4 +1,4 @@
-sctrial — Design-Aware Participant-Level Inference for Longitudinal Single-Cell Studies
+sctrial: Design-Aware Participant-Level Inference for Longitudinal Single-Cell Studies
 ==============================================================================================
 
 .. image:: https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml/badge.svg?branch=main
@@ -20,7 +20,7 @@ cross-sectional comparisons) so that inference reflects the actual number of ind
 biological units in the study.
 
 .. image:: _static/overview_figurev2.png
-   :alt: sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs
+   :alt: sctrial overview: from scRNA-seq input through trial-aware analysis to statistical outputs
    :width: 100%
    :align: center
 
@@ -34,7 +34,7 @@ Key Applications
 - **Paired within-arm contrasts**: Baseline to post-treatment comparisons with paired statistical tests and
   effect sizes (Cohen's d, Hedges' g).
 
-- **Between-arm comparisons**: Cross-sectional tests between treatment and control arms at a fixed time
+- **Between-group comparisons**: Cross-sectional tests between two groups at a fixed time
   point, with cells aggregated to one value per participant.
 
 - **Cell-type abundance**: Composition changes across conditions using proportion-based
