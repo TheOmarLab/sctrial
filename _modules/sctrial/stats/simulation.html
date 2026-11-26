@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.stats.simulation &#8212; sctrial 1.1.0 documentation</title>
+    <title>sctrial.stats.simulation &#8212; sctrial 2.0.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../../_static/documentation_options.js?v=2a705162"></script>
+    <script src="../../../_static/documentation_options.js?v=79f5c508"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -123,8 +123,8 @@
       
     
     
-    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
-    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 2.0.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 2.0.0 documentation - Home"/>
   
   
 </a></div>
@@ -276,6 +276,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../study_designs.html">Study Designs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../concepts.html">Concepts and Methods</a></li>
@@ -595,7 +596,7 @@
     <span class="n">methods</span><span class="p">,</span>
     <span class="n">sim_kwargs</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">"""Inner implementation — called inside a ``catch_warnings`` context."""</span>
+<span class="w">    </span><span class="sd">"""Inner implementation, called inside a ``catch_warnings`` context."""</span>
     <span class="n">sim</span> <span class="o">=</span> <span class="n">simulate_did_data</span><span class="p">(</span>
         <span class="n">n_participants</span><span class="o">=</span><span class="n">n_participants</span><span class="p">,</span>
         <span class="n">n_genes</span><span class="o">=</span><span class="n">n_genes</span><span class="p">,</span>
@@ -807,7 +808,7 @@
         <span class="p">)</span>
     <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-        <span class="c1"># Skip non-converged fits — their coefficients are unreliable</span>
+        <span class="c1"># Skip non-converged fits: their coefficients are unreliable</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"converged"</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Mixed DiD did not converge for </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">row</span><span class="p">[</span><span class="s2">"feature"</span><span class="p">])</span>
             <span class="k">continue</span>

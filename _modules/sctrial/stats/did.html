@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.stats.did &#8212; sctrial 1.1.0 documentation</title>
+    <title>sctrial.stats.did &#8212; sctrial 2.0.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../../_static/documentation_options.js?v=2a705162"></script>
+    <script src="../../../_static/documentation_options.js?v=79f5c508"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -123,8 +123,8 @@
       
     
     
-    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
-    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 2.0.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 2.0.0 documentation - Home"/>
   
   
 </a></div>
@@ -276,6 +276,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../study_designs.html">Study Designs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../concepts.html">Concepts and Methods</a></li>
@@ -430,7 +431,7 @@
     <span class="n">use_bootstrap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 <span class="w">    </span><span class="sd">"""If True, use wild cluster bootstrap for p-values."""</span>
     <span class="n">n_boot</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">999</span>
-<span class="w">    </span><span class="sd">"""Number of bootstrap permutations."""</span>
+<span class="w">    </span><span class="sd">"""Number of bootstrap replicates."""</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="w">    </span><span class="sd">"""Random seed for bootstrap reproducibility."""</span>
     <span class="n">exclude_crossovers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
@@ -820,7 +821,7 @@
 <span class="sd">        If True, z-score the outcome before fitting (recommended for</span>
 <span class="sd">        interpretable effect sizes).</span>
 <span class="sd">    use_bootstrap : bool</span>
-<span class="sd">        If True, use Wild Cluster Bootstrap for p-values (recommended</span>
+<span class="sd">        If True, use the wild cluster bootstrap for p-values (recommended</span>
 <span class="sd">        when n_participants &lt; 15).</span>
 <span class="sd">    n_boot : int</span>
 <span class="sd">        Number of bootstrap iterations (999 or 1999 for publication).</span>
@@ -1056,10 +1057,10 @@
 <span class="sd">        group. Non-numeric covariates are aggregated with "first" and will raise</span>
 <span class="sd">        an error if they vary within a participant-visit (or participant-visit-celltype).</span>
 <span class="sd">    use_bootstrap</span>
-<span class="sd">        If True, uses Wild Cluster Bootstrap to calculate p-values. Recommended</span>
+<span class="sd">        If True, uses the wild cluster bootstrap to calculate p-values. Recommended</span>
 <span class="sd">        for small sample sizes (e.g. &lt; 15 participants per group).</span>
 <span class="sd">    n_boot</span>
-<span class="sd">        Number of bootstrap permutations.</span>
+<span class="sd">        Number of bootstrap replicates.</span>
 <span class="sd">    seed</span>
 <span class="sd">        Random seed for bootstrap.</span>
 <span class="sd">    weight_col</span>
@@ -1081,8 +1082,8 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame</span>
-<span class="sd">        Table with one row per feature containing beta_DiD, p_DiD, and</span>
-<span class="sd">        FDR-corrected significance.</span>
+<span class="sd">        Table with one row per feature containing beta_DiD, p_DiD, and the Benjamini-Hochberg false discovery</span>
+<span class="sd">        rate (FDR)-adjusted p-value (column ``FDR_DiD``).</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -1415,7 +1416,7 @@
 <span class="sd">    covariates</span>
 <span class="sd">        Obs columns to include as covariates.</span>
 <span class="sd">    use_bootstrap</span>
-<span class="sd">        Use Wild Cluster Bootstrap for p-values.</span>
+<span class="sd">        Use the wild cluster bootstrap for p-values.</span>
 <span class="sd">    n_boot</span>
 <span class="sd">        Number of bootstrap iterations.</span>
 <span class="sd">    seed</span>

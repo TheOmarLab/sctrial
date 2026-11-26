@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sctrial: study designs</title>
+<link rel="stylesheet" href="player.css">
+<style>
+  html, body { margin:0; }
+  body { background:#f3f3f1; color:#1b1c1e; font:16px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+  header, main { max-width:1400px; margin:0 auto; padding:0 24px; }
+  header { padding-top:44px; }
+  h1 { font-size:34px; font-weight:600; letter-spacing:-.015em; margin:0 0 6px; }
+  header p { color:#6a6e75; max-width:820px; margin:0; }
+  main { margin-top:26px; margin-bottom:70px; }
+  #features .sct-player { top:24px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Study designs in sctrial</h1>
+  <p>Each clip illustrates how sctrial analyzes one kind of study. The clips are schematic: a sphere stands for one participant, a small dot for one cell, and no clip shows data.</p>
+</header>
+<main><div id="features"></div></main>
+<script src="studio.js"></script>
+<script src="player.js"></script>
+<script>
+  if (!new URLSearchParams(location.search).has("capture")) {
+    window.Studio.mount(document.getElementById("features")).catch((error) => console.error("sctrial features:", error));
+  }
+</script>
+</body>
+</html>

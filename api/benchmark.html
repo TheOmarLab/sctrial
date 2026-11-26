@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Benchmark Simulation &#8212; sctrial 1.1.0 documentation</title>
+    <title>Benchmark Simulation &#8212; sctrial 2.0.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../_static/documentation_options.js?v=2a705162"></script>
+    <script src="../_static/documentation_options.js?v=79f5c508"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -128,8 +128,8 @@
       
     
     
-    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
-    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 2.0.0 documentation - Home"/>
+    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 2.0.0 documentation - Home"/>
   
   
 </a></div>
@@ -285,6 +285,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../study_designs.html">Study Designs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts.html">Concepts and Methods</a></li>
@@ -390,8 +391,8 @@ gene <code class="docutils literal notranslate"><span class="pre">g</span></code
 <p>with <span class="math notranslate nohighlight">\(Y \sim \mathrm{NB}(\mu, \phi_g)\)</span> and
 <span class="math notranslate nohighlight">\(\mathrm{Var} = \mu + \phi_g \mu^2\)</span>. The full transcriptome is simulated;
 analysis panels are drawn from it as nested subsets of the detectable genes, so
-normalisation and library-size offsets see the whole transcriptome exactly as a
-real workflow would.</p>
+normalization and library-size offsets are computed from the whole transcriptome,
+exactly as in a real workflow.</p>
 <section id="simulator">
 <h2>Simulator<a class="headerlink" href="#simulator" title="Link to this heading">#</a></h2>
 <dl class="py class">
@@ -400,7 +401,7 @@ real workflow would.</p>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Configuration for the transcriptome-scale simulator.</p>
 <p>Defaults are the TNBC-calibrated values. Every one is an empirical quantity, so
-a run with defaults is a calibrated run — the previous design’s defaults were
+a run with defaults is a calibrated run; the previous design’s defaults were
 arbitrary and silently used whenever calibration was not threaded through.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="sctrial.benchmark.TranscriptomeSimConfig.participant_sd">
@@ -475,7 +476,7 @@ Never use as an analysis input.</p>
 <dt><code class="docutils literal notranslate"><span class="pre">balanced</span></code> (primary)</dt><dd><p>Half +magnitude, half -magnitude. No net directional shift, so the library
 size is unmoved and there is no compositional artifact.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">heterogeneous</span></code> (primary)</dt><dd><p>Symmetric mixture of weak/moderate/large effects — the most realistic.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">heterogeneous</span></code> (primary)</dt><dd><p>Symmetric mixture of weak/moderate/large effects, the most realistic.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">one_directional</span></code> (stress test)</dt><dd><p>All +magnitude. This is the previous design. Retain it, but label it a
 COMPOSITION-STRESS scenario: the coordinated shift moves the library-size
@@ -547,7 +548,7 @@ variability the standard error is meant to cover.</p>
 <span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.simulator_v2.</span></span><span class="sig-name descname"><span class="pre">load_empirical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/sctrial/benchmark/simulator_v2.html#load_empirical"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.benchmark.simulator_v2.load_empirical" title="Link to this definition">#</a></dt>
 <dd><p>Empirical TNBC nuisance pools (library sizes, cells per participant-visit).</p>
 <p>Returns None if absent, so the simulator falls back to the parametric fits
-rather than failing — but the fits are known to reproduce the library-size
+rather than failing, but the fits are known to reproduce the library-size
 distribution poorly, so the empirical file should normally be present.</p>
 </dd></dl>
 
@@ -834,7 +835,7 @@ analysis would see and are NOT calibration targets.</p>
 </section>
 <section id="validation-gates">
 <h2>Validation gates<a class="headerlink" href="#validation-gates" title="Link to this heading">#</a></h2>
-<p>Monte Carlo envelope tests (Gates A, B, C and E) that verify the simulator faithfully
+<p>Monte Carlo envelope tests (Gates A, B, C and E) that verify the simulator
 reproduces the empirical nuisance statistics it was calibrated against, and a
 composition ablation (Gate D).</p>
 <dl class="py data">
@@ -847,9 +848,9 @@ composition ablation (Gate D).</p>
 <dl class="py data">
 <dt class="sig sig-object py" id="sctrial.benchmark.gates.PINNED_STATISTICS">
 <span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.gates.</span></span><span class="sig-name descname"><span class="pre">PINNED_STATISTICS</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#frozenset" title="(in Python v3.15)"><span class="pre">frozenset</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#sctrial.benchmark.gates.PINNED_STATISTICS" title="Link to this definition">#</a></dt>
-<dd><p>Statistics that are near-deterministic readbacks of an empirical pool the
-simulator resamples. Agreement is true by construction; failure indicates an
-implementation defect, not a fidelity defect.</p>
+<dd><p>Statistics that are near-deterministic reflections of an empirical pool the
+simulator resamples. Agreement is true by construction, so a failure indicates
+an implementation defect rather than a fidelity defect.</p>
 </dd></dl>
 
 <dl class="py class">
@@ -1018,13 +1019,13 @@ not as a headline metric.</p>
 <dl class="py data">
 <dt class="sig sig-object py" id="sctrial.benchmark.endpoints.ALPHA">
 <span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.endpoints.</span></span><span class="sig-name descname"><span class="pre">ALPHA</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.05</span></em><a class="headerlink" href="#sctrial.benchmark.endpoints.ALPHA" title="Link to this definition">#</a></dt>
-<dd><p>Locked nominal significance threshold.</p>
+<dd><p>Pre-specified nominal significance level (the target Type I error rate).</p>
 </dd></dl>
 
 <dl class="py data">
 <dt class="sig sig-object py" id="sctrial.benchmark.endpoints.Q_FDR">
 <span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.endpoints.</span></span><span class="sig-name descname"><span class="pre">Q_FDR</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.05</span></em><a class="headerlink" href="#sctrial.benchmark.endpoints.Q_FDR" title="Link to this definition">#</a></dt>
-<dd><p>Locked Benjamini–Hochberg FDR threshold.</p>
+<dd><p>Pre-specified Benjamini-Hochberg false discovery rate (FDR) threshold.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -1198,7 +1199,7 @@ refuse a matrix with non-integer values.</p></li>
 <section id="ablation">
 <h2>Ablation<a class="headerlink" href="#ablation" title="Link to this heading">#</a></h2>
 <p>Estimator variants used to isolate the contribution of individual design
-choices (normalisation scope, aggregation level, fixed effects).</p>
+choices (normalization scope, aggregation level, fixed effects).</p>
 <dl class="py data">
 <dt class="sig sig-object py" id="sctrial.benchmark.ablation.ABLATION_VARIANTS">
 <span class="sig-prename descclassname"><span class="pre">sctrial.benchmark.ablation.</span></span><span class="sig-name descname"><span class="pre">ABLATION_VARIANTS</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#sctrial.benchmark.ablation.ABLATION_VARIANTS" title="Link to this definition">#</a></dt>

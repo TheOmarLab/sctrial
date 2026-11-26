@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Performance Guide &#8212; sctrial 1.1.0 documentation</title>
+    <title>Performance Guide &#8212; sctrial 2.0.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="_static/documentation_options.js?v=2a705162"></script>
+    <script src="_static/documentation_options.js?v=79f5c508"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -126,8 +126,8 @@
       
     
     
-    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
-    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 2.0.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 2.0.0 documentation - Home"/>
   
   
 </a></div>
@@ -283,6 +283,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="study_designs.html">Study Designs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="concepts.html">Concepts and Methods</a></li>
@@ -384,7 +385,7 @@
 </li>
 <li><p><a class="reference internal" href="#optimization-strategies" id="id3">Optimization Strategies</a></p>
 <ul>
-<li><p><a class="reference internal" href="#use-pseudobulk-aggregation-most-important" id="id4">1. Use Pseudobulk Aggregation (Most Important!)</a></p></li>
+<li><p><a class="reference internal" href="#aggregate-to-pseudobulk" id="id4">1. Aggregate to Pseudobulk</a></p></li>
 <li><p><a class="reference internal" href="#analyze-gene-sets-not-all-genes" id="id5">2. Analyze Gene Sets, Not All Genes</a></p></li>
 <li><p><a class="reference internal" href="#use-sparse-matrices" id="id6">3. Use Sparse Matrices</a></p></li>
 <li><p><a class="reference internal" href="#use-built-in-parallelization" id="id7">4. Use Built-in Parallelization</a></p></li>
@@ -431,8 +432,10 @@
 <h2><a class="toc-backref" href="#id1" role="doc-backlink">Performance Overview</a><a class="headerlink" href="#performance-overview" title="Link to this heading">#</a></h2>
 <section id="typical-performance">
 <h3><a class="toc-backref" href="#id2" role="doc-backlink">Typical Performance</a><a class="headerlink" href="#typical-performance" title="Link to this heading">#</a></h3>
-<p>With participant-level aggregation (the default), a DiD table costs one pass over the
-cells to aggregate them and one small regression per feature.</p>
+<p>With participant-level aggregation (the default), a difference-in-differences (DiD)
+table costs one pass over the cells to aggregate them and one regression per feature.
+Here DiD is the change from baseline in one arm minus the change from baseline in the
+other arm.</p>
 <p>The <a class="reference internal" href="tutorials/stress_test_real_scale.html"><span class="doc">stress test tutorial</span></a> reports measured run
 times and memory for a real cohort at several numbers of genes and cells. Datasets
 with more than a million cells usually need the strategies below.</p>
@@ -440,10 +443,14 @@ with more than a million cells usually need the strategies below.</p>
 </section>
 <section id="optimization-strategies">
 <h2><a class="toc-backref" href="#id3" role="doc-backlink">Optimization Strategies</a><a class="headerlink" href="#optimization-strategies" title="Link to this heading">#</a></h2>
-<section id="use-pseudobulk-aggregation-most-important">
-<h3><a class="toc-backref" href="#id4" role="doc-backlink">1. Use Pseudobulk Aggregation (Most Important!)</a><a class="headerlink" href="#use-pseudobulk-aggregation-most-important" title="Link to this heading">#</a></h3>
-<p><strong>Always use</strong> <code class="docutils literal notranslate"><span class="pre">aggregate=&quot;participant_visit&quot;</span></code> (the default):</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✓ FAST: Aggregates to ~100-1000 participant-visit combinations</span>
+<section id="aggregate-to-pseudobulk">
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">1. Aggregate to Pseudobulk</a><a class="headerlink" href="#aggregate-to-pseudobulk" title="Link to this heading">#</a></h3>
+<p>Pseudobulk aggregation reduces each participant’s cells within a visit to a single value
+per feature, by default their mean, giving one row per participant and visit before
+testing. This avoids pseudoreplication (treating cells from one participant as
+independent observations) and is faster than fitting at the cell level. Use the default
+<code class="docutils literal notranslate"><span class="pre">aggregate=&quot;participant_visit&quot;</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Aggregates to roughly 100 to 1000 participant-visit combinations</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
@@ -454,7 +461,7 @@ with more than a million cells usually need the strategies below.</p>
 </pre></div>
 </div>
 <p><strong>Avoid</strong> cell-level analysis for large datasets:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✗ SLOW: Fits regression on millions of cells</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Fits each regression on all cells (millions of rows)</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
@@ -469,7 +476,7 @@ and visit instead of one row per cell.</p>
 </section>
 <section id="analyze-gene-sets-not-all-genes">
 <h3><a class="toc-backref" href="#id5" role="doc-backlink">2. Analyze Gene Sets, Not All Genes</a><a class="headerlink" href="#analyze-gene-sets-not-all-genes" title="Link to this heading">#</a></h3>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✓ FAST: Test 10-50 gene sets</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Test 10 to 50 gene sets</span>
 <span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">"OXPHOS"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"COX7A1"</span><span class="p">,</span> <span class="s2">"ATP5F1A"</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
     <span class="s2">"Glycolysis"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"PKM"</span><span class="p">,</span> <span class="s2">"LDHA"</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
@@ -483,7 +490,7 @@ and visit instead of one row per cell.</p>
 </pre></div>
 </div>
 <p>vs.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✗ SLOWER: Test all ~20,000 genes</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Test all ~20,000 genes</span>
 <span class="n">features</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">))</span>
 </pre></div>
@@ -518,7 +525,7 @@ of a typical scRNA-seq count matrix.</p>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p><strong>Performance impact</strong>: Near-linear speedup with core count</p>
+<p><strong>Performance impact</strong>: speedup is roughly proportional to the number of cores when the features greatly outnumber the cores</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p><strong>Do not subsample or downsample cells</strong> to work around memory limits.
@@ -568,7 +575,7 @@ sufficient memory.</p>
     <span class="n">n_jobs</span><span class="o">=</span><span class="mi">4</span>
 <span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Analysis complete! Tested </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features."</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Analysis complete. Tested </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features."</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -695,7 +702,7 @@ sufficient memory.</p>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
 <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">filter_genes</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">min_counts</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
 
-<span class="c1"># 2. Reduce permutations for speed (at cost of precision)</span>
+<span class="c1"># 2. Reduce permutations for speed (coarser p-value resolution)</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">run_gsea_did</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">gene_sets</span><span class="o">=</span><span class="s2">"KEGG_2021_Human"</span><span class="p">,</span>
@@ -841,24 +848,24 @@ parallelize across cell types:</p>
 <section id="quick-performance-checklist">
 <h2><a class="toc-backref" href="#id24" role="doc-backlink">Quick Performance Checklist</a><a class="headerlink" href="#quick-performance-checklist" title="Link to this heading">#</a></h2>
 <p>Before running large-scale analysis:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✓ 1. Check data format</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1. Check data format</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
-<span class="k">assert</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="p">),</span> <span class="s2">"Convert to sparse!"</span>
+<span class="k">assert</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="p">),</span> <span class="s2">"adata.X is not sparse; convert it to a sparse matrix"</span>
 
-<span class="c1"># ✓ 2. Use pseudobulk</span>
-<span class="n">aggregate</span> <span class="o">=</span> <span class="s2">"participant_visit"</span>  <span class="c1"># Not "cell"!</span>
+<span class="c1"># 2. Use pseudobulk aggregation</span>
+<span class="n">aggregate</span> <span class="o">=</span> <span class="s2">"participant_visit"</span>  <span class="c1"># not "cell"</span>
 
-<span class="c1"># ✓ 3. Analyze gene sets, not all genes</span>
+<span class="c1"># 3. Analyze gene sets rather than all genes</span>
 <span class="n">n_features</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">n_features</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"Too many features (</span><span class="si">{</span><span class="n">n_features</span><span class="si">}</span><span class="s2">), use gene sets!"</span>
+<span class="k">assert</span> <span class="n">n_features</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_features</span><span class="si">}</span><span class="s2"> features is large; consider gene-set scoring"</span>
 
-<span class="c1"># ✓ 4. Use parallelization for many features</span>
+<span class="c1"># 4. Use parallelization for many features</span>
 <span class="c1"># res = st.did_table_parallel(adata, features, design, visits, n_jobs=4)</span>
 
-<span class="c1"># ✓ 5. Monitor memory</span>
+<span class="c1"># 5. Monitor memory</span>
 <span class="n">print_memory_usage</span><span class="p">()</span>
 
-<span class="c1"># NOW run analysis</span>
+<span class="c1"># Run the analysis</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
@@ -920,7 +927,7 @@ parallelize across cell types:</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#optimization-strategies">Optimization Strategies</a><ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#use-pseudobulk-aggregation-most-important">1. Use Pseudobulk Aggregation (Most Important!)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#aggregate-to-pseudobulk">1. Aggregate to Pseudobulk</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#analyze-gene-sets-not-all-genes">2. Analyze Gene Sets, Not All Genes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#use-sparse-matrices">3. Use Sparse Matrices</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#use-built-in-parallelization">4. Use Built-in Parallelization</a></li>

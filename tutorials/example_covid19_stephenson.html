@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis &#8212; sctrial 1.1.0 documentation</title>
+    <title>Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis &#8212; sctrial 2.0.0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../_static/documentation_options.js?v=2a705162"></script>
+    <script src="../_static/documentation_options.js?v=79f5c508"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -129,8 +129,8 @@
       
     
     
-    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
-    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 2.0.0 documentation - Home"/>
+    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 2.0.0 documentation - Home"/>
   
   
 </a></div>
@@ -286,6 +286,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../study_designs.html">Study Designs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts.html">Concepts and Methods</a></li>
@@ -382,10 +383,10 @@
 <p><strong>Dataset</strong>: Stephenson et al., Nature Medicine 2021 (E-MTAB-10026)</p>
 <section id="Background">
 <h2>Background<a class="headerlink" href="#Background" title="Link to this heading">#</a></h2>
-<p>Stephenson et al. profiled peripheral blood mononuclear cells (PBMCs) from COVID-19 patients across severity groups and timepoints, providing insights into immune dynamics during disease progression.</p>
+<p>Stephenson et al. profiled peripheral blood mononuclear cells (PBMCs) from COVID-19 patients across severity groups and time points, providing insights into immune dynamics during disease progression.</p>
 <section id="Important-Methodological-Notes">
 <h3>Important Methodological Notes<a class="headerlink" href="#Important-Methodological-Notes" title="Link to this heading">#</a></h3>
-<p><strong>This is an OBSERVATIONAL study, not a randomized trial:</strong></p>
+<p><strong>This is an observational study, not a randomized trial:</strong></p>
 <ul class="simple">
 <li><p>Disease severity (Mild vs Severe) is an <strong>outcome</strong>, not a treatment assignment</p></li>
 <li><p>Patients are not randomly assigned to severity groups</p></li>
@@ -398,7 +399,7 @@
 <li><p><strong>Collection_Day</strong>: Calendar time since study enrollment - captures sampling schedule</p></li>
 <li><p>These are fundamentally different; we use DFO for biological interpretability</p></li>
 </ul>
-<p><strong>Analysis strategy:</strong> Given limited longitudinal pairing in this dataset, we focus on <strong>cross-sectional comparisons</strong> between severity groups at each timepoint, which is the most statistically appropriate approach.</p>
+<p><strong>Analysis strategy:</strong> Given limited longitudinal pairing in this dataset, we focus on <strong>cross-sectional comparisons</strong> between severity groups at each time point, which is the appropriate analytic choice here.</p>
 </section>
 </section>
 <section id="1.-Setup-and-Configuration">
@@ -407,11 +408,11 @@
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Imports - consolidated in one cell</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Imports</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">'ignore'</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">FutureWarning</span><span class="p">)</span>
-<span class="c1"># Note: We do NOT suppress UserWarning — sctrial issues important</span>
-<span class="c1"># statistical caveats (e.g. low-cluster reliability) as UserWarnings.</span>
+<span class="c1"># Note: we do not suppress UserWarning; sctrial issues important</span>
+<span class="c1"># statistical caveats (for example low-cluster reliability) as UserWarnings.</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
@@ -451,7 +452,7 @@
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-sctrial version: 1.1.0
+sctrial version: 2.0.0
 </pre></div></div>
 </div>
 </section>
@@ -507,7 +508,7 @@ Participants: 34
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Sample sizes by severity and timepoint</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Sample sizes by severity and time point</span>
 <span class="n">sample_sizes</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
     <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">"severity"</span><span class="p">,</span> <span class="s2">"dfo_bin"</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s2">"participant_id"</span><span class="p">]</span>
@@ -523,13 +524,13 @@ Participants: 34
 <span class="n">n_paired_dfo</span> <span class="o">=</span> <span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="s2">"dfo_bin"</span><span class="p">,</span> <span class="n">dfo_visits</span><span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Longitudinal pairing (DFO 0-7 → 8-14): </span><span class="si">{</span><span class="n">n_paired_dfo</span><span class="si">}</span><span class="s2"> participants"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Longitudinal pairing (DFO 0-7 to 8-14): </span><span class="si">{</span><span class="n">n_paired_dfo</span><span class="si">}</span><span class="s2"> participants"</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">n_paired_dfo</span> <span class="o">&lt;</span> <span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"⚠️  WARNING: Only </span><span class="si">{</span><span class="n">n_paired_dfo</span><span class="si">}</span><span class="s2"> paired participants available."</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"   Difference-in-Differences analysis requires ≥5 paired participants."</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"   This notebook will focus on CROSS-SECTIONAL comparisons instead."</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"   Note: only </span><span class="si">{</span><span class="n">n_paired_dfo</span><span class="si">}</span><span class="s2"> paired participants are available."</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"   The difference-in-differences analysis requires at least 5 paired participants."</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"   This notebook therefore focuses on cross-sectional comparisons instead."</span><span class="p">)</span>
     <span class="n">CAN_DO_DID</span> <span class="o">=</span> <span class="kc">False</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="n">CAN_DO_DID</span> <span class="o">=</span> <span class="kc">True</span>
@@ -625,11 +626,11 @@ Participants per severity × DFO bin:
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-Longitudinal pairing (DFO 0-7 → 8-14): 0 participants
+Longitudinal pairing (DFO 0-7 to 8-14): 0 participants
 
-⚠️  WARNING: Only 0 paired participants available.
-   Difference-in-Differences analysis requires ≥5 paired participants.
-   This notebook will focus on CROSS-SECTIONAL comparisons instead.
+   Note: only 0 paired participants are available.
+   The difference-in-differences analysis requires at least 5 paired participants.
+   This notebook therefore focuses on cross-sectional comparisons instead.
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -653,13 +654,13 @@ Longitudinal pairing (DFO 0-7 → 8-14): 0 participants
     <span class="nb">print</span><span class="p">(</span><span class="s2">"Added log1p_cpm layer"</span><span class="p">)</span>
 
 <span class="c1"># Define comparison design</span>
-<span class="c1"># Note: We call Severe the "treated" group for sctrial compatibility,</span>
-<span class="c1"># but this is purely for software purposes - there is no treatment!</span>
+<span class="c1"># Note: we label the Severe group as "treated" so the sctrial API can</span>
+<span class="c1"># process it; severity is an observed group, not an assigned treatment.</span>
 <span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
     <span class="n">participant_col</span><span class="o">=</span><span class="s2">"participant_id"</span><span class="p">,</span>
     <span class="n">visit_col</span><span class="o">=</span><span class="s2">"dfo_bin"</span><span class="p">,</span>
     <span class="n">arm_col</span><span class="o">=</span><span class="s2">"severity"</span><span class="p">,</span>
-    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">"Severe"</span><span class="p">,</span>   <span class="c1"># Reference group for comparison</span>
+    <span class="n">arm_treated</span><span class="o">=</span><span class="s2">"Severe"</span><span class="p">,</span>   <span class="c1"># Severe is the group of interest; Mild is the reference</span>
     <span class="n">arm_control</span><span class="o">=</span><span class="s2">"Mild"</span><span class="p">,</span>
     <span class="n">celltype_col</span><span class="o">=</span><span class="s2">"celltype"</span><span class="p">,</span>
 <span class="p">)</span>
@@ -733,14 +734,14 @@ TrialDesign(participant_col=&#39;participant_id&#39;, visit_col=&#39;dfo_bin&#39
 </pre></div></div>
 </div>
 </section>
-<section id="4.1-Baseline-Covariate-Balance-(Treated-vs-Control)">
-<h2>4.1 Baseline Covariate Balance (Treated vs Control)<a class="headerlink" href="#4.1-Baseline-Covariate-Balance-(Treated-vs-Control)" title="Link to this heading">#</a></h2>
-<p>Here we assess baseline covariate balance between severity groups at the earliest visit. Standardized mean differences (SMD) below 0.1 indicate good balance.</p>
+<section id="4.1-Baseline-Covariate-Balance-(Severe-vs-Mild)">
+<h2>4.1 Baseline Covariate Balance (Severe vs Mild)<a class="headerlink" href="#4.1-Baseline-Covariate-Balance-(Severe-vs-Mild)" title="Link to this heading">#</a></h2>
+<p>Here we assess covariate balance between the severity groups at the visit where the smaller of the two groups is largest. A standardized mean difference (SMD) below 0.1 indicates good balance.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Baseline covariate balance (select visit with most balanced counts)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Baseline covariate balance (select the visit where the smaller group is largest)</span>
 <span class="n">covariates</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"Age_interval"</span><span class="p">,</span> <span class="s2">"Sex"</span><span class="p">,</span> <span class="s2">"Site"</span><span class="p">]</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
 <span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>
     <span class="k">if</span> <span class="s2">"dfo_bin"</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
@@ -849,7 +850,7 @@ Adjusted covariates: [&#39;Age_interval&#39;, &#39;Sex&#39;, &#39;Site&#39;]
 </section>
 <section id="5.-Cell-Type-Quality-Control">
 <h2>5. Cell Type Quality Control<a class="headerlink" href="#5.-Cell-Type-Quality-Control" title="Link to this heading">#</a></h2>
-<p>Filter to well-represented cell types for robust analysis.</p>
+<p>Filter to well-represented cell types before analysis.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
@@ -1052,7 +1053,7 @@ Top 15 cell types:
 </section>
 <section id="7.-COVID-19-Immune-Signatures">
 <h2>7. COVID-19 Immune Signatures<a class="headerlink" href="#7.-COVID-19-Immune-Signatures" title="Link to this heading">#</a></h2>
-<p>We define the 19 canonical gene signatures (matching the shared signature library used in the manuscript figures) using <code class="docutils literal notranslate"><span class="pre">st.score_gene_sets</span></code> with the z-mean method. Key signatures for COVID-19 profiling include:</p>
+<p>We define the 19 canonical gene signatures (identical to those used in the manuscript figures) using <code class="docutils literal notranslate"><span class="pre">st.score_gene_sets</span></code> with the z-mean method. Key signatures for COVID-19 profiling include:</p>
 <ul class="simple">
 <li><p><strong>Type I / Type II Interferon</strong>: Key antiviral pathways, often elevated in severe disease</p></li>
 <li><p><strong>Inflammatory Response</strong>: Cytokines and S100 alarmins associated with cytokine storm</p></li>
@@ -1068,7 +1069,7 @@ Top 15 cell types:
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">available_genes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
 
-<span class="c1"># Canonical 19-signature dictionary (matches manuscript figures _shared.py)</span>
+<span class="c1"># 19-signature dictionary, identical to the signatures used in the manuscript figures</span>
 <span class="n">gene_signatures</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">"Cytotoxic T Cell Activity"</span><span class="p">:</span> <span class="p">[</span>
         <span class="s2">"GZMB"</span><span class="p">,</span> <span class="s2">"GZMA"</span><span class="p">,</span> <span class="s2">"GZMH"</span><span class="p">,</span> <span class="s2">"GZMK"</span><span class="p">,</span> <span class="s2">"GZMM"</span><span class="p">,</span> <span class="s2">"PRF1"</span><span class="p">,</span> <span class="s2">"GNLY"</span><span class="p">,</span> <span class="s2">"NKG7"</span><span class="p">,</span>
@@ -1192,7 +1193,7 @@ Top 15 cell types:
         <span class="n">method</span><span class="o">=</span><span class="s2">"zmean"</span><span class="p">,</span>
         <span class="n">prefix</span><span class="o">=</span><span class="s2">"sig_"</span>
     <span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2"> Scored </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">filtered_signatures</span><span class="p">)</span><span class="si">}</span><span class="s2"> signatures"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Scored </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">filtered_signatures</span><span class="p">)</span><span class="si">}</span><span class="s2"> signatures"</span><span class="p">)</span>
 
 <span class="c1"># Get signature columns</span>
 <span class="n">signature_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"sig_"</span><span class="p">)]</span>
@@ -1227,7 +1228,7 @@ Tissue-Resident Memory: 15/15 genes (100%)
 T Follicular Helper: 16/16 genes (100%)
 Hypoxia: 21/21 genes (100%)
 
- Scored 19 signatures
+Scored 19 signatures
 
 Signature scores available: [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T Cell Exhaustion&#39;, &#39;sig_Checkpoint Receptors&#39;, &#39;sig_Type I Interferon&#39;, &#39;sig_Type II Interferon&#39;, &#39;sig_Memory T Cell&#39;, &#39;sig_T Cell Activation&#39;, &#39;sig_Inflammatory Response&#39;, &#39;sig_Antigen Presentation&#39;, &#39;sig_Cell Proliferation&#39;, &#39;sig_Regulatory T Cell&#39;, &#39;sig_NK Cell Activity&#39;, &#39;sig_Apoptosis&#39;, &#39;sig_Oxidative Stress Response&#39;, &#39;sig_Humoral Plasma Cell&#39;, &#39;sig_Monocyte Macrophage&#39;, &#39;sig_Tissue-Resident Memory&#39;, &#39;sig_T Follicular Helper&#39;, &#39;sig_Hypoxia&#39;]
 </pre></div></div>
@@ -1235,17 +1236,17 @@ Signature scores available: [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T
 </section>
 <section id="8.-Cross-Sectional-Comparisons:-Severity-Differences-at-Each-Timepoint">
 <h2>8. Cross-Sectional Comparisons: Severity Differences at Each Timepoint<a class="headerlink" href="#8.-Cross-Sectional-Comparisons:-Severity-Differences-at-Each-Timepoint" title="Link to this heading">#</a></h2>
-<p>This is the primary analysis. We compare immune signatures between Mild and Severe patients at each DFO timepoint, using:</p>
+<p>This is the primary analysis. We compare immune signatures between Mild and Severe patients at each DFO time point, using:</p>
 <ul class="simple">
 <li><p>Participant-level aggregation (to avoid pseudoreplication)</p></li>
 <li><p>All cell types pooled into one value per participant (no cell-type adjustment; Section 10 analyses cell types separately)</p></li>
-<li><p>FDR correction for multiple testing</p></li>
+<li><p>False discovery rate (FDR) correction for multiple testing (Benjamini-Hochberg)</p></li>
 </ul>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run comparisons at each timepoint using sctrial's built-in function</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run comparisons at each time point using sctrial's built-in function</span>
 <span class="c1"># This properly aggregates to participant level and handles the statistics correctly</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"CROSS-SECTIONAL ANALYSIS: Severe vs Mild at each DFO bin"</span><span class="p">)</span>
@@ -1253,7 +1254,7 @@ Signature scores available: [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T
 <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Positive beta = higher in Severe; Negative beta = higher in Mild"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"Using participant-level aggregation to avoid pseudoreplication</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
 
-<span class="c1"># Use a lower threshold (3) to include more timepoints for exploratory analysis</span>
+<span class="c1"># Use a lower threshold (3) to include more time points for exploratory analysis</span>
 <span class="n">MIN_CROSS_SECTIONAL</span> <span class="o">=</span> <span class="mi">3</span>
 
 <span class="n">all_results</span> <span class="o">=</span> <span class="p">[]</span>
@@ -1270,7 +1271,7 @@ Signature scores available: [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T
         <span class="k">continue</span>
 
     <span class="k">if</span> <span class="n">n_min</span> <span class="o">&lt;</span> <span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Note: Small sample (Mild=</span><span class="si">{</span><span class="n">n_per_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Mild'</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">, Severe=</span><span class="si">{</span><span class="n">n_per_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Severe'</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">) — interpret with caution"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Note: Small sample (Mild=</span><span class="si">{</span><span class="n">n_per_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Mild'</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">, Severe=</span><span class="si">{</span><span class="n">n_per_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Severe'</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">); interpret with caution"</span><span class="p">)</span>
 
     <span class="c1"># Use sctrial's built-in between_arm_comparison</span>
     <span class="c1"># This properly aggregates to participant level</span>
@@ -1294,10 +1295,10 @@ Signature scores available: [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T
         <span class="n">display_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"feature"</span><span class="p">,</span> <span class="s2">"beta"</span><span class="p">,</span> <span class="s2">"p_value"</span><span class="p">,</span> <span class="s2">"fdr"</span><span class="p">,</span> <span class="s2">"n_units"</span><span class="p">]</span>
         <span class="n">display</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="n">display_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
 
-        <span class="c1"># Highlight significant</span>
+        <span class="c1"># Features selected at the exploratory FDR threshold</span>
         <span class="n">sig</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s2">"fdr"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Significant (FDR&lt;</span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">sig</span><span class="p">[</span><span class="s1">'feature'</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Selected at FDR&lt;</span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2"> (exploratory): </span><span class="si">{</span><span class="n">sig</span><span class="p">[</span><span class="s1">'feature'</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="c1"># Combine results</span>
 <span class="k">if</span> <span class="n">all_results</span><span class="p">:</span>
@@ -1324,7 +1325,7 @@ DFO_0-7:
   Skipped: Insufficient participants (Mild=8, Severe=2)
 
 DFO_15+:
-  Note: Small sample (Mild=4, Severe=4) — interpret with caution
+  Note: Small sample (Mild=4, Severe=4); interpret with caution
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -2146,7 +2147,7 @@ Adjusted results at visit: DFO_8-14
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize signature distributions by severity and timepoint</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize signature distributions by severity and time point</span>
 <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
 
 <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">sig</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">signature_cols</span><span class="p">[:</span><span class="mi">6</span><span class="p">]):</span>
@@ -2174,7 +2175,7 @@ Adjusted results at visit: DFO_8-14
 <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
-<span class="c1"># Heatmap of effect sizes across ALL visits (computed directly from participant means)</span>
+<span class="c1"># Heatmap of effect sizes across all visits (computed directly from participant means)</span>
 <span class="c1"># Uses a lower threshold (≥2 per group) for visualization purposes</span>
 <span class="n">heatmap_rows</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="k">for</span> <span class="n">visit</span> <span class="ow">in</span> <span class="n">available_visits</span><span class="p">:</span>
@@ -2253,7 +2254,7 @@ Adjusted results at visit: DFO_8-14
 
 <span class="n">focus_lineages</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"CD4_T"</span><span class="p">,</span> <span class="s2">"CD8_T"</span><span class="p">,</span> <span class="s2">"Monocytes"</span><span class="p">,</span> <span class="s2">"NK"</span><span class="p">]</span>
 
-<span class="c1"># Auto-select the visit with the best participant balance across arms</span>
+<span class="c1"># Select the visit where the smaller severity group is largest</span>
 <span class="n">visit_scores</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"dfo_bin"</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()):</span>
     <span class="n">sub</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"dfo_bin"</span><span class="p">]</span> <span class="o">==</span> <span class="n">v</span><span class="p">]</span>
@@ -2265,7 +2266,7 @@ Adjusted results at visit: DFO_8-14
 <span class="n">focus_visit</span> <span class="o">=</span> <span class="n">visit_scores</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Cell-Type Specific Analysis at </span><span class="si">{</span><span class="n">focus_visit</span><span class="si">}</span><span class="s2"> ==="</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"    (auto-selected: best participant balance across arms)"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"    (auto-selected: the visit where the smaller severity group is largest)"</span><span class="p">)</span>
 
 <span class="c1"># Use sctrial between_arm_comparison per lineage</span>
 <span class="n">lineage_results</span> <span class="o">=</span> <span class="p">[]</span>
@@ -2325,7 +2326,7 @@ DCs           4034
 Name: count, dtype: int64
 
 === Cell-Type Specific Analysis at DFO_8-14 ===
-    (auto-selected: best participant balance across arms)
+    (auto-selected: the visit where the smaller severity group is largest)
 CD4_T (n=20,684 cells, 16 participants):
 CD8_T (n=15,382 cells, 16 participants):
 Monocytes (n=19,550 cells, 16 participants):
@@ -2544,7 +2545,7 @@ Results (participant-level Mann-Whitney U via sctrial):
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
 <span class="c1"># Statistical test for abundance differences</span>
-<span class="c1"># CORRECT: Each observation in props_early is already at participant level</span>
+<span class="c1"># Each observation in props_early is already at participant level</span>
 <span class="c1"># so Mann-Whitney U is appropriate here (no pseudoreplication)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Abundance differences (Severe vs Mild) at DFO 0-7:"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"Note: Each data point = one participant's cell type proportion"</span><span class="p">)</span>
@@ -2755,7 +2756,7 @@ Note: Each data point = one participant&#39;s cell type proportion
                     <span class="n">sns</span><span class="o">.</span><span class="n">barplot</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">res_xs</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s1">'celltype'</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s1">'beta_arm'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'teal'</span><span class="p">)</span>
                     <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'black'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
                     <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Baseline abundance differences at </span><span class="si">{</span><span class="n">baseline_visit</span><span class="si">}</span><span class="s1"> (covariate-adjusted)'</span><span class="p">)</span>
-                    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">'Arm effect (beta)'</span><span class="p">)</span>
+                    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">'Group effect (beta)'</span><span class="p">)</span>
                     <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">'Cell type'</span><span class="p">)</span>
                     <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
                     <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
@@ -3377,7 +3378,7 @@ Analyzing 12 COVID-relevant genes
 <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">signature_cols</span><span class="p">:</span>
-    <span class="c1"># Calculate effect sizes for severity comparison at each timepoint</span>
+    <span class="c1"># Calculate effect sizes for severity comparison at each time point</span>
     <span class="n">effect_results</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="k">for</span> <span class="n">visit</span> <span class="ow">in</span> <span class="n">available_visits</span><span class="p">:</span>
@@ -3444,7 +3445,7 @@ Analyzing 12 COVID-relevant genes
         <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
-        <span class="c1"># Forest plot for one timepoint</span>
+        <span class="c1"># Forest plot for one time point</span>
         <span class="n">visit_data</span> <span class="o">=</span> <span class="n">df_effect</span><span class="p">[</span><span class="n">df_effect</span><span class="p">[</span><span class="s2">"timepoint"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"DFO_8-14"</span><span class="p">]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">visit_data</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
             <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
@@ -3958,7 +3959,7 @@ Effect sizes (Severe vs Mild):
 <section id="13.2-Power-Analysis">
 <h3>13.2 Power Analysis<a class="headerlink" href="#13.2-Power-Analysis" title="Link to this heading">#</a></h3>
 <p>Power analysis helps understand what effect sizes this study could detect and plan future longitudinal studies.</p>
-<p><strong>Caveat</strong>: This dataset has <strong>no longitudinally paired participants</strong> for the primary Mild vs Severe comparison. The power curves below use the average group size as a rough guide for what a <em>future</em> paired longitudinal study of this scale could detect — they do <strong>not</strong> represent the power of the current cross-sectional design. Cross-sectional comparisons generally have lower power than paired longitudinal designs.</p>
+<p><strong>Caveat</strong>: This dataset has <strong>no longitudinally paired participants</strong> for the primary Mild vs Severe comparison. The power curves below use the average group size as a rough guide for what a <em>future</em> paired longitudinal study of this scale could detect; they do <strong>not</strong> represent the power of the current cross-sectional design. Cross-sectional comparisons generally have lower power than paired longitudinal designs.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
 </pre></div>
@@ -3985,7 +3986,7 @@ Effect sizes (Severe vs Mild):
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Average per group: </span><span class="si">{</span><span class="n">n_avg</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="c1"># Power with current sample</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Hypothetical longitudinal DiD power (n≈</span><span class="si">{</span><span class="n">n_avg</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> per arm, IF paired):"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Hypothetical longitudinal DiD power (n≈</span><span class="si">{</span><span class="n">n_avg</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> per group, if paired):"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"  Note: This dataset has no paired participants; values are for study planning only."</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">effect_size</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">]:</span>
     <span class="n">power</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">power_did</span><span class="p">(</span><span class="n">n_per_group</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">n_avg</span><span class="p">),</span> <span class="n">effect_size</span><span class="o">=</span><span class="n">effect_size</span><span class="p">)</span>
@@ -3996,7 +3997,7 @@ Effect sizes (Severe vs Mild):
 <span class="nb">print</span><span class="p">(</span><span class="s2">"  (Future study planning)"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">effect_size</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]:</span>
     <span class="n">n_needed</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">sample_size_did</span><span class="p">(</span><span class="n">effect_size</span><span class="o">=</span><span class="n">effect_size</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Effect size d=</span><span class="si">{</span><span class="n">effect_size</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> per arm (</span><span class="si">{</span><span class="mi">2</span><span class="o">*</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> total)"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Effect size d=</span><span class="si">{</span><span class="n">effect_size</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> per group (</span><span class="si">{</span><span class="mi">2</span><span class="o">*</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> total)"</span><span class="p">)</span>
 
 <span class="c1"># Power curve visualization</span>
 <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
@@ -4009,7 +4010,7 @@ Effect sizes (Severe vs Mild):
 
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"black"</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">"--"</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"80% power"</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">n_avg</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"gray"</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">":"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Current n≈</span><span class="si">{</span><span class="n">n_avg</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Sample size per arm"</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Sample size per group"</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"Power"</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">"Power Curves for Future Longitudinal Study"</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">"lower right"</span><span class="p">)</span>
@@ -4042,16 +4043,16 @@ Effect sizes (Severe vs Mild):
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span> <span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"KEY INSIGHTS"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Summary"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"""</span>
 <span class="s2">1. Cross-sectional comparison:</span>
-<span class="s2">   - Current sample provides good power for medium-large effects</span>
+<span class="s2">   - Power was not formally evaluated for the cross-sectional design; the curves above describe a hypothetical future paired study</span>
 <span class="s2">   - Participant-level aggregation is critical for valid inference</span>
 
 <span class="s2">2. Longitudinal limitation:</span>
 <span class="s2">   - Only </span><span class="si">{</span><span class="n">n_paired_dfo</span><span class="si">}</span><span class="s2"> participants have paired observations</span>
-<span class="s2">   - Future studies need ≥10 paired per arm for DiD</span>
+<span class="s2">   - A future paired study needs about 16 per group for a large effect (d=1.0), and more for smaller effects</span>
 
 <span class="s2">3. Cell-level clustering:</span>
 <span class="s2">   - With ICC=0.10 and </span><span class="si">{</span><span class="n">cells_per_pt</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> cells/participant:</span>
@@ -4132,7 +4133,7 @@ Participants per group:
 Overall: 23 Mild, 11 Severe participants
 Average per group: 17
 
-Hypothetical longitudinal DiD power (n≈17 per arm, IF paired):
+Hypothetical longitudinal DiD power (n≈17 per group, if paired):
   Note: This dataset has no paired participants; values are for study planning only.
   Effect size d=0.5: 30.8% power
   Effect size d=0.8: 64.5% power
@@ -4141,9 +4142,9 @@ Hypothetical longitudinal DiD power (n≈17 per arm, IF paired):
 
 Sample size for longitudinal DiD (80% power):
   (Future study planning)
-  Effect size d=0.5: 63 per arm (126 total)
-  Effect size d=0.8: 25 per arm (50 total)
-  Effect size d=1.0: 16 per arm (32 total)
+  Effect size d=0.5: 63 per group (126 total)
+  Effect size d=0.8: 25 per group (50 total)
+  Effect size d=1.0: 16 per group (32 total)
 
 Average cells per participant: 6035
 </pre></div></div>
@@ -4162,16 +4163,16 @@ Average cells per participant: 6035
 <div class="highlight"><pre>
 
 ============================================================
-KEY INSIGHTS
+Summary
 ============================================================
 
 1. Cross-sectional comparison:
-   - Current sample provides good power for medium-large effects
+   - Power was not formally evaluated for the cross-sectional design; the curves above describe a hypothetical future paired study
    - Participant-level aggregation is critical for valid inference
 
 2. Longitudinal limitation:
    - Only 0 participants have paired observations
-   - Future studies need ≥10 paired per arm for DiD
+   - A future paired study needs about 16 per group for a large effect (d=1.0), and more for smaller effects
 
 3. Cell-level clustering:
    - With ICC=0.10 and 6035 cells/participant:
@@ -4431,14 +4432,14 @@ KEY INSIGHTS
 <h3>Module-Score Pseudobulk DiD by Lineage<a class="headerlink" href="#Module-Score-Pseudobulk-DiD-by-Lineage" title="Link to this heading">#</a></h3>
 <p>Here, we collapse each participant×visit×lineage into a pseudobulk mean of module scores, then compute DiD per lineage. This highlights which lineages drive the severity-associated changes.</p>
 <blockquote>
-<div><p><strong>Note:</strong> This dataset has no longitudinally paired participants, so the code falls back to a <strong>repeated-cross-sectional (unpaired) OLS DiD</strong>. This is a weaker design than a true paired DiD — treat any discoveries as <strong>exploratory hypothesis-generating</strong> only, not confirmatory.</p>
+<div><p><strong>Note:</strong> This dataset has no longitudinally paired participants, so the code falls back to a <strong>repeated-cross-sectional (unpaired) OLS DiD</strong>. This is a weaker design than a true paired DiD, so any discoveries should be treated as exploratory and hypothesis-generating only, not confirmatory.</p>
 </div></blockquote>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">signature_cols</span><span class="p">:</span>
-    <span class="c1"># Choose visit pair with best paired coverage across arms</span>
+    <span class="c1"># Choose visit pair with best paired coverage across the severity groups</span>
     <span class="n">visit_levels</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"dfo_bin"</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
     <span class="n">best_pair</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">best_score</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
@@ -4469,7 +4470,7 @@ KEY INSIGHTS
 
     <span class="n">allow_unpaired</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="k">if</span> <span class="n">best_pair</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"No visit pair has &gt;=2 paired participants per arm. DiD may be underpowered."</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"No visit pair has &gt;=2 paired participants per severity group. DiD may be underpowered."</span><span class="p">)</span>
         <span class="n">visits_pair</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">visit_levels</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
         <span class="n">allow_unpaired</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="c1"># Fallback: repeated-cross-sectional OLS DiD (weaker than paired)</span>
@@ -4561,7 +4562,7 @@ KEY INSIGHTS
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-No visit pair has &gt;=2 paired participants per arm. DiD may be underpowered.
+No visit pair has &gt;=2 paired participants per severity group. DiD may be underpowered.
 Using visits: (&#39;DFO_0-7&#39;, &#39;DFO_15+&#39;)
 Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8_T&#39;, &#39;DCs&#39;, &#39;Monocytes&#39;, &#39;NK&#39;, &#39;Other&#39;]
 </pre></div></div>
@@ -4657,7 +4658,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/tmp/ipykernel_3304278/2438914800.py:67: UserWarning: FDR correction is applied within each &#39;module&#39; group (column FDR_DiD). Per-group FDR does not control the overall false discovery rate across all tests. Consult FDR_DiD_global (when fdr_global=True) for a globally corrected q-value.
+/tmp/ipykernel_2369547/158949069.py:67: UserWarning: FDR correction is applied within each &#39;module&#39; group (column FDR_DiD). Per-group FDR does not control the overall false discovery rate across all tests. Consult FDR_DiD_global (when fdr_global=True) for a globally corrected q-value.
   return st.module_score_did_by_pool(
 </pre></div></div>
 </div>
@@ -4991,7 +4992,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 </section>
 <section id="Parallel-Trends-Visualization-(Early-Visits)">
 <h3>Parallel Trends Visualization (Early Visits)<a class="headerlink" href="#Parallel-Trends-Visualization-(Early-Visits)" title="Link to this heading">#</a></h3>
-<p>Here we visualize pre-treatment trends across early visits to assess whether arms move in parallel before divergence. This is a diagnostic, not a formal test.</p>
+<p>Here we visualize pre-treatment trends across early visits to assess whether the severity groups move in parallel before divergence. This is a diagnostic, not a formal test.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
 </pre></div>
@@ -5074,7 +5075,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#2.-Data-Loading-and-Processing">2. Data Loading and Processing</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#3.-Sample-Size-Assessment">3. Sample Size Assessment</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#4.-Study-Design-Configuration">4. Study Design Configuration</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#4.1-Baseline-Covariate-Balance-(Treated-vs-Control)">4.1 Baseline Covariate Balance (Treated vs Control)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#4.1-Baseline-Covariate-Balance-(Severe-vs-Mild)">4.1 Baseline Covariate Balance (Severe vs Mild)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#5.-Cell-Type-Quality-Control">5. Cell Type Quality Control</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#6.-UMAP-Visualization">6. UMAP Visualization</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#7.-COVID-19-Immune-Signatures">7. COVID-19 Immune Signatures</a></li>

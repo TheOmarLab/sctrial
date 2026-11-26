@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.datasets &#8212; sctrial 1.1.0 documentation</title>
+    <title>sctrial.datasets &#8212; sctrial 2.0.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../_static/documentation_options.js?v=2a705162"></script>
+    <script src="../../_static/documentation_options.js?v=79f5c508"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -123,8 +123,8 @@
       
     
     
-    <img src="../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
-    <img src="../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../_static/logo.svg" class="logo__image only-light" alt="sctrial 2.0.0 documentation - Home"/>
+    <img src="../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 2.0.0 documentation - Home"/>
   
   
 </a></div>
@@ -276,6 +276,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../study_designs.html">Study Designs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../concepts.html">Concepts and Methods</a></li>
@@ -405,7 +406,7 @@
 <span class="n">_REPO_ROOT</span> <span class="o">=</span> <span class="n">_PACKAGE_DIR</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>  <span class="c1"># sc_trial_inference/</span>
 <span class="n">_DATASETS_ROOT</span> <span class="o">=</span> <span class="n">_REPO_ROOT</span> <span class="o">/</span> <span class="s2">"datasets"</span>
 <span class="k">if</span> <span class="ow">not</span> <span class="n">_DATASETS_ROOT</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
-    <span class="c1"># Installed package without repo structure — fall back to cwd</span>
+    <span class="c1"># Installed package without repo structure: fall back to cwd</span>
     <span class="n">_DATASETS_ROOT</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span> <span class="o">/</span> <span class="s2">"datasets"</span>
 
 
@@ -582,7 +583,7 @@
 
 <span class="sd">    The same mmc3.xlsx the loader already opens for clinical response also</span>
 <span class="sd">    carries the authors' own annotations, which were previously discarded:</span>
-<span class="sd">    ``Major celltype`` (T / B / Myeloid / ILC — every cell is immune, the</span>
+<span class="sd">    ``Major celltype`` (T / B / Myeloid / ILC; every cell is immune, the</span>
 <span class="sd">    deposit being CD45+ sorted) and ``Cluster`` (97 clusters such as</span>
 <span class="sd">    ``t_CD8-CXCL13``). Barcodes are the same ``&lt;16bp&gt;.&lt;Sample&gt;`` strings the</span>
 <span class="sd">    GEO matrix uses, so the join needs no identifier munging.</span>
@@ -609,12 +610,12 @@
 <span class="w">    </span><span class="sd">"""Map a Zhang 2021 cluster name (e.g. ``t_CD4_Treg-FOXP3``) to a lineage.</span>
 
 <span class="sd">    The authors' ``Major celltype`` column has only four levels (T / B / Myeloid</span>
-<span class="sd">    / ILC), which is coarser than the analysis needs — it cannot separate CD4</span>
+<span class="sd">    / ILC), which is coarser than the analysis needs; it cannot separate CD4</span>
 <span class="sd">    from CD8 or resolve Tregs. Their 97 ``Cluster`` labels are systematically</span>
 <span class="sd">    named, so the lineage is recovered from the cluster name instead, keeping</span>
 <span class="sd">    the authors' resolution. Clusters the authors deliberately leave unresolved</span>
 <span class="sd">    (``t_Tn-LEF1`` naive T, ``t_Tact-IFI6`` activated T, ``t_Tprf-MKI67``</span>
-<span class="sd">    proliferating T, and the ambiguous ``Mix`` bin) are NOT forced onto CD4 or</span>
+<span class="sd">    proliferating T, and the ambiguous ``Mix`` bin) are not forced onto CD4 or</span>
 <span class="sd">    CD8; they map to "T cell (unresolved)" / "Unassigned".</span>
 <span class="sd">    """</span>
     <span class="k">if</span> <span class="n">cluster</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">cluster</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="ow">and</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">cluster</span><span class="p">)):</span>
@@ -660,9 +661,9 @@
 
 <span class="sd">    This series-level supplementary file carries far more than cell types: it</span>
 <span class="sd">    holds the authors' three-level annotation (``Compartment`` / ``Major_Alias``</span>
-<span class="sd">    / ``Alias``), their per-cell clinical ``Response`` (LtR / R / NR / Unknown)</span>
-<span class="sd">    — which is the publication's primary outcome and cannot be reconstructed</span>
-<span class="sd">    from the expression matrices — the exact ``TimePoint_Final``, and ``Axicel``</span>
+<span class="sd">    / ``Alias``), their per-cell clinical ``Response`` (LtR / R / NR / Unknown),</span>
+<span class="sd">    which is the publication's primary outcome and cannot be reconstructed</span>
+<span class="sd">    from the expression matrices, the exact ``TimePoint_Final``, and ``Axicel``</span>
 <span class="sd">    CAR-transgene read counts. Written by R's ``write.table``, so it is</span>
 <span class="sd">    space-delimited with quoted fields, not comma-separated.</span>
 
@@ -2456,8 +2457,10 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Load the van Galen AML chemotherapy dataset (GSE116256).</span>
 
-<span class="sd">    This dataset contains pre/post-chemotherapy bone marrow samples from AML</span>
-<span class="sd">    patients with cell-type annotations and treatment-response metadata.</span>
+<span class="sd">    This dataset contains pre- and post-chemotherapy bone marrow samples from AML</span>
+<span class="sd">    patients with the authors' cell-type annotations. GSE116256 deposits no</span>
+<span class="sd">    per-patient clinical response variable; the ``response`` column only mirrors</span>
+<span class="sd">    the AML-versus-healthy group label and is not a treatment response.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -2796,7 +2799,7 @@
     <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">n_neighbors</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">n_pcs</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
     <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>
 
-    <span class="c1"># Clustering — try Leiden, fallback to KMeans</span>
+    <span class="c1"># Clustering: try Leiden, fall back to KMeans</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">leiden</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
@@ -2906,7 +2909,7 @@
 <span class="sd">    ``allow_download=True``:</span>
 <span class="sd">    https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE290722</span>
 
-<span class="sd">    Reference: GSE290722 CAR-T therapy dataset (ZUMA-1 trial).</span>
+<span class="sd">    Reference: Cheloni et al., Nat Commun 2025 (ZUMA-1 trial; GEO accession GSE290722).</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -3346,8 +3349,8 @@
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
-<span class="sd">    Unlike the melanoma dataset, no response harmonization is needed --</span>
-<span class="sd">    arm labels are assigned at randomization and are clean.</span>
+<span class="sd">    Unlike the melanoma dataset, no response harmonization is needed.</span>
+<span class="sd">    Arm labels are assigned at randomization and need no relabeling.</span>
 
 <span class="sd">    Raw files required in ``&lt;data_dir&gt;/raw/``:</span>
 

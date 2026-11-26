@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Scoring and Preprocessing &#8212; sctrial 1.1.0 documentation</title>
+    <title>Scoring and Preprocessing &#8212; sctrial 2.0.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../_static/documentation_options.js?v=2a705162"></script>
+    <script src="../_static/documentation_options.js?v=79f5c508"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -126,8 +126,8 @@
       
     
     
-    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
-    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 2.0.0 documentation - Home"/>
+    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 2.0.0 documentation - Home"/>
   
   
 </a></div>
@@ -283,6 +283,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../study_designs.html">Study Designs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts.html">Concepts and Methods</a></li>
@@ -417,7 +418,7 @@ logged.  Default is 3.</p></li>
 <p class="rubric">Notes</p>
 <p><strong>Zero-variance gene handling (zmean method):</strong>
 Genes with zero or near-zero variance (std &lt; 1e-12) are excluded from
-the z-mean calculation. If ALL genes in a set have zero variance, the
+the z-mean calculation. If all genes in a set have zero variance, the
 score is NaN. This prevents division by zero and ensures meaningful scores.</p>
 <p>The zmean method computes: mean(z_i) where z_i = (x_i - mean(x_i)) / std(x_i)
 for each gene i across all cells.</p>
@@ -508,10 +509,10 @@ Requires scanpy.</p>
 <span class="sig-prename descclassname"><span class="pre">sctrial.preprocessing.</span></span><span class="sig-name descname"><span class="pre">drop_artifact_genes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnnData</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_hb</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_ribo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_histone</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">counts_layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'counts'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">AnnData</span></span></span><a class="reference internal" href="../_modules/sctrial/preprocessing.html#drop_artifact_genes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.preprocessing.drop_artifact_genes" title="Link to this definition">#</a></dt>
 <dd><p>Remove technical-artifact gene classes from <em>adata</em> in place (upstream QC).</p>
 <p>Removes hemoglobin/erythroid, ribosomal, and replication-histone genes so that
-EVERY downstream analysis inherits a clean gene set with no per-analysis handling:
+every downstream analysis inherits a clean gene set with no per-analysis handling:
 HVG/PCA/clustering, gene-level differential expression, and GSEA (which ranks the
 full <code class="docutils literal notranslate"><span class="pre">var_names</span></code> list, so it would otherwise be dominated by these housekeeping/
-ambient genes in its leading edges). Cell-cycle genes are NOT removed – they are
+ambient genes in its leading edges). Cell-cycle genes are not removed – they are
 real biology and are used by the proliferation gene signatures.</p>
 <p><strong>Set ``drop_hb=False`` for erythroid-containing tissues.</strong> The hemoglobin rule
 encodes a PERIPHERAL-BLOOD assumption: that hemoglobin reads are ambient
@@ -520,7 +521,7 @@ erythroid precursors are a genuine, published population there, and hemoglobin
 (with ALAS2, AHSP, SLC4A1) is their defining identity programme, not noise.
 Removing it deletes the biology instead of the artifact. Ribosomal and
 replication-histone genes remain safe to drop in either tissue.</p>
-<p>Must be run AFTER normalization (per-cell library sizes must be computed over all
+<p>Must be run after normalization (per-cell library sizes must be computed over all
 genes, including the ambient/housekeeping ones) and after any QC-metric computation.
 The removed gene symbols are recorded in <code class="docutils literal notranslate"><span class="pre">adata.uns['artifact_genes_removed']</span></code>
 and the classes actually dropped in <code class="docutils literal notranslate"><span class="pre">adata.uns['artifact_classes_dropped']</span></code>.</p>
@@ -561,7 +562,7 @@ genes are deliberately not flagged (used by the proliferation signatures).</p>
 <span class="sig-prename descclassname"><span class="pre">sctrial.preprocessing.</span></span><span class="sig-name descname"><span class="pre">is_artifact_gene</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/sctrial/preprocessing.html#is_artifact_gene"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sctrial.preprocessing.is_artifact_gene" title="Link to this definition">#</a></dt>
 <dd><p>True if <em>name</em> is a technical-artifact gene (hemoglobin/erythroid, ribosomal,
 or replication-histone) to be excluded from unbiased HVG/DE/GSEA. Cell-cycle
-genes are NOT artifacts. Anchored so prefix-sharing signaling genes are kept.</p>
+genes are not artifacts. Anchored so prefix-sharing signaling genes are kept.</p>
 </dd></dl>
 
 <dl class="py function">

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis &#8212; sctrial 1.1.0 documentation</title>
+    <title>Immunotherapy Response in Melanoma: Longitudinal Single-Cell Analysis &#8212; sctrial 2.0.0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../_static/documentation_options.js?v=2a705162"></script>
+    <script src="../_static/documentation_options.js?v=79f5c508"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -129,8 +129,8 @@
       
     
     
-    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
-    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 2.0.0 documentation - Home"/>
+    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 2.0.0 documentation - Home"/>
   
   
 </a></div>
@@ -286,6 +286,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../study_designs.html">Study Designs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts.html">Concepts and Methods</a></li>
@@ -382,18 +383,18 @@
 <p><strong>Dataset</strong>: Sade-Feldman et al., Cell 2018 (GSE120575)</p>
 <p>This notebook shows how to analyze longitudinal single-cell data from a clinical immunotherapy study, comparing immune dynamics between responders and non-responders to anti-PD-1 therapy.</p>
 <blockquote>
-<div><p><strong>Observational comparison, not a randomized experiment.</strong> Response status is a <em>post-treatment outcome</em>, not a randomly assigned treatment. DiD contrasts here estimate <em>associations</em> between response and immune trajectory — they do not identify causal treatment effects. See Limitations for details.</p>
+<div><p><strong>Observational comparison, not a randomized experiment.</strong> Response status is a <em>post-treatment outcome</em>, not a randomly assigned treatment. Difference-in-differences (DiD) contrasts here estimate <em>associations</em> between response and immune trajectory; they do not identify causal treatment effects. See the study-design note below for details.</p>
 </div></blockquote>
 <section id="Background">
 <h2>Background<a class="headerlink" href="#Background" title="Link to this heading">#</a></h2>
-<p>Sade-Feldman et al. (Cell 2018) profiled tumor-infiltrating immune cells from melanoma patients <strong>before and during</strong> anti-PD-1 checkpoint inhibitor therapy. This landmark study identified transcriptional programs associated with clinical response.</p>
+<p>Sade-Feldman et al. (Cell 2018) profiled tumor-infiltrating immune cells from melanoma patients <strong>before and during</strong> anti-PD-1 checkpoint inhibitor therapy. The study identified transcriptional programs associated with clinical response.</p>
 <section id="Study-Design">
 <h3>Study Design<a class="headerlink" href="#Study-Design" title="Link to this heading">#</a></h3>
 <p><strong>This is a prospective longitudinal study:</strong></p>
 <ul class="simple">
 <li><p>Patients received anti-PD-1 immunotherapy (pembrolizumab or nivolumab)</p></li>
 <li><p>Tumor biopsies collected <strong>Pre-treatment</strong> (baseline) and <strong>Post-treatment</strong> (on therapy)</p></li>
-<li><p>Response assessed by RECIST criteria: Complete/Partial Response vs Progressive Disease</p></li>
+<li><p>Response assessed by RECIST (Response Evaluation Criteria in Solid Tumors) criteria: Complete/Partial Response vs Progressive Disease</p></li>
 </ul>
 <p><strong>Key biological questions:</strong></p>
 <ul class="simple">
@@ -402,20 +403,20 @@
 <li><p>Are there response-specific trajectories (Difference-in-Differences)?</p></li>
 </ul>
 <blockquote>
-<div><p><strong>Note on study design</strong>: Because response is defined <em>post-treatment</em> (RECIST criteria), groups are <em>observational</em>, not randomized. The DiD framework tests whether immune trajectories <em>differ by response status</em> — it cannot establish that treatment <em>caused</em> those differences. Confounders correlated with both response and immune dynamics remain possible.</p>
+<div><p><strong>Note on study design</strong>: Because response is defined <em>post-treatment</em> (RECIST criteria), groups are <em>observational</em>, not randomized. The DiD framework tests whether immune trajectories <em>differ by response status</em>; it cannot establish that treatment <em>caused</em> those differences. Confounders correlated with both response and immune dynamics remain possible.</p>
 </div></blockquote>
 </section>
 <section id="Analysis-Strategy">
 <h3>Analysis Strategy<a class="headerlink" href="#Analysis-Strategy" title="Link to this heading">#</a></h3>
 <ol class="arabic simple">
-<li><p><strong>Cross-sectional comparisons</strong>: Responder vs Non-responder at each timepoint</p></li>
-<li><p><strong>Within-arm longitudinal</strong>: Pre→Post changes within each response group</p></li>
+<li><p><strong>Cross-sectional comparisons</strong>: Responder vs Non-responder at each time point</p></li>
+<li><p><strong>Within-group longitudinal</strong>: Pre to Post changes within each response group</p></li>
 <li><p><strong>Difference-in-Differences (DiD)</strong>: Do responders change differently than non-responders?</p></li>
 </ol>
 <p><strong>Statistical considerations:</strong></p>
 <ul class="simple">
 <li><p>Participant-level aggregation to avoid pseudoreplication</p></li>
-<li><p>FDR correction for multiple testing</p></li>
+<li><p>False discovery rate (FDR) correction for multiple testing (Benjamini-Hochberg)</p></li>
 <li><p>Bootstrap inference for small sample sizes</p></li>
 </ul>
 </section>
@@ -426,10 +427,10 @@
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Imports - consolidated</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Imports</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">'ignore'</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">FutureWarning</span><span class="p">)</span>
-<span class="c1"># Note: We do NOT suppress UserWarning — sctrial issues important</span>
+<span class="c1"># Note: we do not suppress UserWarning, because sctrial issues important</span>
 <span class="c1"># statistical caveats (e.g. low-cluster reliability) as UserWarnings.</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">"invalid value"</span><span class="p">)</span>
 
@@ -444,12 +445,12 @@
 <span class="c1"># Configuration</span>
 <span class="n">MIN_GENES_FOR_SCORE</span> <span class="o">=</span> <span class="mi">5</span>
 <span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span> <span class="o">=</span> <span class="mi">3</span>
-<span class="n">FDR_ALPHA</span> <span class="o">=</span> <span class="mf">0.25</span>  <span class="c1"># Exploratory threshold — all results flagged at this level</span>
-                   <span class="c1"># are hypothesis-generating, NOT confirmatory. Use 0.05 for</span>
-                   <span class="c1"># confirmatory analyses. See GSEA FAQ for precedent.</span>
+<span class="n">FDR_ALPHA</span> <span class="o">=</span> <span class="mf">0.25</span>  <span class="c1"># Exploratory threshold; all results flagged at this level</span>
+                   <span class="c1"># are hypothesis-generating, not confirmatory. Use 0.05 for</span>
+                   <span class="c1"># confirmatory analyses.</span>
 <span class="n">SEED</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">SEED</span><span class="p">)</span>  <span class="c1"># seaborn strip plots draw their jitter from NumPy's global generator</span>
-<span class="n">RUN_PYMC</span> <span class="o">=</span> <span class="kc">False</span>        <span class="c1"># Set True to run Bayesian DiD (slow; may crash on arm64)</span>
+<span class="n">RUN_PYMC</span> <span class="o">=</span> <span class="kc">False</span>        <span class="c1"># Set True to run the optional Bayesian DiD (requires PyMC)</span>
 <span class="n">MAX_PLOT_FEATURES</span> <span class="o">=</span> <span class="mi">9</span>  <span class="c1"># Cap visualization loops to avoid very large grids</span>
 <span class="n">RESPONSE_COL</span> <span class="o">=</span> <span class="s2">"response_harmonized"</span>
 
@@ -467,7 +468,7 @@
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-sctrial version: 1.1.0
+sctrial version: 2.0.0
 </pre></div></div>
 </div>
 </section>
@@ -794,7 +795,7 @@ Participants per Response x Visit:
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Paired Responders: </span><span class="si">{</span><span class="n">paired_by_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Responder'</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Paired Non-responders: </span><span class="si">{</span><span class="n">paired_by_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Non-responder'</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
-<span class="c1"># Check if DiD analysis is feasible - DiD analysis requires at least 3 paired participants per arm</span>
+<span class="c1"># Check if DiD analysis is feasible - DiD analysis requires at least 3 paired participants per group</span>
 <span class="n">MIN_PAIRED_PER_ARM</span> <span class="o">=</span> <span class="mi">3</span>
 <span class="n">can_do_did</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">paired_by_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Responder"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">MIN_PAIRED_PER_ARM</span> <span class="ow">and</span>
@@ -803,10 +804,10 @@ Participants per Response x Visit:
 
 <span class="k">if</span> <span class="n">can_do_did</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  DiD analysis is feasible (&gt;=</span><span class="si">{</span><span class="n">MIN_PAIRED_PER_ARM</span><span class="si">}</span><span class="s2"> paired per arm)"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  DiD analysis is feasible (&gt;=</span><span class="si">{</span><span class="n">MIN_PAIRED_PER_ARM</span><span class="si">}</span><span class="s2"> paired per group)"</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  WARNING: DiD analysis may be underpowered (&lt;</span><span class="si">{</span><span class="n">MIN_PAIRED_PER_ARM</span><span class="si">}</span><span class="s2"> paired in one arm)"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Note: the DiD analysis may be underpowered (fewer than </span><span class="si">{</span><span class="n">MIN_PAIRED_PER_ARM</span><span class="si">}</span><span class="s2"> paired participants in one group)"</span><span class="p">)</span>
 
 <span class="c1"># Configure the sctrial.TrialDesign object that centralizes study design metadata</span>
 <span class="c1"># This design object is used for all downstream analyses</span>
@@ -844,7 +845,7 @@ Longitudinal pairing:
   Paired Responders: 3
   Paired Non-responders: 8
 
-  DiD analysis is feasible (&gt;=3 paired per arm)
+  DiD analysis is feasible (&gt;=3 paired per group)
 
 Design configured:
   Participant: participant_id
@@ -866,7 +867,7 @@ TrialDesign(participant_col=&#39;participant_id&#39;, visit_col=&#39;visit&#39;,
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run built-in diagnostics to check data suitability</span>
-<span class="c1"># This includes checks for basic counts (paired participants, cells per arm, genes)</span>
+<span class="c1"># This includes checks for basic counts (paired participants, cells per group, genes)</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -907,12 +908,12 @@ INFO:sctrial.validation:========================================================
 </section>
 <section id="4.-Immune-Signatures">
 <h2>4. Immune Signatures<a class="headerlink" href="#4.-Immune-Signatures" title="Link to this heading">#</a></h2>
-<p>We define the 19 canonical gene signatures (matching the shared signature library used in the manuscript figures) using <code class="docutils literal notranslate"><span class="pre">st.score_gene_sets</span></code> with the z-mean method, then filter to signatures with sufficient expression. Key signatures for this dataset include:</p>
+<p>We define 19 canonical gene signatures using <code class="docutils literal notranslate"><span class="pre">st.score_gene_sets</span></code> with the z-mean method, then keep the signatures with adequate gene coverage in this dataset. Key signatures for this dataset include:</p>
 <ul class="simple">
-<li><p><strong>Cytotoxic T Cell Activity</strong>: Effector function of CD8 T cells and NK cells — associated with anti-tumor immunity</p></li>
-<li><p><strong>T Cell Exhaustion</strong>: Dysfunctional T cell state — elevated exhaustion may predict poor response</p></li>
+<li><p><strong>Cytotoxic T Cell Activity</strong>: Effector function of CD8 T cells and NK cells, associated with anti-tumor immunity</p></li>
+<li><p><strong>T Cell Exhaustion</strong>: Dysfunctional T cell state; elevated exhaustion may predict poor response</p></li>
 <li><p><strong>Type I / Type II Interferon</strong>: Innate and adaptive interferon signaling pathways</p></li>
-<li><p><strong>Memory T Cell</strong>: Memory markers — may predict durable responses</p></li>
+<li><p><strong>Memory T Cell</strong>: Memory markers; may predict durable responses</p></li>
 <li><p><strong>T Cell Activation</strong>: Early activation indicators</p></li>
 <li><p><em>(plus 13 additional canonical signatures: Checkpoint Receptors, Inflammatory Response, Antigen Presentation, Cell Proliferation, Regulatory T Cell, NK Cell Activity, Apoptosis, Oxidative Stress Response, Humoral Plasma Cell, Monocyte Macrophage, Tissue-Resident Memory, T Follicular Helper, Hypoxia)</em></p></li>
 </ul>
@@ -922,7 +923,7 @@ INFO:sctrial.validation:========================================================
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">available_genes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
 
-<span class="c1"># Canonical 19-signature dictionary (matches manuscript figures _shared.py)</span>
+<span class="c1"># Canonical 19-signature gene-set panel</span>
 <span class="n">gene_signatures</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">"Cytotoxic T Cell Activity"</span><span class="p">:</span> <span class="p">[</span>
         <span class="s2">"GZMB"</span><span class="p">,</span> <span class="s2">"GZMA"</span><span class="p">,</span> <span class="s2">"GZMH"</span><span class="p">,</span> <span class="s2">"GZMK"</span><span class="p">,</span> <span class="s2">"GZMM"</span><span class="p">,</span> <span class="s2">"PRF1"</span><span class="p">,</span> <span class="s2">"GNLY"</span><span class="p">,</span> <span class="s2">"NKG7"</span><span class="p">,</span>
@@ -1108,12 +1109,12 @@ Features for analysis (after filtering): [&#39;sig_Cytotoxic T Cell Activity&#39
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># =============================================================================</span>
-<span class="c1"># VERIFICATION: Compute TRUE paired participants based on valid signature scores</span>
+<span class="c1"># Compute paired participants with valid signature scores at both visits</span>
 <span class="c1"># =============================================================================</span>
 <span class="c1"># This ensures consistency between reported pairing and actual analysis - to ensure pairing is based on usable data, not just cell presence.</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"PAIRING VERIFICATION (based on valid signature scores)"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Paired participants with valid signature scores at both visits"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
 
 <span class="c1"># Aggregate all signature scores to participant-visit level</span>
@@ -1124,7 +1125,7 @@ Features for analysis (after filtering): [&#39;sig_Cytotoxic T Cell Activity&#39
     <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
 <span class="p">)</span>
 
-<span class="c1"># For each feature, identify participants with valid (non-NaN) scores at BOTH visits</span>
+<span class="c1"># For each feature, identify participants with valid (non-NaN) scores at both visits</span>
 <span class="n">valid_paired</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># feature -&gt; set of participant IDs with valid Pre AND Post scores</span>
 
 <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features_use</span><span class="p">:</span>
@@ -1140,18 +1141,18 @@ Features for analysis (after filtering): [&#39;sig_Cytotoxic T Cell Activity&#39
         <span class="k">continue</span>
 
 
-    <span class="c1"># Participants with non-NaN at BOTH visits</span>
+    <span class="c1"># Participants with non-NaN at both visits</span>
     <span class="n">mask</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
     <span class="n">valid_paired</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">wide</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
 
-<span class="c1"># Get intersection across all features (participants valid for ALL features)</span>
+<span class="c1"># Get intersection across all features (participants valid for all features)</span>
 <span class="c1"># Only participants with valid scores for every signature are included - Ensures all features can be analyzed for the same set of participants</span>
 <span class="k">if</span> <span class="n">features_use</span><span class="p">:</span>
     <span class="n">all_features_valid</span> <span class="o">=</span> <span class="nb">set</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">valid_paired</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">features_use</span><span class="p">])</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="n">all_features_valid</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
 
-<span class="c1"># Add arm info to determine pairing by response</span>
+<span class="c1"># Add the response group to determine pairing by response</span>
 <span class="n">participant_arm</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">)[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
 
 <span class="n">valid_paired_by_response</span> <span class="o">=</span> <span class="p">{</span>
@@ -1160,7 +1161,7 @@ Features for analysis (after filtering): [&#39;sig_Cytotoxic T Cell Activity&#39
 <span class="p">}</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Participants with valid Pre+Post scores for ALL features:"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Participants with valid Pre+Post scores for all features:"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Total: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_features_valid</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">arm</span> <span class="ow">in</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">]:</span>
     <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_paired_by_response</span><span class="p">[</span><span class="n">arm</span><span class="p">])</span>
@@ -1168,7 +1169,7 @@ Features for analysis (after filtering): [&#39;sig_Cytotoxic T Cell Activity&#39
 
 <span class="c1"># Compare with cell-level pairing - shows how many participants were dropped due to missing signature scores</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Comparison with cell-level pairing (from cell-11):"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Comparison with cell-level pairing:"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">arm</span> <span class="ow">in</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">]:</span>
     <span class="n">cell_based</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">paired_ids_by_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">arm</span><span class="p">,</span> <span class="nb">set</span><span class="p">()))</span>
     <span class="n">score_based</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_paired_by_response</span><span class="p">[</span><span class="n">arm</span><span class="p">])</span>
@@ -1176,9 +1177,9 @@ Features for analysis (after filtering): [&#39;sig_Cytotoxic T Cell Activity&#39
     <span class="k">if</span> <span class="n">diff</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">cell_based</span><span class="si">}</span><span class="s2"> (cells) -&gt; </span><span class="si">{</span><span class="n">score_based</span><span class="si">}</span><span class="s2"> (valid scores) | </span><span class="si">{</span><span class="n">diff</span><span class="si">}</span><span class="s2"> dropped due to NaN scores"</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">cell_based</span><span class="si">}</span><span class="s2"> (cells) = </span><span class="si">{</span><span class="n">score_based</span><span class="si">}</span><span class="s2"> (valid scores) ✓"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">cell_based</span><span class="si">}</span><span class="s2"> (cells) = </span><span class="si">{</span><span class="n">score_based</span><span class="si">}</span><span class="s2"> (valid scores)"</span><span class="p">)</span>
 
-<span class="c1"># Show which participants were dropped (for debugging)</span>
+<span class="c1"># Show which participants were dropped and why</span>
 <span class="k">for</span> <span class="n">arm</span> <span class="ow">in</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">]:</span>
     <span class="n">dropped</span> <span class="o">=</span> <span class="n">paired_ids_by_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">arm</span><span class="p">,</span> <span class="nb">set</span><span class="p">())</span> <span class="o">-</span> <span class="n">valid_paired_by_response</span><span class="p">[</span><span class="n">arm</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">dropped</span><span class="p">:</span>
@@ -1209,17 +1210,17 @@ Features for analysis (after filtering): [&#39;sig_Cytotoxic T Cell Activity&#39
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 ============================================================
-PAIRING VERIFICATION (based on valid signature scores)
+Paired participants with valid signature scores at both visits
 ============================================================
 
-Participants with valid Pre+Post scores for ALL features:
+Participants with valid Pre+Post scores for all features:
   Total: 11
   Responder: 3
   Non-responder: 8
 
-Comparison with cell-level pairing (from cell-11):
-  Responder: 3 (cells) = 3 (valid scores) ✓
-  Non-responder: 8 (cells) = 8 (valid scores) ✓
+Comparison with cell-level pairing:
+  Responder: 3 (cells) = 3 (valid scores)
+  Non-responder: 8 (cells) = 8 (valid scores)
 
 Using VALID_PAIRED_BY_RESPONSE for all subsequent analyses.
 </pre></div></div>
@@ -1245,7 +1246,7 @@ Using VALID_PAIRED_BY_RESPONSE for all subsequent analyses.
 
 <span class="k">if</span> <span class="n">features_use</span><span class="p">:</span>
     <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">visits</span><span class="p">:</span>
-        <span class="c1"># Check sample sizes - counts unique participants per arm at that visit</span>
+        <span class="c1"># Check sample sizes - counts unique participants per group at that visit</span>
         <span class="n">sub</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">v</span><span class="p">]</span>
         <span class="n">n_per_arm</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">)[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
         <span class="n">n_resp</span> <span class="o">=</span> <span class="n">n_per_arm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
@@ -1257,11 +1258,11 @@ Using VALID_PAIRED_BY_RESPONSE for all subsequent analyses.
 
 
         <span class="k">if</span> <span class="n">n_resp</span> <span class="o">&lt;</span> <span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span> <span class="ow">or</span> <span class="n">n_nonresp</span> <span class="o">&lt;</span> <span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Skipping: insufficient participants (need &gt;=</span><span class="si">{</span><span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span><span class="si">}</span><span class="s2"> per arm)"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Skipping: insufficient participants (need &gt;=</span><span class="si">{</span><span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span><span class="si">}</span><span class="s2"> per group)"</span><span class="p">)</span>
             <span class="k">continue</span>
 
 
-        <span class="c1"># Use sctrial's built-in function to run between arm comparisons</span>
+        <span class="c1"># Use sctrial's built-in function to run between-group comparisons</span>
         <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">between_arm_comparison</span><span class="p">(</span>
             <span class="n">adata</span><span class="p">,</span>
             <span class="n">visit</span><span class="o">=</span><span class="n">v</span><span class="p">,</span>
@@ -1270,7 +1271,7 @@ Using VALID_PAIRED_BY_RESPONSE for all subsequent analyses.
             <span class="n">aggregate</span><span class="o">=</span><span class="s2">"participant_visit"</span><span class="p">,</span> <span class="c1"># Aggregate signature scores by participant-visit level</span>
             <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="c1"># Whether to z-score the outcome variable (for ols)</span>
             <span class="n">method</span><span class="o">=</span><span class="s2">"ols"</span><span class="p">,</span> <span class="c1"># Use ordinary least squares regression. Other option is 'wilcoxon' for Wilcoxon rank-sum test (Mann-Whitney U)</span>
-        <span class="p">)</span> <span class="c1"># Returns a dataframe with the results (beta (effect size), p-value for the between-arm comparison, False Discovery Rate corrected p-value, Number of participants included in the analysis)</span>
+        <span class="p">)</span> <span class="c1"># Returns a dataframe with the results (beta (effect size), p-value for the between-group comparison, False Discovery Rate corrected p-value, Number of participants included in the analysis)</span>
 
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">res</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
@@ -1285,10 +1286,10 @@ Using VALID_PAIRED_BY_RESPONSE for all subsequent analyses.
             <span class="n">display</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="n">display_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
 
 
-            <span class="c1"># Highlight significant</span>
+            <span class="c1"># Features selected at the exploratory FDR threshold</span>
             <span class="n">sig</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s2">"FDR_arm"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">]</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Significant (FDR&lt;</span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">sig</span><span class="p">[</span><span class="s1">'feature'</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Selected at FDR&lt;</span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2"> (exploratory): </span><span class="si">{</span><span class="n">sig</span><span class="p">[</span><span class="s1">'feature'</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"No features available for cross-sectional comparison."</span><span class="p">)</span>
 
@@ -1505,7 +1506,7 @@ Results at Pre:
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-  Significant (FDR&lt;0.25): [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T Cell Exhaustion&#39;, &#39;sig_Checkpoint Receptors&#39;, &#39;sig_Cell Proliferation&#39;, &#39;sig_Regulatory T Cell&#39;, &#39;sig_NK Cell Activity&#39;, &#39;sig_Apoptosis&#39;, &#39;sig_Oxidative Stress Response&#39;, &#39;sig_T Follicular Helper&#39;, &#39;sig_Hypoxia&#39;]
+  Selected at FDR&lt;0.25 (exploratory): [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T Cell Exhaustion&#39;, &#39;sig_Checkpoint Receptors&#39;, &#39;sig_Cell Proliferation&#39;, &#39;sig_Regulatory T Cell&#39;, &#39;sig_NK Cell Activity&#39;, &#39;sig_Apoptosis&#39;, &#39;sig_Oxidative Stress Response&#39;, &#39;sig_T Follicular Helper&#39;, &#39;sig_Hypoxia&#39;]
 
 Post: Responders=6, Non-responders=18 participants
 
@@ -1703,19 +1704,19 @@ Results at Post:
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-  Significant (FDR&lt;0.25): [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T Cell Exhaustion&#39;, &#39;sig_Checkpoint Receptors&#39;, &#39;sig_Type I Interferon&#39;, &#39;sig_Type II Interferon&#39;, &#39;sig_T Cell Activation&#39;, &#39;sig_Inflammatory Response&#39;, &#39;sig_Antigen Presentation&#39;, &#39;sig_Cell Proliferation&#39;, &#39;sig_Regulatory T Cell&#39;, &#39;sig_NK Cell Activity&#39;, &#39;sig_Apoptosis&#39;, &#39;sig_Oxidative Stress Response&#39;, &#39;sig_Humoral Plasma Cell&#39;, &#39;sig_Tissue-Resident Memory&#39;, &#39;sig_T Follicular Helper&#39;, &#39;sig_Hypoxia&#39;]
+  Selected at FDR&lt;0.25 (exploratory): [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T Cell Exhaustion&#39;, &#39;sig_Checkpoint Receptors&#39;, &#39;sig_Type I Interferon&#39;, &#39;sig_Type II Interferon&#39;, &#39;sig_T Cell Activation&#39;, &#39;sig_Inflammatory Response&#39;, &#39;sig_Antigen Presentation&#39;, &#39;sig_Cell Proliferation&#39;, &#39;sig_Regulatory T Cell&#39;, &#39;sig_NK Cell Activity&#39;, &#39;sig_Apoptosis&#39;, &#39;sig_Oxidative Stress Response&#39;, &#39;sig_Humoral Plasma Cell&#39;, &#39;sig_Tissue-Resident Memory&#39;, &#39;sig_T Follicular Helper&#39;, &#39;sig_Hypoxia&#39;]
 </pre></div></div>
 </div>
 </section>
-<section id="6.-Within-Arm-Longitudinal-Comparisons">
-<h2>6. Within-Arm Longitudinal Comparisons<a class="headerlink" href="#6.-Within-Arm-Longitudinal-Comparisons" title="Link to this heading">#</a></h2>
+<section id="6.-Within-Group-Longitudinal-Comparisons">
+<h2>6. Within-Group Longitudinal Comparisons<a class="headerlink" href="#6.-Within-Group-Longitudinal-Comparisons" title="Link to this heading">#</a></h2>
 <p><strong>Note</strong>: The Responder group has only 3 paired participants. With such a small sample, analytical standard errors are unreliable; we use <code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code> (wild cluster bootstrap-t) for robust p-values and confidence intervals. Results for Responders should be interpreted as descriptive only.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"WITHIN-ARM LONGITUDINAL ANALYSIS: Pre </span><span class="se">\u2192</span><span class="s2"> Post changes"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"WITHIN-GROUP LONGITUDINAL ANALYSIS: Pre to Post changes"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
 
 <span class="n">within_arm_results</span> <span class="o">=</span> <span class="p">[]</span>
@@ -1749,15 +1750,15 @@ Results at Post:
                 <span class="s2">"p_time_boot"</span><span class="p">,</span> <span class="s2">"se_time_boot"</span><span class="p">,</span> <span class="s2">"ci_lo_boot"</span><span class="p">,</span> <span class="s2">"ci_hi_boot"</span><span class="p">,</span>
                 <span class="s2">"FDR_time"</span><span class="p">,</span> <span class="s2">"n_units"</span><span class="p">,</span>
             <span class="p">]</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Pre</span><span class="se">\u2192</span><span class="s2">Post changes in </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">:"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Pre to Post changes in </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">:"</span><span class="p">)</span>
             <span class="n">display</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="n">display_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
 
             <span class="n">sig</span> <span class="o">=</span> <span class="n">res</span><span class="p">[(</span><span class="n">res</span><span class="p">[</span><span class="s2">"FDR_time"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s2">"FDR_time"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">)]</span>
             <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-                <span class="n">direction</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\u2191</span><span class="s2">"</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">"beta_time"</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">"</span><span class="se">\u2193</span><span class="s2">"</span>
+                <span class="n">direction</span> <span class="o">=</span> <span class="s2">"increased"</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">"beta_time"</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">"decreased"</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'feature'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'beta_time'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">_fmt_fdr</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">'FDR_time'</span><span class="p">])</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"Insufficient visits or features for within-arm comparison."</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Insufficient visits or features for within-group comparison."</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">within_arm_results</span><span class="p">:</span>
     <span class="n">all_within</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">within_arm_results</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1772,12 +1773,12 @@ Results at Post:
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 ============================================================
-WITHIN-ARM LONGITUDINAL ANALYSIS: Pre → Post changes
+WITHIN-GROUP LONGITUDINAL ANALYSIS: Pre to Post changes
 ============================================================
 
 Responder:
 
-Pre→Post changes in Responder:
+Pre to Post changes in Responder:
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -1785,45 +1786,45 @@ Pre→Post changes in Responder:
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 3 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: 19 of 19 bootstrap confidence intervals are unbounded: with this few participants the sign-flip bootstrap cannot reject at the 5% level.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: 19 of 19 bootstrap confidence intervals are unbounded: with this few participants the sign-flip bootstrap cannot reject at the 5% level.
   res = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -2127,37 +2128,37 @@ Non-responder:
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -2167,7 +2168,7 @@ Non-responder:
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-Pre→Post changes in Non-responder:
+Pre to Post changes in Non-responder:
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -2175,11 +2176,11 @@ Pre→Post changes in Non-responder:
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
-/tmp/ipykernel_3304457/622767544.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_153386/2058268711.py:14: UserWarning: Only 8 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -2474,14 +2475,14 @@ Pre→Post changes in Non-responder:
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-  sig_T Cell Exhaustion: ↑ (beta=0.738, FDR=0.238)
-  sig_Checkpoint Receptors: ↑ (beta=0.779, FDR=0.238)
-  sig_Type II Interferon: ↑ (beta=0.677, FDR=0.241)
-  sig_T Cell Activation: ↑ (beta=0.744, FDR=0.241)
-  sig_Antigen Presentation: ↑ (beta=0.927, FDR=0.238)
-  sig_Regulatory T Cell: ↑ (beta=0.611, FDR=0.241)
-  sig_Tissue-Resident Memory: ↑ (beta=0.910, FDR=0.238)
-  sig_T Follicular Helper: ↑ (beta=0.793, FDR=0.238)
+  sig_T Cell Exhaustion: increased (beta=0.738, FDR=0.238)
+  sig_Checkpoint Receptors: increased (beta=0.779, FDR=0.238)
+  sig_Type II Interferon: increased (beta=0.677, FDR=0.241)
+  sig_T Cell Activation: increased (beta=0.744, FDR=0.241)
+  sig_Antigen Presentation: increased (beta=0.927, FDR=0.238)
+  sig_Regulatory T Cell: increased (beta=0.611, FDR=0.241)
+  sig_Tissue-Resident Memory: increased (beta=0.910, FDR=0.238)
+  sig_T Follicular Helper: increased (beta=0.793, FDR=0.238)
 </pre></div></div>
 </div>
 <section id="Signature-Distributions-by-Response-and-Visit">
@@ -2560,8 +2561,8 @@ Showing top 9 of 19 features. Set MAX_PLOT_FEATURES higher to see all.
 </section>
 <section id="7.-Difference-in-Differences-(Frequentist-DiD)">
 <h2>7. Difference-in-Differences (Frequentist DiD)<a class="headerlink" href="#7.-Difference-in-Differences-(Frequentist-DiD)" title="Link to this heading">#</a></h2>
-<p>With only 11 paired participants (3 responders and 8 non-responders), analytical cluster-robust standard errors are unreliable. We pass <code class="docutils literal notranslate"><span class="pre">DiDConfig(use_bootstrap=True)</span></code> so that <code class="docutils literal notranslate"><span class="pre">st.did_table()</span></code> uses the wild cluster bootstrap-t to compute p-values and confidence intervals, with no manual permutation loop.</p>
-<p><strong>Important</strong>: Because response status is a <em>post-treatment outcome</em> (not a randomized arm), the DiD here tests for <em>association</em> between response and immune trajectory — it does <strong>not</strong> establish a causal treatment effect. The “treated/control” labels below refer to Responder/Non-responder groups for the purpose of the DiD model specification.</p>
+<p>With only 11 paired participants (3 responders and 8 non-responders), analytical cluster-robust standard errors are unreliable. We pass <code class="docutils literal notranslate"><span class="pre">DiDConfig(use_bootstrap=True)</span></code> so that <code class="docutils literal notranslate"><span class="pre">st.did_table()</span></code> uses the wild cluster bootstrap-t to compute p-values and confidence intervals.</p>
+<p><strong>Important</strong>: Because response status is a <em>post-treatment outcome</em> (not a randomized arm), the DiD here tests for <em>association</em> between response and immune trajectory; it does <strong>not</strong> establish a causal treatment effect. The “treated/control” labels below refer to Responder/Non-responder groups for the purpose of the DiD model specification.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
@@ -2601,17 +2602,17 @@ Showing top 9 of 19 features. Set MAX_PLOT_FEATURES higher to see all.
         <span class="n">display</span><span class="p">(</span><span class="n">did_results</span><span class="p">[</span><span class="n">display_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
 
         <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Interpretation:"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"  beta_DiD &gt; 0: Responders increase MORE (or decrease less) than Non-responders"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"  beta_DiD &lt; 0: Non-responders increase MORE (or decrease less) than Responders"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"  beta_DiD &gt; 0: Responders increase more (or decrease less) than Non-responders"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"  beta_DiD &lt; 0: Non-responders increase more (or decrease less) than Responders"</span><span class="p">)</span>
 
         <span class="n">sig</span> <span class="o">=</span> <span class="n">did_results</span><span class="p">[(</span><span class="n">did_results</span><span class="p">[</span><span class="s2">"FDR_DiD"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">did_results</span><span class="p">[</span><span class="s2">"FDR_DiD"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">)]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Significant DiD effects (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Signatures selected at FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2"> (exploratory):"</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
                 <span class="n">direction</span> <span class="o">=</span> <span class="s2">"Responders increase more"</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">"beta_DiD"</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">"Non-responders increase more"</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'feature'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'beta_DiD'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">_fmt_fdr</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">'FDR_DiD'</span><span class="p">])</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">No signatures showed significant differential change (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">No signatures were selected at FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2"> (exploratory)."</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"DiD analysis skipped: insufficient visits or features"</span><span class="p">)</span>
 </pre></div>
@@ -2884,10 +2885,10 @@ DiD Results (wild cluster bootstrap p-values):
 <div class="highlight"><pre>
 
 Interpretation:
-  beta_DiD &gt; 0: Responders increase MORE (or decrease less) than Non-responders
-  beta_DiD &lt; 0: Non-responders increase MORE (or decrease less) than Responders
+  beta_DiD &gt; 0: Responders increase more (or decrease less) than Non-responders
+  beta_DiD &lt; 0: Non-responders increase more (or decrease less) than Responders
 
-No signatures showed significant differential change (FDR &lt; 0.25)
+No signatures were selected at FDR &lt; 0.25 (exploratory).
 </pre></div></div>
 </div>
 <section id="Trial-Interaction-Plot">
@@ -3380,10 +3381,10 @@ Effect sizes for DiD (Responder vs Non-responder change):
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Current sample (paired participants):"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Responders: </span><span class="si">{</span><span class="n">n_resp_paired</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Non-responders: </span><span class="si">{</span><span class="n">n_nonresp_paired</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Smaller arm: </span><span class="si">{</span><span class="n">n_min_arm</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Smaller group: </span><span class="si">{</span><span class="n">n_min_arm</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="c1"># Power for different effect sizes with current sample</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Power with current sample size (n=</span><span class="si">{</span><span class="n">n_min_arm</span><span class="si">}</span><span class="s2"> per arm):"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Power with current sample size (n=</span><span class="si">{</span><span class="n">n_min_arm</span><span class="si">}</span><span class="s2"> per group):"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">effect_size</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">]:</span>
     <span class="n">power</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">power_did</span><span class="p">(</span><span class="n">n_per_group</span><span class="o">=</span><span class="n">n_min_arm</span><span class="p">,</span> <span class="n">effect_size</span><span class="o">=</span><span class="n">effect_size</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Effect size d=</span><span class="si">{</span><span class="n">effect_size</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">power</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> power"</span><span class="p">)</span>
@@ -3392,7 +3393,7 @@ Effect sizes for DiD (Responder vs Non-responder change):
 <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Sample size needed for 80% power:"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">effect_size</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">]:</span>
     <span class="n">n_needed</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">sample_size_did</span><span class="p">(</span><span class="n">effect_size</span><span class="o">=</span><span class="n">effect_size</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Effect size d=</span><span class="si">{</span><span class="n">effect_size</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> per arm (</span><span class="si">{</span><span class="mi">2</span><span class="o">*</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> total)"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Effect size d=</span><span class="si">{</span><span class="n">effect_size</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> per group (</span><span class="si">{</span><span class="mi">2</span><span class="o">*</span><span class="n">n_needed</span><span class="si">}</span><span class="s2"> total)"</span><span class="p">)</span>
 
 <span class="c1"># Power curve visualization</span>
 <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
@@ -3405,7 +3406,7 @@ Effect sizes for DiD (Responder vs Non-responder change):
 
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"black"</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">"--"</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"80% power"</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">n_min_arm</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"gray"</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">":"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Current n=</span><span class="si">{</span><span class="n">n_min_arm</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Sample size per arm"</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Sample size per group"</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"Power"</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">"Power Curves by Effect Size"</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">"lower right"</span><span class="p">)</span>
@@ -3420,7 +3421,7 @@ Effect sizes for DiD (Responder vs Non-responder change):
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">effect_range</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">power_current</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Effect size (Cohen's d)"</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"Power"</span><span class="p">)</span>
-<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Power with Current Sample (n=</span><span class="si">{</span><span class="n">n_min_arm</span><span class="si">}</span><span class="s2"> per arm)"</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Power with Current Sample (n=</span><span class="si">{</span><span class="n">n_min_arm</span><span class="si">}</span><span class="s2"> per group)"</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
@@ -3474,19 +3475,19 @@ POWER ANALYSIS
 Current sample (paired participants):
   Responders: 3
   Non-responders: 8
-  Smaller arm: 3
+  Smaller group: 3
 
-Power with current sample size (n=3 per arm):
+Power with current sample size (n=3 per group):
   Effect size d=0.5: 9.4% power
   Effect size d=0.8: 16.5% power
   Effect size d=1.0: 23.2% power
   Effect size d=1.5: 45.1% power
 
 Sample size needed for 80% power:
-  Effect size d=0.5: 63 per arm (126 total)
-  Effect size d=0.8: 25 per arm (50 total)
-  Effect size d=1.0: 16 per arm (32 total)
-  Effect size d=1.5: 7 per arm (14 total)
+  Effect size d=0.5: 63 per group (126 total)
+  Effect size d=0.8: 25 per group (50 total)
+  Effect size d=1.0: 16 per group (32 total)
+  Effect size d=1.5: 7 per group (14 total)
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -3529,7 +3530,7 @@ is already accounted for. Cell counts help reduce within-participant noise.
 <li><p>Estimation of intraclass correlation (ICC)</p></li>
 <li><p>Better handling of unbalanced designs</p></li>
 </ul>
-<p><strong>Caveat — asymptotic p-values</strong>: <code class="docutils literal notranslate"><span class="pre">statsmodels</span></code> MixedLM uses Wald z-tests with asymptotic standard errors. Small-sample corrections (Kenward–Roger, Satterthwaite) are not available in this implementation. With 11 paired participants, p-values may be anti-conservative (too small). Treat mixed-effects p-values as supportive of the bootstrap-based inference, not as standalone confirmatory evidence.</p>
+<p><strong>Caveat on asymptotic p-values</strong>: <code class="docutils literal notranslate"><span class="pre">statsmodels</span></code> MixedLM uses Wald z-tests with asymptotic standard errors. Small-sample corrections (Kenward-Roger, Satterthwaite) are not available in this implementation. With 11 paired participants, p-values may be anti-conservative (too small). Treat mixed-effects p-values as supportive of the bootstrap-based inference, not as standalone confirmatory evidence.</p>
 <p><strong>Note on point estimates</strong>: With two visits and paired participants, each participant contributes one within-participant change, so the fixed effects and mixed effects models give the same <code class="docutils literal notranslate"><span class="pre">beta_DiD</span></code>. They differ in the standard error and in the reference distribution of the test.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
@@ -3564,7 +3565,7 @@ is already accounted for. Cell counts help reduce within-participant noise.
             <span class="n">mixed_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"feature"</span><span class="p">,</span> <span class="s2">"beta_mixed"</span><span class="p">,</span> <span class="s2">"se_mixed"</span><span class="p">,</span> <span class="s2">"p_mixed"</span><span class="p">,</span> <span class="s2">"icc"</span><span class="p">]</span>
             <span class="n">display</span><span class="p">(</span><span class="n">comparison</span><span class="p">[</span><span class="n">mixed_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
 
-            <span class="c1"># Highlight significant mixed effects results</span>
+            <span class="c1"># Mixed-effects results below the exploratory threshold</span>
             <span class="n">sig_mixed</span> <span class="o">=</span> <span class="n">comparison</span><span class="p">[</span><span class="n">comparison</span><span class="p">[</span><span class="s2">"p_mixed"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">]</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">sig_mixed</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Notable mixed-effects DiD (p &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">, exploratory; Wald z, no small-sample correction):"</span><span class="p">)</span>
@@ -4104,7 +4105,7 @@ Highly influential participants (|influence| &gt; 2 SD = 0.209):
         <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"DiD Effect (beta)"</span><span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">"DiDAnalyzer Forest Plot (bootstrap 95% CI)"</span><span class="p">)</span>
 
-        <span class="c1"># Mark significant</span>
+        <span class="c1"># Mark the features selected at the exploratory FDR threshold</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">res_an</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()):</span>
             <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">notna</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"FDR_DiD"</span><span class="p">))</span> <span class="ow">and</span> <span class="n">row</span><span class="p">[</span><span class="s2">"FDR_DiD"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">:</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s2">"*"</span><span class="p">,</span> <span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">"beta_DiD"</span><span class="p">],</span> <span class="n">i</span><span class="p">),</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s2">"bold"</span><span class="p">,</span>
@@ -4396,7 +4397,7 @@ DiDAnalyzer Results (wild cluster bootstrap p-values):
 <section id="Treatment-Heterogeneity">
 <h3>Treatment Heterogeneity<a class="headerlink" href="#Treatment-Heterogeneity" title="Link to this heading">#</a></h3>
 <p>Here we test whether the DiD effect differs by a baseline biomarker (median split at baseline).</p>
-<p><strong>Caveat</strong>: The biomarker is the baseline (Pre-treatment) mean of <code class="docutils literal notranslate"><span class="pre">features_use[0]</span></code>. The test uses the participants with both visits and needs at least two of them in each arm by biomarker group. This cohort has 3 paired responders, so that condition cannot be met and the function reports the interaction as not estimable. The cell is kept to show the call.</p>
+<p><strong>Caveat</strong>: The biomarker is the baseline (Pre-treatment) mean of <code class="docutils literal notranslate"><span class="pre">features_use[0]</span></code>. The test uses the participants with both visits and needs at least two of them in each response group by biomarker group. This cohort has 3 paired responders, so that condition cannot be met and the function reports the interaction as not estimable. The call is shown here to illustrate the interface.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
 </pre></div>
@@ -4408,7 +4409,7 @@ DiDAnalyzer Results (wild cluster bootstrap p-values):
     <span class="n">biomarker</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">)[</span><span class="n">feat_biomarker</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
     <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">'biomarker_base'</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">biomarker</span><span class="p">)</span>
 
-    <span class="c1"># Test heterogeneity for ALL features</span>
+    <span class="c1"># Test heterogeneity for all features</span>
     <span class="n">res_het</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">test_treatment_heterogeneity</span><span class="p">(</span>
         <span class="n">adata</span><span class="p">,</span>
         <span class="n">features</span><span class="o">=</span><span class="n">features_use</span><span class="p">,</span>
@@ -4420,16 +4421,16 @@ DiDAnalyzer Results (wild cluster bootstrap p-values):
     <span class="n">display</span><span class="p">(</span><span class="n">res_het</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">res_het</span><span class="p">[</span><span class="s2">"p_heterogeneity"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">The interaction is not estimable in this cohort: each arm by biomarker group"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">The interaction is not estimable in this cohort: each response group by biomarker group"</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">"needs at least 2 participants with both visits."</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">sig_het</span> <span class="o">=</span> <span class="n">res_het</span><span class="p">[</span><span class="n">res_het</span><span class="p">[</span><span class="s2">"FDR_heterogeneity"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">sig_het</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Significant heterogeneity (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Heterogeneity selected at FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2"> (exploratory):"</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig_het</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'feature'</span><span class="p">]</span><span class="si">}</span><span class="s2">: beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'beta_heterogeneity'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">_fmt_fdr</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">'FDR_heterogeneity'</span><span class="p">])</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">No significant treatment heterogeneity detected (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)."</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">No treatment heterogeneity was selected at FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2"> (exploratory)."</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">"With this few participants the test has little power."</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -4447,7 +4448,7 @@ Biomarker: baseline sig_Cytotoxic T Cell Activity (median split)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/tmp/ipykernel_3304457/3279764813.py:9: UserWarning: The arm by visit by biomarker interaction is not estimable for 19 of 19 features: it needs at least 2 paired participants in each arm by biomarker group, found control/low=3, control/high=5, treated/low=3, treated/high=0 for &#39;sig_Cytotoxic T Cell Activity&#39;.
+/tmp/ipykernel_153386/1677467233.py:9: UserWarning: The arm by visit by biomarker interaction is not estimable for 19 of 19 features: it needs at least 2 paired participants in each arm by biomarker group, found control/low=3, control/high=5, treated/low=3, treated/high=0 for &#39;sig_Cytotoxic T Cell Activity&#39;.
   res_het = st.test_treatment_heterogeneity(
 </pre></div></div>
 </div>
@@ -4663,14 +4664,14 @@ Biomarker: baseline sig_Cytotoxic T Cell Activity (median split)
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-The interaction is not estimable in this cohort: each arm by biomarker group
+The interaction is not estimable in this cohort: each response group by biomarker group
 needs at least 2 participants with both visits.
 </pre></div></div>
 </div>
 </section>
 <section id="Sensitivity-to-Unmeasured-Confounding-(E-value)">
 <h3>Sensitivity to Unmeasured Confounding (E-value)<a class="headerlink" href="#Sensitivity-to-Unmeasured-Confounding-(E-value)" title="Link to this heading">#</a></h3>
-<p>The E-value measures how strong unmeasured confounding would need to be to explain away an observed association. We convert the <strong>delta-based</strong> Hedges’ g (from the Effect Sizes section) to an approximate risk ratio using the formula RR = exp(0.91 * g), which is valid for continuous outcomes.</p>
+<p>The E-value measures how strong unmeasured confounding would need to be to explain away an observed association. We convert the <strong>delta-based</strong> Hedges’ g (from the Effect Sizes section) to an approximate risk ratio using the approximation RR = exp(0.91 * g) for continuous outcomes.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
 </pre></div>
@@ -4735,7 +4736,7 @@ Feature: sig_Cell Proliferation
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Bayesian DiD (PyMC) — disabled by default (slow; may crash on arm64)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Bayesian DiD (PyMC): disabled by default (optional; computationally intensive)</span>
 <span class="c1"># Set RUN_PYMC = True in the config cell to enable.</span>
 <span class="k">if</span> <span class="ow">not</span> <span class="n">RUN_PYMC</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"Bayesian DiD skipped (RUN_PYMC=False). Set RUN_PYMC=True in the config cell to run."</span><span class="p">)</span>
@@ -4896,7 +4897,7 @@ PyMC not available -- showing frequentist DiD forest plot instead.
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#3.-Trial-Design-and-Timepoint-Strategy">3. Trial Design and Timepoint Strategy</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#4.-Immune-Signatures">4. Immune Signatures</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#5.-Cross-Sectional-Comparisons-by-Timepoint">5. Cross-Sectional Comparisons by Timepoint</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#6.-Within-Arm-Longitudinal-Comparisons">6. Within-Arm Longitudinal Comparisons</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#6.-Within-Group-Longitudinal-Comparisons">6. Within-Group Longitudinal Comparisons</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Signature-Distributions-by-Response-and-Visit">Signature Distributions by Response and Visit</a></li>
 </ul>
 </li>

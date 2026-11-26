@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.stats.gsea &#8212; sctrial 1.1.0 documentation</title>
+    <title>sctrial.stats.gsea &#8212; sctrial 2.0.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../../_static/documentation_options.js?v=2a705162"></script>
+    <script src="../../../_static/documentation_options.js?v=79f5c508"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -123,8 +123,8 @@
       
     
     
-    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
-    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 2.0.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 2.0.0 documentation - Home"/>
   
   
 </a></div>
@@ -276,6 +276,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../study_designs.html">Study Designs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../concepts.html">Concepts and Methods</a></li>
@@ -657,7 +658,7 @@
 <span class="sd">        Whether to use Wild Cluster Bootstrap for DiD p-values (used if</span>
 <span class="sd">        rank_by is 'signed_confidence').</span>
 <span class="sd">    n_boot</span>
-<span class="sd">        Number of bootstrap permutations.</span>
+<span class="sd">        Number of bootstrap replicates.</span>
 <span class="sd">    min_units</span>
 <span class="sd">        Minimum number of paired participants required for a gene to be</span>
 <span class="sd">        included in the ranking. Default is 4.</span>
@@ -885,9 +886,9 @@
 <span class="w">    </span><span class="sd">"""Perform Gene Set Enrichment Analysis (GSEA) on trial-aware rankings.</span>
 
 <span class="sd">    This function calculates Difference-in-Differences (DiD) effect sizes for</span>
-<span class="sd">    all genes, ranks them, and performs GSEA using `gseapy.prerank`. This approach</span>
-<span class="sd">    ensures that enriched pathways represent treatment effects rather than</span>
-<span class="sd">    baseline differences. For several gene-set collections, use</span>
+<span class="sd">    all genes, ranks them, and performs GSEA using `gseapy.prerank`. This way,</span>
+<span class="sd">    enrichment reflects the DiD contrast (the differential change from baseline</span>
+<span class="sd">    between the two groups), rather than cross-sectional baseline differences. For several gene-set collections, use</span>
 <span class="sd">    `run_gsea_did_multi`, or rank once with `rank_genes_did` and call</span>
 <span class="sd">    `run_gsea_prerank` per collection.</span>
 
@@ -920,7 +921,7 @@
 <span class="sd">        Whether to use Wild Cluster Bootstrap for DiD p-values (used if</span>
 <span class="sd">        rank_by is 'signed_confidence').</span>
 <span class="sd">    n_boot</span>
-<span class="sd">        Number of bootstrap permutations.</span>
+<span class="sd">        Number of bootstrap replicates.</span>
 <span class="sd">    min_units</span>
 <span class="sd">        Minimum number of paired participants required for a gene to be</span>
 <span class="sd">        included in the ranking. Genes with fewer participants return NaN</span>

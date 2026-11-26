@@ -16,12 +16,13 @@ anti-conservative p-values.  Multiple studies have demonstrated this
 effect:
 
 - Squair et al. (2021) showed that cell-level differential expression
-  tests yield false-discovery rates far above nominal levels when
+  tests yield false positive rates far above nominal levels when
   participants are ignored
   (`Nature Communications <https://doi.org/10.1038/s41467-021-25960-2>`__).
 
-- Zimmerman et al. (2021) confirmed that pseudobulk aggregation to the
-  sample level restores correct Type I error control
+- Zimmerman et al. (2021) confirmed that pseudobulk aggregation, in
+  which each participant's cells are collapsed into a single expression
+  profile, restores correct Type I error control
   (`Nature Communications <https://doi.org/10.1038/s41467-021-21038-1>`__).
 
 - Murphy & Skene (2022) benchmarked pseudobulk against mixed-model and
@@ -32,8 +33,8 @@ effect:
 By default, **sctrial** aggregates cell-level expression to
 participant-level summaries before inference, typically at the
 participant-visit level.  Supported aggregation functions include mean,
-median, and percent-positive summaries.  The participant — not the
-cell — is the recommended unit of inference throughout the package.
+median, and percent-positive summaries.  The participant, not the
+cell, is the recommended unit of inference throughout the package.
 
 Supported study designs
 -----------------------
@@ -42,8 +43,9 @@ sctrial supports three study architectures, each targeting a different
 estimand:
 
 **Two-arm longitudinal (Difference-in-Differences)**
-  Participants in two arms (e.g. treatment vs control, responder vs
-  non-responder) are measured at two or more time points.  For the
+  Participants fall into two groups, either an assigned treatment versus
+  control arm or a non-assigned contrast such as responders versus
+  non-responders, and are measured at two or more time points.  For the
   canonical two-visit setting, sctrial estimates a standard pre/post DiD
   parameter.  For studies with more than two visits, sctrial additionally
   provides event-study
@@ -82,7 +84,7 @@ where:
 - :math:`\alpha_i` is a participant fixed effect that absorbs all
   time-invariant confounders,
 - :math:`\gamma` captures the common time trend,
-- :math:`\beta_{\text{DiD}}` is the parameter of interest — the
+- :math:`\beta_{\text{DiD}}` is the parameter of interest, the
   *additional* change in the treated arm relative to control.
 
 With two time periods, estimating this model is algebraically equivalent
@@ -151,7 +153,7 @@ Within-arm and cross-sectional comparisons
 ------------------------------------------
 
 For single-arm paired designs,
-:func:`~sctrial.stats.comparisons.within_arm_comparison` fits an OLS
+:func:`~sctrial.stats.comparisons.within_arm_comparison` fits an ordinary least squares (OLS)
 model with participant fixed effects on pseudobulk means, regressing the
 outcome on a visit indicator (``outcome ~ visit_num + C(participant)``).
 The coefficient on the visit term estimates the average
@@ -205,7 +207,7 @@ Gene set enrichment analysis
 ----------------------------
 
 For pathway-level analysis, sctrial ranks genes by a signed
-confidence metric:
+significance score:
 
 .. math::
 
@@ -213,7 +215,7 @@ confidence metric:
 
 and passes this ranking to pre-ranked GSEA via
 `gseapy <https://gseapy.readthedocs.io>`_.  This preserves both
-direction and statistical strength in the ranking without requiring
+direction and statistical significance in the ranking without requiring
 an arbitrary fold-change cutoff.
 
 Relationship to other tools

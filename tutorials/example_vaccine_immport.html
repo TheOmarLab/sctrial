@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Vaccine Response Analysis &#8212; sctrial 1.1.0 documentation</title>
+    <title>Vaccine Response Analysis &#8212; sctrial 2.0.0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../_static/documentation_options.js?v=2a705162"></script>
+    <script src="../_static/documentation_options.js?v=79f5c508"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -129,8 +129,8 @@
       
     
     
-    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
-    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 2.0.0 documentation - Home"/>
+    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 2.0.0 documentation - Home"/>
   
   
 </a></div>
@@ -286,6 +286,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../study_designs.html">Study Designs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts.html">Concepts and Methods</a></li>
@@ -382,9 +383,9 @@
 <p><strong>Dataset:</strong> BNT162b2 vaccination time course (GEO GSE171964)</p>
 <section id="Background">
 <h2>Background<a class="headerlink" href="#Background" title="Link to this heading">#</a></h2>
-<p>This dataset profiles PBMCs collected at baseline and after BNT162b2 vaccination, capturing short-term immune dynamics.</p>
+<p>This dataset profiles peripheral blood mononuclear cells (PBMCs) collected at baseline and after BNT162b2 vaccination, capturing short-term immune dynamics.</p>
 <blockquote>
-<div><p><strong>Single-arm longitudinal study</strong> — all participants received the vaccine. Analyses focus on within-participant changes (Day 0 vs Day 7) rather than treatment vs control comparisons. Participant-level aggregation avoids treating cells as independent observations, and multiple testing is controlled using FDR.</p>
+<div><p><strong>Single-arm longitudinal study.</strong> All participants received the vaccine. Analyses focus on within-participant changes (Day 0 vs Day 7) rather than treatment versus control comparisons. Participant-level aggregation avoids treating cells as independent observations, and the false discovery rate (FDR) is controlled across tests.</p>
 </div></blockquote>
 </section>
 <section id="1.-Setup">
@@ -396,7 +397,7 @@
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">'ignore'</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">FutureWarning</span><span class="p">)</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">'ignore'</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s1">'IProgress not found'</span><span class="p">)</span>  <span class="c1"># tqdm without ipywidgets</span>
-<span class="c1"># Note: We do NOT suppress UserWarning — the package issues useful</span>
+<span class="c1"># Note: we leave UserWarning active; the package issues useful</span>
 <span class="c1"># recommendations (e.g. use_bootstrap=True for small samples)</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -428,7 +429,7 @@
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-sctrial version: 1.1.0
+sctrial version: 2.0.0
 </pre></div></div>
 </div>
 </section>
@@ -476,8 +477,8 @@ Obs columns:
 </pre></div></div>
 </div>
 </section>
-<section id="2.2-Quick-exploratory-summaries">
-<h3>2.2 Quick exploratory summaries<a class="headerlink" href="#2.2-Quick-exploratory-summaries" title="Link to this heading">#</a></h3>
+<section id="2.2-Exploratory-summaries">
+<h3>2.2 Exploratory summaries<a class="headerlink" href="#2.2-Exploratory-summaries" title="Link to this heading">#</a></h3>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
@@ -553,15 +554,15 @@ Name: pt_id, dtype: int64
 <span class="n">covariates</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">candidate_covariates</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"Covariates available (not modeled here):"</span><span class="p">,</span> <span class="n">covariates</span><span class="p">)</span>
 
-<span class="c1"># Design object for a SINGLE-ARM longitudinal study.</span>
-<span class="c1"># All participants received vaccine — there is no control arm.</span>
+<span class="c1"># Design object for a single-arm longitudinal study.</span>
+<span class="c1"># All participants received the vaccine; there is no control arm.</span>
 <span class="c1"># arm_col=None tells sctrial this is a single-arm design.</span>
-<span class="c1"># Analyses use within_arm_comparison() for paired pre→post inference,</span>
-<span class="c1"># NOT between-arm DiD.</span>
+<span class="c1"># Analyses use within_arm_comparison() for paired baseline-to-follow-up</span>
+<span class="c1"># inference, not between-arm difference-in-differences (DiD).</span>
 <span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span>
     <span class="n">participant_col</span><span class="o">=</span><span class="s2">"participant_id"</span><span class="p">,</span>
     <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span><span class="p">,</span>
-    <span class="n">arm_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>           <span class="c1"># Single-arm study — no arm column</span>
+    <span class="n">arm_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>           <span class="c1"># Single-arm study; no arm column</span>
     <span class="n">celltype_col</span><span class="o">=</span><span class="s2">"cell_type"</span><span class="p">,</span>
 <span class="p">)</span>
 
@@ -665,7 +666,7 @@ TrialDesign(participant_col=&#39;participant_id&#39;, visit_col=&#39;visit&#39;,
 </section>
 <section id="4.-UMAPs-of-All-Cell-Types">
 <h2>4. UMAPs of All Cell Types<a class="headerlink" href="#4.-UMAPs-of-All-Cell-Types" title="Link to this heading">#</a></h2>
-<p>Here, we explore global structure across all cell types to understand broad immune landscape changes.</p>
+<p>Here, we use uniform manifold approximation and projection (UMAP) to explore global structure across all cell types and broad changes in the immune landscape.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
@@ -724,7 +725,7 @@ TrialDesign(participant_col=&#39;participant_id&#39;, visit_col=&#39;visit&#39;,
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">available</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata_analysis</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
 
-<span class="c1"># Canonical 19-signature dictionary (matches manuscript figures _shared.py)</span>
+<span class="c1"># Canonical panel of 19 gene signatures used throughout this tutorial</span>
 <span class="n">gene_signatures</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">"Cytotoxic T Cell Activity"</span><span class="p">:</span> <span class="p">[</span>
         <span class="s2">"GZMB"</span><span class="p">,</span> <span class="s2">"GZMA"</span><span class="p">,</span> <span class="s2">"GZMH"</span><span class="p">,</span> <span class="s2">"GZMK"</span><span class="p">,</span> <span class="s2">"GZMM"</span><span class="p">,</span> <span class="s2">"PRF1"</span><span class="p">,</span> <span class="s2">"GNLY"</span><span class="p">,</span> <span class="s2">"NKG7"</span><span class="p">,</span>
@@ -917,12 +918,12 @@ Panel genes (available): [&#39;CD79A&#39;, &#39;CD79B&#39;, &#39;MS4A1&#39;, &#3
 <span class="n">VALID_PAIRED_IDS</span> <span class="o">=</span> <span class="n">paired_info</span><span class="p">[</span><span class="s2">"paired_ids"</span><span class="p">]</span>
 <span class="n">N_VALID_PAIRED</span> <span class="o">=</span> <span class="n">paired_info</span><span class="p">[</span><span class="s2">"n_paired"</span><span class="p">]</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Participants with valid Day0+Day7 scores for ALL features: </span><span class="si">{</span><span class="n">N_VALID_PAIRED</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Participants with valid Day0+Day7 scores for all features: </span><span class="si">{</span><span class="n">N_VALID_PAIRED</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Total participants: </span><span class="si">{</span><span class="n">paired_info</span><span class="p">[</span><span class="s1">'n_total'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">paired_info</span><span class="p">[</span><span class="s2">"dropped_ids"</span><span class="p">]:</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Dropped (missing visit or NaN features): </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">paired_info</span><span class="p">[</span><span class="s1">'dropped_ids'</span><span class="p">])</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"All paired participants have valid scores ✓"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"All paired participants have valid scores"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Using </span><span class="si">{</span><span class="n">N_VALID_PAIRED</span><span class="si">}</span><span class="s2"> validated paired participants for analyses."</span><span class="p">)</span>
 <br/></pre></div>
@@ -937,9 +938,9 @@ Panel genes (available): [&#39;CD79A&#39;, &#39;CD79B&#39;, &#39;MS4A1&#39;, &#3
 PAIRING VERIFICATION (based on valid signature scores)
 ============================================================
 
-Participants with valid Day0+Day7 scores for ALL features: 6
+Participants with valid Day0+Day7 scores for all features: 6
 Total participants: 6
-All paired participants have valid scores ✓
+All paired participants have valid scores
 
 Using 6 validated paired participants for analyses.
 </pre></div></div>
@@ -949,7 +950,7 @@ Using 6 validated paired participants for analyses.
 <h2>6. Within-Arm Comparisons (Participant-Level)<a class="headerlink" href="#6.-Within-Arm-Comparisons-(Participant-Level)" title="Link to this heading">#</a></h2>
 <p>Here, we run paired within‑participant analyses to determine which module scores change from Day 0 to Day 7.</p>
 <blockquote>
-<div><p><strong>Bootstrap inference:</strong> With only 6 paired participants, cluster-robust asymptotic p-values are anti-conservative. We use <code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code> (wild cluster bootstrap-t; Cameron et al. 2008) to obtain reliable p-values, standard errors, and confidence intervals. The bootstrap p-value replaces the analytical p-value as the primary inferential quantity.</p>
+<div><p><strong>Bootstrap inference:</strong> With only 6 paired participants, cluster-robust asymptotic p-values are anti-conservative. We use <code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code> (wild cluster bootstrap-t; Cameron et al. 2008) to obtain better-calibrated p-values, standard errors, and confidence intervals. The bootstrap p-value replaces the analytical p-value as the primary inferential quantity.</p>
 </div></blockquote>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
@@ -1063,43 +1064,43 @@ WITHIN-ARM COMPARISONS: MODULE SCORES (Day 0 vs Day 7)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -1413,7 +1414,7 @@ Boxplots show participant-level distributions by day; points indicate individual
 </div>
 <section id="Module-Score-Pseudobulk-by-Cell-Type-(Within-Arm)">
 <h3>Module-Score Pseudobulk by Cell Type (Within-Arm)<a class="headerlink" href="#Module-Score-Pseudobulk-by-Cell-Type-(Within-Arm)" title="Link to this heading">#</a></h3>
-<p>Here, we aggregate module scores to participant×visit×cell_type (pseudobulk) and test paired Day 0→Day 7 changes within the vaccinated arm for each cell type.</p>
+<p>Here, we aggregate module scores to the participant-by-visit-by-cell-type level (pseudobulk, that is, the mean over the cells in each group) and test paired Day 0 to Day 7 changes within the vaccinated arm for each cell type.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
@@ -1712,7 +1713,7 @@ Boxplots show participant-level distributions by day; points indicate individual
         <span class="n">sig</span> <span class="o">=</span> <span class="n">res_genes</span><span class="p">[(</span><span class="n">res_genes</span><span class="p">[</span><span class="s2">"FDR_time"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">res_genes</span><span class="p">[</span><span class="s2">"FDR_time"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">)]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Panel genes with significant changes (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Panel genes with changes (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):"</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
                 <span class="n">direction</span> <span class="o">=</span> <span class="s2">"increased"</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">"beta_time"</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">"decreased"</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'feature'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'beta_time'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">_fmt_fdr</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">'FDR_time'</span><span class="p">])</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
@@ -1792,43 +1793,43 @@ WITHIN-ARM COMPARISONS: PANEL GENES (Day 0 vs Day 7)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_2255531/223314787.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -2124,7 +2125,7 @@ WITHIN-ARM COMPARISONS: PANEL GENES (Day 0 vs Day 7)
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-Panel genes with significant changes (FDR &lt; 0.25):
+Panel genes with changes (FDR &lt; 0.25):
   MS4A1: decreased (beta=-0.468, FDR=0.223)
   ISG15: increased (beta=1.236, FDR=0.148)
   IFI6: increased (beta=0.615, FDR=0.148)
@@ -2179,9 +2180,9 @@ Boxplots show participant-level log1p norm by day; points indicate individual pa
         <span class="n">sig</span> <span class="o">=</span> <span class="n">pb</span><span class="p">[(</span><span class="n">pb</span><span class="p">[</span><span class="s2">"FDR_time"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">pb</span><span class="p">[</span><span class="s2">"FDR_time"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">)]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Significant pseudobulk changes (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Pseudobulk changes (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):"</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-                <span class="n">direction</span> <span class="o">=</span> <span class="s2">"↑"</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">"mean_delta"</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">"↓"</span>
+                <span class="n">direction</span> <span class="o">=</span> <span class="s2">"increased"</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">"mean_delta"</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">"decreased"</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'celltype'</span><span class="p">]</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'feature'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (delta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'mean_delta'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">_fmt_fdr</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">'FDR_time'</span><span class="p">])</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">"No pseudobulk results generated."</span><span class="p">)</span>
@@ -2697,7 +2698,7 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
 <ul class="simple">
 <li><p><strong>Effect sizes</strong>: Cohen’s d for paired within-arm changes</p></li>
 <li><p><strong>Power analysis</strong>: Current power and sample size planning</p></li>
-<li><p><strong>Effective sample size</strong>: Accounting for cell-level clustering</p></li>
+<li><p><strong>Effective sample size</strong>: Accounting for cell-level clustering via the intraclass correlation (ICC)</p></li>
 </ul>
 <section id="12.1-Effect-Sizes-for-Within-Arm-Changes">
 <h3>12.1 Effect Sizes for Within-Arm Changes<a class="headerlink" href="#12.1-Effect-Sizes-for-Within-Arm-Changes" title="Link to this heading">#</a></h3>
@@ -2767,7 +2768,7 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
     <span class="k">if</span> <span class="n">effect_results</span><span class="p">:</span>
         <span class="n">df_effect</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">effect_results</span><span class="p">)</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Effect sizes for Day 0 → Day 7 changes:"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Effect sizes for Day 0 to Day 7 changes:"</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">"  d_paired: standardized within-subject change (delta_mean / sd_delta)"</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">"  g_paired: bias-corrected paired effect size (Hedges' J correction)"</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
@@ -2807,7 +2808,7 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
 EFFECT SIZE ANALYSIS (Within-Arm)
 ============================================================
 
-Effect sizes for Day 0 → Day 7 changes:
+Effect sizes for Day 0 to Day 7 changes:
   d_paired: standardized within-subject change (delta_mean / sd_delta)
   g_paired: bias-corrected paired effect size (Hedges&#39; J correction)
 
@@ -3059,8 +3060,8 @@ Effect sizes for Day 0 → Day 7 changes:
 <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
 
 <span class="c1"># Use sctrial's paired power functions (single-arm pre/post design).</span>
-<span class="c1"># These are the correct functions for a paired study — do NOT use</span>
-<span class="c1"># power_did() which assumes a two-arm DiD design.</span>
+<span class="c1"># These are the correct functions for a paired study; do not use</span>
+<span class="c1"># power_did(), which assumes a two-arm DiD design.</span>
 
 <span class="c1"># Current sample size</span>
 <span class="n">n_paired</span> <span class="o">=</span> <span class="n">N_VALID_PAIRED</span>
@@ -3336,7 +3337,7 @@ AnnData object with n_obs × n_vars = 202 × 5
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#1.-Setup">1. Setup</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#2.-Data-Loading-and-Processing">2. Data Loading and Processing</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#2.1-Load-processed-AnnData">2.1 Load processed AnnData</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#2.2-Quick-exploratory-summaries">2.2 Quick exploratory summaries</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#2.2-Exploratory-summaries">2.2 Exploratory summaries</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#3.-Trial-Design-and-Timepoint-Strategy">3. Trial Design and Timepoint Strategy</a><ul class="pst-show_toc_level nav section-nav flex-column">

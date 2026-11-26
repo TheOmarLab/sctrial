@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Concepts and Methods &#8212; sctrial 1.1.0 documentation</title>
+    <title>Concepts and Methods &#8212; sctrial 2.0.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="_static/documentation_options.js?v=2a705162"></script>
+    <script src="_static/documentation_options.js?v=79f5c508"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -128,8 +128,8 @@
       
     
     
-    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
-    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 2.0.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 2.0.0 documentation - Home"/>
   
   
 </a></div>
@@ -285,6 +285,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="study_designs.html">Study Designs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Concepts and Methods</a></li>
@@ -388,11 +389,12 @@ anti-conservative p-values.  Multiple studies have demonstrated this
 effect:</p>
 <ul class="simple">
 <li><p>Squair et al. (2021) showed that cell-level differential expression
-tests yield false-discovery rates far above nominal levels when
+tests yield false positive rates far above nominal levels when
 participants are ignored
 (<a class="reference external" href="https://doi.org/10.1038/s41467-021-25960-2">Nature Communications</a>).</p></li>
-<li><p>Zimmerman et al. (2021) confirmed that pseudobulk aggregation to the
-sample level restores correct Type I error control
+<li><p>Zimmerman et al. (2021) confirmed that pseudobulk aggregation, in
+which each participant’s cells are collapsed into a single expression
+profile, restores correct Type I error control
 (<a class="reference external" href="https://doi.org/10.1038/s41467-021-21038-1">Nature Communications</a>).</p></li>
 <li><p>Murphy &amp; Skene (2022) benchmarked pseudobulk against mixed-model and
 cell-level approaches and found that pseudobulk methods offer the best
@@ -402,16 +404,17 @@ balance of calibration and power
 <p>By default, <strong>sctrial</strong> aggregates cell-level expression to
 participant-level summaries before inference, typically at the
 participant-visit level.  Supported aggregation functions include mean,
-median, and percent-positive summaries.  The participant — not the
-cell — is the recommended unit of inference throughout the package.</p>
+median, and percent-positive summaries.  The participant, not the
+cell, is the recommended unit of inference throughout the package.</p>
 </section>
 <section id="supported-study-designs">
 <h2>Supported study designs<a class="headerlink" href="#supported-study-designs" title="Link to this heading">#</a></h2>
 <p>sctrial supports three study architectures, each targeting a different
 estimand:</p>
 <dl class="simple">
-<dt><strong>Two-arm longitudinal (Difference-in-Differences)</strong></dt><dd><p>Participants in two arms (e.g. treatment vs control, responder vs
-non-responder) are measured at two or more time points.  For the
+<dt><strong>Two-arm longitudinal (Difference-in-Differences)</strong></dt><dd><p>Participants fall into two groups, either an assigned treatment versus
+control arm or a non-assigned contrast such as responders versus
+non-responders, and are measured at two or more time points.  For the
 canonical two-visit setting, sctrial estimates a standard pre/post DiD
 parameter.  For studies with more than two visits, sctrial additionally
 provides event-study
@@ -445,7 +448,7 @@ arm <em>a</em> at time <em>t</em>, the model is:</p>
 <li><p><span class="math notranslate nohighlight">\(\alpha_i\)</span> is a participant fixed effect that absorbs all
 time-invariant confounders,</p></li>
 <li><p><span class="math notranslate nohighlight">\(\gamma\)</span> captures the common time trend,</p></li>
-<li><p><span class="math notranslate nohighlight">\(\beta_{\text{DiD}}\)</span> is the parameter of interest — the
+<li><p><span class="math notranslate nohighlight">\(\beta_{\text{DiD}}\)</span> is the parameter of interest, the
 <em>additional</em> change in the treated arm relative to control.</p></li>
 </ul>
 <p>With two time periods, estimating this model is algebraically equivalent
@@ -504,7 +507,7 @@ are often adequate, though diagnostics remain important.</p>
 <section id="within-arm-and-cross-sectional-comparisons">
 <h2>Within-arm and cross-sectional comparisons<a class="headerlink" href="#within-arm-and-cross-sectional-comparisons" title="Link to this heading">#</a></h2>
 <p>For single-arm paired designs,
-<a class="reference internal" href="api/statistics.html#sctrial.stats.comparisons.within_arm_comparison" title="sctrial.stats.comparisons.within_arm_comparison"><code class="xref py py-func docutils literal notranslate"><span class="pre">within_arm_comparison()</span></code></a> fits an OLS
+<a class="reference internal" href="api/statistics.html#sctrial.stats.comparisons.within_arm_comparison" title="sctrial.stats.comparisons.within_arm_comparison"><code class="xref py py-func docutils literal notranslate"><span class="pre">within_arm_comparison()</span></code></a> fits an ordinary least squares (OLS)
 model with participant fixed effects on pseudobulk means, regressing the
 outcome on a visit indicator (<code class="docutils literal notranslate"><span class="pre">outcome</span> <span class="pre">~</span> <span class="pre">visit_num</span> <span class="pre">+</span> <span class="pre">C(participant)</span></code>).
 The coefficient on the visit term estimates the average
@@ -553,12 +556,12 @@ participant-level change scores.</p>
 <section id="gene-set-enrichment-analysis">
 <h2>Gene set enrichment analysis<a class="headerlink" href="#gene-set-enrichment-analysis" title="Link to this heading">#</a></h2>
 <p>For pathway-level analysis, sctrial ranks genes by a signed
-confidence metric:</p>
+significance score:</p>
 <div class="math notranslate nohighlight">
 \[r_g = \text{sign}(\hat{\beta}_g) \cdot (-\log_{10}(p_g))\]</div>
 <p>and passes this ranking to pre-ranked GSEA via
 <a class="reference external" href="https://gseapy.readthedocs.io">gseapy</a>.  This preserves both
-direction and statistical strength in the ranking without requiring
+direction and statistical significance in the ranking without requiring
 an arbitrary fold-change cutoff.</p>
 </section>
 <section id="relationship-to-other-tools">

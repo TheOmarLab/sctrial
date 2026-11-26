@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>sctrial — Design-Aware Participant-Level Inference for Longitudinal Single-Cell Studies &#8212; sctrial 1.1.0 documentation</title>
+    <title>sctrial: Design-Aware Participant-Level Inference for Longitudinal Single-Cell Studies &#8212; sctrial 2.0.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="_static/documentation_options.js?v=2a705162"></script>
+    <script src="_static/documentation_options.js?v=79f5c508"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -56,7 +56,7 @@
     <link rel="icon" href="_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Installation" href="installation.html" />
+    <link rel="next" title="Study Designs" href="study_designs.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
@@ -127,8 +127,8 @@
       
     
     
-    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
-    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 2.0.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 2.0.0 documentation - Home"/>
   
   
 </a></div>
@@ -284,6 +284,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="study_designs.html">Study Designs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="concepts.html">Concepts and Methods</a></li>
@@ -349,7 +350,7 @@
                 <article class="bd-article">
                   
   <section id="sctrial-design-aware-participant-level-inference-for-longitudinal-single-cell-studies">
-<h1>sctrial — Design-Aware Participant-Level Inference for Longitudinal Single-Cell Studies<a class="headerlink" href="#sctrial-design-aware-participant-level-inference-for-longitudinal-single-cell-studies" title="Link to this heading">#</a></h1>
+<h1>sctrial: Design-Aware Participant-Level Inference for Longitudinal Single-Cell Studies<a class="headerlink" href="#sctrial-design-aware-participant-level-inference-for-longitudinal-single-cell-studies" title="Link to this heading">#</a></h1>
 <a class="reference external image-reference" href="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml"><img alt="Tests" src="https://github.com/TheOmarLab/sctrial/actions/workflows/test.yml/badge.svg?branch=main" />
 </a>
 <img alt="Python" src="https://img.shields.io/badge/python-3.9%2B-blue" />
@@ -357,22 +358,22 @@
 </a>
 <p><strong>sctrial</strong> is a Python package for participant-level differential analysis of longitudinal
 single-cell RNA-seq data. Built on <a class="reference external" href="https://anndata.readthedocs.io">AnnData</a>, it
-aggregates cell-level measurements to participant-level replicates and applies
-design-specific statistical methods — difference-in-differences, paired contrasts, and
-cross-sectional comparisons — so that inference reflects the actual number of independent
+aggregates cell-level measurements to participant-level summaries (pseudobulk) and applies
+design-specific statistical methods (difference-in-differences, paired contrasts, and
+cross-sectional comparisons) so that inference reflects the actual number of independent
 biological units in the study.</p>
-<a class="reference internal image-reference" href="_images/overview_figurev2.png"><img alt="sctrial overview — from scRNA-seq input through trial-aware analysis to statistical outputs" class="align-center" src="_images/overview_figurev2.png" style="width: 100%;" />
+<a class="reference internal image-reference" href="_images/overview_figurev2.png"><img alt="sctrial overview: from scRNA-seq input through trial-aware analysis to statistical outputs" class="align-center" src="_images/overview_figurev2.png" style="width: 100%;" />
 </a>
 <section id="key-applications">
 <h2>Key Applications<a class="headerlink" href="#key-applications" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><strong>Difference-in-Differences (DiD)</strong>: Participant fixed-effects regression for treatment
-effect estimation across arms and timepoints, with cluster-robust inference by default
+effect estimation across arms and time points, with cluster-robust inference by default
 and an optional wild cluster bootstrap for small cohorts.</p></li>
-<li><p><strong>Paired within-arm contrasts</strong>: Pre→post comparisons with paired statistical tests and
+<li><p><strong>Paired within-arm contrasts</strong>: Baseline to post-treatment comparisons with paired statistical tests and
 effect sizes (Cohen’s d, Hedges’ g).</p></li>
-<li><p><strong>Between-arm comparisons</strong>: Cross-sectional tests between treatment and control arms at
-fixed timepoints with pseudobulk replication.</p></li>
+<li><p><strong>Between-group comparisons</strong>: Cross-sectional tests between two groups at a fixed time
+point, with cells aggregated to one value per participant.</p></li>
 <li><p><strong>Cell-type abundance</strong>: Composition changes across conditions using proportion-based
 statistics and participant-level aggregation.</p></li>
 <li><p><strong>Gene Set Enrichment Analysis</strong>: GSEA on DiD-ranked gene lists with support for Hallmark,
@@ -430,11 +431,11 @@ For end-to-end analyses on real clinical datasets, explore the <a class="referen
                   
 <div class="prev-next-area">
     <a class="right-next"
-       href="installation.html"
+       href="study_designs.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Installation</p>
+        <p class="prev-next-title">Study Designs</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis &#8212; sctrial 1.1.0 documentation</title>
+    <title>Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis &#8212; sctrial 2.0.0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../_static/documentation_options.js?v=2a705162"></script>
+    <script src="../_static/documentation_options.js?v=79f5c508"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -129,8 +129,8 @@
       
     
     
-    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
-    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 2.0.0 documentation - Home"/>
+    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 2.0.0 documentation - Home"/>
   
   
 </a></div>
@@ -286,6 +286,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../study_designs.html">Study Designs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts.html">Concepts and Methods</a></li>
@@ -379,21 +380,21 @@
                   
   <section id="Immunotherapy-Response-in-TNBC:-Longitudinal-Single-Cell-Analysis">
 <h1>Immunotherapy Response in TNBC: Longitudinal Single-Cell Analysis<a class="headerlink" href="#Immunotherapy-Response-in-TNBC:-Longitudinal-Single-Cell-Analysis" title="Link to this heading">#</a></h1>
-<p><strong>Dataset:</strong> Zhang et al., Cell 2021 (GSE169246) This notebook analyzes longitudinal single-cell data from a clinical immunotherapy study of TNBC patients, comparing immune dynamics between the anti-PDL1+Chemo and Chemo-alone arms.</p>
+<p><strong>Dataset:</strong> Zhang et al., Cancer Cell 2021 (GSE169246) This notebook analyzes longitudinal single-cell data from a clinical immunotherapy study of participants with triple-negative breast cancer (TNBC), comparing immune dynamics between the anti-PDL1+Chemo and Chemo-alone arms.</p>
 <blockquote>
-<div><p><strong>Note:</strong> This is a randomized trial design. Treatment arm (anti-PDL1+Chemo vs Chemo) was assigned at enrollment. DiD contrasts here estimate causal treatment effects on immune trajectories under standard trial assumptions.</p>
+<div><p><strong>Note:</strong> Treatment arm (anti-PDL1+Chemo vs Chemo) was assigned at randomization. Because assignment is randomized, the difference-in-differences (DiD) contrast estimates the average effect of adding anti-PD-L1 to chemotherapy on the change in each immune signature from baseline to post-treatment, rather than a mere association. With 12 participants these estimates are imprecise and should be read as exploratory.</p>
 </div></blockquote>
 <section id="Background">
 <h2>Background<a class="headerlink" href="#Background" title="Link to this heading">#</a></h2>
-<p>Zhang et al. (Cell 2021) profiled tumor-infiltrating immune cells from TNBC patients randomized to receive either anti-PD-L1 + chemotherapy or chemotherapy alone. Tumor biopsies were collected Pre- and Post-treatment.</p>
+<p>Zhang et al. (Cancer Cell 2021) profiled tumor-infiltrating immune cells from participants randomized to receive either anti-programmed death-ligand 1 (anti-PD-L1) plus chemotherapy or chemotherapy alone. Tumor biopsies were collected Pre- and Post-treatment.</p>
 </section>
 <section id="Study-Design">
 <h2>Study Design<a class="headerlink" href="#Study-Design" title="Link to this heading">#</a></h2>
 <p>This is a prospective study</p>
 <ul class="simple">
-<li><p>Patients randomized to: <strong>anti-PDL1+Chemo</strong> vs <strong>Chemo</strong></p></li>
+<li><p>Participants randomized to: <strong>anti-PDL1+Chemo</strong> vs <strong>Chemo</strong></p></li>
 <li><p>Tumor biopsies collected at: <strong>Pre</strong> and <strong>Post</strong> treatment</p></li>
-<li><p>12 paired patients included</p></li>
+<li><p>12 paired participants included</p></li>
 </ul>
 <p><strong>Key biological questions:</strong></p>
 <ol class="arabic simple">
@@ -405,14 +406,14 @@
 <section id="Analysis-Strategy">
 <h2>Analysis Strategy<a class="headerlink" href="#Analysis-Strategy" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p>Cross-sectional comparisons: anti-PDL1+Chemo vs Chemo at each timepoint</p></li>
-<li><p>Within-arm longitudinal: Pre-&gt;Post changes within each arm</p></li>
+<li><p>Cross-sectional comparisons: anti-PDL1+Chemo vs Chemo at each time point</p></li>
+<li><p>Within-arm longitudinal: Pre to Post changes within each arm</p></li>
 <li><p>Difference-in-Differences (DiD): Do arms change differently?</p></li>
 </ul>
 <p><strong>Statistical considerations:</strong></p>
 <ul class="simple">
 <li><p>Participant-level aggregation to avoid pseudoreplication</p></li>
-<li><p>FDR correction for multiple testing</p></li>
+<li><p>False discovery rate (FDR) control for multiple testing</p></li>
 <li><p>Bootstrap inference for small sample sizes</p></li>
 </ul>
 </section>
@@ -423,10 +424,10 @@
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Imports - consolidated</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Imports</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">'ignore'</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">FutureWarning</span><span class="p">)</span>
-<span class="c1"># Note: We do NOT suppress UserWarning -- sctrial issues important</span>
+<span class="c1"># Note: UserWarnings are left enabled; sctrial issues important</span>
 <span class="c1"># statistical caveats (e.g. low-cluster reliability) as UserWarnings.</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">"invalid value"</span><span class="p">)</span>
 
@@ -444,9 +445,9 @@
 <span class="c1"># Configuration</span>
 <span class="n">MIN_GENES_FOR_SCORE</span> <span class="o">=</span> <span class="mi">3</span>
 <span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span> <span class="o">=</span> <span class="mi">3</span>
-<span class="n">FDR_ALPHA</span> <span class="o">=</span> <span class="mf">0.25</span>  <span class="c1"># Exploratory threshold -- all results flagged at this level</span>
-                   <span class="c1"># are hypothesis-generating, NOT confirmatory. Use 0.05 for</span>
-                   <span class="c1"># confirmatory analyses. See GSEA FAQ for precedent.</span>
+<span class="n">FDR_ALPHA</span> <span class="o">=</span> <span class="mf">0.25</span>  <span class="c1"># Exploratory threshold; all results flagged at this level</span>
+                   <span class="c1"># are hypothesis-generating, not confirmatory. Use 0.05 for</span>
+                   <span class="c1"># confirmatory analyses.</span>
 <span class="n">SEED</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">SEED</span><span class="p">)</span>  <span class="c1"># seaborn strip plots draw their jitter from NumPy's global generator</span>
 <span class="n">ARM_COL</span> <span class="o">=</span> <span class="s2">"arm"</span>
@@ -465,13 +466,13 @@
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-sctrial version: 1.1.0
+sctrial version: 2.0.0
 </pre></div></div>
 </div>
 </section>
 <section id="2.-Data-Loading-and-Processing">
 <h2>2. Data Loading and Processing<a class="headerlink" href="#2.-Data-Loading-and-Processing" title="Link to this heading">#</a></h2>
-<p>Load the Zhang et al. (Cell 2021) TNBC dataset via <code class="docutils literal notranslate"><span class="pre">load_tnbc_zhang()</span></code> and inspect the longitudinal pairing structure.</p>
+<p>Load the Zhang et al. (Cancer Cell 2021) TNBC dataset via <code class="docutils literal notranslate"><span class="pre">load_tnbc_zhang()</span></code> and inspect the longitudinal pairing structure.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
@@ -903,7 +904,7 @@ INFO:sctrial.validation:========================================================
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">available_genes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
 
-<span class="c1"># Canonical 19-signature dictionary (matches manuscript figures _shared.py)</span>
+<span class="c1"># Canonical 19-signature gene-set dictionary (matches the manuscript figures)</span>
 <span class="n">gene_signatures</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">"Cytotoxic T Cell Activity"</span><span class="p">:</span> <span class="p">[</span>
         <span class="s2">"GZMB"</span><span class="p">,</span> <span class="s2">"GZMA"</span><span class="p">,</span> <span class="s2">"GZMH"</span><span class="p">,</span> <span class="s2">"GZMK"</span><span class="p">,</span> <span class="s2">"GZMM"</span><span class="p">,</span> <span class="s2">"PRF1"</span><span class="p">,</span> <span class="s2">"GNLY"</span><span class="p">,</span> <span class="s2">"NKG7"</span><span class="p">,</span>
@@ -1085,7 +1086,7 @@ Features for analysis (after filtering): [&#39;sig_Cytotoxic T Cell Activity&#39
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># =============================================================================</span>
-<span class="c1"># VERIFICATION: Compute TRUE paired participants based on valid signature scores</span>
+<span class="c1"># Compute the paired participants that have valid signature scores at both visits</span>
 <span class="c1"># =============================================================================</span>
 <span class="c1"># This ensures consistency between reported pairing and actual analysis --</span>
 <span class="c1"># to ensure pairing is based on usable data, not just cell presence.</span>
@@ -1102,7 +1103,7 @@ Features for analysis (after filtering): [&#39;sig_Cytotoxic T Cell Activity&#39
     <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
 <span class="p">)</span>
 
-<span class="c1"># For each feature, identify participants with valid (non-NaN) scores at BOTH visits</span>
+<span class="c1"># For each feature, identify participants with valid (non-NaN) scores at both visits</span>
 <span class="n">valid_paired</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># feature -&gt; set of participant IDs with valid Pre AND Post scores</span>
 
 <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">features_use</span><span class="p">:</span>
@@ -1116,11 +1117,11 @@ Features for analysis (after filtering): [&#39;sig_Cytotoxic T Cell Activity&#39
         <span class="n">valid_paired</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="k">continue</span>
 
-    <span class="c1"># Participants with non-NaN at BOTH visits</span>
+    <span class="c1"># Participants with non-NaN at both visits</span>
     <span class="n">mask</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
     <span class="n">valid_paired</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">wide</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
 
-<span class="c1"># Get intersection across all features (participants valid for ALL features)</span>
+<span class="c1"># Get intersection across all features (participants valid for all features)</span>
 <span class="c1"># Only participants with valid scores for every signature are included</span>
 <span class="k">if</span> <span class="n">features_use</span><span class="p">:</span>
     <span class="n">all_features_valid</span> <span class="o">=</span> <span class="nb">set</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">valid_paired</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">features_use</span><span class="p">])</span>
@@ -1136,7 +1137,7 @@ Features for analysis (after filtering): [&#39;sig_Cytotoxic T Cell Activity&#39
 <span class="p">}</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Participants with valid Pre+Post scores for ALL features:"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Participants with valid Pre+Post scores for all features:"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Total: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_features_valid</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">arm</span> <span class="ow">in</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">]:</span>
     <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">VALID_PAIRED_BY_ARM</span><span class="p">[</span><span class="n">arm</span><span class="p">])</span>
@@ -1155,7 +1156,7 @@ Features for analysis (after filtering): [&#39;sig_Cytotoxic T Cell Activity&#39
     <span class="k">else</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">cell_based</span><span class="si">}</span><span class="s2"> (cells) = </span><span class="si">{</span><span class="n">score_based</span><span class="si">}</span><span class="s2"> (valid scores) OK"</span><span class="p">)</span>
 
-<span class="c1"># Show which participants were dropped (for debugging)</span>
+<span class="c1"># Show which participants were dropped and the reason</span>
 <span class="k">for</span> <span class="n">arm</span> <span class="ow">in</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">]:</span>
     <span class="n">dropped</span> <span class="o">=</span> <span class="n">paired_ids_by_arm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">arm</span><span class="p">,</span> <span class="nb">set</span><span class="p">())</span> <span class="o">-</span> <span class="n">VALID_PAIRED_BY_ARM</span><span class="p">[</span><span class="n">arm</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">dropped</span><span class="p">:</span>
@@ -1187,7 +1188,7 @@ Features for analysis (after filtering): [&#39;sig_Cytotoxic T Cell Activity&#39
 PAIRING VERIFICATION (based on valid signature scores)
 ============================================================
 
-Participants with valid Pre+Post scores for ALL features:
+Participants with valid Pre+Post scores for all features:
   Total: 12
   anti-PDL1+Chemo: 6
   Chemo: 6
@@ -1202,7 +1203,7 @@ Using VALID_PAIRED_BY_ARM for all subsequent analyses.
 </section>
 <section id="5.-Cross-Sectional-Comparisons-by-Timepoint">
 <h2>5. Cross-Sectional Comparisons by Timepoint<a class="headerlink" href="#5.-Cross-Sectional-Comparisons-by-Timepoint" title="Link to this heading">#</a></h2>
-<p>Compare anti-PDL1+Chemo vs Chemo at each visit (Pre and Post) using OLS regression at the participant level.</p>
+<p>Compare anti-PDL1+Chemo vs Chemo at each visit (Pre and Post) using ordinary least squares (OLS) regression at the participant level.</p>
 <p><strong>Interpretation:</strong></p>
 <ul class="simple">
 <li><p>Positive beta = higher in anti-PDL1+Chemo arm</p></li>
@@ -1255,7 +1256,7 @@ Using VALID_PAIRED_BY_ARM for all subsequent analyses.
 
             <span class="n">sig</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s2">"FDR_arm"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">]</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Significant (FDR&lt;</span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">sig</span><span class="p">[</span><span class="s1">'feature'</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Selected at FDR&lt;</span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2"> (exploratory): </span><span class="si">{</span><span class="n">sig</span><span class="p">[</span><span class="s1">'feature'</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"No features available for cross-sectional comparison."</span><span class="p">)</span>
 
@@ -1667,13 +1668,13 @@ Results at Post:
 </section>
 <section id="6.-Within-Arm-Longitudinal-Comparisons">
 <h2>6. Within-Arm Longitudinal Comparisons<a class="headerlink" href="#6.-Within-Arm-Longitudinal-Comparisons" title="Link to this heading">#</a></h2>
-<p>Pre→Post changes within each arm, using a paired Wilcoxon signed-rank test. With n=6 per arm, statistical power is limited; treat results as descriptive.</p>
+<p>Pre to Post changes within each arm, using a paired Wilcoxon signed-rank test. With n=6 per arm, statistical power is limited; treat results as descriptive.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"WITHIN-ARM LONGITUDINAL ANALYSIS: Pre -&gt; Post changes"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"WITHIN-ARM LONGITUDINAL ANALYSIS: Pre to Post changes"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"Using paired Wilcoxon signed-rank test (appropriate for small samples)"</span><span class="p">)</span>
@@ -1767,15 +1768,15 @@ Results at Post:
             <span class="n">within_arm_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df_arm</span><span class="p">)</span>
 
             <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Pre-&gt;Post changes in </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">:"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Pre to Post changes in </span><span class="si">{</span><span class="n">arm</span><span class="si">}</span><span class="s2">:"</span><span class="p">)</span>
             <span class="n">display_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"feature"</span><span class="p">,</span> <span class="s2">"n_paired"</span><span class="p">,</span> <span class="s2">"mean_delta"</span><span class="p">,</span> <span class="s2">"p_time"</span><span class="p">,</span> <span class="s2">"FDR_time"</span><span class="p">]</span>
             <span class="n">display</span><span class="p">(</span><span class="n">df_arm</span><span class="p">[</span><span class="n">display_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
 
-            <span class="c1"># Highlight significant</span>
+            <span class="c1"># Features selected at the exploratory FDR threshold</span>
             <span class="n">sig</span> <span class="o">=</span> <span class="n">df_arm</span><span class="p">[(</span><span class="n">df_arm</span><span class="p">[</span><span class="s2">"FDR_time"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">df_arm</span><span class="p">[</span><span class="s2">"FDR_time"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">)]</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-                    <span class="n">direction</span> <span class="o">=</span> <span class="s2">"up"</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">"mean_delta"</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">"down"</span>
+                    <span class="n">direction</span> <span class="o">=</span> <span class="s2">"increased"</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">"mean_delta"</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">"decreased"</span>
                     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'feature'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (delta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'mean_delta'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">_fmt_fdr</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">'FDR_time'</span><span class="p">])</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"Insufficient visits or features for within-arm comparison."</span><span class="p">)</span>
@@ -1794,7 +1795,7 @@ Results at Post:
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 ============================================================
-WITHIN-ARM LONGITUDINAL ANALYSIS: Pre -&gt; Post changes
+WITHIN-ARM LONGITUDINAL ANALYSIS: Pre to Post changes
 ============================================================
 
 Using paired Wilcoxon signed-rank test (appropriate for small samples)
@@ -1802,7 +1803,7 @@ Using VALID_PAIRED_BY_ARM (accounts for NaN signature scores)
 
 anti-PDL1+Chemo: 6 paired participants (valid scores)
 
-Pre-&gt;Post changes in anti-PDL1+Chemo:
+Pre to Post changes in anti-PDL1+Chemo:
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -1999,7 +2000,7 @@ Pre-&gt;Post changes in anti-PDL1+Chemo:
 
 Chemo: 6 paired participants (valid scores)
 
-Pre-&gt;Post changes in Chemo:
+Pre to Post changes in Chemo:
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -2257,11 +2258,11 @@ Pre-&gt;Post changes in Chemo:
 </section>
 <section id="7.-Difference-in-Differences-(Frequentist-DiD)">
 <h2>7. Difference-in-Differences (Frequentist DiD)<a class="headerlink" href="#7.-Difference-in-Differences-(Frequentist-DiD)" title="Link to this heading">#</a></h2>
-<p>We use <code class="docutils literal notranslate"><span class="pre">st.did_table()</span></code> with <code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code> (wild cluster bootstrap-t), which resamples regression residuals respecting participant cluster structure. This provides p-values and 95% CIs that are valid for small n without distributional assumptions, and matches the inference used in the manuscript.</p>
+<p>We use <code class="docutils literal notranslate"><span class="pre">st.did_table()</span></code> with <code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code> (wild cluster bootstrap-t), which resamples regression residuals while respecting the participant cluster structure. This gives p-values and 95% confidence intervals (CIs) that are more reliable in small samples than the normal-approximation (Wald) interval. With only 12 participants (6 per arm) the number of clusters is small, so these intervals remain approximate and the results should be read as exploratory.</p>
 <p><strong>Interpretation:</strong></p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">beta_DiD</span> <span class="pre">&gt;</span> <span class="pre">0</span></code>: anti-PDL1+Chemo increases MORE (or decreases less) than Chemo</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">beta_DiD</span> <span class="pre">&lt;</span> <span class="pre">0</span></code>: Chemo increases MORE (or decreases less) than anti-PDL1+Chemo</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">beta_DiD</span> <span class="pre">&gt;</span> <span class="pre">0</span></code>: anti-PDL1+Chemo increases more (or decreases less) than Chemo</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">beta_DiD</span> <span class="pre">&lt;</span> <span class="pre">0</span></code>: Chemo increases more (or decreases less) than anti-PDL1+Chemo</p></li>
 </ul>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
@@ -2285,7 +2286,7 @@ Pre-&gt;Post changes in Chemo:
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># Wild cluster bootstrap-t: resamples regression residuals respecting</span>
         <span class="c1"># participant cluster structure. Provides p_DiD, se_DiD_boot, ci_lo_boot,</span>
-        <span class="c1"># ci_hi_boot, and FDR_DiD. Matches the inference used in the manuscript.</span>
+        <span class="c1"># ci_hi_boot, and FDR_DiD.</span>
         <span class="n">did_results</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span>
             <span class="n">adata</span><span class="p">,</span>
             <span class="n">features</span><span class="o">=</span><span class="n">features_use</span><span class="p">,</span>
@@ -2293,7 +2294,7 @@ Pre-&gt;Post changes in Chemo:
             <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
             <span class="n">aggregate</span><span class="o">=</span><span class="s2">"participant_visit"</span><span class="p">,</span>  <span class="c1"># Average features per participant-visit before fitting</span>
             <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>               <span class="c1"># z-scores the outcome variable before fitting</span>
-            <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>             <span class="c1"># Wild cluster bootstrap-t (matches manuscript)</span>
+            <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>             <span class="c1"># Wild cluster bootstrap-t</span>
             <span class="n">n_boot</span><span class="o">=</span><span class="mi">999</span><span class="p">,</span>
             <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
         <span class="p">)</span>
@@ -2311,17 +2312,17 @@ Pre-&gt;Post changes in Chemo:
         <span class="n">display</span><span class="p">(</span><span class="n">did_results</span><span class="p">[</span><span class="n">display_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
 
         <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Interpretation:"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  beta_DiD &gt; 0: </span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">}</span><span class="s2"> increases MORE (or decreases less) than </span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  beta_DiD &lt; 0: </span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="si">}</span><span class="s2"> increases MORE (or decreases less) than </span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  beta_DiD &gt; 0: </span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">}</span><span class="s2"> increases more (or decreases less) than </span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  beta_DiD &lt; 0: </span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="si">}</span><span class="s2"> increases more (or decreases less) than </span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
         <span class="n">sig</span> <span class="o">=</span> <span class="n">did_results</span><span class="p">[(</span><span class="n">did_results</span><span class="p">[</span><span class="s2">"FDR_DiD"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">did_results</span><span class="p">[</span><span class="s2">"FDR_DiD"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">)]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">sig</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Significant DiD effects (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Signatures selected at FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2"> (exploratory):"</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
                 <span class="n">direction</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">}</span><span class="s2"> increases more"</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">"beta_DiD"</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="si">}</span><span class="s2"> increases more"</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'feature'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> (beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'beta_DiD'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">_fmt_fdr</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">'FDR_DiD'</span><span class="p">])</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">No signatures showed significant differential change (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">No signatures were selected at FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2"> (exploratory)."</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"DiD analysis skipped: insufficient visits or features"</span><span class="p">)</span>
 </pre></div>
@@ -2634,10 +2635,10 @@ DiD Results (wild cluster bootstrap p-values and CIs):
 <div class="highlight"><pre>
 
 Interpretation:
-  beta_DiD &gt; 0: anti-PDL1+Chemo increases MORE (or decreases less) than Chemo
-  beta_DiD &lt; 0: Chemo increases MORE (or decreases less) than anti-PDL1+Chemo
+  beta_DiD &gt; 0: anti-PDL1+Chemo increases more (or decreases less) than Chemo
+  beta_DiD &lt; 0: Chemo increases more (or decreases less) than anti-PDL1+Chemo
 
-Significant DiD effects (FDR &lt; 0.25):
+Signatures selected at FDR &lt; 0.25 (exploratory):
   sig_Monocyte Macrophage: anti-PDL1+Chemo increases more (beta=0.678, FDR=0.203)
   sig_NK Cell Activity: Chemo increases more (beta=-1.402, FDR=0.203)
   sig_Cell Proliferation: anti-PDL1+Chemo increases more (beta=1.209, FDR=0.203)
@@ -2651,7 +2652,7 @@ Significant DiD effects (FDR &lt; 0.25):
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Interaction plots for ALL features</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Interaction plots for all features</span>
 <span class="k">if</span> <span class="n">features_use</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
     <span class="n">n_plots</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">features_use</span><span class="p">)</span>
     <span class="n">n_cols</span>  <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">n_plots</span><span class="p">)</span>
@@ -2762,19 +2763,19 @@ Significant DiD effects (FDR &lt; 0.25):
 </section>
 <section id="8.-Response-Stratified-Analysis">
 <h2>8. Response-Stratified Analysis<a class="headerlink" href="#8.-Response-Stratified-Analysis" title="Link to this heading">#</a></h2>
-<p>The TNBC dataset includes clinical response annotations (<code class="docutils literal notranslate"><span class="pre">&quot;R&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;NR&quot;</span></code>) from the original study. We use these to run two additional analyses that mirror the manuscript:</p>
+<p>The TNBC dataset includes clinical response annotations (<code class="docutils literal notranslate"><span class="pre">&quot;R&quot;</span></code>, responder; <code class="docutils literal notranslate"><span class="pre">&quot;NR&quot;</span></code>, non-responder) from the original study. We use these to run two additional analyses:</p>
 <ul class="simple">
-<li><p><strong>Second-order DiD</strong> (manuscript Panel I): DID₂ = DID_R − DID_NR — measures whether the arm-level trajectory difference is larger in responders than non-responders.</p></li>
-<li><p><strong>Within-arm response DiD</strong> (manuscript Panels K &amp; L): within each arm separately, (Post−Pre)_R − (Post−Pre)_NR — isolates response-associated immune dynamics without the cross-arm comparison.</p></li>
+<li><p><strong>Second-order DiD</strong>: DID₂ = DID_R − DID_NR, which measures whether the arm-level trajectory difference is larger in responders than non-responders.</p></li>
+<li><p><strong>Within-arm response DiD</strong>: within each arm separately, (Post−Pre)_R − (Post−Pre)_NR, which isolates response-associated immune dynamics without the cross-arm comparison.</p></li>
 </ul>
-<p>Both analyses use stratified bootstrap CIs (999 iterations, each response × arm stratum resampled independently).</p>
+<p>Both analyses use stratified bootstrap confidence intervals (999 bootstrap replicates, each response × arm stratum resampled independently).</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Build participant-level delta frame (Post - Pre) with response annotation.</span>
 <span class="c1"># Shared by both second-order DiD and within-arm response DiD below.</span>
-<span class="c1"># Uses all paired participants (those with both Pre and Post), matching the manuscript.</span>
+<span class="c1"># Uses all paired participants (those with both Pre and Post).</span>
 
 <span class="n">R_VAL</span>  <span class="o">=</span> <span class="s2">"R"</span>
 <span class="n">NR_VAL</span> <span class="o">=</span> <span class="s2">"NR"</span>
@@ -2815,7 +2816,7 @@ Significant DiD effects (FDR &lt; 0.25):
     <span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">"n"</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
     <span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Note: strata with n=1 produce very wide bootstrap CIs — interpret as exploratory."</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Note: strata with n=1 produce very wide bootstrap CIs; interpret as exploratory."</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -2831,14 +2832,14 @@ Participant strata (arm × response):
 anti-PDL1+Chemo       NR  4
 anti-PDL1+Chemo        R  2
 
-Note: strata with n=1 produce very wide bootstrap CIs — interpret as exploratory.
+Note: strata with n=1 produce very wide bootstrap CIs; interpret as exploratory.
 </pre></div></div>
 </div>
 <section id="Second-order-DiD:-DID₂-=-DID_R-−-DID_NR">
 <h3>Second-order DiD: DID₂ = DID_R − DID_NR<a class="headerlink" href="#Second-order-DiD:-DID₂-=-DID_R-−-DID_NR" title="Link to this heading">#</a></h3>
 <p>DID₂ contrasts the treated-vs-control trajectory difference between responders and non-responders:</p>
 <p><strong>DID₂ = (Δ_treated_R − Δ_control_R) − (Δ_treated_NR − Δ_control_NR)</strong></p>
-<p>A positive DID₂ means the anti-PDL1+Chemo vs Chemo trajectory difference is more pronounced in responders. CIs use stratified bootstrap (each response × arm stratum resampled independently), matching the manuscript’s Panel I.</p>
+<p>A positive DID₂ means the anti-PDL1+Chemo vs Chemo trajectory difference is more pronounced in responders. Confidence intervals use a stratified bootstrap, with each response × arm stratum resampled independently.</p>
 <blockquote>
 <div><p><strong>Note:</strong> With only 12 participants, some strata can have n=1. Wide CIs are expected and results are exploratory.</p>
 </div></blockquote>
@@ -3252,8 +3253,8 @@ Second-order DiD results (DID₂ = DID_R − DID_NR):
 </section>
 <section id="Within-arm-Response-DiD:-(Post−Pre)_R-−-(Post−Pre)_NR">
 <h3>Within-arm Response DiD: (Post−Pre)_R − (Post−Pre)_NR<a class="headerlink" href="#Within-arm-Response-DiD:-(Post−Pre)_R-−-(Post−Pre)_NR" title="Link to this heading">#</a></h3>
-<p>Within each arm separately, this DiD compares how much more (or less) immune signatures change in responders relative to non-responders. This is purely observational within each arm — it does not exploit the randomization and should be interpreted descriptively.</p>
-<p>Corresponds to manuscript panels K (Chemo arm) and L (anti-PDL1+Chemo arm).</p>
+<p>Within each arm separately, this DiD compares how much more (or less) immune signatures change in responders relative to non-responders. This is purely observational within each arm; it does not exploit the randomization and should be interpreted descriptively.</p>
+<p>The two panels show the Chemo arm and the anti-PDL1+Chemo arm separately.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
@@ -3860,7 +3861,7 @@ is already accounted for. Cell counts help reduce within-participant noise.
 <li><p>Estimation of intraclass correlation (ICC)</p></li>
 <li><p>Better handling of unbalanced designs</p></li>
 </ul>
-<p><strong>Caveat — asymptotic p-values:</strong> statsmodels MixedLM uses Wald z-tests with asymptotic standard errors. Small-sample corrections are not available in this implementation. With small n, p-values may be anti-conservative (too small). Treat mixed-effects p-values as supportive of the wild cluster bootstrap inference from Section 7, not as standalone confirmatory evidence.</p>
+<p><strong>Caveat on asymptotic p-values:</strong> statsmodels MixedLM uses Wald z-tests with asymptotic standard errors. Small-sample corrections are not available in this implementation. With small n, p-values may be anti-conservative (too small). Treat mixed-effects p-values as supportive of the wild cluster bootstrap inference from Section 7, not as standalone confirmatory evidence.</p>
 <p><strong>Note on point estimates:</strong> With two visits and paired participants, each participant contributes one within-participant change, so the fixed effects and mixed effects models give the same <code class="docutils literal notranslate"><span class="pre">beta_DiD</span></code>. They differ in the standard error and in the reference distribution of the test.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
@@ -3890,7 +3891,7 @@ is already accounted for. Cell counts help reduce within-participant noise.
             <span class="n">mixed_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"feature"</span><span class="p">,</span> <span class="s2">"beta_mixed"</span><span class="p">,</span> <span class="s2">"se_mixed"</span><span class="p">,</span> <span class="s2">"p_mixed"</span><span class="p">,</span> <span class="s2">"icc"</span><span class="p">]</span>
             <span class="n">display</span><span class="p">(</span><span class="n">comparison</span><span class="p">[</span><span class="n">mixed_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
 
-            <span class="c1"># Highlight significant mixed effects results</span>
+            <span class="c1"># Mixed-effects results below the exploratory threshold</span>
             <span class="n">sig_mixed</span> <span class="o">=</span> <span class="n">comparison</span><span class="p">[</span><span class="n">comparison</span><span class="p">[</span><span class="s2">"p_mixed"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">]</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">sig_mixed</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Notable mixed-effects DiD (p &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">, exploratory; Wald z, no small-sample correction):"</span><span class="p">)</span>
@@ -4582,7 +4583,7 @@ Highly influential participants (|influence| &gt; 2 SD = 0.141):
         <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"DiD Effect (beta)"</span><span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">"DiDAnalyzer Forest Plot (bootstrap 95% CI)"</span><span class="p">)</span>
 
-        <span class="c1"># Mark significant</span>
+        <span class="c1"># Mark the features selected at the exploratory FDR threshold</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">res_an</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()):</span>
             <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">notna</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"FDR_DiD"</span><span class="p">))</span> <span class="ow">and</span> <span class="n">row</span><span class="p">[</span><span class="s2">"FDR_DiD"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">:</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s2">"*"</span><span class="p">,</span> <span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">"beta_DiD"</span><span class="p">],</span> <span class="n">i</span><span class="p">),</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s2">"bold"</span><span class="p">,</span>
@@ -4888,7 +4889,7 @@ DiDAnalyzer Results (wild cluster bootstrap p-values):
     <span class="n">biomarker</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">)[</span><span class="n">feat_biomarker</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
     <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">'biomarker_base'</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">biomarker</span><span class="p">)</span>
 
-    <span class="c1"># Test heterogeneity for ALL features</span>
+    <span class="c1"># Test heterogeneity for all features</span>
     <span class="n">res_het</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">test_treatment_heterogeneity</span><span class="p">(</span>
         <span class="n">adata</span><span class="p">,</span>
         <span class="n">features</span><span class="o">=</span><span class="n">features_use</span><span class="p">,</span>
@@ -4905,11 +4906,11 @@ DiDAnalyzer Results (wild cluster bootstrap p-values):
     <span class="k">else</span><span class="p">:</span>
         <span class="n">sig_het</span> <span class="o">=</span> <span class="n">res_het</span><span class="p">[</span><span class="n">res_het</span><span class="p">[</span><span class="s2">"FDR_heterogeneity"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">FDR_ALPHA</span><span class="p">]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">sig_het</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Significant heterogeneity (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">):"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Heterogeneity selected at FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2"> (exploratory):"</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sig_het</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'feature'</span><span class="p">]</span><span class="si">}</span><span class="s2">: beta=</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">'beta_heterogeneity'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, FDR=</span><span class="si">{</span><span class="n">_fmt_fdr</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">'FDR_heterogeneity'</span><span class="p">])</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">No significant treatment heterogeneity detected (FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2">)."</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">No treatment heterogeneity was selected at FDR &lt; </span><span class="si">{</span><span class="n">FDR_ALPHA</span><span class="si">}</span><span class="s2"> (exploratory)."</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">"With this few participants the test has little power."</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -5134,14 +5135,14 @@ Biomarker: baseline sig_Cytotoxic T Cell Activity (median split)
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 
-No significant treatment heterogeneity detected (FDR &lt; 0.25).
+No treatment heterogeneity was selected at FDR &lt; 0.25 (exploratory).
 With this few participants the test has little power.
 </pre></div></div>
 </div>
 </section>
 <section id="Sensitivity-to-Unmeasured-Confounding-(E-value)">
 <h3>Sensitivity to Unmeasured Confounding (E-value)<a class="headerlink" href="#Sensitivity-to-Unmeasured-Confounding-(E-value)" title="Link to this heading">#</a></h3>
-<p>The E-value measures how strong unmeasured confounding would need to be to explain away an observed association. We convert the delta-based Hedges’ g (from the Effect Sizes section) to an approximate risk ratio using the formula RR = exp(0.91 * g), which is valid for continuous outcomes.</p>
+<p>The E-value measures how strong unmeasured confounding would need to be to explain away an observed association. We convert the delta-based Hedges’ g (from the Effect Sizes section) to an approximate risk ratio using the approximate conversion RR = exp(0.91 * g) for continuous outcomes (VanderWeele and Ding, 2017).</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
 </pre></div>
@@ -5280,39 +5281,39 @@ Feature: sig_Monocyte Macrophage
     <tr>
       <th>0</th>
       <td>sig_Cell Proliferation</td>
-      <td>0.899287</td>
-      <td>-0.096451</td>
-      <td>1.769176</td>
-      <td>0.0700</td>
+      <td>0.885169</td>
+      <td>-0.096420</td>
+      <td>1.787231</td>
+      <td>0.0710</td>
       <td>12</td>
       <td>0.567625</td>
     </tr>
     <tr>
       <th>1</th>
       <td>sig_Monocyte Macrophage</td>
-      <td>0.560567</td>
-      <td>-0.120549</td>
-      <td>1.194317</td>
-      <td>0.0950</td>
+      <td>0.565118</td>
+      <td>-0.103817</td>
+      <td>1.184698</td>
+      <td>0.0880</td>
       <td>12</td>
       <td>0.567625</td>
     </tr>
     <tr>
       <th>2</th>
       <td>sig_Cytotoxic T Cell Activity</td>
-      <td>-0.877443</td>
-      <td>-1.908491</td>
-      <td>0.231996</td>
-      <td>0.1140</td>
+      <td>-0.858057</td>
+      <td>-1.841473</td>
+      <td>0.240346</td>
+      <td>0.1165</td>
       <td>12</td>
       <td>0.567625</td>
     </tr>
     <tr>
       <th>3</th>
       <td>sig_NK Cell Activity</td>
-      <td>-0.823714</td>
-      <td>-1.821106</td>
-      <td>0.263297</td>
+      <td>-0.832146</td>
+      <td>-1.828460</td>
+      <td>0.262639</td>
       <td>0.1195</td>
       <td>12</td>
       <td>0.567625</td>
@@ -5320,152 +5321,152 @@ Feature: sig_Monocyte Macrophage
     <tr>
       <th>4</th>
       <td>sig_Inflammatory Response</td>
-      <td>0.504843</td>
-      <td>-0.521568</td>
-      <td>1.431359</td>
-      <td>0.3020</td>
+      <td>0.492677</td>
+      <td>-0.531351</td>
+      <td>1.431713</td>
+      <td>0.3030</td>
       <td>12</td>
-      <td>0.875583</td>
+      <td>0.871765</td>
     </tr>
     <tr>
       <th>5</th>
       <td>sig_Humoral Plasma Cell</td>
-      <td>-0.413127</td>
-      <td>-1.300229</td>
-      <td>0.526531</td>
-      <td>0.3600</td>
+      <td>-0.410043</td>
+      <td>-1.295988</td>
+      <td>0.490162</td>
+      <td>0.3595</td>
       <td>12</td>
-      <td>0.875583</td>
+      <td>0.871765</td>
     </tr>
     <tr>
       <th>6</th>
       <td>sig_Type II Interferon</td>
-      <td>0.373302</td>
-      <td>-0.602956</td>
-      <td>1.314418</td>
-      <td>0.4125</td>
+      <td>0.367225</td>
+      <td>-0.584704</td>
+      <td>1.358988</td>
+      <td>0.4385</td>
       <td>12</td>
-      <td>0.875583</td>
+      <td>0.871765</td>
     </tr>
     <tr>
       <th>7</th>
       <td>sig_Antigen Presentation</td>
-      <td>0.341964</td>
-      <td>-0.642888</td>
-      <td>1.317490</td>
-      <td>0.4570</td>
+      <td>0.349565</td>
+      <td>-0.611389</td>
+      <td>1.304200</td>
+      <td>0.4750</td>
       <td>12</td>
-      <td>0.875583</td>
+      <td>0.871765</td>
     </tr>
     <tr>
       <th>8</th>
       <td>sig_Memory T Cell</td>
-      <td>-0.291356</td>
-      <td>-1.158934</td>
-      <td>0.615505</td>
-      <td>0.4810</td>
+      <td>-0.300267</td>
+      <td>-1.156201</td>
+      <td>0.553107</td>
+      <td>0.4875</td>
       <td>12</td>
-      <td>0.875583</td>
+      <td>0.871765</td>
     </tr>
     <tr>
       <th>9</th>
       <td>sig_Apoptosis</td>
-      <td>-0.335828</td>
-      <td>-1.297058</td>
-      <td>0.693265</td>
-      <td>0.4970</td>
+      <td>-0.332604</td>
+      <td>-1.322152</td>
+      <td>0.730251</td>
+      <td>0.5150</td>
       <td>12</td>
-      <td>0.875583</td>
+      <td>0.871765</td>
     </tr>
     <tr>
       <th>10</th>
       <td>sig_Tissue-Resident Memory</td>
-      <td>-0.243364</td>
-      <td>-1.219910</td>
-      <td>0.741713</td>
-      <td>0.6065</td>
+      <td>-0.251800</td>
+      <td>-1.215845</td>
+      <td>0.706573</td>
+      <td>0.5905</td>
       <td>12</td>
-      <td>0.875583</td>
+      <td>0.871765</td>
     </tr>
     <tr>
       <th>11</th>
       <td>sig_Regulatory T Cell</td>
-      <td>0.221352</td>
-      <td>-0.833981</td>
-      <td>1.222038</td>
-      <td>0.6370</td>
+      <td>0.217888</td>
+      <td>-0.803522</td>
+      <td>1.219952</td>
+      <td>0.6410</td>
       <td>12</td>
-      <td>0.875583</td>
+      <td>0.871765</td>
     </tr>
     <tr>
       <th>12</th>
       <td>sig_Oxidative Stress Response</td>
-      <td>0.170199</td>
-      <td>-0.773000</td>
-      <td>1.079664</td>
-      <td>0.6950</td>
+      <td>0.181337</td>
+      <td>-0.739829</td>
+      <td>1.101128</td>
+      <td>0.6925</td>
       <td>12</td>
-      <td>0.875583</td>
+      <td>0.871765</td>
     </tr>
     <tr>
       <th>13</th>
       <td>sig_Checkpoint Receptors</td>
-      <td>-0.202335</td>
-      <td>-1.287615</td>
-      <td>0.859802</td>
-      <td>0.7045</td>
+      <td>-0.188755</td>
+      <td>-1.284554</td>
+      <td>0.864508</td>
+      <td>0.7135</td>
       <td>12</td>
-      <td>0.875583</td>
+      <td>0.871765</td>
     </tr>
     <tr>
       <th>14</th>
       <td>sig_Type I Interferon</td>
-      <td>0.155284</td>
-      <td>-0.886236</td>
-      <td>1.160331</td>
-      <td>0.7420</td>
+      <td>0.165780</td>
+      <td>-0.895751</td>
+      <td>1.183272</td>
+      <td>0.7320</td>
       <td>12</td>
-      <td>0.875583</td>
+      <td>0.871765</td>
     </tr>
     <tr>
       <th>15</th>
       <td>sig_T Cell Activation</td>
-      <td>-0.155695</td>
-      <td>-1.184893</td>
-      <td>0.915264</td>
-      <td>0.7600</td>
+      <td>-0.157182</td>
+      <td>-1.215537</td>
+      <td>0.865831</td>
+      <td>0.7710</td>
       <td>12</td>
-      <td>0.875583</td>
+      <td>0.871765</td>
     </tr>
     <tr>
       <th>16</th>
       <td>sig_T Follicular Helper</td>
-      <td>0.133590</td>
-      <td>-0.919508</td>
-      <td>1.150308</td>
-      <td>0.7935</td>
+      <td>0.136551</td>
+      <td>-0.909415</td>
+      <td>1.108555</td>
+      <td>0.7800</td>
       <td>12</td>
-      <td>0.875583</td>
+      <td>0.871765</td>
     </tr>
     <tr>
       <th>17</th>
       <td>sig_Hypoxia</td>
-      <td>-0.088165</td>
-      <td>-0.946155</td>
-      <td>0.750336</td>
-      <td>0.8295</td>
+      <td>-0.076747</td>
+      <td>-0.929627</td>
+      <td>0.754046</td>
+      <td>0.8555</td>
       <td>12</td>
-      <td>0.875583</td>
+      <td>0.903028</td>
     </tr>
     <tr>
       <th>18</th>
       <td>sig_T Cell Exhaustion</td>
-      <td>-0.001177</td>
-      <td>-1.089973</td>
-      <td>1.031100</td>
-      <td>0.9945</td>
+      <td>-0.001131</td>
+      <td>-1.089922</td>
+      <td>1.034219</td>
+      <td>0.9855</td>
       <td>12</td>
-      <td>0.994500</td>
+      <td>0.985500</td>
     </tr>
   </tbody>
 </table>

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Frequently Asked Questions &#8212; sctrial 1.1.0 documentation</title>
+    <title>Frequently Asked Questions &#8212; sctrial 2.0.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="_static/documentation_options.js?v=2a705162"></script>
+    <script src="_static/documentation_options.js?v=79f5c508"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -128,8 +128,8 @@
       
     
     
-    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
-    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 2.0.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 2.0.0 documentation - Home"/>
   
   
 </a></div>
@@ -285,6 +285,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="study_designs.html">Study Designs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="concepts.html">Concepts and Methods</a></li>
@@ -394,7 +395,7 @@
 </section>
 <section id="can-i-use-sctrial-with-seurat-objects">
 <h3>Can I use sctrial with Seurat objects?<a class="headerlink" href="#can-i-use-sctrial-with-seurat-objects" title="Link to this heading">#</a></h3>
-<p>Yes! Convert Seurat to AnnData:</p>
+<p>Yes. Convert a Seurat object to AnnData:</p>
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="c1"># In R</span>
 <span class="nf">library</span><span class="p">(</span><span class="n">Seurat</span><span class="p">)</span>
 <span class="nf">library</span><span class="p">(</span><span class="n">SeuratDisk</span><span class="p">)</span>
@@ -416,7 +417,7 @@
 </section>
 <section id="can-i-automatically-download-example-datasets">
 <h3>Can I automatically download example datasets?<a class="headerlink" href="#can-i-automatically-download-example-datasets" title="Link to this heading">#</a></h3>
-<p>Yes! The built-in data loaders can download directly from GEO or EBI:</p>
+<p>Yes. The built-in data loaders can download directly from GEO or EBI:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 
 <span class="c1"># Sade-Feldman melanoma immunotherapy (GSE120575)</span>
@@ -460,7 +461,7 @@ Install the <code class="docutils literal notranslate"><span class="pre">plots</
 <ul>
 <li><p>Participant identifiers (e.g., “participant_id”)</p></li>
 <li><p>Visit labels (e.g., “visit”)</p></li>
-<li><p>Treatment arm (e.g., “arm”) — set <code class="docutils literal notranslate"><span class="pre">arm_col=None</span></code> for single-arm studies</p></li>
+<li><p>Treatment arm (e.g., “arm”); set <code class="docutils literal notranslate"><span class="pre">arm_col=None</span></code> for single-arm studies</p></li>
 <li><p>Cell-type annotations (optional, e.g., “celltype”)</p></li>
 </ul>
 </li>
@@ -472,13 +473,13 @@ Install the <code class="docutils literal notranslate"><span class="pre">plots</
 <ul class="simple">
 <li><p><strong>~4 paired participants per arm</strong> is a practical lower bound for estimation, though inference will be imprecise.</p></li>
 <li><p><strong>~10–15 paired participants</strong> per arm generally provides more reliable inference.</p></li>
-<li><p><strong>~20–30 paired participants</strong> per arm is typically needed for adequate power to detect moderate effects (d ≈ 0.5).</p></li>
+<li><p><strong>~20–30 paired participants</strong> per arm is typically needed for adequate power to detect moderate effects (Cohen’s d ≈ 0.5).</p></li>
 </ul>
 <p>For smaller samples, bootstrap inference (<code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code>) is recommended as a safeguard against anti-conservative cluster-robust standard errors.</p>
 </section>
 <section id="do-i-need-the-same-number-of-cells-per-participant">
 <h3>Do I need the same number of cells per participant?<a class="headerlink" href="#do-i-need-the-same-number-of-cells-per-participant" title="Link to this heading">#</a></h3>
-<p>No! DiD aggregates to the participant level, so unequal cell counts are fine. The method uses OLS with cluster-robust standard errors to account for within-participant correlation.</p>
+<p>No. DiD aggregates to the participant level, so unequal cell counts are acceptable. The method uses ordinary least squares (OLS) with cluster-robust standard errors to account for within-participant correlation.</p>
 </section>
 <section id="can-i-use-sctrial-with-cross-sectional-data-no-longitudinal-measurements">
 <h3>Can I use sctrial with cross-sectional data (no longitudinal measurements)?<a class="headerlink" href="#can-i-use-sctrial-with-cross-sectional-data-no-longitudinal-measurements" title="Link to this heading">#</a></h3>
@@ -619,7 +620,7 @@ variance structure, and the degree of within-participant correlation.</p>
 <p><strong>Practical considerations</strong>:</p>
 <ul class="simple">
 <li><p>Single-cell data doesn’t increase statistical power (participants do)</p></li>
-<li><p>Cell counts help reduce noise, but n_participants drives inference</p></li>
+<li><p>Cell counts reduce measurement noise within a participant, but the number of participants determines the precision of inference</p></li>
 <li><p>Small samples → use bootstrap and report effect sizes with CIs</p></li>
 <li><p>Consider mixed effects models for partial pooling with small n</p></li>
 </ul>
@@ -633,7 +634,7 @@ variance structure, and the degree of within-participant correlation.</p>
 <li><p><strong>Missing annotations</strong> (cell type not assigned)</p></li>
 </ol>
 <p><strong>For missing visits (most critical)</strong>:</p>
-<p>DiD requires data at BOTH visits. Participants with missing visits are dropped:</p>
+<p>DiD requires data at both visits. Participants with missing visits are dropped:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check pairing before analysis</span>
 <span class="n">n_paired</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">count_paired</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span> <span class="s2">"visit"</span><span class="p">,</span> <span class="p">[</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">])</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Paired participants: </span><span class="si">{</span><span class="n">n_paired</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
@@ -656,7 +657,7 @@ variance structure, and the degree of within-participant correlation.</p>
 <li><p>Only if missingness mechanism is well-understood</p></li>
 </ul>
 </li>
-<li><p><strong>Last observation carried forward</strong> (NOT recommended)</p>
+<li><p><strong>Last observation carried forward</strong> (not recommended)</p>
 <ul class="simple">
 <li><p>Biases results; avoid in clinical trials</p></li>
 </ul>
@@ -682,7 +683,7 @@ variance structure, and the degree of within-participant correlation.</p>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"Participants per arm × visit:"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">missing</span><span class="o">.</span><span class="n">unstack</span><span class="p">())</span>
 
-<span class="c1"># Check if dropout differs by arm (potential bias!)</span>
+<span class="c1"># Check whether dropout differs by arm (differential dropout can bias the estimate)</span>
 <span class="n">dropout_by_arm</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">"arm"</span><span class="p">)[</span><span class="s2">"participant_id"</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -700,7 +701,7 @@ variance structure, and the degree of within-participant correlation.</p>
 <section id="should-i-use-cell-level-or-participant-level-aggregation">
 <h3>Should I use cell-level or participant-level aggregation?<a class="headerlink" href="#should-i-use-cell-level-or-participant-level-aggregation" title="Link to this heading">#</a></h3>
 <p><strong>Always use participant-level</strong> (<code class="docutils literal notranslate"><span class="pre">aggregate=&quot;participant_visit&quot;</span></code>, which is the default) for valid statistical inference.</p>
-<p>Why? Cells from the same participant are not independent, violating regression assumptions. Participant-level aggregation (pseudobulk) respects the experimental design.</p>
+<p>Cells from the same participant are not independent, so treating them as independent observations violates the independence assumption of the regression and understates uncertainty. Participant-level aggregation (pseudobulk, that is, averaging each participant’s cells to a single value per participant and visit) respects the experimental design.</p>
 <p>The participant-level model is fitted by ordinary least squares, so every participant
 contributes equally. With two visits this is exactly the difference of mean
 within-participant changes between arms. Weighting by the number of cells per group
@@ -760,7 +761,7 @@ reject at the 5% level, and the interval is reported as unbounded.</p>
 <li><p><strong>Standard</strong>: FDR &lt; 0.05</p></li>
 <li><p><strong>Stringent</strong>: FDR &lt; 0.01</p></li>
 </ul>
-<p>Always report FDR-corrected p-values, not raw p-values, when testing multiple features.</p>
+<p>When testing multiple features, always report p-values corrected for the false discovery rate (FDR) using the Benjamini-Hochberg procedure, not raw p-values.</p>
 </section>
 <section id="how-do-i-use-bayesian-did">
 <h3>How do I use Bayesian DiD?<a class="headerlink" href="#how-do-i-use-bayesian-did" title="Link to this heading">#</a></h3>
@@ -816,7 +817,7 @@ properly controlled inference.</p></li>
 followed the same trajectory. This cannot be tested directly with two time
 points, but can be assessed with pre-treatment data using
 <code class="docutils literal notranslate"><span class="pre">test_parallel_trends()</span></code> in multi-timepoint designs.</p></li>
-<li><p><strong>No anticipation</strong>: Participants do not change behaviour before treatment
+<li><p><strong>No anticipation</strong>: Participants’ outcomes do not change before treatment
 begins. Violated if, e.g., treated participants alter expression profiles
 at the baseline visit in anticipation of therapy.</p></li>
 <li><p><strong>SUTVA (Stable Unit Treatment Value Assumption)</strong>: No interference or
@@ -834,11 +835,11 @@ unmeasured confounder would need to be to explain away the observed effect.</p>
 <section id="are-there-limitations-to-abundance-analysis">
 <h3>Are there limitations to abundance analysis?<a class="headerlink" href="#are-there-limitations-to-abundance-analysis" title="Link to this heading">#</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">abundance_did()</span></code> uses an arcsin-square-root transform on cell-type
-proportions, which is a standard variance-stabilising transformation for
-compositional data (Shao, 1999). This approach:</p>
+proportions, which is a standard variance-stabilizing transformation for
+proportions (Shao, 1999). This approach:</p>
 <ul class="simple">
 <li><p>Is simple, interpretable, and well-suited to the DiD framework</p></li>
-<li><p>Handles zero proportions gracefully (arcsin(0) = 0)</p></li>
+<li><p>Handles zero proportions (arcsin(0) = 0)</p></li>
 <li><p>Has been used in single-cell clinical trial analyses (Squair et al., 2021)</p></li>
 </ul>
 <p>However, proportions are inherently compositional: an increase in one cell type
@@ -1001,7 +1002,7 @@ column and name that column in <code class="docutils literal notranslate"><span 
 <section id="can-i-test-individual-genes-or-do-i-need-gene-sets">
 <h3>Can I test individual genes or do I need gene sets?<a class="headerlink" href="#can-i-test-individual-genes-or-do-i-need-gene-sets" title="Link to this heading">#</a></h3>
 <p>Both work:</p>
-<p><strong>Gene sets</strong> (recommended for robustness):</p>
+<p><strong>Gene sets</strong> (recommended to reduce single-gene noise):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">gene_sets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"OXPHOS"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"COX7A1"</span><span class="p">,</span> <span class="s2">"ATP5F1A"</span><span class="p">,</span> <span class="o">...</span><span class="p">]}</span>
 <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_sets</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"ms_"</span><span class="p">)</span>
 <span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"ms_OXPHOS"</span><span class="p">]</span>
@@ -1021,7 +1022,7 @@ column and name that column in <code class="docutils literal notranslate"><span 
 dropped from the set.</p></li>
 <li><p>A warning is logged when any genes are missing (at <code class="docutils literal notranslate"><span class="pre">INFO</span></code> level) or when
 the overlap falls below <code class="docutils literal notranslate"><span class="pre">min_genes</span></code> (at <code class="docutils literal notranslate"><span class="pre">WARNING</span></code> level).</p></li>
-<li><p>By default, <code class="docutils literal notranslate"><span class="pre">min_genes=3</span></code> — at least 3 genes must overlap to compute a
+<li><p>By default, <code class="docutils literal notranslate"><span class="pre">min_genes=3</span></code>: at least 3 genes must overlap to compute a
 score.  If fewer are found, the score is set to <code class="docutils literal notranslate"><span class="pre">NaN</span></code>.</p></li>
 <li><p>Duplicate gene names within a set are automatically removed.</p></li>
 </ul>
@@ -1088,7 +1089,7 @@ one arm only)</p></li>
 </section>
 <section id="can-i-run-sctrial-in-parallel">
 <h3>Can I run sctrial in parallel?<a class="headerlink" href="#can-i-run-sctrial-in-parallel" title="Link to this heading">#</a></h3>
-<p>Yes! Use <code class="docutils literal notranslate"><span class="pre">did_table_parallel</span></code> for parallel DiD across many features:</p>
+<p>Yes. Use <code class="docutils literal notranslate"><span class="pre">did_table_parallel</span></code> for parallel DiD across many features:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table_parallel</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">features</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">),</span>
@@ -1132,7 +1133,7 @@ You can also process in batches manually:</p>
 </section>
 <section id="can-i-use-sctrial-with-other-omics-atac-seq-proteomics">
 <h3>Can I use sctrial with other omics (ATAC-seq, proteomics)?<a class="headerlink" href="#can-i-use-sctrial-with-other-omics-atac-seq-proteomics" title="Link to this heading">#</a></h3>
-<p>Yes! As long as your data is in <code class="docutils literal notranslate"><span class="pre">AnnData</span></code> format with appropriate trial metadata.</p>
+<p>Yes, as long as your data is in <code class="docutils literal notranslate"><span class="pre">AnnData</span></code> format with appropriate trial metadata.</p>
 <p>For ATAC-seq: Use peak accessibility as features
 For proteomics: Use protein abundance as features</p>
 <p>The statistical framework is the same.</p>
@@ -1142,7 +1143,7 @@ For proteomics: Use protein abundance as features</p>
 <h2>Integration Questions<a class="headerlink" href="#integration-questions" title="Link to this heading">#</a></h2>
 <section id="can-i-combine-sctrial-with-scanpy">
 <h3>Can I combine sctrial with Scanpy?<a class="headerlink" href="#can-i-combine-sctrial-with-scanpy" title="Link to this heading">#</a></h3>
-<p>Yes! Use Scanpy for QC, normalization, and clustering:</p>
+<p>Yes. Use Scanpy for QC, normalization, and clustering:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
 

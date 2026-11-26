@@ -17,8 +17,8 @@ gene ``g``:
 with :math:`Y \sim \mathrm{NB}(\mu, \phi_g)` and
 :math:`\mathrm{Var} = \mu + \phi_g \mu^2`. The full transcriptome is simulated;
 analysis panels are drawn from it as nested subsets of the detectable genes, so
-normalisation and library-size offsets see the whole transcriptome exactly as a
-real workflow would.
+normalization and library-size offsets are computed from the whole transcriptome,
+exactly as in a real workflow.
 
 Simulator
 ---------
@@ -105,7 +105,7 @@ the simulator so it reproduces observed nuisance statistics.
 Validation gates
 ----------------
 
-Monte Carlo envelope tests (Gates A, B, C and E) that verify the simulator faithfully
+Monte Carlo envelope tests (Gates A, B, C and E) that verify the simulator
 reproduces the empirical nuisance statistics it was calibrated against, and a
 composition ablation (Gate D).
 
@@ -120,9 +120,9 @@ composition ablation (Gate D).
    :module: sctrial.benchmark.gates
    :type: frozenset[str]
 
-   Statistics that are near-deterministic readbacks of an empirical pool the
-   simulator resamples. Agreement is true by construction; failure indicates an
-   implementation defect, not a fidelity defect.
+   Statistics that are near-deterministic reflections of an empirical pool the
+   simulator resamples. Agreement is true by construction, so a failure indicates
+   an implementation defect rather than a fidelity defect.
 
 .. autoclass:: sctrial.benchmark.gates.GateResult
    :members:
@@ -166,14 +166,14 @@ Pre-specified statistical endpoints computed from replicate-level results.
    :type: float
    :value: 0.05
 
-   Locked nominal significance threshold.
+   Pre-specified nominal significance level (the target Type I error rate).
 
 .. py:data:: Q_FDR
    :module: sctrial.benchmark.endpoints
    :type: float
    :value: 0.05
 
-   Locked Benjamini–Hochberg FDR threshold.
+   Pre-specified Benjamini-Hochberg false discovery rate (FDR) threshold.
 
 .. autofunction:: sctrial.benchmark.endpoints.replicate_endpoints
 
@@ -219,7 +219,7 @@ Ablation
 --------
 
 Estimator variants used to isolate the contribution of individual design
-choices (normalisation scope, aggregation level, fixed effects).
+choices (normalization scope, aggregation level, fixed effects).
 
 .. py:data:: ABLATION_VARIANTS
    :module: sctrial.benchmark.ablation
