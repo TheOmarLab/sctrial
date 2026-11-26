@@ -5,7 +5,7 @@
 (function (S) {
   "use strict";
   const { seg, ease, lerp, text, sphere, line, poly, floorLabel } = S;
-  const XA = 340, XB = 1560, Y0 = S.FLOOR - 60, Y1 = 170, N0 = 3, N1 = 26, EFFECT = 1.0, TARGET = 0.8, STEP = 25;
+  const XA = 310, XB = 1620, Y0 = S.FLOOR - 60, Y1 = 150, N0 = 3, N1 = 26, EFFECT = 1.0, TARGET = 0.8, STEP = 25;
   // standard normal distribution function (Abramowitz and Stegun 26.2.17)
   const phi = (z) => {
     const k = 1 / (1 + 0.2316419 * Math.abs(z)), d = 0.3989422804 * Math.exp(-z * z / 2);

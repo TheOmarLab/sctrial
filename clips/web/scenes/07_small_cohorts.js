@@ -5,7 +5,7 @@
 (function (S) {
   "use strict";
   const { seg, ease, lerp, text, sphere, line, floorLabel } = S;
-  const CHANGE = [0.21, 0.12, 0.27, 0.06, 0.19, 0.23], ROW = 226, XA = 330, XB = 1590, BINS = 17, DOT = 23;
+  const CHANGE = [0.21, 0.12, 0.27, 0.06, 0.19, 0.23], ROW = 190, XA = 150, XB = 1770, BINS = 17, DOT = 27;
   const BASE = S.FLOOR - 8, SLOW = 4, PITCH = 2 * DOT + 4;
 
   S.register({
@@ -24,7 +24,7 @@
         const bin = Math.min(BINS - 1, Math.floor(((value + limit) / (2 * limit)) * BINS));
         return { signs, x: XA + (bin + 0.5) * ((XB - XA) / BINS), y: BASE - height[bin]++ * PITCH - DOT, at: when(k), observed: k === 0 };
       });
-      const people = CHANGE.map((_, i) => S.W / 2 + (i - (n - 1) / 2) * 150);
+      const people = CHANGE.map((_, i) => S.W / 2 + (i - (n - 1) / 2) * 200);
       return { draws, people, all, top: BASE - Math.max(...height) * PITCH };
     },
     draw(ctx, t, d) {
@@ -33,22 +33,22 @@
       const signs = current >= 0 && t < 6.6 ? d.draws[current].signs : d.draws[0].signs;
       d.people.forEach((x, i) => {
         const appear = S.easeOut(seg(t, 0.2 + i * 0.06, 0.8 + i * 0.06));
-        sphere(ctx, x, ROW, 32, "accent", appear, 0);
-        text(ctx, signs[i] > 0 ? "+" : "−", x, ROW - 76, 58, { align: "center", alpha: appear * seg(t, 0.8, 1.2), color: signs[i] > 0 ? S.SOFT : S.INK });
+        sphere(ctx, x, ROW, 34, "accent", appear, 0);
+        text(ctx, signs[i] > 0 ? "+" : "−", x, ROW - 80, 60, { align: "center", alpha: appear * seg(t, 0.8, 1.2), color: signs[i] > 0 ? S.SOFT : S.INK });
       });
-      text(ctx, `${current + 1} of ${d.all} sign assignments`, S.W - 130, 96, 44, { align: "right", alpha: seg(t, 1.1, 1.4) });
+      floorLabel(ctx, `${current + 1} of ${d.all} sign assignments`, S.W / 2, seg(t, 1.1, 1.4), 2);
       for (const g of d.draws) {
         if (g.at > t) break;
         const k = ease(seg(t, g.at, g.at + 0.55));
-        sphere(ctx, lerp(S.W / 2, g.x, k), lerp(ROW + 56, g.y, k * k), DOT, g.observed ? "accent" : "grey", 1, 0);
+        sphere(ctx, lerp(S.W / 2, g.x, k), lerp(ROW + 62, g.y, k * k), DOT, g.observed ? "accent" : "grey", 1, 0);
       }
       floorLabel(ctx, "bootstrap null distribution", S.W / 2, seg(t, 1.4, 2.1));
       const o = ease(seg(t, 6.8, 7.5)), obs = d.draws[0];
       if (o > 0) {
-        line(ctx, obs.x, obs.y - DOT - 14, obs.x, lerp(obs.y - DOT - 14, d.top - 40, o), S.INK, 4.5);
-        text(ctx, "observed", obs.x, d.top - 78, 42, { align: "center", alpha: o });
+        line(ctx, obs.x, obs.y - DOT - 14, obs.x, lerp(obs.y - DOT - 14, d.top + 70, o), S.INK, 4.5);
+        text(ctx, "observed", obs.x, d.top + 34, 44, { align: "center", alpha: o });
       }
-      text(ctx, "exact test", S.W - 130, 156, 40, { align: "right", color: S.TONES.accent.text, alpha: seg(t, 7.6, 8.3) });
+      text(ctx, "exact test", S.W - 130, 96, 48, { align: "right", color: S.TONES.accent.text, alpha: seg(t, 7.6, 8.3) });
     },
   });
 })(window.Studio);

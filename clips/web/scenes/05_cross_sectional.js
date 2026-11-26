@@ -3,11 +3,11 @@
  */
 (function (S) {
   "use strict";
-  const { seg, ease, lerp, level, text, sphere, panel, line, bracket, floorLabel } = S;
-  const XC = 900, XA = 470, XB = 960, R = 27;
+  const { seg, ease, lerp, level, text, sphere, panel, line, arrow, floorLabel } = S;
+  const XC = 960, XA = 500, XB = 1340, R = 30;
   const GROUPS = [
-    { tone: "grey", values: [0.12, 0.21, 0.28, 0.34, 0.40, 0.46, 0.53, 0.63] },
-    { tone: "accent", values: [0.40, 0.52, 0.60, 0.67, 0.75, 0.88] },
+    { tone: "grey", values: [0.05, 0.15, 0.23, 0.30, 0.37, 0.44, 0.52, 0.63] },
+    { tone: "accent", values: [0.40, 0.53, 0.62, 0.70, 0.79, 0.94] },
   ];
 
   S.register({
@@ -27,7 +27,7 @@
     },
     draw(ctx, t, d) {
       const A = S.TONES.accent, G = S.TONES.grey, split = ease(seg(t, 2.0, 3.6));
-      panel(ctx, XC, 1 - split, 320); panel(ctx, XA, split); panel(ctx, XB, split);
+      panel(ctx, XC, 1 - split, 380); panel(ctx, XA, split, 380); panel(ctx, XB, split, 380);
       floorLabel(ctx, "one visit", XC, seg(t, 0.2, 0.8) * (1 - seg(t, 1.9, 2.4)));
       floorLabel(ctx, "group 1", XA, seg(t, 2.6, 3.4));
       floorLabel(ctx, "group 2", XB, seg(t, 2.6, 3.4), 1, A.text);
@@ -42,17 +42,16 @@
 
       const k = ease(seg(t, 4.0, 5.0));
       if (k > 0) {
-        line(ctx, XA - 135 * k, d.a, XA + 135 * k, d.a, G.flat, 11);
-        line(ctx, XB - 135 * k, d.b, XB + 135 * k, d.b, A.flat, 11);
+        line(ctx, XA - 170 * k, d.a, XA + 170 * k, d.a, G.flat, 12);
+        line(ctx, XB - 170 * k, d.b, XB + 170 * k, d.b, A.flat, 12);
       }
-      const c = ease(seg(t, 5.2, 6.0)), xb = XB + 250;
+      const c = ease(seg(t, 5.2, 6.0)), xb = XB + 430;
       if (c > 0) {
-        line(ctx, XA + 135, d.a, lerp(XA + 135, xb + 18, c), d.a, S.RULE, 3.5, [6, 13]);
-        line(ctx, XB + 135, d.b, lerp(XB + 135, xb + 18, c), d.b, S.RULE, 3.5, [6, 13]);
+        line(ctx, XA + 170, d.a, lerp(XA + 170, xb + 18, c), d.a, S.RULE, 3.5, [6, 13]);
+        line(ctx, XB + 170, d.b, lerp(XB + 170, xb + 18, c), d.b, S.RULE, 3.5, [6, 13]);
       }
-      bracket(ctx, xb, d.a, d.b, ease(seg(t, 6.0, 6.8)));
-      text(ctx, "between-group difference", xb + 48, (d.a + d.b) / 2 - 26, 46, { alpha: seg(t, 6.5, 7.2) });
-      text(ctx, "in standard deviation units", xb + 50, (d.a + d.b) / 2 + 30, 34, { color: S.SOFT, alpha: seg(t, 7.0, 7.7) });
+      arrow(ctx, xb, d.a, d.b, ease(seg(t, 6.0, 6.8)));
+      text(ctx, "difference between groups, in SD units", 130, 96, 48, { color: A.text, alpha: seg(t, 6.5, 7.2) });
     },
   });
 })(window.Studio);

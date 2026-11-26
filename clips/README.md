@@ -4,7 +4,8 @@ Ten 10-second silent clips that illustrate how sctrial handles different study d
 properties: the design definition, participant-level inference, two-arm and single-arm longitudinal designs, cross-sectional
 designs, repeated visits, small cohorts, incomplete and unbalanced data, cell-type-specific analysis,
 and power. The clips are schematic. A sphere stands for one participant and a small dot for one cell;
-positions illustrate a comparison and are not data.
+positions illustrate a comparison and are not data. A capped bar is a confidence interval and a
+double-headed arrow is a contrast between two levels.
 
 | Folder or file | Content |
 |---|---|

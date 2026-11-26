@@ -24,7 +24,7 @@
   const lerp = (a, b, k) => a + (b - a) * k;
   const mean = (a) => a.reduce((s, v) => s + v, 0) / a.length;
   /* The height of a schematic outcome level between 0 (low) and 1 (high). */
-  const level = (v) => 800 - v * 630;
+  const level = (v) => 810 - v * 650;
 
   /* Sideways shifts that keep circles of radius r at the heights ys from overlapping (a swarm). */
   function swarm(ys, r) {
@@ -128,13 +128,27 @@
     ctx.stroke(); ctx.restore();
   }
 
-  /* A vertical measure from y0 to y1 with end caps, grown by `k` from y0. */
+  /* A vertical capped bar from y0 to y1, grown by `k` from y0. It stands for a confidence interval
+     and for nothing else; a contrast between two levels is drawn with `arrow`. */
   function bracket(ctx, x, y0, y1, k = 1, color = TONES.accent.text, alpha = 1) {
     if (k <= 0 || alpha <= 0) return;
     const y = lerp(y0, y1, k);
     line(ctx, x, y0, x, y, color, 8, null, alpha);
     line(ctx, x - 18, y0, x + 18, y0, color, 8, null, alpha);
     line(ctx, x - 18, y, x + 18, y, color, 8, null, alpha);
+  }
+
+  /* A vertical double-headed arrow from y0 to y1, grown by `k` from y0: a contrast between two levels. */
+  function arrow(ctx, x, y0, y1, k = 1, color = TONES.accent.text, alpha = 1) {
+    if (k <= 0 || alpha <= 0) return;
+    const y = lerp(y0, y1, k), dir = Math.sign(y - y0) || 1, head = Math.min(30, Math.abs(y - y0) * 0.42);
+    ctx.save(); ctx.globalAlpha *= alpha; ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.moveTo(x, y0 + dir * head * 0.9); ctx.lineTo(x, y - dir * head * 0.9); ctx.stroke();
+    for (const [tip, s] of [[y0, dir], [y, -dir]]) {
+      ctx.beginPath(); ctx.moveTo(x, tip); ctx.lineTo(x - head * 0.6, tip + s * head); ctx.lineTo(x + head * 0.6, tip + s * head);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
   }
 
   function text(ctx, s, x, y, size, o = {}) {
@@ -229,7 +243,7 @@
   global.Studio = {
     W, H, FLOOR, INK, SOFT, RULE, ON_FLOOR, TONES, REELS,
     clamp, seg, ease, easeOut, lerp, mean, level, swarm, rng,
-    panel, sphere, ring, grain, line, poly, bracket, text, width, floorLabel, steps,
+    panel, sphere, ring, grain, line, poly, bracket, arrow, text, width, floorLabel, steps,
     scenes, register, frame, reelDuration, reelFrame,
   };
 })(window);

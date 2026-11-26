@@ -31,7 +31,7 @@
       return { samples, grains };
     },
     draw(ctx, t, d) {
-      const appear = seg(t, 0, 0.8), swap = seg(t, 4.3, 4.9);
+      const base = ctx.globalAlpha, appear = base * seg(t, 0, 0.8), swap = seg(t, 4.3, 4.9);
       text(ctx, "cells", S.W - 130, 96, 48, { align: "right", alpha: seg(t, 0.2, 0.8) * (1 - seg(t, 4.0, 4.3)) });
       text(ctx, "one value per participant and visit", S.W - 130, 96, 48, { align: "right", alpha: swap, color: S.TONES.accent.text });
 
@@ -50,7 +50,7 @@
         ctx.globalAlpha = appear * (1 - 0.85 * k2);
         grain(ctx, x, y, 4.4, g.treated ? AMBER : GREY);
       }
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = base;
       d.samples.forEach((s, i) => {
         const born = S.easeOut(seg(t, 4.0 + i * 0.03, 4.9 + i * 0.03));
         if (born <= 0) return;

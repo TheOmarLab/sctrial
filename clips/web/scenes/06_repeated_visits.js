@@ -3,7 +3,7 @@
  */
 (function (S) {
   "use strict";
-  const { seg, ease, lerp, level, text, sphere, panel, line, poly, bracket, floorLabel } = S;
+  const { seg, ease, lerp, level, text, sphere, panel, line, poly, arrow, floorLabel } = S;
   const XS = [390, 800, 1210, 1620], NAMES = ["baseline", "visit 2", "visit 3", "visit 4"], R = 20;
   const ARMS = [
     { tone: "grey", base: [0.18, 0.30, 0.42, 0.54], path: [0, 0.02, 0.03, 0.03],
@@ -51,9 +51,12 @@
       text(ctx, "treated", XS[0] - 150, d.means[1][0][1] - 46, 44, { align: "right", color: A.text, alpha: seg(t, 0.9, 1.5) });
       // each later visit against baseline: the change in the treated arm minus the change in the control arm
       for (let k = 1; k < XS.length; k++) {
-        bracket(ctx, XS[k] + 140, d.expected[k], d.means[1][k][1], ease(seg(t, 6.8 + k * 0.4, 7.5 + k * 0.4)));
+        arrow(ctx, XS[k] + 140, d.expected[k], d.means[1][k][1], ease(seg(t, 6.8 + k * 0.4, 7.5 + k * 0.4)));
       }
-      text(ctx, "each visit against baseline", 130, 96, 48, { alpha: seg(t, 7.4, 8.1) });
+      // the key of the arrows
+      const key = seg(t, 7.4, 8.1);
+      arrow(ctx, 146, 66, 126, 1, A.text, key);
+      text(ctx, "DiD vs baseline", 186, 96, 48, { color: A.text, alpha: key });
     },
   });
 })(window.Studio);

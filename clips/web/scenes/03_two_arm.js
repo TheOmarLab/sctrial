@@ -3,12 +3,12 @@
  */
 (function (S) {
   "use strict";
-  const { seg, ease, lerp, level, text, sphere, panel, line, bracket, floorLabel } = S;
-  const X0 = 480, X1 = 1100, R = 28;
+  const { seg, ease, lerp, level, text, sphere, panel, line, arrow, floorLabel } = S;
+  const X0 = 520, X1 = 1400, R = 30;
   // schematic outcome levels: baseline and change of each participant
   const ARMS = [
-    { tone: "grey", base: [0.16, 0.28, 0.40, 0.52, 0.64], change: [0.05, 0.08, 0.02, 0.07, 0.04] },
-    { tone: "accent", base: [0.22, 0.34, 0.46, 0.58, 0.70], change: [0.24, 0.28, 0.21, 0.26, 0.22] },
+    { tone: "grey", base: [0.06, 0.20, 0.34, 0.48, 0.62], change: [0.05, 0.08, 0.02, 0.07, 0.04] },
+    { tone: "accent", base: [0.13, 0.27, 0.41, 0.55, 0.69], change: [0.26, 0.30, 0.23, 0.28, 0.24] },
   ];
 
   S.register({
@@ -27,7 +27,7 @@
     },
     draw(ctx, t, d) {
       const A = S.TONES.accent, G = S.TONES.grey, m = d.m;
-      panel(ctx, X0); panel(ctx, X1);
+      panel(ctx, X0, 1, 320); panel(ctx, X1, 1, 320);
       floorLabel(ctx, "baseline", X0, seg(t, 0.1, 0.7));
       floorLabel(ctx, "follow-up", X1, seg(t, 1.5, 2.2));
 
@@ -41,20 +41,20 @@
         if (go > 0) sphere(ctx, x, y, R, p.tone, dim, 0.22);
       });
       const named = seg(t, 0.9, 1.5);
-      text(ctx, "treated", X0 - 170, m.t0 - 44, 46, { align: "right", color: A.text, alpha: named });
-      text(ctx, "control", X0 - 170, m.c0 + 44, 46, { align: "right", color: G.text, alpha: named });
+      text(ctx, "treated", X0 - 210, m.t0 - 46, 48, { align: "right", color: A.text, alpha: named });
+      text(ctx, "control", X0 - 210, m.c0 + 46, 48, { align: "right", color: G.text, alpha: named });
 
       // the mean change of each arm
       const k = ease(seg(t, 4.2, 5.4));
       if (k > 0) {
-        line(ctx, X0, m.c0, lerp(X0, X1, k), lerp(m.c0, m.c1, k), G.flat, 11);
-        line(ctx, X0, m.t0, lerp(X0, X1, k), lerp(m.t0, m.t1, k), A.flat, 11);
+        line(ctx, X0, m.c0, lerp(X0, X1, k), lerp(m.c0, m.c1, k), G.flat, 12);
+        line(ctx, X0, m.t0, lerp(X0, X1, k), lerp(m.t0, m.t1, k), A.flat, 12);
       }
       // the treated arm, had it changed as the control arm
       const c = ease(seg(t, 5.6, 6.7));
       if (c > 0) line(ctx, X0, m.t0, lerp(X0, X1, c), lerp(m.t0, m.expected, c), S.RULE, 4.5, [6, 15]);
-      bracket(ctx, X1 + 170, m.expected, m.t1, ease(seg(t, 6.9, 7.8)));
-      text(ctx, "difference-in-differences", X1 + 218, (m.expected + m.t1) / 2, 46, { alpha: seg(t, 7.4, 8.1) });
+      arrow(ctx, X1 + 220, m.expected, m.t1, ease(seg(t, 6.9, 7.8)));
+      text(ctx, "difference-in-differences", S.W - 130, 96, 48, { align: "right", color: A.text, alpha: seg(t, 7.2, 7.9) });
     },
   });
 })(window.Studio);

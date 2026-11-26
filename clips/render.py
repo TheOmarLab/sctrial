@@ -13,6 +13,7 @@ Needs ``ffmpeg`` and the ``playwright`` Python package with its browser (``playw
     python clips/render.py --reel wide --only did,inference,power --gif-width 800
     python clips/render.py --scene did --gif-only --gif-width 640 --gif-fps 12 --out docs/source/_static/clips
     python clips/render.py --captions                  # the title and caption of every scene
+    python clips/render.py --fill                      # how much of the frame the last frame of each scene uses
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ import argparse
 import base64
 import functools
 import http.server
+import io
 import subprocess
 import tempfile
 import threading
@@ -30,6 +32,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent
 FPS = 30
+FLOOR = 884  # height of the wall in a 1920 x 1080 frame, as in web/studio.js
 
 FRAME_JS = """t => { window.__clip.render(t);
                      return document.getElementById('canvas').toDataURL('image/png').slice(22); }"""
@@ -64,6 +67,32 @@ def render_stills(page, port: int, name: str, query: str, times: list[float], ou
         path = out / f"{name}_t{t:04.1f}.png"
         path.write_bytes(_frame(page, t))
         print("still", path.name)
+
+
+def fill_report(page, port: int, name: str, query: str) -> bool:
+    """Measure how much of the frame the last frame of a scene uses, against the empty room.
+
+    Reports the bounding box of the content as shares of the width and of the wall height, and the
+    share of a 6 x 4 grid over the wall that holds content. Needs Pillow and NumPy.
+    """
+    import numpy as np
+    from PIL import Image
+
+    duration = _open(page, port, query)
+    frame = lambda t: np.asarray(Image.open(io.BytesIO(_frame(page, t))).convert("RGB"), dtype=int)  # noqa: E731
+    content = np.abs(frame(duration - 0.8) - frame(duration)).sum(axis=2) > 24
+    wall = content[:FLOOR]
+    xs, ys = np.flatnonzero(content.any(axis=0)), np.flatnonzero(wall.any(axis=1))
+    if not len(xs) or not len(ys):
+        raise RuntimeError(f"{name}: the frame before the loop point equals the empty room (the scene does not fade)")
+    width, height = (xs[-1] - xs[0] + 1) / content.shape[1], (ys[-1] - ys[0] + 1) / FLOOR
+    cells = [wall[r * FLOOR // 4:(r + 1) * FLOOR // 4, c * content.shape[1] // 6:(c + 1) * content.shape[1] // 6].mean() > 0.004
+             for r in range(4) for c in range(6)]
+    grid = sum(cells) / len(cells)
+    ok = width >= 0.85 and height >= 0.75 and grid >= 2 / 3
+    print(f"{name:18s} width {width:4.0%}  wall height {height:4.0%}  grid {grid:4.0%}  "
+          f"margins left {xs[0]:4d} right {content.shape[1] - 1 - xs[-1]:4d} top {ys[0]:4d}  {'ok' if ok else 'TOO EMPTY'}")
+    return ok
 
 
 def render_clip(page, port: int, name: str, query: str, out: Path, gif: dict | None, keep_mp4: bool) -> None:
@@ -101,6 +130,7 @@ def main() -> None:
     parser.add_argument("--only", help="comma-separated scene ids of the reel (default: all)")
     parser.add_argument("--stills", help="comma-separated times in seconds; writes PNG stills and no video")
     parser.add_argument("--captions", action="store_true", help="print the title and caption of every scene")
+    parser.add_argument("--fill", action="store_true", help="report how much of the frame each scene uses")
     parser.add_argument("--gif-width", type=int, default=960)
     parser.add_argument("--gif-fps", type=int, default=15)
     parser.add_argument("--gif-colors", type=int, default=160)
@@ -121,6 +151,7 @@ def main() -> None:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page(viewport={"width": 1920, "height": 1350}, device_scale_factor=1)
             errors: list[str] = []
+            full = True
             page.on("pageerror", lambda error: errors.append(str(error)))
             if args.reel:
                 only = f"&only={args.only}" if args.only else ""
@@ -128,7 +159,9 @@ def main() -> None:
             else:
                 jobs = [(scene, f"scene={scene}") for scene in args.scene or _scene_ids(page, port)]
             for name, query in jobs:
-                if args.captions:
+                if args.fill:
+                    full = fill_report(page, port, name, query) and full
+                elif args.captions:
                     _open(page, port, query)
                     print(f"{page.evaluate('window.__clip.title')}\n    {page.evaluate('window.__clip.caption')}\n")
                 elif args.stills:
@@ -140,6 +173,8 @@ def main() -> None:
             browser.close()
     finally:
         server.shutdown()
+    if not full:
+        raise SystemExit("at least one scene leaves too much of the frame empty")
 
 
 if __name__ == "__main__":

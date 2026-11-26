@@ -5,7 +5,7 @@
 (function (S) {
   "use strict";
   const { seg, ease, level, text, sphere, ring, panel, line, floorLabel } = S;
-  const X0 = 400, X1 = 920, R = 27, XL = 1200;
+  const X0 = 310, X1 = 900, R = 30, XL = 1230;
   // six control and four treated participants: after the exclusions, five and three
   const PEOPLE = [
     { tone: "grey", b: 0.14, c: 0.10 }, { tone: "grey", b: 0.26, c: -0.05, missing: 1 }, { tone: "grey", b: 0.38, c: 0.13 },
@@ -28,7 +28,7 @@
     },
     draw(ctx, t, d) {
       const A = S.TONES.accent;
-      panel(ctx, X0); panel(ctx, X1);
+      panel(ctx, X0, 1, 320); panel(ctx, X1, 1, 320);
       floorLabel(ctx, "baseline", X0, seg(t, 0.1, 0.7));
       floorLabel(ctx, "follow-up", X1, seg(t, 0.1, 0.7));
       const found = seg(t, 2.4, 3.1), other = seg(t, 4.6, 5.3), kept = seg(t, 6.2, 7.0);
