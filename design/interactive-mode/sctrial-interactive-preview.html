@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Review the comparison · sctrial Interactive</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f5f4ef; --surface: #fffefa; --ink: #20241f; --muted: #575e55;
+      --rule: #d4d7cd; --faint: #e9ebe3; --accent: #b87215; --active: #edb257;
+      --focus: #095c69; --absent: #747b72;
+      font: 16px/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); }
+    button, select { font: inherit; color: inherit; }
+    button, select, summary { cursor: pointer; }
+    :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    [hidden] { display: none !important; }
+    button { border: 0; }
+    .top { background: var(--ink); color: #f9faf5; }
+    .top-inner, main { max-width: 1400px; margin: auto; padding-inline: clamp(20px, 4.7vw, 80px); }
+    .top-inner { height: 68px; display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: inline-flex; align-items: baseline; gap: 13px; }
+    .brand strong { font-size: 28px; letter-spacing: -.07em; font-weight: 750; }
+    .brand span { border-left: 1px solid #646a5f; color: #d9ddd3; padding-left: 13px; font-size: 15px; }
+    .preview { color: #e0e4db; font-size: 13px; display: flex; align-items: center; gap: 9px; }
+    .preview::before { content: ""; width: 7px; height: 7px; border: 1px solid var(--active); border-radius: 50%; }
+    main { padding-block: clamp(27px,4vw,64px) 45px; }
+    .context { margin: 0 0 9px; font-size: 14px; color: var(--muted); }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(36px,4.6vw,65px); line-height: 1.05; letter-spacing: -.06em; font-weight: 600; }
+    .lede { margin-top: 14px; color: var(--muted); max-width: 66ch; }
+    .workspace { display: grid; grid-template-columns: minmax(0,1fr) minmax(245px, .32fr); gap: clamp(24px,3.2vw,52px); align-items: start; margin-top: clamp(25px,3vw,43px); }
+    .evidence { min-width: 0; }
+    .sheet { padding: clamp(20px,2.3vw,36px); background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; }
+    h2 { font-size: 21px; letter-spacing: -.04em; font-weight: 630; }
+    .metric { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin: 17px 0 25px; }
+    .metric-number { font-size: clamp(44px,5.2vw,74px); line-height: 1; font-weight: 550; letter-spacing: -.075em; font-variant-numeric: tabular-nums; }
+    .metric-number small { color: var(--muted); font-weight: 430; font-size: .49em; letter-spacing: -.06em; }
+    .metric-caption { max-width: 30ch; color: var(--muted); font-size: 15px; }
+    .groups { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,235px),1fr)); gap: 20px; }
+    .group { border-top: 2px solid var(--group-color, var(--ink)); padding: 14px 0 0; min-width: 0; }
+    .group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .group h3 { font-size: 18px; font-weight: 620; letter-spacing: -.035em; }
+    .group-head span { font-size: 13px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: minmax(50px, .95fr) repeat(6,minmax(0,.5fr)); margin-top: 12px; text-align: center; align-items: center; }
+    .pid { color: var(--muted); font: 11px/1.5 ui-monospace,monospace; padding-bottom: 6px; }
+    .visit { text-align: left; color: var(--muted); font-size: 12px; }
+    .mark { position: relative; height: 35px; display: grid; place-items: center; }
+    .mark::after { content: ""; width: 12px; height: 12px; border: 1px solid var(--ink); border-radius: 50%; background: var(--ink); z-index: 1; }
+    .mark.missing::after { width: 10px; height: 10px; border: 1.5px dashed var(--absent); background: var(--surface); }
+    .mark.link::before { position: absolute; content: ""; width: 1.5px; height: 35px; top: 50%; left: 50%; transform: translateX(-50%); background: var(--group-color, var(--ink)); }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 20px; color: var(--muted); font-size: 12px; margin-top: 18px; }
+    .legend span { display: inline-flex; align-items: center; gap: 7px; }
+    .legend i { width: 10px; height: 10px; border: 1px solid var(--ink); border-radius: 50%; background: var(--ink); }
+    .legend .empty { background: transparent; border: 1.5px dashed var(--absent); }
+    .question { border-top: 1px solid var(--rule); margin-top: 25px; padding-top: 18px; }
+    .question h3, .micro { font-size: 12px; text-transform: uppercase; letter-spacing: .09em; font-weight: 650; color: var(--muted); }
+    .question p { margin-top: 6px; font-size: clamp(18px,1.55vw,24px); letter-spacing: -.03em; line-height: 1.36; max-width: 48ch; }
+    aside { padding-top: 1px; }
+    aside h2 { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .field { margin-bottom: 16px; }
+    select { width: 100%; min-height: 44px; padding: 8px 27px 8px 11px; border-radius: 5px; border: 1px solid #9da498; background-color: var(--surface); font-size: 14px; }
+    .primary { background: var(--ink); color: white; padding: 11px 15px; min-height: 44px; width: 100%; border-radius: 5px; text-align: left; font-weight: 550; display:flex; justify-content: space-between; align-items:center; font-size: 14px; }
+    .primary:hover { background: #383f35; }
+    .primary .chevron { width: 8px; height: 8px; margin-right: 2px; border-top: 1.5px solid var(--active); border-right: 1.5px solid var(--active); transform: rotate(45deg); }
+    .note { font-size: 13px; color: var(--muted); margin-top: 10px; }
+    details { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); margin-top: 19px; padding: 0 2px; }
+    summary { font-size: 15px; font-weight: 600; padding: 14px 0; }
+    details ul { margin: 0 0 15px; padding-left: 21px; font-size: 14px; }
+    details p { font-size: 14px; margin: 0 0 12px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    dialog { position: fixed; max-width: min(485px, calc(100% - 32px)); max-height: 90dvh; width: 100%; padding: 26px; border: 1px solid var(--rule); border-radius: 12px; background: var(--surface); color: var(--ink); }
+    dialog::backdrop { background: rgb(21 27 20 / .48); }
+    dialog h2 { font-size: 27px; }
+    dl { display: grid; grid-template-columns: minmax(95px,.8fr) 1.4fr; font-size: 14px; margin: 20px 0; }
+    dt, dd { padding: 8px 0; border-top: 1px solid var(--rule); margin: 0; }
+    dt { color: var(--muted); } dd { overflow-wrap: anywhere; }
+    @media(max-width: 930px) {
+      .workspace { grid-template-columns: minmax(0,1fr) 230px; gap: 22px; }
+      .groups { grid-template-columns: 1fr; }
+    }
+    @media(max-width: 700px) {
+      .top-inner { height: 57px; } .brand strong { font-size: 24px; }
+      .workspace { display:flex; flex-direction: column; } .evidence, aside { width: 100%; }
+      .sheet { border-radius: 8px; } .lede { font-size: 15px; }
+      .groups { grid-template-columns: repeat(auto-fit,minmax(min(100%,235px),1fr)); }
+      aside { border-top: 1px solid var(--rule); padding-top: 18px; }
+      .narrow-link { color: var(--ink); display: inline-block; margin-top: 11px; font-size: 14px; }
+    }
+    @media(min-width: 701px) { .narrow-link { display: none; } }
+    @media(max-width: 360px) { .preview { font-size: 11px; } .brand { gap:8px; } .brand span { padding-left: 8px; } }
+  </style>
+</head>
+<body>
+  <header class="top"><div class="top-inner">
+    <div class="brand"><strong>sctrial</strong><span>Interactive</span></div>
+    <span class="preview">Design preview</span>
+  </div></header>
+  <main>
+    <p class="context">Synthetic cohort · 12 participants</p>
+    <h1>Review the comparison</h1>
+    <p class="lede">See which participants contribute before fitting the model.</p>
+    <a class="narrow-link" href="#settings">Change comparison settings</a>
+    <div class="workspace">
+      <section class="evidence" aria-label="Study design">
+        <div class="sheet" id="coverage" tabindex="-1">
+          <h2>Visit coverage</h2>
+          <div class="metric"><span class="metric-number" id="number"></span><span class="metric-caption" id="metric-label"></span></div>
+          <div class="groups" id="groups"></div>
+          <div class="legend" aria-hidden="true"><span><i></i>Observed</span><span><i class="empty"></i>Missing</span></div>
+          <div class="question"><h3>Analysis question</h3><p id="question"></p></div>
+        </div>
+        <details><summary id="exclusion-title">Review exclusions</summary><div id="exclusions"></div></details>
+        <p class="note">Coverage is calculated from specimen and cell-type availability. Missing feature values or covariates can further reduce the number in a fitted model.</p>
+      </section>
+      <aside id="settings" aria-labelledby="settings-title">
+        <h2 id="settings-title">Comparison settings</h2>
+        <div class="field"><label for="design">Study design</label><select id="design">
+          <option value="did">Two-arm longitudinal</option><option value="paired">Single-arm paired</option><option value="cross">Cross-sectional</option>
+        </select></div>
+        <div class="field"><label for="order" id="order-label">Group order</label><select id="order"></select></div>
+        <div class="field"><label for="visit" id="visit-label">Follow-up visit</label><select id="visit"></select></div>
+        <div class="field"><label for="population">Cell population</label><select id="population">
+          <option>All annotated cells</option><option>CD8 T cells</option><option>B cells</option>
+        </select></div>
+        <button class="primary" id="review" type="button"><span>Inspect contrast</span><span class="chevron" aria-hidden="true"></span></button>
+        <a class="narrow-link" href="#coverage">Return to visit coverage</a>
+      </aside>
+    </div>
+    <p class="sr-only" id="announcement" role="status" aria-live="polite"></p>
+  </main>
+  <dialog id="contrast" aria-labelledby="contrast-title"><h2 id="contrast-title">Contrast specification</h2>
+    <p class="note">These settings describe the proposed call for this example.</p>
+    <dl id="specification"></dl><form method="dialog"><button class="primary" autofocus>Back to comparison</button></form>
+  </dialog>
+  <script>
+    'use strict';
+    // Each record represents one person. Specimen availability and cell-type coverage
+    // have separate meanings, including when both would exclude the same observation.
+    const arms = ['Arm A', 'Arm B'];
+    const participants = arms.flatMap((arm, armIndex) =>
+      Array.from({length: 6}, (_, i) => ({arm, id: (armIndex === 0 ? 'A' : 'B') + String(i + 1).padStart(2, '0')})));
+    const missingSpecimens = {
+      'Baseline': [], 'Week 4': ['A05', 'B03'], 'Week 12': ['A02', 'A05', 'B04', 'B06']
+    };
+    const missingCells = {
+      'CD8 T cells': {'Baseline': [], 'Week 4': ['A06','B05'], 'Week 12': ['A03','B02']},
+      'B cells': {'Baseline': ['B01'], 'Week 4': ['A04','B06'], 'Week 12': ['A01','B05']}
+    };
+    const byId = id => document.getElementById(id);
+    const design = byId('design'), order = byId('order'), visit = byId('visit'), population = byId('population');
+    function element(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+    function updateDesignOptions() {
+      const previousOrder = order.value || 'Arm A', previousVisit = visit.value || 'Week 4';
+      byId('order-label').textContent = design.value === 'paired' ? 'Study arm' : 'Group order';
+      byId('visit-label').textContent = design.value === 'cross' ? 'Visit' : 'Follow-up visit';
+      order.replaceChildren(...arms.map(arm => new Option(design.value === 'paired' ? arm :
+        arm + ' minus ' + arms.find(other => other !== arm), arm)));
+      order.value = previousOrder;
+      const visits = Object.keys(missingSpecimens).filter(v => design.value === 'cross' || v !== 'Baseline');
+      visit.replaceChildren(...visits.map(v => new Option(v, v)));
+      visit.value = visits.includes(previousVisit) ? previousVisit : 'Week 4';
+    }
+    function absenceReason(person, time) {
+      if (missingSpecimens[time].includes(person.id)) return 'no specimen';
+      if (missingCells[population.value]?.[time].includes(person.id)) return 'no ' + population.value;
+      return '';
+    }
+    function evidenceGroup(arm, records, visits, first) {
+      const group = element('section','group');
+      group.style.setProperty('--group-color', first ? 'var(--accent)' : 'var(--ink)');
+      const header = element('div','group-head');
+      header.append(element('h3','',arm), element('span','',records.filter(r => r.eligible).length + ' of ' + records.length));
+      const grid = element('div','grid');
+      grid.setAttribute('aria-hidden', 'true');
+      grid.append(element('span'));
+      records.forEach(r => grid.append(element('span', 'pid', r.person.id)));
+      visits.forEach((time, index) => {
+        grid.append(element('span', 'visit', time));
+        records.forEach(r => {
+          const connected = visits.length === 2 && index === 0 && r.eligible;
+          const mark = element('span','mark' + (r.reasons[index] ? ' missing' : '') + (connected ? ' link' : ''));
+          grid.append(mark);
+        });
+      });
+      const alternative = element('ul','sr-only');
+      records.forEach(r => alternative.append(element('li','', r.person.id + '. ' +
+        visits.map((v,i) => v + ' ' + (r.reasons[i] || 'observed')).join('. '))));
+      group.append(header, grid, alternative);
+      return group;
+    }
+    function render() {
+      const primary = order.value, reference = arms.find(arm => arm !== primary);
+      const paired = design.value === 'paired', cross = design.value === 'cross';
+      const visits = cross ? [visit.value] : ['Baseline', visit.value];
+      const armOrder = paired ? [primary] : [primary, reference];
+      const records = participants.filter(person => armOrder.includes(person.arm)).map(person => {
+        const reasons = visits.map(time => absenceReason(person, time));
+        return {person, reasons, eligible: reasons.every(reason => !reason)};
+      });
+      const included = records.filter(record => record.eligible).length;
+      const excluded = records.filter(record => !record.eligible);
+      byId('number').replaceChildren(document.createTextNode(String(included)),element('small','', ' / ' + records.length));
+      const caption = cross ? 'participants observed at this visit' : 'participants with both visits';
+      byId('metric-label').textContent = caption;
+      byId('groups').replaceChildren(...armOrder.map((arm,i) =>
+        evidenceGroup(arm, records.filter(r => r.person.arm === arm), visits, i === 0)));
+      const change = 'from baseline to ' + visit.value.toLowerCase();
+      const outcome = 'interferon-response score';
+      const question = cross ? 'How does the ' + outcome + ' at ' + visit.value.toLowerCase() + ' differ between ' + primary + ' and ' + reference + '?' :
+        paired ? 'How does the ' + outcome + ' change within ' + primary + ' ' + change + '?' :
+        'How does the change in ' + outcome + ' ' + change + ' differ between ' + primary + ' and ' + reference + '?';
+      byId('question').textContent = question;
+      byId('exclusion-title').textContent = 'Review exclusions (' + excluded.length + ')';
+      const reasons = element('ul');
+      excluded.forEach(r => reasons.append(element('li','', r.person.id + ' · ' +
+        visits.flatMap((v,i) => r.reasons[i] ? [v + ', ' + r.reasons[i]] : []).join(' · '))));
+      byId('exclusions').replaceChildren(excluded.length ? reasons : element('p','','Every participant in the selected cohort has coverage.'));
+      const compare = cross ? primary + ' − ' + reference + ' at ' + visit.value :
+        paired ? visit.value + ' − Baseline in ' + primary :
+        '(' + visit.value + ' − Baseline) in ' + primary + ' minus (' + visit.value + ' − Baseline) in ' + reference;
+      const fields = [
+        ['Design', design.selectedOptions[0].text], ['Population', population.value], ['Outcome', 'Interferon-response score'], ['Contrast', compare],
+        ['Coverage', included + ' of ' + records.length + ' participants'], ['Function', cross ? 'between_arm_comparison' : paired ? 'within_arm_comparison' : 'did_table']
+      ];
+      byId('specification').replaceChildren(...fields.flatMap(([key,value]) => [element('dt','',key),element('dd','',value)]));
+      byId('announcement').textContent = included + ' of ' + records.length + ' ' + caption + '. ' + question;
+    }
+    design.addEventListener('change', () => { updateDesignOptions(); render(); });
+    [order,visit,population].forEach(select => select.addEventListener('change', render));
+    byId('review').addEventListener('click', () => byId('contrast').showModal());
+    updateDesignOptions();
+    render();
+  </script>
+</body>
+</html>
