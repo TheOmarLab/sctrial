@@ -145,6 +145,8 @@ These entries concern `sctrial.benchmark` and the benchmark scripts of the repos
 ### Internal
 
 - Resolved two static type-checking errors, in the benchmark gate verdict and in the benchmark orchestrator command-line entry point. Behavior is unchanged.
+- The project description on PyPI is built from the README with its relative image paths and file links rewritten to the files of the release tag, so the logo, the overview figure and the study-design animation are displayed there. The build requires `hatch-fancy-pypi-readme`, which is installed automatically as a build dependency.
+- The source distribution holds the package, the tests, the README, the license and `pyproject.toml`; a file named `README.md` in another folder is no longer included.
 
 ## [1.0.0] - 2026-10-05
 

@@ -1,12 +1,12 @@
 [build-system]
-requires = ["hatchling>=1.24.2"]
+requires = ["hatchling>=1.24.2", "hatch-fancy-pypi-readme>=24.1.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "sctrial"
 version = "2.0.0"
 description = "Participant-level differential analysis for longitudinal single-cell experiments: DiD, paired comparisons, module scoring, pseudobulk, and power analysis."
-readme = { file = "README.md", content-type = "text/markdown" }
+dynamic = ["readme"]
 requires-python = ">=3.9"
 license = {  text = "MIT" }
 authors = [
@@ -83,6 +83,23 @@ dev = [
   "psutil>=5.9",
   "sctrial[docs]",
 ]
+
+# README.md uses paths relative to the repository, which GitHub resolves on every branch. PyPI shows
+# the description without the repository, so the paths are rewritten at build time to the files of the
+# release tag (v<version>). The tag has to exist when the release is uploaded.
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = 'src="(docs/[^"]+)"'
+replacement = 'src="https://raw.githubusercontent.com/TheOmarLab/sctrial/v$HFPR_VERSION/\1"'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\]\(((?:tutorials/|LICENSE)[^)]*)\)'
+replacement = '](https://github.com/TheOmarLab/sctrial/blob/v$HFPR_VERSION/\1)'
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sctrial"]
