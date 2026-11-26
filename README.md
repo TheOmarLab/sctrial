@@ -133,7 +133,7 @@ From a checkout with the interactive workspace installed, open a local H5AD stud
 python -m sctrial.interactive study.h5ad
 ```
 
-Select the participant, group, visit, and score columns to explore trajectories, fit a contrast, and compare pinned results. [Workspace guide](design/interactive-mode/sctrial-interactive-plan.md)
+Map participant IDs, groups, visits, and scores. Each analysis sheet links its estimate and interval to the participants who contribute. Save named comparisons and reopen them with the same study. [Workspace guide](design/interactive-mode/sctrial-interactive-plan.md)
 
 ## Supported Study Designs & Datasets
 

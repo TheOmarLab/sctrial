@@ -16,6 +16,7 @@ class WorkspaceServer(ThreadingHTTPServer):
 
     def __init__(self, study: LocalStudy, document: bytes, port: int):
         self.study = study
+        self.offline_document = document
         self.session = secrets.token_urlsafe(32)
         marker = b"<head>"
         if marker not in document:
@@ -77,6 +78,8 @@ class WorkspaceHandler(BaseHTTPRequestHandler):
             return
         if route == "/":
             self._send(200, self.server.document, "text/html; charset=utf-8")
+        elif route == "/sctrial-workbook.html":
+            self._send(200, self.server.offline_document, "text/html; charset=utf-8")
         elif route == "/local/schema":
             self._json(200, self.server.study.schema())
         else:

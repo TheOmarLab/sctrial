@@ -191,7 +191,15 @@ class LocalStudy:
                 )
             if people.arm.nunique() > 2:
                 raise ValueError("Select one or two groups in the input study for this workspace.")
-            visits = frame.visit.drop_duplicates().tolist()
+            visit_column = frame["visit"]
+            ordered_visits = isinstance(visit_column.dtype, pd.CategoricalDtype) and (
+                visit_column.cat.ordered
+            )
+            visits = (
+                visit_column.cat.remove_unused_categories().cat.categories.tolist()
+                if ordered_visits
+                else visit_column.drop_duplicates().tolist()
+            )
             types = frame.population.drop_duplicates().tolist() if roles["population"] else []
             pooled = "All cells"
             while pooled in types:
@@ -226,6 +234,7 @@ class LocalStudy:
                 "unit": "Recorded score",
                 "participants": people.rename(columns={"participant": "id"}).to_dict("records"),
                 "visits": visits,
+                "orderedVisits": ordered_visits,
                 "populations": [pooled, *types],
                 "features": features,
                 "observations": rows,

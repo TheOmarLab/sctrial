@@ -17,7 +17,8 @@
     download: '<path d="M12 3v11m-4-4 4 4 4-4M4 16v4h16v-4"/>',
     menu: '<path d="M3 5h18M3 12h18M3 19h18"/>',
     close: '<path d="m6 6 12 12m0-12L6 18"/>',
-    paired: '<circle cx="6" cy="15" r="3"/><circle cx="18" cy="8" r="3"/><path d="m8.5 13.4 7-4.2"/>',
+    paired:
+      '<circle cx="6" cy="15" r="3"/><circle cx="18" cy="8" r="3"/><path d="m8.5 13.4 7-4.2"/>',
     cells:
       '<circle cx="8" cy="8" r="4"/><circle cx="16.5" cy="14.5" r="4.5"/><circle cx="6" cy="18" r="2"/>',
     calendar:
@@ -30,7 +31,8 @@
   };
   Object.assign(icons, {
     down: '<path d="m6 9 6 6 6-6"/>',
-    studio: '<path d="M3 19V5m0 11 5-5 4 3 8-9"/><circle cx="8" cy="11" r="1.5"/><path d="M3 20h18"/>',
+    studio:
+      '<path d="M3 19V5m0 11 5-5 4 3 8-9"/><circle cx="8" cy="11" r="1.5"/><path d="M3 20h18"/>',
     stack: '<rect x="5" y="7" width="14" height="13" rx="2"/><path d="M8 4h8m-6 8h4"/>',
     pin: '<path d="m8 3 9 2-2 5 3 3-1 2-6-1-5 7 2-8-4-1 1-2 3-1Z"/>',
     open: '<path d="M3 6h7l2 2h8v3M3 6v13h15l3-7H8l-3 7"/>',
@@ -73,7 +75,7 @@
     observe: 'Single-visit mean',
   };
   const titles = {
-    overview: 'Contrast studio',
+    overview: 'Analysis',
     participants: 'Cohort explorer',
     results: 'Results',
     bench: 'Pinned contrasts',
@@ -108,13 +110,11 @@
     synthetic() ? 'Mean module score' : native() ? study.unit || 'Mean score' : 'Recorded score';
   const nfmt = (n) => (Number.isFinite(n) ? n.toLocaleString('en-US') : '—');
   const mean = (xs) => (xs.length ? xs.reduce((x, y) => x + y, 0) / xs.length : null);
-  const number = (n, sign = false, prec = 2) =>
-    Number.isFinite(n) ? (n < 0 ? '−' : sign && n > 0 ? '+' : '') + Math.abs(n).toFixed(prec) : '—';
-  const probability = (n) =>
-    Number.isFinite(n) ? (n > 0 && n < 0.001 ? n.toExponential(1) : n.toFixed(3)) : '—';
   const second = () => arms.find((a) => a !== state.arm);
   const armsIn = () =>
-    ['paired', 'observe'].includes(state.design) ? [state.arm] : [state.arm, second()].filter(Boolean);
+    ['paired', 'observe'].includes(state.design)
+      ? [state.arm]
+      : [state.arm, second()].filter(Boolean);
   const datesIn = () => (isLong() ? [state.baseline, state.visit] : [state.visit]);
   const designs = () => [
     ...(arms.length > 1 && study.visits.length > 1 ? ['did'] : []),
@@ -125,12 +125,9 @@
   const contrast = () => armsIn().join(' − ') + ' · ' + datesIn().join(' → ');
   const key = () =>
     JSON.stringify([state.design, state.arm, state.baseline, state.visit, state.population]);
-  const color = (a) => (arms.indexOf(a) === 0 ? '#70ddbf' : '#ffb879');
-  const lightColor = (a) => (arms.indexOf(a) === 0 ? '#4b9680' : '#c78345');
+  const color = (a) => (arms.indexOf(a) === 0 ? '#5145bb' : '#247778');
   const rowAt = (id, v) => obsByPerson.get(id)?.get(v)?.get(state.population);
   const rowObserved = (r) => r && r.cells > 0;
-  const eligible = (p) =>
-    armsIn().includes(p.arm) && datesIn().every((v) => rowObserved(rowAt(p.id, v)));
   const method = () =>
     synthetic()
       ? study.study.methods[state.design]
@@ -140,12 +137,6 @@
           ? 'Mean across observed participants'
           : 'Unadjusted descriptive participant differences';
   const ready = () => !native() || !fitted() || fitStatus === 'ready';
-  const benchmarkMethods = {
-    did: 'Two-group change',
-    paired: 'Within-group change',
-    cross: 'At one visit',
-    observe: 'Single-group mean',
-  };
   function clearFit() {
     if (fitTask) fitTask.abort();
     fitTask = null;
@@ -160,6 +151,7 @@
     fitCache.clear();
     rowCache.clear();
     study = next;
+    window.SctrialChrome?.setStudy(study);
     arms = [...new Set(study.participants.map((p) => p.arm))];
     personById = new Map(study.participants.map((p) => [p.id, p]));
     obsByPerson = new Map();
@@ -184,13 +176,14 @@
       visit: study.visits.find((v) => v !== baseline) || baseline,
       population: study.populations[0],
       feature: study.features[0].id,
-      mode: 'trajectory',
+      mode: 'comparison',
       selectedId: null,
-      focus: false,
     };
     peopleContext = {};
+    sheets.reset('Primary analysis');
     bench.setStudy(synthetic() ? 'immune-study-62834-v1' : 'local-' + ++privateCounter, {
       persist: synthetic(),
+      sharedFeatureUnit: synthetic(),
     });
     render();
     if (native() && fitted()) void requestFit();
@@ -285,7 +278,7 @@
   }
   function refreshFit() {
     updateTop();
-    if (state.view === 'overview') paintInspector();
+    if (state.view === 'overview') paintEvidence();
     else if (state.view === 'results') renderResultsView();
   }
   function setParam(field, value) {
@@ -346,6 +339,34 @@
     onChange: (n) => setBadge(n),
     onExplore: () => navigate('overview'),
   });
+  const sheets = window.createAnalysisSheets({
+    getStudy: () => ({
+      name: name(),
+      source: study.source || 'example',
+      arms,
+      visits: study.visits,
+      populations: study.populations,
+      features: study.features,
+      mapping: study.mapping || null,
+      designs: designs(),
+      fixedBaseline: synthetic() ? sample.visits[0] : null,
+    }),
+    getSpec: () => ({ ...snapshotSpec(), mode: state.mode, visitOrder: [...study.visits] }),
+    onOpen: ({ visitOrder, ...spec }) => {
+      past = [];
+      future = [];
+      if (visitOrder) {
+        study.visits = [...visitOrder];
+        window.SctrialChrome?.setStudy(study);
+      }
+      Object.assign(state, spec, { selectedId: null });
+      clearFit();
+      navigate('overview');
+      if (native() && fitted()) void requestFit();
+    },
+    onRename: () => updateTop(),
+  });
+
   function setBadge(count) {
     $('pinCount').textContent = String(count);
     $('pinCount').hidden = !count;
@@ -354,11 +375,13 @@
     $('studyName').textContent = name();
     $('sourceBadge').textContent = source();
     $('studyCount').textContent = nfmt(study.participants.length) + ' participants';
-    $('pageTitle').textContent = titles[state.view];
+    $('pageTitle').textContent = state.view === 'overview' ? sheets.title() : titles[state.view];
+    $('sectionCrumb').textContent =
+      state.view === 'overview' ? 'Analysis workbook' : titles[state.view];
+    sheets.setVisible(state.view === 'overview');
     $('pinButton').hidden = state.view === 'bench';
     $('pinButton').disabled = !ready();
     $('pinButton').title = ready() ? 'Save this comparison' : 'Waiting for a fitted result';
-    document.body.classList.toggle('workspace-focus', state.focus && state.view === 'overview');
     document.querySelectorAll('[data-view]').forEach((n) => {
       if (n.dataset.view === state.view) n.setAttribute('aria-current', 'page');
       else n.removeAttribute('aria-current');
@@ -376,103 +399,119 @@
     icon(glyph) +
     esc(text) +
     '</button>';
-  function toolbar() {
-    function control(field, label, glyph, options, value, caption) {
-      return (
-        '<label class="control"><i class="label-icon">' +
-        icon(glyph) +
-        '</i><span><small>' +
-        esc(label) +
-        '</small><b>' +
-        esc(caption ?? value) +
-        '</b></span><select id="ctrl-' +
-        field +
-        '" data-param="' +
-        field +
-        '" aria-label="' +
-        esc(label) +
-        '">' +
-        options +
-        '</select><i>' +
-        icon('down') +
-        '</i></label>'
+  function modes() {
+    return [
+      ['comparison', 'Comparison', 'chart'],
+      ['trajectory', 'Trajectories', 'trend'],
+      ['changes', isLong() ? 'Changes' : 'Distribution', 'points'],
+    ];
+  }
+
+  function comparisonRecords() {
+    const groups = armsIn();
+    const visitNames = datesIn();
+    return study.participants
+      .filter((p) => groups.includes(p.arm))
+      .map((p) => {
+        const values = visitNames.map((v) => {
+          const r = rowAt(p.id, v);
+          const score = r?.scores[state.feature];
+          return rowObserved(r) && Number.isFinite(score) ? score : null;
+        });
+        const missing = visitNames.filter((v, i) => values[i] === null);
+        return {
+          id: p.id,
+          arm: p.arm,
+          baselineValue: isLong() ? values[0] : null,
+          followupValue: values[values.length - 1],
+          contributes: missing.length === 0,
+          reason: missing.length ? 'Missing score at ' + missing.join(' and ') : '',
+        };
+      });
+  }
+
+  function paintEvidence(records = comparisonRecords()) {
+    const host = $('effectPlot');
+    if (!host) return;
+    const r = currentRows().find((row) => row.id === state.feature);
+    const armData = armsIn().map((name) => {
+      const people = records.filter((p) => p.arm === name && p.contributes);
+      const values = people.map((p) =>
+        isLong() ? p.followupValue - p.baselineValue : p.followupValue,
       );
+      const ids = people.map((p) => p.id);
+      return {
+        name,
+        colorIndex: arms.indexOf(name),
+        n: values.length,
+        mean: mean(values),
+        values,
+        ids,
+      };
+    });
+    const formula = armsIn().join(' − ');
+    window.SctrialEvidence.render(host, {
+      arms: armData,
+      onSelect: selectPerson,
+      estimate: r?.estimate ?? null,
+      interval: [r?.lo, r?.hi].every(Number.isFinite) ? [r.lo, r.hi] : null,
+      contrast: formula,
+      unit: unit(),
+      feature: feature().label,
+      longitudinal: isLong(),
+      baseline: state.baseline,
+      visit: state.visit,
+      model: method(),
+      descriptive: !fitted(),
+      status: fitStatus === 'loading' ? 'Fitting comparison…' : fitMessage || r?.reason || '',
+    });
+    const retryArea = $('fitRetry');
+    retryArea.replaceChildren();
+    if (fitStatus === 'error') retryArea.innerHTML = button('retry', 'refresh', 'Retry fit', 'btn');
+    if (currentFit?.warnings?.length) {
+      const notes = document.createElement('details');
+      notes.className = 'fit-warnings';
+      const title = document.createElement('summary');
+      title.textContent = 'Model notes (' + currentFit.warnings.length + ')';
+      notes.append(title);
+      for (const message of currentFit.warnings) {
+        const p = document.createElement('p');
+        p.textContent = message;
+        notes.append(p);
+      }
+      retryArea.append(notes);
     }
-    const single = ['paired', 'observe'].includes(state.design),
-      groupPrint = (a) => (single ? a : a + ' − ' + arms.find((v) => v !== a));
-    return (
-      '<div class="controlbar" aria-label="Active contrast">' +
-      control(
-        'design',
-        'Study design',
-        'paired',
-        designs()
-          .map((d) => option(d, state.design, labels[d]))
-          .join(''),
-        state.design,
-        labels[state.design],
-      ) +
-      control(
-        'arm',
-        single ? 'Group' : 'Group order',
-        'people',
-        arms.map((a) => option(a, state.arm, groupPrint(a))).join(''),
-        state.arm,
-        groupPrint(state.arm),
-      ) +
-      control(
-        'population',
-        'Cell population',
-        'cells',
-        study.populations.map((p) => option(p, state.population)).join(''),
-        state.population,
-      ) +
-      '</div>'
-    );
   }
-  function visitSelector() {
-    const dates = isLong() ? study.visits.filter((v) => v !== state.baseline) : study.visits;
-    const choose = (param, label, values, locked) =>
-      '<label class="time-pick"><small>' +
-      esc(label) +
-      '</small>' +
-      (locked
-        ? '<b>' + esc(state[param]) + '</b>'
-        : '<select data-param="' +
-          param +
-          '" aria-label="' +
-          esc(label) +
-          '">' +
-          values.map((v) => option(v, state[param])).join('') +
-          '</select>') +
-      '</label>';
-    return (
-      '<div class="timebar">' +
-      (isLong()
-        ? choose('baseline', 'Baseline visit', study.visits, synthetic()) +
-          '<span aria-hidden="true">→</span>'
-        : '') +
-      choose('visit', isLong() ? 'Follow-up visit' : 'Selected visit', dates, false) +
-      '</div>'
-    );
+
+  function paintMatrix(records) {
+    window.SctrialMatrix.render($('participantMatrix'), {
+      records,
+      baseline: state.baseline,
+      visit: state.visit,
+      feature: feature().label,
+      unit: unit(),
+      armLabels: armsIn(),
+      studyArms: arms,
+      longitudinal: isLong(),
+      selectedId: state.selectedId,
+      onSelect: selectPerson,
+    });
   }
+
   function paintCanvas() {
     const active = armsIn();
-    let visits = study.visits;
-    if (!synthetic() && isLong())
-      visits = [state.baseline, ...study.visits.filter((v) => v !== state.baseline)];
-    const series = byPopulation.get(state.population) || [],
-      byId = new Map(),
-      id = state.feature;
-    for (const r of series) {
-      if (!active.includes(r.arm) || !Number.isFinite(r.scores[id])) continue;
-      if (!byId.has(r.id)) byId.set(r.id, { id: r.id, arm: r.arm, points: [] });
-      byId.get(r.id).points.push({ visit: r.visit, value: r.scores[id] });
+    const byId = new Map();
+    const id = state.feature;
+    for (const row of byPopulation.get(state.population) || []) {
+      if (!active.includes(row.arm) || !rowObserved(row) || !Number.isFinite(row.scores[id]))
+        continue;
+      if (!byId.has(row.id)) byId.set(row.id, { id: row.id, arm: row.arm, points: [] });
+      byId.get(row.id).points.push({ visit: row.visit, value: row.scores[id] });
     }
     renderContrastCanvas(
       $('plot'),
       {
-        visits,
+        visits: study.visits,
         baseline: state.baseline,
         visit: state.visit,
         design: state.design,
@@ -481,300 +520,298 @@
         groups: active.map((a) => ({ name: a, color: color(a) })),
         series: [...byId.values()],
         mode: state.mode,
-        selectedId: state.selectedId,
-        canSelectVisit: visits.length > 1,
-        editableVisits: visits.filter((v) => !isLong() || v !== state.baseline),
+        selectedId: null,
+        canSelectVisit: study.visits.length > 1,
+        editableVisits: study.visits.filter((v) => !isLong() || v !== state.baseline),
       },
       { onSelectParticipant: selectPerson, onVisit: (v) => setParam('visit', v) },
     );
   }
-  function selectPerson(id) {
-    state.selectedId = id ?? null;
-    paintCanvas();
-    paintInspector();
-    syncRoster();
-    chartInstruction();
+
+  const scoreFormat = new Intl.NumberFormat('en-US', { maximumSignificantDigits: 6 });
+  function measurement(value, signed = false) {
+    if (!Number.isFinite(value)) return '—';
+    return (signed && value > 0 ? '+' : '') + scoreFormat.format(value).replace('-', '−');
   }
-  function setFeature(id) {
-    if (!study.features.some((f) => f.id === id)) return;
-    state.feature = id;
-    state.selectedId = null;
-    if (state.view !== 'overview') {
-      navigate('overview');
-      return;
-    }
-    $('stageTitle').textContent = feature().label;
-    paintCanvas();
-    paintInspector();
-    syncRoster();
-    chartInstruction();
-  }
-  function syncRoster() {
-    document
-      .querySelectorAll('[data-person-index]')
-      .forEach((b) =>
-        b.setAttribute(
-          'aria-pressed',
-          String(study.participants[Number(b.dataset.personIndex)].id === state.selectedId),
-        ),
+
+  function participantDetail(person) {
+    const rows = study.visits.map((v) => {
+      const r = rowAt(person.id, v);
+      const score = r?.scores[state.feature];
+      const status = !obsByPerson.get(person.id)?.has(v)
+        ? 'No specimen'
+        : !rowObserved(r)
+          ? 'Population absent'
+          : !Number.isFinite(score)
+            ? 'Missing score'
+            : 'Measured';
+      return (
+        '<tr><th scope="row">' +
+        esc(v) +
+        '</th><td>' +
+        measurement(score) +
+        '</td><td>' +
+        nfmt(r?.cells) +
+        '</td><td>' +
+        esc(status) +
+        '</td></tr>'
       );
-  }
-  function roster() {
-    const active = armsIn(),
-      selected = study.participants.filter((p) => active.includes(p.arm)),
-      coverage = selected.filter(eligible).length;
-    const groupHtml = active
-      .map((a) => {
-        const targets = study.participants.map((p, i) => ({ p, i })).filter((it) => it.p.arm === a);
-        return (
-          '<div class="roster-group"><span class="roster-label">' +
-          esc(a) +
-          '</span><div class="roster-keys">' +
-          targets
-            .slice(0, 14)
-            .map(({ p, i }) => {
-              const mark = datesIn()
-                .map((v) => '<em class="' + (rowObserved(rowAt(p.id, v)) ? '' : 'none') + '"></em>')
-                .join('');
-              return (
-                '<button type="button" data-person-index="' +
-                i +
-                '" class="slot" style="--mark:' +
-                lightColor(a) +
-                '" aria-label="Inspect ' +
-                esc(p.id) +
-                '" aria-pressed="' +
-                (state.selectedId === p.id) +
-                '">' +
-                esc(p.id) +
-                '<span aria-hidden="true">' +
-                mark +
-                '</span></button>'
-              );
-            })
-            .join('') +
-          (targets.length > 14 ? button('cohort', 'arrow', '+' + (targets.length - 14)) : '') +
-          '</div></div>'
-        );
-      })
-      .join('');
+    });
+    const record = comparisonRecords().find((p) => p.id === person.id);
+    const summary = record?.contributes
+      ? isLong()
+        ? 'Paired change ' + measurement(record.followupValue - record.baselineValue, true)
+        : 'Selected score ' + measurement(record.followupValue)
+      : record?.reason || 'Outside this comparison';
     return (
-      '<section class="roster"><div class="roster-head"><div><h2>Participant roster</h2><small>' +
-      coverage +
-      ' of ' +
-      selected.length +
-      ' with ' +
-      (isLong() ? 'both visits' : 'the selected visit') +
-      '</small></div>' +
-      button('cohort', 'arrow', 'Open cohort') +
-      '</div><div class="roster-groups">' +
-      groupHtml +
-      '</div><div class="roster-legend"><i></i>Observed <i></i>Missing <span>· ' +
-      esc(datesIn().join(' → ')) +
-      '</span></div></section>'
+      '<div class="ed-record"><div class="ed-person-context"><span>' +
+      icon('people') +
+      esc(person.arm) +
+      '</span><span>' +
+      icon('cells') +
+      esc(state.population) +
+      '</span></div><h3>' +
+      esc(feature().label) +
+      '</h3><p>' +
+      esc(unit()) +
+      '</p><div class="ed-record-scroll"><table><thead><tr><th>Visit</th><th>Score</th>' +
+      '<th>Cells</th><th>Measurement</th></tr></thead><tbody>' +
+      rows.join('') +
+      '</tbody></table></div><div class="ed-record-footer"><strong>' +
+      esc(summary) +
+      '</strong>' +
+      button('personRecord', 'arrow', 'Open cohort record') +
+      '</div></div>'
     );
   }
+
+  function selectPerson(id) {
+    if (id == null || !personById.has(id)) return;
+    state.selectedId = id;
+    modal('Participant ' + id, participantDetail(personById.get(id)), 'participant');
+  }
+
+  function setFeature(id) {
+    if (!study.features.some((f) => f.id === id) || id === state.feature) return;
+    remember();
+    state.feature = id;
+    state.selectedId = null;
+    if (state.view !== 'overview') navigate('overview');
+    else render();
+  }
+
+  function editorTabs() {
+    return (
+      '<div class="ed-tabs" role="group" aria-label="Analysis view">' +
+      modes()
+        .map(
+          ([key, label, glyph]) =>
+            '<button type="button" data-mode="' +
+            key +
+            '" aria-pressed="' +
+            (state.mode === key) +
+            '">' +
+            icon(glyph) +
+            esc(label) +
+            '</button>',
+        )
+        .join('') +
+      '</div>'
+    );
+  }
+
+  function editorSummary() {
+    const scope = [
+      ['Study design', labels[state.design], 'design'],
+      [armsIn().length > 1 ? 'Group order' : 'Group', armsIn().join(' − '), 'arm'],
+      [isLong() ? 'Visits' : 'Visit', datesIn().join(' → '), 'visit'],
+      ['Population', state.population, 'population'],
+    ];
+    return (
+      '<div class="ed-spec">' +
+      scope
+        .map(
+          ([label, value, field]) =>
+            '<button type="button" data-configure="' +
+            field +
+            '" aria-label="Configure ' +
+            esc(label) +
+            '"><span>' +
+            esc(label) +
+            '</span><b>' +
+            esc(value) +
+            '</b></button>',
+        )
+        .join('') +
+      '</div>'
+    );
+  }
+
+  function outcomePicker() {
+    return (
+      '<label class="ed-outcome"><span>Outcome</span><span class="ed-select-wrap">' +
+      '<select aria-label="Outcome" data-param="feature">' +
+      study.features.map((f) => option(f.id, state.feature, f.label)).join('') +
+      '</select>' +
+      icon('down') +
+      '</span></label>'
+    );
+  }
+
   function overview() {
     const focusKey = document.activeElement?.getAttribute('data-param');
     if ($('plot')) disposeContrastCanvas($('plot'));
     $('page').innerHTML =
-      toolbar() +
-      '<div class="studio-grid"><section class="stage" aria-labelledby="stageTitle"><div class="stage-head"><div><div class="stage-context">' +
-      esc(state.population) +
-      '</div><h2 id="stageTitle">' +
-      esc(feature().label) +
-      '</h2></div><div class="stage-buttons"><div class="stage-toggle" role="group" aria-label="Plot view">' +
-      ['trajectory', 'changes']
-        .map(
-          (mode, i) =>
-            '<button data-mode="' +
-            mode +
-            '" aria-pressed="' +
-            (mode === state.mode) +
-            '">' +
-            icon(i ? 'points' : 'trend') +
-            (i ? (isLong() ? 'Changes' : 'Distribution') : 'Trajectories') +
-            '</button>',
-        )
-        .join('') +
-      '</div><button data-action="focus" class="stage-expand" title="' +
-      (state.focus ? 'Exit focus view' : 'Focus view') +
-      '" aria-label="' +
-      (state.focus ? 'Exit focus view' : 'Focus view') +
-      '">' +
-      icon(state.focus ? 'shrink' : 'expand') +
-      '</button></div></div><div id="plot" class="stage-plot"></div><div class="stage-foot"><div class="chart-instruction" id="chartInstruction"></div>' +
-      visitSelector() +
-      '</div></section><aside class="inspector" id="inspector" aria-label="Inspector" tabindex="-1"></aside></div>' +
-      roster();
-    paintCanvas();
-    paintInspector();
-    chartInstruction();
-    if (focusKey) document.querySelector('[data-param="' + focusKey + '"]')?.focus();
+      '<section class="ed-workbook" aria-label="Analysis editor">' +
+      '<div class="ed-definition">' +
+      outcomePicker() +
+      '<button class="ed-configure" type="button" data-configure="design">' +
+      icon('sliders') +
+      'Configure</button></div>' +
+      editorSummary() +
+      editorTabs() +
+      (state.mode === 'comparison'
+        ? '<div class="comparison-workarea"><div id="effectPlot"></div><div id="pairMap"></div></div>' +
+          '<div id="fitRetry"></div><div id="participantMatrix"></div>'
+        : '<section class="ed-exploration" aria-label="Participant plot"><div id="plot"></div></section>') +
+      '</section>';
+    if (state.mode === 'comparison') {
+      const records = comparisonRecords();
+      paintEvidence(records);
+      window.SctrialPairMap.render($('pairMap'), {
+        records,
+        studyArms: arms,
+        arms: armsIn(),
+        baseline: state.baseline,
+        visit: state.visit,
+        longitudinal: isLong(),
+        onSelect: selectPerson,
+      });
+      paintMatrix(records);
+    } else paintCanvas();
+    if (focusKey) document.querySelector('#page [data-param="' + focusKey + '"]')?.focus();
   }
-  function selectedEstimate() {
-    return currentRows().find((r) => r.id === state.feature);
-  }
-  function intervalGraphic(row) {
-    if (![row.lo, row.estimate, row.hi].every(Number.isFinite) || row.lo > row.hi) return '';
-    const extent = Math.max(Math.abs(row.lo), Math.abs(row.hi), Math.abs(row.estimate));
-    if (!extent) return '';
-    const position = (value) => 50 + 45 * (value / extent);
-    const start = position(row.lo),
-      end = position(row.hi);
-    return (
-      '<div class="interval-ruler" aria-hidden="true"><div class="ruler-line"></div><div class="ruler-zero"><small>0</small></div>' +
-      '<div class="ruler-whisker" style="left:' +
-      start +
-      '%;width:' +
-      (end - start) +
-      '%"></div>' +
-      '<i style="left:' +
-      position(row.estimate) +
-      '%"></i></div>'
-    );
-  }
-  function chartInstruction() {
-    const el = $('chartInstruction');
-    if (!el) return;
-    if (state.selectedId != null) {
-      el.innerHTML = button('inspectSelection', 'person', 'Inspect ' + state.selectedId);
-    } else {
-      el.innerHTML =
-        icon('crosshair') +
-        '<span>' +
-        (state.mode === 'changes' ? 'Select a point' : 'Select a trace') +
-        ' to inspect</span>';
+
+  function configure(focusField = 'design') {
+    const draft = snapshotSpec();
+    function selectField(field, label, options, disabled = false) {
+      return (
+        '<label class="ed-setting"><span>' +
+        esc(label) +
+        '</span><select data-setting="' +
+        field +
+        '" aria-label="' +
+        esc(label) +
+        '"' +
+        (disabled ? ' disabled' : '') +
+        '>' +
+        options.map(([value, title]) => option(value, draft[field], title)).join('') +
+        '</select></label>'
+      );
     }
-  }
-  function paintInspector() {
-    const box = $('inspector');
-    if (!box) return;
-    const active = box.contains(document.activeElement)
-      ? document.activeElement.dataset.featureId
-      : null;
-    const person = state.selectedId == null ? null : personById.get(state.selectedId);
-    if (person) {
-      const visits = study.visits.map((v) => ({ v, r: rowAt(person.id, v) })),
-        first = rowAt(person.id, state.baseline)?.scores[state.feature],
-        last = rowAt(person.id, state.visit)?.scores[state.feature];
-      const summary = isLong()
-        ? Number.isFinite(last) && Number.isFinite(first)
-          ? last - first
-          : null
-        : last;
-      box.innerHTML =
-        '<div class="ins-head"><span>' +
-        icon('person') +
-        'Participant inspector</span><button class="icon-btn" id="clearSelection" aria-label="Clear participant selection">' +
-        icon('close') +
-        '</button></div><div class="subject-title"><span class="subject-swatch" style="background:' +
-        lightColor(person.arm) +
-        '"></span><h3>' +
-        esc(person.id) +
-        '</h3><span>' +
-        esc(person.arm) +
-        '</span></div><div class="est-box"><div class="est-num">' +
-        number(summary, isLong()) +
-        '</div><div class="est-caption">' +
-        esc(isLong() ? 'Within-participant change' : unit()) +
-        '</div></div><h3>Visit measurements</h3><div class="ins-scroll"><table class="ins-tbl"><thead><tr><th>Visit</th><th>Score</th><th>Cells</th></tr></thead><tbody>' +
-        visits
-          .map(
-            ({ v, r }) =>
-              '<tr class="' +
-              (datesIn().includes(v) ? 'in' : '') +
-              '"><td>' +
-              esc(v) +
-              '</td><td>' +
-              number(r?.scores[state.feature]) +
-              '</td><td>' +
-              nfmt(r?.cells) +
-              '</td></tr>',
-          )
-          .join('') +
-        '</tbody></table></div><div class="ins-bottom">' +
-        button('personRecord', 'arrow', 'Participant record') +
-        '</div>';
-      $('clearSelection').onclick = () => {
-        selectPerson(null);
-        document.querySelector('[data-feature-id][aria-pressed=true]')?.focus();
+    const pairs = (items) => items.map((v) => [v, v]);
+    function draw() {
+      const longitudinal = ['did', 'paired'].includes(draft.design);
+      const twoGroups = ['did', 'cross'].includes(draft.design);
+      const visits = longitudinal ? study.visits.filter((v) => v !== draft.baseline) : study.visits;
+      if (!visits.includes(draft.visit)) draft.visit = visits[0];
+      modal(
+        'Configure comparison',
+        '<form id="comparisonSettings" class="ed-settings"><div class="ed-settings-grid">' +
+          selectField(
+            'design',
+            'Study design',
+            designs().map((d) => [d, labels[d]]),
+          ) +
+          selectField(
+            'arm',
+            twoGroups ? 'Group order' : 'Group',
+            arms.map((a) => [a, twoGroups ? a + ' − ' + arms.find((other) => other !== a) : a]),
+          ) +
+          (longitudinal
+            ? selectField(
+                'baseline',
+                synthetic() ? 'Baseline visit' : 'Reference visit',
+                pairs(study.visits),
+                synthetic(),
+              )
+            : '') +
+          selectField(
+            'visit',
+            longitudinal
+              ? synthetic()
+                ? 'Follow-up visit'
+                : 'Comparison visit'
+              : 'Selected visit',
+            pairs(visits),
+          ) +
+          selectField('population', 'Cell population', pairs(study.populations)) +
+          selectField(
+            'feature',
+            'Outcome',
+            study.features.map((f) => [f.id, f.label]),
+          ) +
+          '</div>' +
+          (!synthetic() && study.visits.length > 1
+            ? '<button type="button" class="text-btn ed-order" id="visitOrder">' +
+              icon('calendar') +
+              'Set visit order…</button>'
+            : '') +
+          '<div class="ed-setting-actions"><button type="button" class="btn" id="cancelSettings">Cancel</button>' +
+          '<button type="submit" class="btn accent">Apply changes</button></div></form>',
+      );
+      const form = $('comparisonSettings');
+      form.onchange = (e) => {
+        const field = e.target.dataset.setting;
+        if (!field) return;
+        draft[field] = e.target.value;
+        if (['baseline', 'design'].includes(field)) {
+          draw();
+          formFocus(field);
+        }
       };
-      return;
+      $('cancelSettings').onclick = finish;
+      if ($('visitOrder'))
+        $('visitOrder').onclick = async () => {
+          const ordered = await localStudyClient.reviewVisitOrder({
+            ...study,
+            visits: draft.visitOrder || study.visits,
+          });
+          if (ordered) {
+            draft.visitOrder = ordered;
+            $('visitOrder').title = ordered.join(' → ');
+          }
+        };
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        const { visitOrder, ...next } = draft;
+        if (
+          JSON.stringify(next) !== JSON.stringify(snapshotSpec()) ||
+          (visitOrder && JSON.stringify(visitOrder) !== JSON.stringify(study.visits))
+        ) {
+          remember();
+          Object.assign(state, next, { selectedId: null });
+          if (visitOrder) {
+            study.visits = visitOrder;
+            window.SctrialChrome?.setStudy(study);
+          }
+          clearFit();
+          render();
+          if (native() && fitted()) void requestFit();
+        }
+        finish();
+        document.querySelector('#page .ed-configure')?.focus();
+      };
     }
-    const rows = currentRows(),
-      r = selectedEstimate(),
-      loading = fitStatus === 'loading',
-      have = ready(),
-      finite = Number.isFinite(r?.estimate);
-    const ci = r && r.lo != null && r.hi != null,
-      ciText = ci ? number(r.lo, true) + ' to ' + number(r.hi, true) : 'Unavailable';
-    const subtitle = synthetic() ? 'Reference fit' : native() && fitted() ? 'Local fit' : 'Descriptive';
-    const fitLabel =
-      state.design === 'did'
-        ? 'Difference in change'
-        : state.design === 'paired'
-          ? 'Paired change'
-          : state.design === 'cross'
-            ? 'Group difference'
-            : 'Participant mean';
-    let result =
-      '<div class="ins-head"><span>' +
-      icon('crosshair') +
-      'Contrast inspector</span><small class="ins-method">' +
-      subtitle +
-      '</small></div><div class="est-box"><h3>' +
-      fitLabel +
-      '</h3><div class="est-num">' +
-      (have && finite ? number(r.estimate, true) : '—') +
-      '</div><div class="est-caption">' +
-      esc(contrast()) +
-      '</div>';
-    if (have && r) {
-      if (ci) result += intervalGraphic(r);
-      result +=
-        '<div class="estimate-ticks">' +
-        (fitted() ? '<span>95% interval<b>' + esc(ciText) + '</b></span>' : '') +
-        '<span>Participants<b>' +
-        nfmt(r.n) +
-        '</b></span></div>';
-    } else {
-      result +=
-        '<p class="small" role="status">' +
-        (loading ? 'Fitting selected comparison…' : esc(fitMessage || 'Fit unavailable.')) +
-        '</p>' +
-        (!loading ? button('retry', 'refresh', 'Retry fit') : '');
-    }
-    if (have && r && !finite && r.reason) result += '<p class="small">' + esc(r.reason) + '</p>';
-    result +=
-      '</div><div class="outcomes-head"><h3>Outcome panel</h3><span>' +
-      study.features.length +
-      ' scores</span></div><div class="outcomes-shell"><div class="outcomes">' +
-      study.features
-        .map((f) => {
-          const row = rows.find((x) => x.id === f.id);
-          return (
-            '<button data-feature-id="' +
-            esc(f.id) +
-            '" class="outcome" aria-pressed="' +
-            (f.id === state.feature) +
-            '"><i class="radio"></i><span class="flabel">' +
-            esc(f.label) +
-            '</span><strong>' +
-            number(row?.estimate, true) +
-            '</strong></button>'
-          );
-        })
-        .join('') +
-      '</div></div><div class="ins-bottom">' +
-      button('results', 'arrow', 'Open results table') +
-      '</div>';
-    box.innerHTML = result;
-    if (active)
-      Array.from(box.querySelectorAll('[data-feature-id]'))
-        .find((b) => b.dataset.featureId === active)
+    function formFocus(field) {
+      document
+        .querySelector('#comparisonSettings [data-setting="' + field + '"]:not([disabled])')
         ?.focus();
+    }
+    draw();
+    formFocus(focusField);
   }
+
   function renderResultsView() {
     const page = $('page');
     if (!ready()) {
@@ -807,6 +844,7 @@
         },
         onShowOverview: (id) => {
           state.feature = id;
+          state.mode = 'trajectory';
           state.selectedId = null;
           navigate('overview');
         },
@@ -854,12 +892,12 @@
   function navigate(view, context = {}) {
     peopleContext = context;
     state.view = view;
-    state.focus = false;
     render();
     window.scrollTo(0, 0);
   }
-  function modal(title, html) {
+  function modal(title, html, kind = '') {
     const d = $('dialog');
+    d.dataset.kind = kind;
     if (!d.open) previousTrigger = document.activeElement;
     $('dialogTitle').textContent = title;
     $('dialogBody').innerHTML = html;
@@ -964,6 +1002,12 @@
               'Participant, visits, groups and outcome scores',
             )
           : '<details class="launch"><summary>Use an H5AD file</summary><p>From a checkout of this branch, install the package and launch it with a local study file.</p><code>python -m pip install -e .<br>python -m sctrial.interactive study.h5ad</code></details>') +
+        choice(
+          'openWorkbook',
+          'file',
+          'Open analysis workbook',
+          'Add saved analysis sheets to the current study',
+        ) +
         choice('template', 'file', 'Download example CSV', 'Column names and a small test study') +
         choice(
           'restore',
@@ -972,19 +1016,55 @@
           'Synthetic cohort with fitted reference results',
         ),
     );
+    $('openWorkbook').onclick = () => {
+      const picker = document.createElement('input');
+      picker.type = 'file';
+      picker.id = 'workbookFile';
+      picker.accept = '.json,application/json';
+      picker.hidden = true;
+      const openDialog = $('dialog');
+      $('dialogBody').append(picker);
+      picker.oncancel = () => picker.remove();
+      picker.onchange = async () => {
+        const file = picker.files[0];
+        if (!file) return;
+        try {
+          if (file.size > 2 * 1024 * 1024) throw Error('Choose a workbook smaller than 2 MB.');
+          const text = await file.text();
+          if (!openDialog.open || !picker.isConnected) return;
+          const count = sheets.importWorkbook(text);
+          finish();
+          toast(count === 1 ? 'One analysis sheet opened' : count + ' analysis sheets opened');
+        } catch (e) {
+          if (!openDialog.open || !picker.isConnected) return;
+          $('importError').textContent = e.message;
+          $('importError').hidden = false;
+        } finally {
+          picker.remove();
+        }
+      };
+      picker.click();
+    };
     async function read(file) {
       if (!file) return;
       try {
         if (file.size > 8 * 1024 * 1024) throw Error('Choose a CSV smaller than 8 MB.');
         const next = readStudyCSV(await file.text(), file.name);
         finish();
-        init(next);
-        toast('Study opened');
+        await localStudyClient.openCSV(next, init);
       } catch (e) {
         $('importError').textContent = e.message;
         $('importError').hidden = false;
       }
     }
+    const offlineApp = document.createElement('a');
+    offlineApp.className = 'offline-app';
+    offlineApp.textContent = 'Download offline app';
+    offlineApp.href = localStudyClient.available()
+      ? '/sctrial-workbook.html'
+      : location.href.split('#')[0];
+    offlineApp.download = 'sctrial-workbook.html';
+    $('dialogBody').append(offlineApp);
     if ($('h5map'))
       $('h5map').onclick = () => {
         finish();
@@ -1008,7 +1088,8 @@
       $('drop').classList.remove('over');
       read(e.dataTransfer.files[0]);
     };
-    $('template').onclick = () => download('participant-summaries.csv', studyCSVTemplate(), 'text/csv');
+    $('template').onclick = () =>
+      download('participant-summaries.csv', studyCSVTemplate(), 'text/csv');
     $('restore').onclick = () => {
       finish();
       init(sample);
@@ -1033,7 +1114,9 @@
     );
   }
   function exportFile(kind) {
-    if (kind === 'settings') {
+    if (kind === 'workbook') {
+      download('sctrial-workbook.json', sheets.exportWorkbook(), 'application/json');
+    } else if (kind === 'settings') {
       const spec = {
         study: name(),
         source: source(),
@@ -1072,7 +1155,11 @@
       ];
       const rows = currentRows().map((r) => [
         r.label,
-        state.design === 'observe' ? 'mean' : fitted() ? 'model estimate' : 'descriptive difference',
+        state.design === 'observe'
+          ? 'mean'
+          : fitted()
+            ? 'model estimate'
+            : 'descriptive difference',
         state.design,
         state.arm,
         armsIn()[1] ?? '',
@@ -1110,13 +1197,19 @@
     modal(
       'Export study data',
       choice(
-        'resFile',
-        'chart',
-        'Feature results · CSV',
-        fitted()
-          ? 'Estimates, intervals, p-values and fitted counts'
-          : 'Descriptive estimates and participant counts',
+        'saveWorkbook',
+        'file',
+        'Save analysis workbook',
+        'Reopen all analysis sheets with this study',
       ) +
+        choice(
+          'resFile',
+          'chart',
+          'Feature results · CSV',
+          fitted()
+            ? 'Estimates, intervals, p-values and fitted counts'
+            : 'Descriptive estimates and participant counts',
+        ) +
         choice(
           'setFile',
           'code',
@@ -1132,6 +1225,7 @@
     );
     $('resFile').disabled = !ready();
     for (const [id, kind] of [
+      ['saveWorkbook', 'workbook'],
       ['resFile', 'results'],
       ['setFile', 'settings'],
       ['obsFile', 'observations'],
@@ -1161,37 +1255,40 @@
     modal(
       'Study information',
       '<dl class="meta-list">' +
-        entries.map(([k, v]) => '<div><dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd></div>').join('') +
+        entries
+          .map(([k, v]) => '<div><dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd></div>')
+          .join('') +
         '</dl>',
     );
   }
   function snapshotSpec() {
     return Object.fromEntries(
-      ['design', 'arm', 'baseline', 'visit', 'population'].map((k) => [k, state[k]]),
+      ['design', 'arm', 'baseline', 'visit', 'population', 'feature'].map((k) => [k, state[k]]),
     );
   }
   function travel(back) {
     const from = back ? past : future,
       to = back ? future : past;
     if (!from.length) return;
-    to.push(snapshotSpec());
-    Object.assign(state, from.pop());
+    to.push(historyEntry());
+    const entry = from.pop();
+    Object.assign(state, entry.spec);
+    study.visits = entry.visitOrder;
+    window.SctrialChrome?.setStudy(study);
     state.selectedId = null;
     clearFit();
     render();
     if (native() && fitted()) void requestFit();
   }
+  function historyEntry() {
+    return { spec: snapshotSpec(), visitOrder: [...study.visits] };
+  }
   function remember() {
-    past.push(snapshotSpec());
+    past.push(historyEntry());
     if (past.length > 40) past.shift();
     future.length = 0;
   }
   const actions = {
-    inspectSelection: () => {
-      const panel = $('inspector');
-      panel?.focus({ preventScroll: true });
-      panel?.scrollIntoView({ block: 'nearest' });
-    },
     open: openStudy,
     export: exportMenu,
     search,
@@ -1199,18 +1296,15 @@
     results: () => navigate('results'),
     cohort: () => navigate('participants'),
     personRecord: () => {
-      if (state.selectedId) navigate('participants', { initialId: state.selectedId });
+      if (state.selectedId) {
+        finish();
+        navigate('participants', { initialId: state.selectedId });
+      }
     },
     pin: () => {
       if (ready()) bench.pin();
     },
     retry: () => void requestFit(),
-    focus: () => {
-      state.focus = !state.focus;
-      updateTop();
-      overview();
-      document.querySelector('[data-action="focus"]').focus();
-    },
     undo: () => travel(true),
     redo: () => travel(false),
   };
@@ -1225,10 +1319,9 @@
       setFeature(f.dataset.featureId);
       return;
     }
-    const p = e.target.closest('[data-person-index]');
-    if (p) {
-      const id = study.participants[Number(p.dataset.personIndex)].id;
-      selectPerson(state.selectedId === id ? null : id);
+    const configureButton = e.target.closest('[data-configure]');
+    if (configureButton) {
+      configure(configureButton.dataset.configure);
       return;
     }
     const m = e.target.closest('[data-mode]');
@@ -1246,7 +1339,8 @@
   document.addEventListener('change', (e) => {
     if (e.target.dataset.param) {
       const field = e.target.dataset.param;
-      setParam(field, e.target.value);
+      if (field === 'feature') setFeature(e.target.value);
+      else setParam(field, e.target.value);
     }
   });
   document.addEventListener('keydown', (e) => {
@@ -1261,13 +1355,12 @@
       travel(!e.shiftKey);
       return;
     }
-    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (
+      (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) ||
+      ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k')
+    ) {
       e.preventDefault();
       search();
-    }
-    if (e.key === 'Escape' && state.focus) {
-      state.focus = false;
-      render();
     }
   });
   init(sample);

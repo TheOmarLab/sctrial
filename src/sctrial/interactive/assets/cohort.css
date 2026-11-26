@@ -164,6 +164,10 @@
   background: #11887e;
   box-shadow: inset 0 0 0 1px #087267;
 }
+.pe-unmeasured {
+  border: 1px solid #96691b;
+  background: radial-gradient(circle, #916416 0 1.5px, #fff6dd 2px);
+}
 .pe-partial {
   border: 1px solid #997120;
   background: repeating-linear-gradient(135deg, #f9e9bb 0 2px, #fff8e6 2px 4px);

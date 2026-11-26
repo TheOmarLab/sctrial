@@ -1,18 +1,18 @@
 .local-mapping {
-  --mapping-ink: #182a30;
-  --mapping-muted: #536665;
-  --mapping-line: #d1dcd5;
-  --mapping-action: #146958;
+  --mapping-ink: #25293b;
+  --mapping-muted: #5f6577;
+  --mapping-line: #d9dbe6;
+  --mapping-action: #5045ad;
   color: var(--mapping-ink);
-  background: #fcfcf7;
-  border: 1px solid #bdc9c2;
-  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #cdd0de;
+  border-radius: 12px;
   width: min(658px, calc(100vw - 28px));
   max-height: min(860px, 89dvh);
   padding: 0;
-  box-shadow: 0 26px 100px #10241f52;
+  box-shadow: 0 26px 100px #18172c45;
   font:
-    14px/1.45 Inter,
+    14px/1.45 Manrope,
     -apple-system,
     BlinkMacSystemFont,
     'Segoe UI',
@@ -42,7 +42,7 @@
   opacity: 0.52;
 }
 .local-mapping :is(button, input, select):focus-visible {
-  outline: 3px solid #407d70;
+  outline: 3px solid #6b5dc4;
   outline-offset: 2px;
 }
 .local-mapping .lm-header {
@@ -90,14 +90,14 @@
 }
 .local-mapping .lm-dismiss:hover {
   color: var(--mapping-ink);
-  background: #eaf0ea;
+  background: #f0eff8;
 }
 .local-mapping .lm-body {
   padding: 18px 25px 5px;
 }
 .local-mapping .lm-file {
   border: 1px solid var(--mapping-line);
-  background: #f2f5ee;
+  background: #f6f6fb;
   padding: 10px 13px;
   display: flex;
   align-items: center;
@@ -110,9 +110,9 @@
   height: 36px;
   display: grid;
   place-items: center;
-  background: #e2eee4;
-  color: #205f4b;
-  border: 1px solid #c8dbcd;
+  background: #eeecfa;
+  color: #4d4492;
+  border: 1px solid #d9d4f0;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 700;
@@ -152,7 +152,7 @@
 .local-mapping .lm-field > span {
   font-size: 12px;
   font-weight: 600;
-  color: #435456;
+  color: #41485d;
 }
 .local-mapping select,
 .local-mapping input[type='search'] {
@@ -161,7 +161,7 @@
   color: var(--mapping-ink);
   border-radius: 6px;
   background: #fff;
-  border: 1px solid #b9c7be;
+  border: 1px solid #bfc4d4;
   padding: 6px 9px;
   min-height: 36px;
   font-size: 13px;
@@ -199,10 +199,10 @@
   overflow-wrap: anywhere;
 }
 .local-mapping .lm-score + .lm-score {
-  border-top: 1px solid #e5ebe6;
+  border-top: 1px solid #e8e9ef;
 }
 .local-mapping .lm-score:has(input:checked) {
-  background: #edf6ed;
+  background: #f1f0fb;
 }
 .local-mapping .lm-score input {
   width: 15px;
@@ -212,7 +212,7 @@
   flex: none;
 }
 .local-mapping .lm-score:has(input:disabled) {
-  color: #65746b;
+  color: #717786;
   cursor: default;
 }
 .local-mapping .lm-empty,
@@ -238,7 +238,7 @@
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  border: 2px solid #bdcfc6;
+  border: 2px solid #d7d5e8;
   border-top-color: var(--mapping-action);
   animation: lm-turn 0.8s linear infinite;
 }
@@ -254,7 +254,7 @@
 .local-mapping .lm-foot {
   position: sticky;
   bottom: 0;
-  background: #fcfcf7;
+  background: #fff;
   border-top: 1px solid var(--mapping-line);
   padding: 12px 25px;
   display: flex;
@@ -278,7 +278,7 @@
   border-color: var(--mapping-action);
 }
 .local-mapping .lm-primary:enabled:hover {
-  background: #0c5648;
+  background: #40358e;
 }
 .local-mapping [hidden] {
   display: none !important;
@@ -309,4 +309,29 @@
   .local-mapping .lm-spinner {
     animation: none;
   }
+}
+
+.local-mapping.lm-visit-dialog {
+  width: min(416px, calc(100vw - 28px));
+}
+.lm-visit-dialog .lm-body {
+  padding-bottom: 17px;
+}
+.lm-visit-dialog select {
+  padding: 3px;
+}
+.lm-visit-dialog option {
+  padding: 5px 8px;
+}
+.lm-visit-dialog .lm-order-actions {
+  display: flex;
+  gap: 6px;
+  margin: 7px 0 10px;
+}
+.lm-visit-dialog .lm-order-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }

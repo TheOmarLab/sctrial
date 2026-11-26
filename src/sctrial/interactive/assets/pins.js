@@ -194,19 +194,18 @@
     return node;
   }
 
-  function commonDomain(a, b) {
-    if (!a || !b || !a.snapshot.unit || a.snapshot.unit !== b.snapshot.unit) return null;
+  function estimateDomain(rows) {
     let bound = 0,
       finite = false;
-    for (const pin of [a, b])
-      for (const row of pin.snapshot.rows) {
-        for (const v of [row.estimate, row.lo, row.hi]) {
-          if (Number.isFinite(v)) {
-            finite = true;
-            bound = Math.max(bound, Math.abs(v));
-          }
+    for (const row of rows) {
+      if (!row) continue;
+      for (const value of [row.estimate, row.lo, row.hi]) {
+        if (Number.isFinite(value)) {
+          finite = true;
+          bound = Math.max(bound, Math.abs(value));
         }
       }
+    }
     if (!finite) return null;
     if (bound === 0) return 1;
     const base = 10 ** Math.floor(Math.log10(bound));
@@ -327,6 +326,7 @@
   } = {}) {
     let scope = '',
       persistent = false,
+      sharedFeatureUnit = false,
       pins = [],
       leftId = null,
       rightId = null,
@@ -368,9 +368,11 @@
     function setStudy(key, options = {}) {
       if (typeof key !== 'string' || !key) throw new Error('A study key is required.');
       const store = options.persist === true;
-      if (scope === key && store === persistent) return;
+      const commonUnit = options.sharedFeatureUnit === true;
+      if (scope === key && store === persistent && commonUnit === sharedFeatureUnit) return;
       scope = key;
       persistent = store;
+      sharedFeatureUnit = commonUnit;
       const saved = store ? readSaved(key) : {};
       pins = saved.pins || [];
       leftId = saved.left || pins[0]?.id || null;
@@ -492,7 +494,11 @@
     function table(a, b) {
       const cols = [a, b].map((p) => (p ? new Map(p.snapshot.rows.map((r) => [r.id, r])) : new Map()));
       const ids = new Set([...cols[0].keys(), ...cols[1].keys()]);
-      const domain = commonDomain(a, b);
+      const compare = Boolean(a && b && a.snapshot.unit === b.snapshot.unit);
+      const sharedDomain =
+        compare && sharedFeatureUnit
+          ? estimateDomain([...cols[0].values(), ...cols[1].values()])
+          : null;
       const scroll = el('div', 'cbench-scroll');
       scroll.tabIndex = 0;
       scroll.setAttribute('role', 'region');
@@ -509,9 +515,10 @@
         c.scope = 'col';
         header.append(c);
       });
-      if (domain) {
+      if (compare) {
         t.classList.add('cbench-with-forest');
-        header.cells[0].append(axisLabels(domain));
+        if (sharedDomain) header.cells[0].append(axisLabels(sharedDomain));
+        else if (!sharedFeatureUnit) header.cells[0].textContent = 'Feature · separate scales';
         [1, 2].forEach((column) => {
           const glyph = el('span', 'cbench-key cbench-key-' + column);
           glyph.setAttribute('aria-hidden', 'true');
@@ -525,8 +532,14 @@
         const name = el('th', '', exemplar.label || id);
         name.scope = 'row';
         name.setAttribute('aria-label', exemplar.label || id);
-        if (domain)
-          name.append(pairPlot(cols[0].get(id), cols[1].get(id), domain, exemplar.label || id));
+        if (compare) {
+          const pair = cols.map((records) => records.get(id));
+          const domain = sharedDomain || estimateDomain(pair);
+          if (domain) {
+            name.append(pairPlot(pair[0], pair[1], domain, exemplar.label || id));
+            if (!sharedDomain) name.append(axisLabels(domain));
+          }
+        }
         tr.append(name);
         cols.forEach((records, i) => {
           const row = records.get(id),

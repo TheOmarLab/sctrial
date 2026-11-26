@@ -88,6 +88,108 @@
     return result;
   }
 
+  function inferVisitOrder(visits) {
+    if (visits.length < 2) return visits.slice();
+    const labels = visits.map((visit) => visit.trim().toLowerCase());
+    const baseline = /^(?:baseline|before|pre|pre[- ]?treatment)$/;
+    const follow = /^(?:after|post|post[- ]?treatment|follow[- ]?up)$/;
+    if (visits.length === 2 && labels.some((v) => baseline.test(v)) && labels.some((v) => follow.test(v))) {
+      return baseline.test(labels[0]) ? visits.slice() : [visits[1], visits[0]];
+    }
+    if (labels.every((v) => /^\d{4}-\d{2}-\d{2}$/.test(v))) return visits.slice().sort();
+    // Order only a single explicit scale. Mixed scales or unrecognized stages need confirmation.
+    const units = { day: 'day', d: 'day', week: 'week', wk: 'week', w: 'week', month: 'month', mo: 'month', visit: 'visit', v: 'visit', cycle: 'cycle' };
+    const unitSet = new Set();
+    const times = [];
+    for (const label of labels) {
+      if (baseline.test(label)) {
+        times.push(0);
+        continue;
+      }
+      const parts = /^(day|d|week|wk|w|month|mo|visit|v|cycle)?\s*([+-]?\d+(?:\.\d+)?)$/.exec(label);
+      if (!parts) return null;
+      unitSet.add(units[parts[1]] || 'number');
+      times.push(Number(parts[2]));
+    }
+    if (unitSet.size !== 1 || new Set(times).size !== times.length) return null;
+    return visits.map((visit, index) => ({ visit, time: times[index] }))
+      .sort((a, b) => a.time - b.time)
+      .map((point) => point.visit);
+  }
+
+  function reviewVisitOrder(study, keepOnCancel = false) {
+    const visits = study.visits.slice();
+    if (visits.length < 2) return Promise.resolve(visits);
+    const prior = document.activeElement;
+    const dialog = el('dialog', 'local-mapping lm-visit-dialog');
+    dialog.setAttribute('aria-labelledby', 'lm-visit-heading');
+    const header = el('div', 'lm-header');
+    const heading = el('h2', '', 'Visit order');
+    heading.id = 'lm-visit-heading';
+    const title = el('div');
+    title.append(el('p', 'lm-eyebrow', study.title), heading);
+    header.append(title);
+    const body = el('div', 'lm-body');
+    const label = el('label', 'lm-field');
+    label.append(el('span', '', 'Earliest to latest'));
+    const box = el('select');
+    box.size = Math.min(7, Math.max(3, visits.length));
+    box.id = 'lm-ordered-visits';
+    label.htmlFor = box.id;
+    const announce = el('p', 'lm-order-status');
+    announce.setAttribute('role', 'status');
+    const actions = el('div', 'lm-order-actions');
+    const up = makeButton('↑ Earlier', 'lm-action', () => move(-1));
+    const down = makeButton('↓ Later', 'lm-action', () => move(1));
+    actions.append(up, down);
+    visits.forEach((visit) => box.append(new Option(visit, visit)));
+    function updateButtons() {
+      up.disabled = box.selectedIndex <= 0;
+      down.disabled = box.selectedIndex < 0 || box.selectedIndex >= box.length - 1;
+    }
+    function move(direction) {
+      const index = box.selectedIndex;
+      const target = index + direction;
+      if (target < 0 || target >= box.length || index < 0) return;
+      const option = box.options[index];
+      box.insertBefore(option, direction < 0 ? box.options[target] : box.options[target].nextSibling);
+      box.selectedIndex = target;
+      announce.textContent = option.label + ', position ' + (target + 1) + ' of ' + box.length + '.';
+      updateButtons();
+      if (up.disabled || down.disabled) box.focus();
+    }
+    box.selectedIndex = 0;
+    box.addEventListener('change', updateButtons);
+    updateButtons();
+    label.append(box);
+    body.append(label, actions, el('p', 'lm-note', 'This order sets the trajectory axis. Choose the comparison visits in the sheet.'), announce);
+    const foot = el('div', 'lm-foot');
+    const cancel = makeButton(keepOnCancel ? 'Keep file order' : 'Cancel', 'lm-action', () => dialog.close());
+    const confirm = makeButton('Apply order', 'lm-action lm-primary', () => dialog.close('apply'));
+    foot.append(cancel, confirm);
+    dialog.append(header, body, foot);
+    document.body.append(dialog);
+    return new Promise((resolve) => {
+      dialog.addEventListener('close', () => {
+        const chosen = dialog.returnValue === 'apply'
+          ? Array.from(box.options, (option) => option.value)
+          : keepOnCancel ? visits : null;
+        dialog.remove();
+        if (prior?.isConnected) prior.focus({ preventScroll: true });
+        resolve(chosen);
+      }, { once: true });
+      dialog.showModal();
+      box.focus();
+    });
+  }
+
+  async function openCSV(study, onLoaded) {
+    const visits = inferVisitOrder(study.visits) || await reviewVisitOrder(study);
+    if (!visits) return false;
+    onLoaded({ ...study, visits });
+    return true;
+  }
+
   function openMapping(onLoaded) {
     if (!available()) return Promise.resolve(null);
     if (active) return active.promise;
@@ -133,13 +235,17 @@
     active = { promise };
     dialog.addEventListener(
       'close',
-      () => {
+      async () => {
         if (settled) return;
         settled = true;
         controller.abort();
         dialog.remove();
         active = null;
         if (focusBeforeOpen?.isConnected) focusBeforeOpen.focus({ preventScroll: true });
+        if (preparedStudy && !preparedStudy.orderedVisits) {
+          preparedStudy.visits = inferVisitOrder(preparedStudy.visits) ||
+            await reviewVisitOrder(preparedStudy, true);
+        }
         finishPromise(preparedStudy);
         if (preparedStudy && typeof onLoaded === 'function') onLoaded(preparedStudy);
       },
@@ -294,6 +400,8 @@
           if (!dialog.open || controller.signal.aborted) return;
           if (
             !result?.studyId ||
+            !Array.isArray(result.visits) ||
+            !result.visits.length ||
             !Array.isArray(result.participants) ||
             !Array.isArray(result.features) ||
             !Array.isArray(result.observations)
@@ -337,5 +445,5 @@
     load();
     return promise;
   }
-  window.localStudyClient = Object.freeze({ available, openMapping, fit });
+  window.localStudyClient = Object.freeze({ available, openMapping, openCSV, reviewVisitOrder, fit });
 })();

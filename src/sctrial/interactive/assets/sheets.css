@@ -1,0 +1,159 @@
+#sheetList {
+  --sheet-ink: #deddf0;
+  --sheet-accent: #f0efff;
+  --sheet-selected: #cccbff;
+  --sheet-hover: #383950;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+}
+.sheet-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 27px;
+  align-items: center;
+  min-width: 0;
+  border-radius: 6px;
+  color: var(--sheet-ink, #51576b);
+}
+.sheet-item:has(.sheet-link[data-active]) {
+  background: var(--sheet-selected, #e8eafd);
+  color: #2d2b55;
+}
+.sheet-link,
+.sheet-more,
+.sheet-undo {
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+.sheet-link {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  gap: 9px;
+  padding: 6px 0 6px 9px;
+  text-align: left;
+  font-size: 12.5px;
+  font-weight: 550;
+}
+.sheet-link[data-active] {
+  font-weight: 690;
+}
+.sheet-icon {
+  display: block;
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+}
+.sheet-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sheet-more {
+  display: grid;
+  min-width: 24px;
+  min-height: 27px;
+  padding: 0;
+  place-items: center;
+  justify-self: center;
+  color: inherit;
+  opacity: 0.7;
+}
+.sheet-link:hover,
+.sheet-more:hover,
+.sheet-more[aria-expanded='true'] {
+  color: var(--sheet-accent, #434ab2);
+  background: var(--sheet-hover, #e3e5f3);
+}
+.sheet-item:has(.sheet-link[data-active]) .sheet-link:hover,
+.sheet-item:has(.sheet-link[data-active]) .sheet-more:hover,
+.sheet-item:has(.sheet-link[data-active]) .sheet-more[aria-expanded='true'] {
+  background: #bdbced;
+  color: #23213d;
+}
+.sheet-undo {
+  margin: 3px 5px;
+  padding: 3px 5px;
+  justify-self: start;
+  color: var(--sheet-accent, #434ab2);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.sheet-name-form {
+  grid-column: 1 / -1;
+  padding: 2px;
+}
+.sheet-name {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 30px;
+  padding: 4px 7px;
+  background: #fff;
+  border: 1px solid #595ed4;
+  border-radius: 4px;
+  color: #212640;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.sheet-menu {
+  display: grid;
+  position: fixed;
+  z-index: 400;
+  box-sizing: border-box;
+  width: 162px;
+  padding: 4px;
+  border: 1px solid #d5d6e3;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow:
+    0 5px 22px #22254420,
+    0 1px 3px #2225440d;
+  color: #282c42;
+}
+.sheet-menu-item {
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  text-align: left;
+}
+.sheet-menu-item:enabled:hover,
+.sheet-menu-item:focus {
+  background: #eef0fc;
+  color: #343990;
+}
+.sheet-menu-item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.sheet-item button:focus-visible,
+.sheet-undo:focus-visible,
+.sheet-menu-item:focus-visible {
+  outline: 2px solid var(--sheet-accent, #595ed4);
+  outline-offset: -2px;
+}
+.sheet-item:has(.sheet-link[data-active]) button:focus-visible {
+  outline-color: #4b458a;
+}

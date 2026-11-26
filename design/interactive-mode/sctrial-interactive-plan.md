@@ -1,36 +1,36 @@
-# sctrial Contrast Studio
+# sctrial analysis workbook
 
-Explore how individual participants contribute to a longitudinal comparison. Choose the study design, group order, cell population, and visits. The trajectories, participant inspector, and outcome estimates follow the same selection.
+Open a study, define a comparison, and inspect the participants behind its estimate. Each analysis sheet records the outcome, cell population, groups, visits, and design.
 
 ## Open a study
 
-From a checkout of this branch, install the package and start the local workspace.
+Download the [offline workbook](sctrial-interactive-preview.html?raw=true) and open the HTML file in a browser. The bundled study is synthetic. **Open study** accepts a participant-summary CSV and includes a CSV template.
+
+For a local H5AD file, install the package from this branch and launch the workbook.
 
 ```bash
 python -m pip install -e .
 python -m sctrial.interactive study.h5ad
 ```
 
-The browser opens on the local machine. Map the participant ID and one to twelve numeric score columns from `adata.obs`. Map the group, visit, and cell population when available. The workspace supports one or two fixed groups. It reads the selected observation columns and leaves the source file unchanged. Close the local server with Ctrl+C.
+Map the participant ID and one to twelve numeric score columns from `adata.obs`. Map the group, visit, and cell population where available. The workbook supports one or two fixed groups. The local server reads the mapped observation columns and leaves the source file intact. Close it with Ctrl+C.
 
-To try the interface without installing Python, download the [self-contained workspace](sctrial-interactive-preview.html) and open it in a browser. It includes a synthetic study with precomputed sctrial results. **Open study** also accepts a participant-summary CSV and provides a downloadable template.
+| Input | Participant measurements | Available output |
+| --- | --- | --- |
+| Local H5AD | Cell-level scores averaged by participant, visit, and selected population | Participant-level model estimates, intervals, p-values, and FDR when estimable |
+| Participant-summary CSV | One row per participant, group, visit, and population, including cell count and score columns | Descriptive changes, group differences, and counts |
+| Synthetic study | Twelve participants in two groups across three visits | Precomputed reference fits |
 
 ## Work through a comparison
 
-1. **Define the contrast.** Choose a paired change, difference-in-differences, or group difference at one visit. For longitudinal comparisons, the change is follow-up minus baseline. For two groups, the effect is the first group minus the second.
-2. **Inspect the participants.** Select a trace or a roster ID to see its visit measurements and cell counts. Move the visit handle or use its arrow keys to choose a follow-up. Switch to **Changes** to see one point per participant with a complete pair. Selecting a participant highlights their record and preserves the cohort fit.
-3. **Read the estimate.** The inspector reports the selected score, its interval when available, and its contributing participant count. Switch scores in the outcome panel. Open **Results** for the full table, including model p-values and adjusted values for fitted comparisons.
-4. **Compare decisions.** Pin a contrast, change the follow-up or population, and pin again. In **Pins**, compare both sets of estimates and reopen either configuration. Pins from a local study last for the current study session.
-5. **Export.** Save results as CSV and comparison settings as JSON. For a local H5AD fit, the settings include the mapped columns and package version.
+1. Choose an **Outcome**. In **Configure**, select the design, group order, population, and visits. Longitudinal change is the comparison visit minus the reference visit. A two-group effect takes the first group minus the second.
+2. Read the effect and its interval. The points below show individual observed changes or scores. Select a point or a column in **Sample pairing** to inspect the participant's measurements. Dense plots show counts per bin and link to the searchable measurement table.
+3. In **Participant measurements**, choose **Excluded** to see which measurement is missing for this outcome. Filtering and sorting the table leave the fitted cohort intact. A measured zero contributes; a blank score is missing.
+4. Use **Trajectories** to inspect visits in study order. A group mean at each visit uses everyone measured at that visit. **Changes** uses participants with measurements at both selected visits. The numbers can differ when participants miss a visit.
+5. Create or duplicate a sheet under **Analyses** to compare another design. **Pin contrast** keeps a snapshot. **Results table** shows the full outcome panel, including uncertainty for fitted comparisons.
 
-## What each input supports
+## Save and reopen
 
-| Input | Observations | Results |
-| --- | --- | --- |
-| Local H5AD | Cell-level scores in mapped observation columns, averaged within participant and visit for the selected population | sctrial model estimates, intervals, p-values, and FDR when estimable |
-| Participant-summary CSV | One row per participant, group, visit, and cell population, with a cell count and numeric scores | Descriptive changes and group differences |
-| Bundled synthetic study | Twelve participants in two groups measured across three visits | Precomputed reference fits for the available comparisons |
+Choose **Export → Save analysis workbook** to download named sheets and their settings. Reopen the data, then use **Open study → Open analysis workbook** to add the saved sheets. The workbook file contains study and column labels plus analysis definitions. Participant records and fitted results stay out of that file.
 
-The local fit uses participant-visit means with equal participant weighting. A longitudinal outcome requires a finite score at both selected visits. Coverage in the roster counts visits with cells, so an outcome-specific model can include fewer participants. A single group measured at one visit yields a descriptive mean.
-
-The browser draws a bounded set of individual traces for larger studies. Group summaries and fits use the full eligible cohort. The interactive mapping supports up to 50,000 participant-visit-population summaries. Large fixed-effects designs can be run through the package's Python workflow.
+Results, comparison settings, and participant summaries each have their own export. The participant-summary export includes participant IDs. Local H5AD fits weight participants equally and require finite scores at the selected visits. A single group observed at a single visit yields a descriptive mean.

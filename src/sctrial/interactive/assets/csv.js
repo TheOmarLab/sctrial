@@ -1,4 +1,4 @@
-/* Local participant-level summaries. A missing specimen is represented by an omitted row. */
+/* Omitted rows mark unobserved specimens. Blank outcomes mark unmeasured scores. */
 (() => {
   'use strict';
 
@@ -158,10 +158,14 @@
       const scores = {};
       for (const feature of features) {
         const value = fields[feature.index].trim();
+        if (!value) {
+          scores[feature.id] = null;
+          continue;
+        }
         const score = Number(value);
         if (!decimal.test(value) || !Number.isFinite(score)) {
           throw new Error(
-            'Row ' + line + ' requires a finite numeric value in “' + feature.label + '”.',
+            'Row ' + line + ' requires a finite number or an empty field in “' + feature.label + '”.',
           );
         }
         scores[feature.id] = score;

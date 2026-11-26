@@ -1,15 +1,13 @@
 .cc-surface {
-  --cc-base: #111c31;
-  --cc-ink: #eff4ff;
-  --cc-secondary: #b3c2d7;
+  --cc-base: #fff;
+  --cc-ink: #27304a;
+  --cc-secondary: #586279;
   position: relative;
   width: 100%;
   overflow: hidden;
   isolation: isolate;
   color: var(--cc-ink);
-  background:
-    radial-gradient(ellipse at 77% -20%, #24344f 0%, transparent 60%),
-    linear-gradient(155deg, #152238, #111b2e 75%);
+  background: #fff;
   font-family: inherit;
   font-variant-numeric: tabular-nums;
 }
@@ -60,8 +58,8 @@
 }
 .cc-visit:hover .cc-chip,
 .cc-visit:focus-visible .cc-chip {
-  fill: #374962;
-  stroke: #8cabc8;
+  fill: #edecfc;
+  stroke: #a4a0da;
 }
 .cc-visit-head {
   cursor: pointer;
@@ -69,14 +67,14 @@
 }
 .cc-visit-head:hover .cc-destination,
 .cc-visit-head.cc-aim .cc-destination {
-  fill: #a0b9d4;
-  stroke: #e2edfc;
+  fill: #6458c0;
+  stroke: #5e54a9;
 }
 .cc-handle:hover .cc-grip,
 .cc-handle:focus-visible .cc-grip,
 .cc-handle.cc-dragging .cc-grip {
-  fill: #f3f8ff;
-  stroke: #9cc5f2;
+  fill: #d6d2fa;
+  stroke: #8379cd;
 }
 .cc-handle.cc-dragging {
   cursor: grabbing;
@@ -99,9 +97,9 @@
   gap: 6px 12px;
   min-height: 39px;
   padding: 7px 16px 8px;
-  border-top: 1px solid #304056;
-  color: #c1cee1;
-  background: #101a2e;
+  border-top: 1px solid #dfe1eb;
+  color: #565e73;
+  background: #f8f9fc;
   font-size: 11px;
   line-height: 1.45;
 }
@@ -113,7 +111,7 @@
   min-width: 0;
 }
 .cc-readout-main strong {
-  color: #f0f4ff;
+  color: #272c40;
   font-weight: 650;
 }
 .cc-readout-main span,
@@ -131,7 +129,7 @@
   display: flex;
   gap: 10px;
   align-items: center;
-  color: #c1cee1;
+  color: #565e73;
 }
 .cc-legend span {
   display: inline-flex;
@@ -143,17 +141,17 @@
   display: inline-block;
   width: 16px;
   height: 0;
-  border-top: 1.5px solid #a3b2c8;
+  border-top: 1.5px solid #858b9a;
 }
 .cc-key.cc-key-mean {
-  border-top: 3px solid #dde7f4;
+  border-top: 3px solid #3f465e;
   position: relative;
 }
 .cc-key.cc-key-mean:before {
   content: '';
   position: absolute;
-  border: 1.5px solid #dde7f4;
-  background: #172239;
+  border: 1.5px solid #3f465e;
+  background: #fff;
   border-radius: 50%;
   width: 4px;
   height: 4px;
@@ -164,14 +162,14 @@
   border: none;
   width: 7px;
   height: 7px;
-  background: #c4d2e7;
+  background: #82889b;
   border-radius: 50%;
 }
 .cc-key.cc-key-diamond {
   border: none;
   width: 7px;
   height: 7px;
-  background: #e7edf9;
+  background: #424868;
   transform: rotate(45deg);
 }
 .cc-tip {
@@ -192,7 +190,7 @@
   display: none;
 }
 .cc-surface .cc-empty {
-  fill: #d7e3f2;
+  fill: #4d566a;
   font-size: 14px;
 }
 @media (max-width: 540px) {
@@ -211,4 +209,42 @@
     transition: none !important;
     animation: none !important;
   }
+}
+
+.cc-counts {
+  overflow: auto;
+  max-width: 100%;
+  border-top: 1px solid #dfe1eb;
+  padding: 9px 15px 12px;
+  color: #394155;
+}
+.cc-counts table {
+  border-collapse: collapse;
+  min-width: min(100%, 380px);
+  width: auto;
+  font-size: 11px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+.cc-counts caption {
+  margin: 0 0 5px;
+  text-align: left;
+  color: #485169;
+  font-size: 11px;
+  font-weight: 600;
+}
+.cc-counts :is(th, td) {
+  padding: 3px 12px;
+  border: 0;
+  border-bottom: 1px solid #eeeff5;
+  text-align: right;
+  white-space: nowrap;
+}
+.cc-counts th {
+  color: #454e63;
+  font-weight: 570;
+}
+.cc-counts :is(th, td):first-child {
+  padding-left: 0;
+  text-align: left;
 }

@@ -48,26 +48,19 @@
     return index;
   }
 
-  function visitMark(entry) {
-    const present = Boolean(entry);
-    const label = present
-      ? 'Observed'
-      : entry === null
-        ? 'Population absent from summary'
-        : 'No specimen recorded';
-    const mark = node('span', 'pe-mark pe-' + (present ? 'yes' : entry === null ? 'partial' : 'no'));
+  function status(entry, featureId) {
+    if (entry === undefined) return ['no', 'No specimen recorded'];
+    if (entry === null) return ['partial', 'Population unobserved'];
+    if (!Number.isFinite(entry.scores[featureId])) return ['unmeasured', 'Score unmeasured'];
+    return ['yes', 'Score measured'];
+  }
+
+  function visitMark(kind, label) {
+    const mark = node('span', 'pe-mark pe-' + kind);
     mark.setAttribute('role', 'img');
     mark.setAttribute('aria-label', label);
     mark.title = label;
     return mark;
-  }
-
-  function status(entry) {
-    return entry === undefined
-      ? 'No specimen recorded'
-      : entry === null
-        ? 'Population absent from summary'
-        : 'Observed';
   }
 
   function pageControls(page, pageCount, onPage) {
@@ -112,7 +105,7 @@
       const visitsByPerson = index.get(person.id) || unused;
       const observed = selected.map((v) => visitsByPerson.get(v));
       const inArm = analysisArms.has(person.arm);
-      const covered = inArm && selected.length > 0 && observed.every(Boolean);
+      const covered = inArm && selected.length > 0 && observed.every((entry) => Number.isFinite(entry?.scores[feature.id]));
       const cells = observed.reduce((sum, obs) => sum + (obs?.cells || 0), 0);
       return { person, visitsByPerson, inArm, covered, cells };
     });
@@ -125,7 +118,7 @@
     title.id = prefix + '-title';
     head.append(
       title,
-      node('p', 'pe-sub', [population, selected.join(' and ')].filter(Boolean).join(' · ')),
+      node('p', 'pe-sub', [feature.label, population, selected.join(' and ')].filter(Boolean).join(' · ')),
     );
     const filters = node('div', 'pe-filters');
     const searchField = node('label', 'pe-control pe-search');
@@ -149,8 +142,8 @@
       'Coverage',
       [
         ['', 'All participants'],
-        ['included', 'Eligible by coverage'],
-        ['missing', 'Incomplete coverage'],
+        ['included', 'Contributing'],
+        ['missing', 'Missing required score'],
         ['outside', 'Outside selected groups'],
       ],
       state.coverage,
@@ -165,7 +158,7 @@
     const table = node('table', 'pe-table');
     table.setAttribute('aria-label', 'Participant visit coverage');
     const tableHead = table.createTHead().insertRow();
-    ['Participant', 'Group', ...shownVisits, 'Cells¹', 'Coverage'].forEach((header) => {
+    ['Participant', 'Group', ...shownVisits, 'Cells¹', 'Contribution'].forEach((header) => {
       const th = node('th', '', header);
       th.scope = 'col';
       tableHead.append(th);
@@ -178,13 +171,14 @@
     const pager = node('div');
     footer.append(range, pager);
     const legend = node('div', 'pe-legend');
-    for (const [entry, label] of [
-      [true, 'Observed'],
-      [null, 'Population unobserved'],
-      [undefined, 'Specimen unrecorded'],
+    for (const [kind, label] of [
+      ['yes', 'Score measured'],
+      ['unmeasured', 'Score unmeasured'],
+      ['partial', 'Population unobserved'],
+      ['no', 'Specimen unrecorded'],
     ]) {
       const k = node('span', 'pe-key');
-      const mark = visitMark(entry);
+      const mark = visitMark(kind, label);
       mark.setAttribute('aria-hidden', 'true');
       k.append(mark, node('span', '', label));
       legend.append(k);
@@ -192,7 +186,7 @@
     const note = node(
       'p',
       'pe-note',
-      '¹ Cells in the selected population and visits. Coverage describes specimen availability. Fitted counts can vary by feature.',
+      '¹ Cells in the selected population and visits. Each contributing participant has a measured score at every visit in the comparison.',
     );
     const extras = node('div', 'pe-notes');
     extras.append(legend, note);
@@ -226,9 +220,9 @@
         const badge = node('span', 'pe-group', record.person.arm);
         badge.classList.toggle('pe-second', arms.indexOf(record.person.arm) === 1);
         group.append(badge);
-        shownVisits.forEach((v) => tr.insertCell().append(visitMark(record.visitsByPerson.get(v))));
+        shownVisits.forEach((v) => tr.insertCell().append(visitMark(...status(record.visitsByPerson.get(v), feature.id))));
         tr.insertCell().append(node('span', 'pe-num', counts.format(record.cells)));
-        const label = record.covered ? 'Eligible' : record.inArm ? 'Incomplete' : 'Outside groups';
+        const label = record.covered ? 'Contributing' : record.inArm ? 'Missing score' : 'Outside groups';
         tr.insertCell().append(
           node(
             'span',
@@ -290,7 +284,7 @@
           const th = node('th', '', v);
           th.scope = 'row';
           tr.append(th);
-          tr.insertCell().textContent = status(obs);
+          tr.insertCell().textContent = status(obs, feature.id)[1];
           tr.insertCell().textContent = obs ? counts.format(obs.cells) : '—';
           const val = obs?.scores?.[feature.id];
           tr.insertCell().textContent = Number.isFinite(val) ? scores.format(val) : '—';

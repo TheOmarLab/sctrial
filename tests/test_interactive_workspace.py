@@ -113,6 +113,17 @@ class InteractiveWorkspaceTest(unittest.TestCase):
         self.assertAlmostEqual(row["scores"][key], expected.score.mean())
         json.dumps(study, allow_nan=False)
 
+    def test_visit_axis_honors_ordered_categories_with_shuffled_cells(self):
+        other_path = self.path.with_name("ordered.h5ad")
+        study = self.data[::-1].copy()
+        study.obs["visit"] = pd.Categorical(
+            study.obs["visit"], categories=["Before", "Unused", "After", "Later"], ordered=True
+        )
+        study.write_h5ad(other_path)
+        result = LocalStudy(other_path).prepare(self.mapping)
+        self.assertTrue(result["orderedVisits"])
+        self.assertEqual(result["visits"], ["Before", "After", "Later"])
+
     def test_fits_match_package_with_missing_pairs_and_feature_values(self):
         study = self.workspace.prepare(self.mapping)
         selected = self.data[self.data.obs.cell_type == "T cell"].copy()
@@ -287,6 +298,9 @@ class InteractiveWorkspaceTest(unittest.TestCase):
 
         document = get("/")
         self.assertIn(server.session.encode(), document)
+        self.assertEqual(
+            get("/sctrial-workbook.html"), b"<html><head></head><body>Study</body></html>"
+        )
         self.assertNotIn(b"raw-cell-", document)
         with self.assertRaises(HTTPError) as denied:
             get("/local/schema")

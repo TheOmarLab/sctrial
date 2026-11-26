@@ -4,8 +4,35 @@ from __future__ import annotations
 
 from importlib.resources import files
 
-_STYLES = ("font", "dialog", "cohort", "results", "pins", "canvas", "mapping", "studio")
-_SCRIPTS = ("csv", "cohort", "results", "pins", "canvas", "mapping", "studio")
+_STYLES = (
+    "font",
+    "dialog",
+    "cohort",
+    "results",
+    "pins",
+    "canvas",
+    "mapping",
+    "studio",
+    "sheets",
+    "editor",
+    "evidence",
+    "matrix",
+    "pairing",
+)
+_SCRIPTS = (
+    "csv",
+    "cohort",
+    "results",
+    "pins",
+    "canvas",
+    "mapping",
+    "chrome",
+    "sheets",
+    "matrix",
+    "evidence",
+    "pairing",
+    "studio",
+)
 
 
 def build_workspace() -> bytes:

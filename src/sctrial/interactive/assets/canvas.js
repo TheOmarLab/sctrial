@@ -3,11 +3,11 @@
 
   const NS = 'http://www.w3.org/2000/svg';
   const states = new WeakMap();
-  const palettes = ['#53d8c1', '#f2b16d'];
-  const fg = '#d7e3f4',
-    subdued = '#a8b9ce',
-    grid = '#344358',
-    minor = '#27364b';
+  const palettes = ['#5145bb', '#247778'];
+  const fg = '#20283b',
+    subdued = '#576278',
+    grid = '#dce0e9',
+    minor = '#edf0f5';
   const pathLimit = 48,
     dotLimit = 140;
   let serial = 0;
@@ -224,7 +224,7 @@
     );
     k2.append(
       html('i', 'cc-key ' + (m.mode === 'changes' ? 'cc-key-diamond' : 'cc-key-mean')),
-      document.createTextNode('Group mean'),
+      document.createTextNode(m.mode === 'changes' ? 'Group mean' : 'Mean at each visit'),
     );
     legend.append(k1, k2);
 
@@ -352,6 +352,7 @@
       shown = summary.shown;
     } else {
       const summary = drawTraces(ctx);
+      visitCounts(root, data, summary.axisVisits || []);
       roster = summary.total;
       shown = summary.shown;
     }
@@ -362,6 +363,34 @@
       );
       if (next) next.focus({ preventScroll: true });
     }
+  }
+
+  function visitCounts(root, data, visits) {
+    if (!visits.length) return;
+    const wrap = html('div', 'cc-counts');
+    const table = html('table', '');
+    const caption = html('caption', '', 'Participants measured at each visit');
+    const head = table.createTHead().insertRow();
+    const body = table.createTBody();
+    const column = (value) => {
+      const cell = html('th', '', value);
+      cell.scope = 'col';
+      head.append(cell);
+    };
+    column('Group');
+    visits.forEach(column);
+    for (const group of data.groups) {
+      const row = body.insertRow();
+      const name = html('th', '', group.name);
+      name.scope = 'row';
+      row.append(name);
+      for (const visit of visits) {
+        row.insertCell().textContent = String(group.totals.get(visit)?.[1] || 0);
+      }
+    }
+    table.prepend(caption);
+    wrap.append(table);
+    root.append(wrap);
   }
 
   function drawTraces(ctx) {
@@ -394,6 +423,9 @@
       y = (v) => bottom - ((v - d.min) * (bottom - top)) / (d.max - d.min);
     const baselineIndex = visits.indexOf(m.baseline),
       followIndex = visits.indexOf(m.visit);
+    const reverse = longitudinal(m.design) && baselineIndex > followIndex;
+    const selectedLabel = longitudinal(m.design) ? (reverse ? 'Comparison' : 'Follow-up') : 'Selected';
+    const referenceLabel = reverse ? 'Reference' : 'Baseline';
     const editable = new Set(m.canSelectVisit ? m.editableVisits || [] : []);
     if (longitudinal(m.design) && baselineIndex !== -1 && followIndex !== -1) {
       const start = Math.min(x(baselineIndex), x(followIndex)),
@@ -403,7 +435,7 @@
         y: top,
         width: end - start,
         height: bottom - top,
-        fill: '#98b4df',
+        fill: '#6763c0',
         'fill-opacity': 0.055,
       });
     }
@@ -428,14 +460,14 @@
     text(svg, left, 18, trim(m.unit || 'Score', unitRoom, 10), {
       'font-size': 10,
       'letter-spacing': '.35px',
-      fill: '#b6c8e0',
+      fill: '#586079',
     });
     const slot = Math.min(tight ? 73 : 129, (headerRoom - unitRoom) / Math.max(1, groups.length));
     const widths = groups.map((group) => Math.min(slot, 25 + String(group.name).length * 6.4));
     let gx = right - widths.reduce((sum, v) => sum + v, 0);
     groups.forEach((group, i) => {
       line(svg, gx, 14, gx + 12, 14, { stroke: group.color, 'stroke-width': 2.1 });
-      marker(svg, gx + 6, 14, 2.7, '#162438', i, { stroke: group.color, 'stroke-width': 1.4 });
+      marker(svg, gx + 6, 14, 2.7, '#ffffff', i, { stroke: group.color, 'stroke-width': 1.4 });
       const key = text(svg, gx + 17, 18, trim(group.name, widths[i] - 20, 10.5), {
         'font-size': 10.5,
         'font-weight': 600,
@@ -465,7 +497,7 @@
       const xx = x(i),
         isTime = always.has(i);
       line(svg, xx, top - 3, xx, bottom + 5, {
-        stroke: isTime ? '#7287a6' : minor,
+        stroke: isTime ? '#969bb3' : minor,
         'stroke-dasharray': isTime ? '3 5' : '2 5',
         'stroke-width': isTime ? 1 : 0.8,
       });
@@ -513,7 +545,7 @@
           cy: last[1],
           r: 5.1,
           fill: 'none',
-          stroke: '#f2f7ff',
+          stroke: '#342a85',
           'stroke-width': 1.15,
           opacity: 0,
           class: 'cc-focus',
@@ -546,13 +578,13 @@
         const g = make(means, 'g'),
           tot = group.totals.get(visits[i]);
         make(g, 'circle', { cx: pt[0], cy: pt[1], r: 6, fill: 'transparent' });
-        marker(g, pt[0], pt[1], 4.8, '#152238', k, { stroke: group.color, 'stroke-width': 2.35 });
+        marker(g, pt[0], pt[1], 4.8, '#ffffff', k, { stroke: group.color, 'stroke-width': 2.35 });
         const anchor = make(g, 'circle', {
           cx: pt[0],
           cy: pt[1],
           r: 7.8,
           fill: 'none',
-          stroke: '#fcfcff',
+          stroke: '#342a85',
           opacity: 0,
           class: 'cc-focus',
         });
@@ -612,8 +644,8 @@
           width: cw,
           height: 23,
           rx: 4,
-          fill: isActive ? '#d4e4f8' : isBase ? '#243650' : '#23324a',
-          stroke: isActive ? '#deebf9' : '#435875',
+          fill: isActive ? '#e7e5ff' : isBase ? '#f1f2f7' : '#ffffff',
+          stroke: isActive ? '#b5b0ee' : '#c6cada',
           class: isActive ? '' : 'cc-chip',
         });
       }
@@ -621,20 +653,20 @@
         'text-anchor': 'middle',
         'font-size': 11,
         'font-weight': isActive || isBase ? 650 : 500,
-        fill: isActive ? '#142438' : fg,
+        fill: isActive ? '#3a317b' : fg,
       });
       if (isActive || isBase)
         text(
           svg,
           cx,
           bottom + 42,
-          isActive ? (longitudinal(m.design) ? 'FOLLOW-UP' : 'SELECTED') : 'BASELINE',
+          (isActive ? selectedLabel : referenceLabel).toUpperCase(),
           {
             'text-anchor': 'middle',
             'font-size': 8.4,
             'letter-spacing': 1.0,
             'font-weight': 600,
-            fill: '#a2b5ce',
+            fill: '#626b80',
             'pointer-events': 'none',
           },
         );
@@ -646,7 +678,7 @@
         height: 27,
         rx: 5,
         fill: 'none',
-        stroke: '#fff',
+        stroke: '#4538a2',
         opacity: 0,
         class: 'cc-focus',
       });
@@ -657,7 +689,7 @@
       g.setAttribute(
         'aria-label',
         isActive
-          ? visit + ' ' + (longitudinal(m.design) ? 'follow-up, selected visit' : 'selected visit')
+          ? visit + ' ' + (longitudinal(m.design) ? selectedLabel.toLowerCase() + ', selected visit' : 'selected visit')
           : visit + ', select visit',
       );
       g.dataset.ccFocus = 'visit:' + visit;
@@ -688,12 +720,12 @@
           cx: xx,
           cy: hy,
           r: 4.7,
-          fill: '#1d2c42',
-          stroke: '#8397b1',
+          fill: '#f3f2fb',
+          stroke: '#959bb5',
           'stroke-width': 1.1,
           class: 'cc-destination',
         });
-        line(target, xx, hy + 5, xx, top + 1, { stroke: '#758ba8', 'pointer-events': 'none' });
+        line(target, xx, hy + 5, xx, top + 1, { stroke: '#959bb5', 'pointer-events': 'none' });
         addTitle(target, tipCopy);
         target.addEventListener('click', selectVisit);
         target.addEventListener('pointerenter', () => ctx.tooltip(tipCopy, xx, hy + 40));
@@ -739,19 +771,19 @@
           ' ' +
           (hy - 7) +
           ' h24 q3 0 3 3 v6 q0 3 -3 3 h-8 l-4 5 -4 -5 h-8 q-3 0 -3 -3 v-6 q0 -3 3 -3 z',
-        fill: '#d4e4f8',
+        fill: '#e7e5ff',
         class: 'cc-grip',
       });
       make(h, 'path', {
         d: 'M ' + (xx - 5) + ' ' + (hy - 4) + ' l-3 3 3 3 m10 -6 3 3 -3 3',
         fill: 'none',
-        stroke: '#37506e',
+        stroke: '#403984',
         'stroke-width': 1.45,
         'stroke-linecap': 'round',
         'stroke-linejoin': 'round',
         'pointer-events': 'none',
       });
-      line(h, xx, hy - 3.7, xx, hy + 1.7, { stroke: '#527193', 'stroke-width': 1.3 });
+      line(h, xx, hy - 3.7, xx, hy + 1.7, { stroke: '#585295', 'stroke-width': 1.3 });
       make(h, 'rect', {
         x: xx - 18,
         y: hy - 10,
@@ -759,7 +791,7 @@
         height: 24,
         rx: 3,
         fill: 'none',
-        stroke: '#fff',
+        stroke: '#4538a2',
         opacity: 0,
         class: 'cc-focus',
       });
@@ -791,7 +823,7 @@
       let pending = followIndex,
         drag = false;
       const ruler = line(svg, xx, top, xx, bottom, {
-        stroke: '#e7f0ff',
+        stroke: '#5b50a9',
         'stroke-width': 1.5,
         'stroke-dasharray': '3 3',
         visibility: 'hidden',
@@ -834,7 +866,7 @@
       h.addEventListener('pointerup', () => end(true));
       h.addEventListener('pointercancel', () => end(false));
     }
-    return { total: roster, shown };
+    return { total: roster, shown, axisVisits: shownIndexes.map((i) => visits[i]) };
   }
 
   function drawChanges(ctx) {
@@ -881,7 +913,7 @@
     const zero = x(0);
     ticks(d).forEach((v) => {
       line(svg, x(v), top, x(v), bottom + 6, {
-        stroke: Math.abs(v) < d.step / 1000 ? '#8799b2' : grid,
+        stroke: Math.abs(v) < d.step / 1000 ? '#7d8397' : grid,
         'stroke-width': v === 0 ? 1.3 : 0.75,
         'stroke-dasharray': v === 0 ? '4 4' : '2 5',
       });
@@ -957,7 +989,7 @@
           g = make(svg, 'g');
         make(g, 'circle', { cx: xx, cy: yy, r: 8, fill: 'transparent' });
         const pt = marker(g, xx, yy, 4.6, group.color, 0, {
-          stroke: '#19273b',
+          stroke: '#ffffff',
           'stroke-width': 1.1,
           opacity: 0.91,
           class: 'cc-dot',
@@ -985,7 +1017,7 @@
         'stroke-opacity': 0.65,
         'pointer-events': 'none',
       });
-      const mk = marker(gm, xx, ym, 5.8, group.color, 1, { stroke: '#172436', 'stroke-width': 1.2 });
+      const mk = marker(gm, xx, ym, 5.8, group.color, 1, { stroke: '#ffffff', 'stroke-width': 1.2 });
       make(gm, 'circle', {
         cx: xx,
         cy: ym,
