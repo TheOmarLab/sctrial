@@ -29,7 +29,7 @@
 **sctrial** is a Python package for participant-level differential analysis of longitudinal single-cell RNA-seq data from clinical trials and translational studies. Built on [AnnData](https://anndata.readthedocs.io/) and the [scverse](https://scverse.org/) ecosystem, it provides:
 
 - **Difference-in-Differences (DiD)** analysis with participant fixed effects
-- **Paired within-arm** pre→post contrasts
+- **Paired within-arm** contrasts between baseline and follow-up
 - **Between-group** comparisons at fixed time points
 - **Cell-type abundance** change testing
 - **Gene set enrichment** analysis (GSEA) on DiD rankings
