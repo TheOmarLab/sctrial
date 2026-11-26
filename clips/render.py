@@ -7,11 +7,11 @@ of one scene give the same frames.
 Needs ``ffmpeg`` and the ``playwright`` Python package with its browser (``playwright install chromium``).
 
     python clips/render.py --stills 1,3,5,7,9          # PNG stills of every scene, for inspection
-    python clips/render.py --scene did                 # one clip: MP4 and GIF
+    python clips/render.py --scene two-arm             # one clip: MP4 and GIF
     python clips/render.py                             # every clip
     python clips/render.py --reel square --no-gif      # every scene under its title, 1080 x 1080, MP4
-    python clips/render.py --reel wide --only did,inference,power --gif-width 800
-    python clips/render.py --scene did --gif-only --gif-width 640 --gif-fps 12 --out docs/source/_static/clips
+    python clips/render.py --reel wide --only two-arm,single-arm,power --gif-width 800
+    python clips/render.py --scene participants --gif-only --gif-width 640 --gif-fps 12 --out docs/source/_static/clips
     python clips/render.py --captions                  # the title and caption of every scene
     python clips/render.py --fill                      # how much of the frame the last frame of each scene uses
 """

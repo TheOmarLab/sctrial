@@ -51,7 +51,12 @@
       text(ctx, "treated", XS[0] - 150, d.means[1][0][1] - 46, 44, { align: "right", color: A.text, alpha: seg(t, 0.9, 1.5) });
       // each later visit against baseline: the change in the treated arm minus the change in the control arm
       for (let k = 1; k < XS.length; k++) {
-        arrow(ctx, XS[k] + 140, d.expected[k], d.means[1][k][1], ease(seg(t, 6.8 + k * 0.4, 7.5 + k * 0.4)));
+        const grown = ease(seg(t, 6.8 + k * 0.4, 7.5 + k * 0.4)), xa = XS[k] + 140;
+        if (grown > 0) {
+          line(ctx, XS[k], d.means[1][k][1], lerp(XS[k], xa + 18, grown), d.means[1][k][1], S.RULE, 3.5, [6, 13]);
+          line(ctx, XS[k], d.expected[k], lerp(XS[k], xa + 18, grown), d.expected[k], S.RULE, 3.5, [6, 13]);
+        }
+        arrow(ctx, xa, d.expected[k], d.means[1][k][1], grown);
       }
       // the key of the arrows
       const key = seg(t, 7.4, 8.1);

@@ -53,7 +53,13 @@
       // the treated arm, had it changed as the control arm
       const c = ease(seg(t, 5.6, 6.7));
       if (c > 0) line(ctx, X0, m.t0, lerp(X0, X1, c), lerp(m.t0, m.expected, c), S.RULE, 4.5, [6, 15]);
-      arrow(ctx, X1 + 220, m.expected, m.t1, ease(seg(t, 6.9, 7.8)));
+      // the two levels the contrast spans, tied to the arrow
+      const tie = ease(seg(t, 6.9, 7.8));
+      if (tie > 0) {
+        line(ctx, X1, m.t1, lerp(X1, X1 + 238, tie), m.t1, S.RULE, 3.5, [6, 13]);
+        line(ctx, X1, m.expected, lerp(X1, X1 + 238, tie), m.expected, S.RULE, 3.5, [6, 13]);
+      }
+      arrow(ctx, X1 + 220, m.expected, m.t1, tie);
       text(ctx, "difference-in-differences", S.W - 130, 96, 48, { align: "right", color: A.text, alpha: seg(t, 7.2, 7.9) });
     },
   });
