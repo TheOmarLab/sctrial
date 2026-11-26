@@ -36,14 +36,11 @@ python clips/render.py --captions                       # the title and caption 
 
 Frames are requested one at a time from the scene, so two renders give the same frames.
 
-The animations of the repository README are written by:
+The animation of the repository README shows all ten clips under their titles and is written by:
 
 ```bash
-python clips/render.py --reel wide --only two-arm,single-arm,cross-sectional,repeated-visits,small-cohorts \
-    --gif-width 800 --gif-fps 12 --gif-colors 128
+python clips/render.py --reel wide --gif-width 800 --gif-fps 12 --gif-colors 128
 cp clips/out/reel_wide.gif docs/source/_static/clips/reel.gif
-python clips/render.py --scene participants --scene incomplete --scene cell-types --scene power \
-    --gif-only --gif-width 640 --gif-fps 12 --gif-colors 96 --out docs/source/_static/clips
 ```
 
 ## Add a clip

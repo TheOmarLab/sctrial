@@ -45,21 +45,10 @@
 sctrial matches the analysis to the design of the study. A two-arm longitudinal study is analyzed with a difference-in-differences, a single-arm longitudinal study with the within-participant change, and a cross-sectional study with a comparison of two groups at one time point. In every design the unit of inference is the participant.
 
 <p align="center">
-  <img src="docs/source/_static/clips/reel.gif" alt="Schematic animation of five sctrial capabilities: two-arm longitudinal and single-arm longitudinal designs, cross-sectional comparison, repeated visits, and small-cohort inference" width="100%">
+  <img src="docs/source/_static/clips/reel.gif" alt="Schematic animation of how sctrial handles study designs: one design definition, participant-level inference, two-arm and single-arm longitudinal designs, cross-sectional comparison, repeated visits, small cohorts, incomplete and unbalanced data, cell-type-specific analysis, and power for two independent groups" width="100%">
 </p>
 
-<table>
-  <tr>
-    <td width="50%"><strong>Participant-level inference</strong><br><img src="docs/source/_static/clips/participants.gif" alt="The cells of each participant at each visit are summarized as one value" width="100%"></td>
-    <td width="50%"><strong>Incomplete and unbalanced data</strong><br><img src="docs/source/_static/clips/incomplete.gif" alt="Participants observed at one visit and participants of an arm outside the design do not enter the paired comparison" width="100%"></td>
-  </tr>
-  <tr>
-    <td width="50%"><strong>Cell-type-specific analysis</strong><br><img src="docs/source/_static/clips/cell-types.gif" alt="Within each cell type, the baseline and follow-up values of every participant are reduced to one change from baseline, and the mean change is shown with its confidence interval" width="100%"></td>
-    <td width="50%"><strong>Power for two independent groups</strong><br><img src="docs/source/_static/clips/power.gif" alt="For two independent groups of equal size, power increases with the number of participants per group until it reaches the target" width="100%"></td>
-  </tr>
-</table>
-
-The animations are schematic and show no data. All ten are on the [Study Designs page](https://www.omar-lab.com/sctrial/study_designs.html) of the documentation.
+The animation is schematic and shows no data. Each of its ten clips can be played on its own on the [Study Designs page](https://www.omar-lab.com/sctrial/study_designs.html) of the documentation.
 
 ## Key Features
 
