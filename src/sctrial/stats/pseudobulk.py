@@ -257,7 +257,7 @@ def pseudobulk_did(
     use_bootstrap
         Whether to use bootstrap to calculate p-values. Recommended for small sample sizes.
     n_boot
-        Number of bootstrap permutations.
+        Number of bootstrap replicates.
     seed
         Random seed for reproducibility.
 

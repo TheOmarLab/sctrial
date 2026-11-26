@@ -17,7 +17,7 @@ Protocol
    to R's stdin.  R sources the script and prints ``DONE\\n`` on finish.
 3. To shut down, Python sends ``QUIT\\n``; R exits cleanly.
 
-Stdin is **never** used during the init phase — libraries load as plain R
+Stdin is **never** used during the init phase: libraries load as plain R
 script execution, which is reliable across non-interactive / SLURM contexts.
 """
 

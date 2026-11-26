@@ -182,7 +182,7 @@ _HIST_RE = re.compile(
 def is_artifact_gene(name: str) -> bool:
     """True if *name* is a technical-artifact gene (hemoglobin/erythroid, ribosomal,
     or replication-histone) to be excluded from unbiased HVG/DE/GSEA. Cell-cycle
-    genes are NOT artifacts. Anchored so prefix-sharing signaling genes are kept."""
+    genes are not artifacts. Anchored so prefix-sharing signaling genes are kept."""
     g = str(name)
     return bool(_HB_RE.match(g) or _RIBO_RE.match(g) or _HIST_RE.match(g))
 
@@ -248,10 +248,10 @@ def drop_artifact_genes(
     """Remove technical-artifact gene classes from *adata* in place (upstream QC).
 
     Removes hemoglobin/erythroid, ribosomal, and replication-histone genes so that
-    EVERY downstream analysis inherits a clean gene set with no per-analysis handling:
+    every downstream analysis inherits a clean gene set with no per-analysis handling:
     HVG/PCA/clustering, gene-level differential expression, and GSEA (which ranks the
     full ``var_names`` list, so it would otherwise be dominated by these housekeeping/
-    ambient genes in its leading edges). Cell-cycle genes are NOT removed -- they are
+    ambient genes in its leading edges). Cell-cycle genes are not removed -- they are
     real biology and are used by the proliferation gene signatures.
 
     **Set ``drop_hb=False`` for erythroid-containing tissues.** The hemoglobin rule
@@ -262,7 +262,7 @@ def drop_artifact_genes(
     Removing it deletes the biology instead of the artifact. Ribosomal and
     replication-histone genes remain safe to drop in either tissue.
 
-    Must be run AFTER normalization (per-cell library sizes must be computed over all
+    Must be run after normalization (per-cell library sizes must be computed over all
     genes, including the ambient/housekeeping ones) and after any QC-metric computation.
     The removed gene symbols are recorded in ``adata.uns['artifact_genes_removed']``
     and the classes actually dropped in ``adata.uns['artifact_classes_dropped']``.

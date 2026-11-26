@@ -104,7 +104,7 @@ def module_score_pseudobulk(
 
     df = df.dropna(subset=["pool"])
 
-    # Build column lists conditionally — arm_col may be None for single-arm
+    # Build column lists conditionally: arm_col may be None for single-arm
     id_cols = [design.participant_col, design.visit_col]
     df = df.dropna(subset=[design.participant_col])
     if design.arm_col is not None:

@@ -565,7 +565,7 @@ def power_paired(
         Y_post - Y_pre = δ + ε   (paired differences)
 
     H₀: δ = 0  (no change)
-    H₁: δ ≠ 0  (treatment causes change)
+    H₁: δ ≠ 0  (a nonzero mean change from pre to post)
 
     Parameters
     ----------

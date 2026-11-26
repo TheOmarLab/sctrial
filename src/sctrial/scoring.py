@@ -74,7 +74,7 @@ def score_gene_sets(
     -----
     **Zero-variance gene handling (zmean method):**
     Genes with zero or near-zero variance (std < 1e-12) are excluded from
-    the z-mean calculation. If ALL genes in a set have zero variance, the
+    the z-mean calculation. If all genes in a set have zero variance, the
     score is NaN. This prevents division by zero and ensures meaningful scores.
 
     The zmean method computes: mean(z_i) where z_i = (x_i - mean(x_i)) / std(x_i)

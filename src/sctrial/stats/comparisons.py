@@ -444,11 +444,11 @@ def within_arm_comparison(
     n_boot: int = 999,
     seed: int = 42,
 ) -> pd.DataFrame:
-    """Paired within-arm pre->post contrast.
+    """Paired within-arm baseline-to-follow-up contrast.
 
     This function tests for longitudinal changes within a single treatment arm
-    using a fixed-effects model (equivalent to a paired t-test but flexible
-    for single-cell data).
+    using a participant fixed-effects model (equivalent, for two visits, to a
+    paired t-test on the within-participant changes).
 
     Parameters
     ----------
@@ -489,7 +489,7 @@ def within_arm_comparison(
         Table with columns:
 
         - **feature** : Name of the feature.
-        - **beta_time** : Estimated pre→post change (visit coefficient), in standard
+        - **beta_time** : Estimated baseline-to-follow-up change (visit coefficient), in standard
           deviations of the outcome with the default ``standardize=True``.
         - **se_time** : Standard error of the time coefficient, cluster-robust by
           participant unless ``cov_type_used`` is ``nonrobust``.

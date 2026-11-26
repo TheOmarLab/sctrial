@@ -155,7 +155,7 @@ class TranscriptomeSimConfig:
     """Configuration for the transcriptome-scale simulator.
 
     Defaults are the TNBC-calibrated values. Every one is an empirical quantity, so
-    a run with defaults is a calibrated run — the previous design's defaults were
+    a run with defaults is a calibrated run; the previous design's defaults were
     arbitrary and silently used whenever calibration was not threaded through.
     """
 
@@ -327,7 +327,7 @@ def load_empirical(path: str | Path | None = None) -> dict | None:
     """Empirical TNBC nuisance pools (library sizes, cells per participant-visit).
 
     Returns None if absent, so the simulator falls back to the parametric fits
-    rather than failing — but the fits are known to reproduce the library-size
+    rather than failing, but the fits are known to reproduce the library-size
     distribution poorly, so the empirical file should normally be present.
     """
     path = Path(path) if path is not None else _validation_dir() / "tnbc_empirical.npz"
@@ -451,7 +451,7 @@ def make_signal(
         Half +magnitude, half -magnitude. No net directional shift, so the library
         size is unmoved and there is no compositional artifact.
     ``heterogeneous`` (primary)
-        Symmetric mixture of weak/moderate/large effects — the most realistic.
+        Symmetric mixture of weak/moderate/large effects, the most realistic.
     ``one_directional`` (stress test)
         All +magnitude. This is the previous design. Retain it, but label it a
         COMPOSITION-STRESS scenario: the coordinated shift moves the library-size

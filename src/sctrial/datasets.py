@@ -35,7 +35,7 @@ _PACKAGE_DIR = Path(__file__).resolve().parent  # src/sctrial/
 _REPO_ROOT = _PACKAGE_DIR.parent.parent  # sc_trial_inference/
 _DATASETS_ROOT = _REPO_ROOT / "datasets"
 if not _DATASETS_ROOT.is_dir():
-    # Installed package without repo structure — fall back to cwd
+    # Installed package without repo structure: fall back to cwd
     _DATASETS_ROOT = Path.cwd() / "datasets"
 
 
@@ -212,7 +212,7 @@ def _load_tnbc_published_labels(raw_dir: Path) -> pd.DataFrame:
 
     The same mmc3.xlsx the loader already opens for clinical response also
     carries the authors' own annotations, which were previously discarded:
-    ``Major celltype`` (T / B / Myeloid / ILC — every cell is immune, the
+    ``Major celltype`` (T / B / Myeloid / ILC; every cell is immune, the
     deposit being CD45+ sorted) and ``Cluster`` (97 clusters such as
     ``t_CD8-CXCL13``). Barcodes are the same ``<16bp>.<Sample>`` strings the
     GEO matrix uses, so the join needs no identifier munging.
@@ -239,12 +239,12 @@ def _tnbc_cluster_lineage(cluster: object) -> str | None:
     """Map a Zhang 2021 cluster name (e.g. ``t_CD4_Treg-FOXP3``) to a lineage.
 
     The authors' ``Major celltype`` column has only four levels (T / B / Myeloid
-    / ILC), which is coarser than the analysis needs — it cannot separate CD4
+    / ILC), which is coarser than the analysis needs; it cannot separate CD4
     from CD8 or resolve Tregs. Their 97 ``Cluster`` labels are systematically
     named, so the lineage is recovered from the cluster name instead, keeping
     the authors' resolution. Clusters the authors deliberately leave unresolved
     (``t_Tn-LEF1`` naive T, ``t_Tact-IFI6`` activated T, ``t_Tprf-MKI67``
-    proliferating T, and the ambiguous ``Mix`` bin) are NOT forced onto CD4 or
+    proliferating T, and the ambiguous ``Mix`` bin) are not forced onto CD4 or
     CD8; they map to "T cell (unresolved)" / "Unassigned".
     """
     if cluster is None or (isinstance(cluster, float) and pd.isna(cluster)):
@@ -290,9 +290,9 @@ def _load_cart_published_metadata(raw_dir: Path) -> pd.DataFrame | None:
 
     This series-level supplementary file carries far more than cell types: it
     holds the authors' three-level annotation (``Compartment`` / ``Major_Alias``
-    / ``Alias``), their per-cell clinical ``Response`` (LtR / R / NR / Unknown)
-    — which is the publication's primary outcome and cannot be reconstructed
-    from the expression matrices — the exact ``TimePoint_Final``, and ``Axicel``
+    / ``Alias``), their per-cell clinical ``Response`` (LtR / R / NR / Unknown),
+    which is the publication's primary outcome and cannot be reconstructed
+    from the expression matrices, the exact ``TimePoint_Final``, and ``Axicel``
     CAR-transgene read counts. Written by R's ``write.table``, so it is
     space-delimited with quoted fields, not comma-separated.
 
@@ -2066,8 +2066,10 @@ def load_aml(
 ) -> ad.AnnData:
     """Load the van Galen AML chemotherapy dataset (GSE116256).
 
-    This dataset contains pre/post-chemotherapy bone marrow samples from AML
-    patients with cell-type annotations and treatment-response metadata.
+    This dataset contains pre- and post-chemotherapy bone marrow samples from AML
+    patients with the authors' cell-type annotations. GSE116256 deposits no
+    per-patient clinical response variable; the ``response`` column only mirrors
+    the AML-versus-healthy group label and is not a treatment response.
 
     Parameters
     ----------
@@ -2405,7 +2407,7 @@ def _process_cart_raw(
     sc.pp.neighbors(adata, n_neighbors=15, n_pcs=30)
     sc.tl.umap(adata)
 
-    # Clustering — try Leiden, fallback to KMeans
+    # Clustering: try Leiden, fall back to KMeans
     try:
         sc.tl.leiden(adata, resolution=0.8)
     except Exception:
@@ -2513,7 +2515,7 @@ def load_cart(
     ``allow_download=True``:
     https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE290722
 
-    Reference: GSE290722 CAR-T therapy dataset (ZUMA-1 trial).
+    Reference: Cheloni et al., Nat Commun 2025 (ZUMA-1 trial; GEO accession GSE290722).
 
     Examples
     --------
@@ -2950,8 +2952,8 @@ def load_tnbc_zhang(
 
     Notes
     -----
-    Unlike the melanoma dataset, no response harmonization is needed --
-    arm labels are assigned at randomization and are clean.
+    Unlike the melanoma dataset, no response harmonization is needed.
+    Arm labels are assigned at randomization and need no relabeling.
 
     Raw files required in ``<data_dir>/raw/``:
 

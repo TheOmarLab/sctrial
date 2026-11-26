@@ -2,7 +2,7 @@
 
 Computes per-participant post−pre deltas on pseudobulk means, then
 applies Mann-Whitney U between arms on those deltas. This is a
-participant-aware, paired comparator — not a naive baseline.
+participant-aware, paired comparator, not a naive baseline.
 """
 
 from __future__ import annotations

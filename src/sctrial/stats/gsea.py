@@ -279,7 +279,7 @@ def rank_genes_did(
         Whether to use Wild Cluster Bootstrap for DiD p-values (used if
         rank_by is 'signed_confidence').
     n_boot
-        Number of bootstrap permutations.
+        Number of bootstrap replicates.
     min_units
         Minimum number of paired participants required for a gene to be
         included in the ranking. Default is 4.
@@ -495,9 +495,9 @@ def run_gsea_did(
     """Perform Gene Set Enrichment Analysis (GSEA) on trial-aware rankings.
 
     This function calculates Difference-in-Differences (DiD) effect sizes for
-    all genes, ranks them, and performs GSEA using `gseapy.prerank`. This approach
-    ensures that enriched pathways represent treatment effects rather than
-    baseline differences. For several gene-set collections, use
+    all genes, ranks them, and performs GSEA using `gseapy.prerank`. This way,
+    enrichment reflects the DiD contrast (the differential change from baseline
+    between the two groups), rather than cross-sectional baseline differences. For several gene-set collections, use
     `run_gsea_did_multi`, or rank once with `rank_genes_did` and call
     `run_gsea_prerank` per collection.
 
@@ -530,7 +530,7 @@ def run_gsea_did(
         Whether to use Wild Cluster Bootstrap for DiD p-values (used if
         rank_by is 'signed_confidence').
     n_boot
-        Number of bootstrap permutations.
+        Number of bootstrap replicates.
     min_units
         Minimum number of paired participants required for a gene to be
         included in the ranking. Genes with fewer participants return NaN

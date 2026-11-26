@@ -1,4 +1,4 @@
-"""Benchmark orchestrator — runs the scenario grid on the transcriptome simulator.
+"""Benchmark orchestrator: runs the scenario grid on the transcriptome simulator.
 
 Every method is given the input its estimand assumes (see
 :mod:`sctrial.benchmark.contracts`) and is scored against that estimand, not
@@ -285,7 +285,7 @@ def build_scenario_grid(design: str = "two_arm") -> list[dict]:
                 )
             )
 
-    # 4. Heterogeneous effect magnitudes — the most realistic architecture
+    # 4. Heterogeneous effect magnitudes, the most realistic architecture
     for n in [20, 40]:
         for beta in [0.5, 1.0]:
             s.append(
