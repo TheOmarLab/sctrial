@@ -91,6 +91,9 @@ results as they were.
 #### Plotting
 - A `seed` argument on `plot_trial_interaction()`, `plot_parallel_trends()` and `plot_abundance_interaction()` (default 0) makes their error bars reproducible. These error bars are bootstrap 95% confidence intervals of the mean over participants, drawn by seaborn, and previously varied from one call to the next. They are now identical on every call with the same seed; `seed=None` resamples them on each call.
 
+#### Documentation
+- A [Study Designs](https://www.omar-lab.com/sctrial/study_designs.html) page in the documentation shows ten schematic animations of how the package handles each study design: the design definition, participant-level inference, two-arm and single-arm longitudinal designs, cross-sectional comparison, repeated visits, small cohorts, incomplete and unbalanced data, cell-type-specific analysis, and power. The README shows the same clips as one animation.
+
 ### Changed
 
 #### Estimation
