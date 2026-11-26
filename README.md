@@ -48,8 +48,6 @@ sctrial matches the analysis to the design of the study. A two-arm longitudinal 
   <img src="docs/source/_static/clips/reel.gif" alt="Schematic animation of how sctrial handles study designs: one design definition, participant-level inference, two-arm and single-arm longitudinal designs, cross-sectional comparison, repeated visits, small cohorts, incomplete and unbalanced data, cell-type-specific analysis, and power for two independent groups" width="100%">
 </p>
 
-The animation is schematic and shows no data. Each of its ten clips can be played on its own on the [Study Designs page](https://www.omar-lab.com/sctrial/study_designs.html) of the documentation.
-
 ## Key Features
 
 | Feature | Description |
