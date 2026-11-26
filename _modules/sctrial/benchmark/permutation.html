@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.benchmark.permutation &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial.benchmark.permutation &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../../_static/documentation_options.js?v=2a705162"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,6 +49,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/benchmark/permutation';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/_modules/sctrial/benchmark/permutation.html" />
     <link rel="icon" href="../../../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -122,8 +123,8 @@
       
     
     
-    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -369,9 +370,12 @@
   <h1>Source code for sctrial.benchmark.permutation</h1><div class="highlight"><pre>
 <span></span><span class="sd">"""Participant-label permutation for real-data null calibration.</span>
 
-<span class="sd">Shuffles arm labels (two-arm) or visit labels (single-arm) while</span>
-<span class="sd">preserving the participant structure. All core methods are run on</span>
-<span class="sd">each permuted dataset.</span>
+<span class="sd">Shuffles arm labels across participants (two-arm) or exchanges the two visit</span>
+<span class="sd">labels within participants (single-arm). Samples stay intact. All core methods</span>
+<span class="sd">are run on each permuted dataset.</span>
+
+<span class="sd">The cohort is mapped once to the vocabulary of the runners</span>
+<span class="sd">(:func:`sctrial.benchmark.contracts.canonical_cohort`) before the permutations.</span>
 <span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
@@ -390,21 +394,34 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">_permute_arms</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">arm_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">rng</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Shuffle arm labels across participants (preserving within-participant structure)."""</span>
     <span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-    <span class="n">pids</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
-    <span class="n">arms</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">participant_col</span><span class="p">)[</span><span class="n">arm_col</span><span class="p">]</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
-    <span class="n">shuffled_arms</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">permutation</span><span class="p">(</span><span class="n">arms</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
-    <span class="n">arm_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">pids</span><span class="p">,</span> <span class="n">shuffled_arms</span><span class="p">))</span>
+    <span class="c1"># observed=True: on a Categorical participant column with unused levels the</span>
+    <span class="c1"># groupby would add NaN-arm rows, and the shuffled labels would no longer be a</span>
+    <span class="c1"># permutation of the real participants' arms.</span>
+    <span class="n">arms</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">arm_col</span><span class="p">]</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+    <span class="n">arm_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">arms</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">rng</span><span class="o">.</span><span class="n">permutation</span><span class="p">(</span><span class="n">arms</span><span class="o">.</span><span class="n">values</span><span class="p">)))</span>
     <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">arm_map</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">adata</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_permute_visits</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">rng</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""Shuffle visit labels within each participant."""</span>
+<span class="w">    </span><span class="sd">"""Exchange the two visit labels of a random subset of the participants.</span>
+
+<span class="sd">    Each participant's pair of samples is kept or exchanged as a whole, so every cell of a</span>
+<span class="sd">    sample carries the same label and the permuted dataset has the samples of the cohort.</span>
+<span class="sd">    """</span>
     <span class="n">adata</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-    <span class="k">for</span> <span class="n">pid</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">():</span>
-        <span class="n">mask</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">participant_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">pid</span>
-        <span class="n">visits</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">permutation</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span>
+    <span class="n">visit</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">visit_col</span><span class="p">]</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">visit</span><span class="o">.</span><span class="n">dropna</span><span class="p">()))</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"visit permutation needs two visit labels, found </span><span class="si">{</span><span class="n">labels</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
+    <span class="n">participants</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">participant_col</span><span class="p">])</span>
+    <span class="n">exchanged</span> <span class="o">=</span> <span class="n">participants</span><span class="p">[</span><span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">participants</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)]</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">visit</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">first</span><span class="p">,</span> <span class="n">second</span> <span class="o">=</span> <span class="n">values</span> <span class="o">==</span> <span class="n">labels</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">values</span> <span class="o">==</span> <span class="n">labels</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">exchanged</span><span class="p">)</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="n">values</span><span class="p">[</span><span class="n">rows</span> <span class="o">&amp;</span> <span class="n">first</span><span class="p">]</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">values</span><span class="p">[</span><span class="n">rows</span> <span class="o">&amp;</span> <span class="n">second</span><span class="p">]</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">visit_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">visit</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">adata</span>
 
 
@@ -414,41 +431,25 @@
 
     <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">)</span>
 
-    <span class="p">(</span>
-        <span class="n">perm_idx</span><span class="p">,</span>
-        <span class="n">seed</span><span class="p">,</span>
-        <span class="n">adata</span><span class="p">,</span>
-        <span class="n">design_type</span><span class="p">,</span>
-        <span class="n">gene_cols</span><span class="p">,</span>
-        <span class="n">methods</span><span class="p">,</span>
-        <span class="n">participant_col</span><span class="p">,</span>
-        <span class="n">arm_col</span><span class="p">,</span>
-        <span class="n">visit_col</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">=</span> <span class="n">args</span>
+    <span class="n">perm_idx</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="n">cohort</span><span class="p">,</span> <span class="n">design_type</span><span class="p">,</span> <span class="n">gene_cols</span><span class="p">,</span> <span class="n">methods</span> <span class="o">=</span> <span class="n">args</span>
 
     <span class="kn">from</span><span class="w"> </span><span class="nn">.contracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">prepare_inputs_from_adata</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.orchestrator</span><span class="w"> </span><span class="kn">import</span> <span class="n">_dispatch_method</span>
 
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
 
-    <span class="c1"># Permute</span>
+    <span class="c1"># Permute. ``cohort`` carries the canonical columns and labels.</span>
     <span class="k">if</span> <span class="n">design_type</span> <span class="o">==</span> <span class="s2">"two_arm"</span><span class="p">:</span>
-        <span class="n">adata_perm</span> <span class="o">=</span> <span class="n">_permute_arms</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">participant_col</span><span class="p">,</span> <span class="n">arm_col</span><span class="p">,</span> <span class="n">rng</span><span class="p">)</span>
+        <span class="n">adata_perm</span> <span class="o">=</span> <span class="n">_permute_arms</span><span class="p">(</span><span class="n">cohort</span><span class="p">,</span> <span class="s2">"participant"</span><span class="p">,</span> <span class="s2">"arm"</span><span class="p">,</span> <span class="n">rng</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">adata_perm</span> <span class="o">=</span> <span class="n">_permute_visits</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">participant_col</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">,</span> <span class="n">rng</span><span class="p">)</span>
+        <span class="n">adata_perm</span> <span class="o">=</span> <span class="n">_permute_visits</span><span class="p">(</span><span class="n">cohort</span><span class="p">,</span> <span class="s2">"participant"</span><span class="p">,</span> <span class="s2">"visit"</span><span class="p">,</span> <span class="n">rng</span><span class="p">)</span>
 
     <span class="c1"># The SAME contracts as the simulated path: full-transcriptome normalisation,</span>
     <span class="c1"># full-transcriptome library sizes, panel selected afterwards. This analysis</span>
     <span class="c1"># previously built its own pseudobulk and normalised inside the tested panel,</span>
     <span class="c1"># so the real-data results characterised these methods under a different</span>
     <span class="c1"># normalisation scope from the simulation that was used to characterise them.</span>
-    <span class="n">inputs</span> <span class="o">=</span> <span class="n">prepare_inputs_from_adata</span><span class="p">(</span>
-        <span class="n">adata_perm</span><span class="p">,</span>
-        <span class="n">gene_cols</span><span class="p">,</span>
-        <span class="n">participant_col</span><span class="o">=</span><span class="n">participant_col</span><span class="p">,</span>
-        <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span><span class="p">,</span>
-        <span class="n">arm_col</span><span class="o">=</span><span class="n">arm_col</span><span class="p">,</span>
-    <span class="p">)</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="n">prepare_inputs_from_adata</span><span class="p">(</span><span class="n">adata_perm</span><span class="p">,</span> <span class="n">gene_cols</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
     <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="n">methods</span><span class="p">:</span>
@@ -486,6 +487,11 @@
     <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"visit"</span><span class="p">,</span>
     <span class="n">output_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="n">arm_treated</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">arm_control</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">"counts"</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Run participant-label permutation test on real data.</span>
 
@@ -501,16 +507,41 @@
 <span class="sd">    n_permutations : int</span>
 <span class="sd">        Number of permutations.</span>
 <span class="sd">    n_jobs : int</span>
-<span class="sd">        Parallel workers.</span>
+<span class="sd">        Not used for the computation: the permutations run one after another. The</span>
+<span class="sd">        value appears in the progress message only.</span>
+<span class="sd">    visits : tuple[str, str]</span>
+<span class="sd">        (baseline, follow-up) labels of ``visit_col`` in this cohort.</span>
+<span class="sd">    arm_treated, arm_control : str</span>
+<span class="sd">        The two labels of ``arm_col`` in this cohort. Required for a two-arm</span>
+<span class="sd">        design; rows of other arms are left out with one warning.</span>
+<span class="sd">    counts_layer : str or None</span>
+<span class="sd">        Layer that holds raw counts (``None`` for ``adata.X``). The count models</span>
+<span class="sd">        refuse a matrix with non-integer values.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    DataFrame with columns: permutation, method, gene, pvalue</span>
 <span class="sd">    """</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.contracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">canonical_cohort</span><span class="p">,</span> <span class="n">require_raw_counts</span>
+
     <span class="k">if</span> <span class="n">methods</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">.orchestrator</span><span class="w"> </span><span class="kn">import</span> <span class="n">CORE_METHODS</span>
 
         <span class="n">methods</span> <span class="o">=</span> <span class="n">CORE_METHODS</span>
+    <span class="k">if</span> <span class="n">design_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"two_arm"</span><span class="p">,</span> <span class="s2">"single_arm"</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"design_type must be 'two_arm' or 'single_arm', got </span><span class="si">{</span><span class="n">design_type</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="n">cohort</span> <span class="o">=</span> <span class="n">canonical_cohort</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">participant_col</span><span class="o">=</span><span class="n">participant_col</span><span class="p">,</span>
+        <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">,</span>
+        <span class="n">arm_col</span><span class="o">=</span><span class="n">arm_col</span> <span class="k">if</span> <span class="n">design_type</span> <span class="o">==</span> <span class="s2">"two_arm"</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">arm_treated</span><span class="o">=</span><span class="n">arm_treated</span><span class="p">,</span>
+        <span class="n">arm_control</span><span class="o">=</span><span class="n">arm_control</span><span class="p">,</span>
+        <span class="n">counts_layer</span><span class="o">=</span><span class="n">counts_layer</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">require_raw_counts</span><span class="p">(</span><span class="n">methods</span><span class="p">,</span> <span class="n">cohort</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">n_jobs</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
         <span class="n">n_jobs</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
@@ -530,17 +561,7 @@
     <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_permutations</span><span class="p">):</span>
-        <span class="n">args</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">i</span><span class="p">,</span>
-            <span class="n">seeds</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
-            <span class="n">adata</span><span class="p">,</span>
-            <span class="n">design_type</span><span class="p">,</span>
-            <span class="n">gene_cols</span><span class="p">,</span>
-            <span class="n">methods</span><span class="p">,</span>
-            <span class="n">participant_col</span><span class="p">,</span>
-            <span class="n">arm_col</span><span class="p">,</span>
-            <span class="n">visit_col</span><span class="p">,</span>
-        <span class="p">)</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">seeds</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">cohort</span><span class="p">,</span> <span class="n">design_type</span><span class="p">,</span> <span class="n">gene_cols</span><span class="p">,</span> <span class="n">methods</span><span class="p">)</span>
         <span class="n">rows</span> <span class="o">=</span> <span class="n">_run_permutation_iteration</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
         <span class="n">all_rows</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
 

@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.stats.module_scores &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial.stats.module_scores &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../../_static/documentation_options.js?v=2a705162"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,6 +49,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/stats/module_scores';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/_modules/sctrial/stats/module_scores.html" />
     <link rel="icon" href="../../../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -122,8 +123,8 @@
       
     
     
-    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -371,6 +372,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -380,8 +382,10 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">wilcoxon</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">..adata_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">subset_arms</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">encode_visit</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">_tie_tolerance</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">encode_visit</span><span class="p">,</span> <span class="n">fits_exactly</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">"module_score_pseudobulk"</span><span class="p">,</span>
@@ -398,6 +402,12 @@
         <span class="k">if</span> <span class="n">celltype</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">pool</span>
     <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_stripped_labels</span><span class="p">(</span><span class="n">labels</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Arm labels as strings without surrounding whitespace; missing labels stay missing."""</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">labels</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">labels</span><span class="o">.</span><span class="n">isna</span><span class="p">(),</span> <span class="n">labels</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
 
 
 <div class="viewcode-block" id="module_score_pseudobulk">
@@ -440,8 +450,10 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame</span>
-<span class="sd">        Long-format table with columns: participant, visit, arm, pool,</span>
-<span class="sd">        module, ``module_score``, and ``n_cells``.</span>
+<span class="sd">        Long-format table with one row per participant, visit, pool and module.</span>
+<span class="sd">        Columns: the participant and visit columns of the design, its arm column</span>
+<span class="sd">        when the design has one, ``pool``, ``module``, ``module_score`` and</span>
+<span class="sd">        ``n_cells``.</span>
 <span class="sd">    """</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">exclude_crossovers</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">crossover_col</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">crossover_col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
@@ -466,8 +478,9 @@
 
     <span class="c1"># Build column lists conditionally — arm_col may be None for single-arm</span>
     <span class="n">id_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">])</span>
     <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">_stripped_labels</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">])</span>
         <span class="n">id_cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">)</span>
 
     <span class="c1"># Long format: participant × visit × [arm] × pool × module</span>
@@ -485,13 +498,16 @@
         <span class="n">long_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
             <span class="n">melt_id</span> <span class="o">+</span> <span class="p">[</span><span class="s2">"module"</span><span class="p">],</span>
             <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="p">)[</span><span class="s2">"module_score"</span><span class="p">]</span>
         <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
         <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
     <span class="p">)</span>
     <span class="n">pb</span> <span class="o">=</span> <span class="n">pb</span><span class="p">[</span><span class="n">pb</span><span class="p">[</span><span class="s2">"module_score"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-    <span class="n">counts</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">id_cols</span> <span class="o">+</span> <span class="p">[</span><span class="s2">"pool"</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"n_cells"</span><span class="p">)</span>
+    <span class="n">counts</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">id_cols</span> <span class="o">+</span> <span class="p">[</span><span class="s2">"pool"</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"n_cells"</span><span class="p">)</span>
+    <span class="p">)</span>
 
     <span class="n">pb</span> <span class="o">=</span> <span class="n">pb</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
         <span class="n">counts</span><span class="p">,</span>
@@ -532,18 +548,32 @@
 <span class="sd">        Two-sided permutation p-value in ``[0, 1]``.</span>
 <span class="sd">    """</span>
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
-    <span class="n">values</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">values</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
     <span class="n">labels</span> <span class="o">=</span> <span class="n">arms</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">treated_label</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">treated_label</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">obs</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">labels</span> <span class="o">==</span> <span class="n">treated_label</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">values</span><span class="p">[</span><span class="n">labels</span> <span class="o">!=</span> <span class="n">treated_label</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">tol</span> <span class="o">=</span> <span class="n">_tie_tolerance</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
     <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_perm</span><span class="p">):</span>
         <span class="n">perm</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">permutation</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">labels</span><span class="p">))</span>
         <span class="n">perm_diff</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">perm</span> <span class="o">==</span> <span class="n">treated_label</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">values</span><span class="p">[</span><span class="n">perm</span> <span class="o">!=</span> <span class="n">treated_label</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">perm_diff</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">obs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">perm_diff</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span> <span class="o">-</span> <span class="n">tol</span><span class="p">:</span>
             <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
     <span class="k">return</span> <span class="nb">float</span><span class="p">((</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_perm</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_tested_p</span><span class="p">(</span><span class="n">fit</span><span class="p">,</span> <span class="n">term</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""The p-value of ``term``, or NaN when the fit gives the estimate and no test.</span>
+
+<span class="sd">    That is a fit without residual degrees of freedom (as many rows as parameters: the</span>
+<span class="sd">    robust standard error is infinite and the p-value would read 1.0) or one that fits its</span>
+<span class="sd">    outcome exactly (the standard error would be made of rounding error).</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">fit</span><span class="o">.</span><span class="n">df_resid</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">fits_exactly</span><span class="p">(</span><span class="n">fit</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
 
 
 <div class="viewcode-block" id="module_score_did_by_pool">
@@ -570,6 +600,9 @@
 <span class="sd">        TrialDesign object.</span>
 <span class="sd">    visits</span>
 <span class="sd">        Tuple of (baseline, followup) visit labels.</span>
+<span class="sd">    min_paired</span>
+<span class="sd">        Minimum number of participants with both visits that a pool and module need</span>
+<span class="sd">        for the paired test. Not used with ``allow_unpaired=True``.</span>
 <span class="sd">    n_perm</span>
 <span class="sd">        Number of permutations for DiD p-values.</span>
 <span class="sd">    seed</span>
@@ -599,15 +632,32 @@
 <span class="sd">        ``p_DiD``, ``p_treated``, ``p_control``, ``n_units``, ``FDR_DiD``.</span>
 <span class="sd">        When *fdr_within* is set and *fdr_global* is True, an additional</span>
 <span class="sd">        ``FDR_DiD_global`` column contains the globally-corrected q-values.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the design has no arm column. For one arm use</span>
+<span class="sd">        :func:`module_score_within_arm_by_pool`.</span>
 <span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"module_score_did_by_pool requires a two-arm design (arm_col must not be None); "</span>
+            <span class="s2">"for one arm use module_score_within_arm_by_pool."</span>
+        <span class="p">)</span>
     <span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">arm_treated</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
     <span class="n">arm_control</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
 
+    <span class="c1"># The two visits and the two named arms; arm labels are compared after stripping</span>
+    <span class="c1"># surrounding whitespace.</span>
+    <span class="n">pb</span> <span class="o">=</span> <span class="n">pb</span><span class="p">[</span><span class="n">pb</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">pb</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">_stripped_labels</span><span class="p">(</span><span class="n">pb</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">])</span>
+    <span class="n">pb</span> <span class="o">=</span> <span class="n">subset_arms</span><span class="p">(</span>
+        <span class="n">pb</span><span class="p">,</span> <span class="n">replace</span><span class="p">(</span><span class="n">design</span><span class="p">,</span> <span class="n">arm_treated</span><span class="o">=</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">arm_control</span><span class="o">=</span><span class="n">arm_control</span><span class="p">),</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span>
+    <span class="p">)</span>
+
     <span class="k">for</span> <span class="p">(</span><span class="n">pool</span><span class="p">,</span> <span class="n">module</span><span class="p">),</span> <span class="n">sub</span> <span class="ow">in</span> <span class="n">pb</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">"pool"</span><span class="p">,</span> <span class="s2">"module"</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-        <span class="n">sub</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span><span class="n">sub</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">sub</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-        <span class="n">sub</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span><span class="n">sub</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">arm_control</span><span class="p">])]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">sub</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">sub</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">sub</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
             <span class="k">continue</span>
 
@@ -620,8 +670,10 @@
             <span class="c1"># Compute mean deltas from unpaired group means</span>
             <span class="n">treated</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">"arm_bin"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">]</span>
             <span class="n">control</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">"arm_bin"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span>
-            <span class="n">treated_means</span> <span class="o">=</span> <span class="n">treated</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">)[</span><span class="s2">"module_score"</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
-            <span class="n">control_means</span> <span class="o">=</span> <span class="n">control</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">)[</span><span class="s2">"module_score"</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="c1"># observed=True: with a Categorical visit, an arm missing a visit would</span>
+            <span class="c1"># otherwise get a NaN row for it and slip past the guard below.</span>
+            <span class="n">treated_means</span> <span class="o">=</span> <span class="n">treated</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s2">"module_score"</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">control_means</span> <span class="o">=</span> <span class="n">control</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s2">"module_score"</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">treated_means</span> <span class="ow">or</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">treated_means</span><span class="p">:</span>
                 <span class="k">continue</span>
             <span class="k">if</span> <span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">control_means</span> <span class="ow">or</span> <span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">control_means</span><span class="p">:</span>
@@ -634,12 +686,12 @@
             <span class="n">p_control</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">fit_t</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="s2">"module_score ~ visit_num"</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">treated</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">cov_type</span><span class="o">=</span><span class="s2">"HC1"</span><span class="p">)</span>
-                <span class="n">p_treated</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit_t</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"visit_num"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+                <span class="n">p_treated</span> <span class="o">=</span> <span class="n">_tested_p</span><span class="p">(</span><span class="n">fit_t</span><span class="p">,</span> <span class="s2">"visit_num"</span><span class="p">)</span>
             <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
                 <span class="n">p_treated</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">fit_c</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="s2">"module_score ~ visit_num"</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">control</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">cov_type</span><span class="o">=</span><span class="s2">"HC1"</span><span class="p">)</span>
-                <span class="n">p_control</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit_c</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"visit_num"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+                <span class="n">p_control</span> <span class="o">=</span> <span class="n">_tested_p</span><span class="p">(</span><span class="n">fit_c</span><span class="p">,</span> <span class="s2">"visit_num"</span><span class="p">)</span>
             <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
                 <span class="n">p_control</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
@@ -653,7 +705,7 @@
                     <span class="s2">"mean_delta_treated"</span><span class="p">:</span> <span class="n">mean_delta_treated</span><span class="p">,</span>
                     <span class="s2">"mean_delta_control"</span><span class="p">:</span> <span class="n">mean_delta_control</span><span class="p">,</span>
                     <span class="s2">"beta_DiD"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"visit_num:arm_bin"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
-                    <span class="s2">"p_DiD"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"visit_num:arm_bin"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
+                    <span class="s2">"p_DiD"</span><span class="p">:</span> <span class="n">_tested_p</span><span class="p">(</span><span class="n">fit</span><span class="p">,</span> <span class="s2">"visit_num:arm_bin"</span><span class="p">),</span>
                     <span class="s2">"p_treated"</span><span class="p">:</span> <span class="n">p_treated</span><span class="p">,</span>
                     <span class="s2">"p_control"</span><span class="p">:</span> <span class="n">p_control</span><span class="p">,</span>
                     <span class="s2">"n_units"</span><span class="p">:</span> <span class="n">n_units_eff</span><span class="p">,</span>
@@ -690,7 +742,7 @@
             <span class="n">sub_arm</span> <span class="o">=</span> <span class="n">deltas</span><span class="p">[</span><span class="n">deltas</span><span class="p">[</span><span class="s2">"arm"</span><span class="p">]</span> <span class="o">==</span> <span class="n">arm_label</span><span class="p">]</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sub_arm</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
                 <span class="n">delta_vals</span> <span class="o">=</span> <span class="n">sub_arm</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span> <span class="o">-</span> <span class="n">sub_arm</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span>
-                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">delta_vals</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">delta_vals</span><span class="p">):</span>
                     <span class="n">p</span> <span class="o">=</span> <span class="mf">1.0</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">try</span><span class="p">:</span>
@@ -817,10 +869,13 @@
         <span class="n">pre</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
         <span class="n">post</span> <span class="o">=</span> <span class="n">wide</span><span class="p">[</span><span class="n">visits</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
         <span class="n">delta</span> <span class="o">=</span> <span class="n">post</span> <span class="o">-</span> <span class="n">pre</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">_</span><span class="p">,</span> <span class="n">p_val</span> <span class="o">=</span> <span class="n">wilcoxon</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span>
-        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">delta</span><span class="p">):</span>
             <span class="n">p_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">p_val</span> <span class="o">=</span> <span class="n">wilcoxon</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+                <span class="n">p_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
         <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
             <span class="p">{</span>

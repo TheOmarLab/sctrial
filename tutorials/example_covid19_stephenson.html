@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis &#8212; sctrial 0.3.3 documentation</title>
+    <title>Immune Profiling of COVID-19 Severity: A Cross-Sectional Analysis &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../_static/documentation_options.js?v=2a705162"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,6 +53,7 @@
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'tutorials/example_covid19_stephenson';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/tutorials/example_covid19_stephenson.html" />
     <link rel="icon" href="../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -128,8 +129,8 @@
       
     
     
-    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -403,7 +404,7 @@
 <section id="1.-Setup-and-Configuration">
 <h2>1. Setup and Configuration<a class="headerlink" href="#1.-Setup-and-Configuration" title="Link to this heading">#</a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Imports - consolidated in one cell</span>
@@ -432,6 +433,7 @@
 <span class="n">MIN_PARTICIPANTS_FOR_COMPARISON</span> <span class="o">=</span> <span class="mi">5</span>
 <span class="n">MIN_CELLS_PER_CELLTYPE</span> <span class="o">=</span> <span class="mi">100</span>
 <span class="n">SEED</span> <span class="o">=</span> <span class="mi">42</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">SEED</span><span class="p">)</span>  <span class="c1"># seaborn strip plots draw their jitter from NumPy's global generator</span>
 <span class="n">FDR_ALPHA</span> <span class="o">=</span> <span class="mf">0.25</span>  <span class="c1"># Exploratory threshold; use 0.05 for confirmatory analyses</span>
 
 <span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">chained_assignment</span> <span class="o">=</span> <span class="kc">None</span>
@@ -449,14 +451,14 @@
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-sctrial version: 0.3.3
+sctrial version: 1.1.0
 </pre></div></div>
 </div>
 </section>
 <section id="2.-Data-Loading-and-Processing">
 <h2>2. Data Loading and Processing<a class="headerlink" href="#2.-Data-Loading-and-Processing" title="Link to this heading">#</a></h2>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dataset loaders and helpers</span>
@@ -466,7 +468,7 @@ sctrial version: 0.3.3
 </div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Load data</span>
@@ -502,7 +504,7 @@ Participants: 34
 <h2>3. Sample Size Assessment<a class="headerlink" href="#3.-Sample-Size-Assessment" title="Link to this heading">#</a></h2>
 <p>Before analysis, we assess sample sizes to determine appropriate statistical methods.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Sample sizes by severity and timepoint</span>
@@ -642,7 +644,7 @@ Longitudinal pairing (DFO 0-7 → 8-14): 0 participants
 <h2>4. Study Design Configuration<a class="headerlink" href="#4.-Study-Design-Configuration" title="Link to this heading">#</a></h2>
 <p>We configure the comparison structure. Note: We use sctrial’s <code class="docutils literal notranslate"><span class="pre">TrialDesign</span></code> for convenience, but this is an <strong>observational</strong> comparison, not a randomized trial.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add log1p-CPM normalization</span>
@@ -722,7 +724,7 @@ Severe         6397  44275   18594
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
 <div class="output_area docutils container">
@@ -735,7 +737,7 @@ TrialDesign(participant_col=&#39;participant_id&#39;, visit_col=&#39;dfo_bin&#39
 <h2>4.1 Baseline Covariate Balance (Treated vs Control)<a class="headerlink" href="#4.1-Baseline-Covariate-Balance-(Treated-vs-Control)" title="Link to this heading">#</a></h2>
 <p>Here we assess baseline covariate balance between severity groups at the earliest visit. Standardized mean differences (SMD) below 0.1 indicate good balance.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Baseline covariate balance (select visit with most balanced counts)</span>
@@ -827,7 +829,7 @@ Selected baseline visit: DFO_8-14 (treated=5, control=11)
 </div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Covariates for adjusted analyses (baseline balance indicated imbalance)</span>
@@ -849,7 +851,7 @@ Adjusted covariates: [&#39;Age_interval&#39;, &#39;Sex&#39;, &#39;Site&#39;]
 <h2>5. Cell Type Quality Control<a class="headerlink" href="#5.-Cell-Type-Quality-Control" title="Link to this heading">#</a></h2>
 <p>Filter to well-represented cell types for robust analysis.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Cell type counts</span>
@@ -993,7 +995,7 @@ Top 15 cell types:
 <section id="6.-UMAP-Visualization">
 <h2>6. UMAP Visualization<a class="headerlink" href="#6.-UMAP-Visualization" title="Link to this heading">#</a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compute UMAP if missing</span>
@@ -1061,7 +1063,7 @@ Top 15 cell types:
 <li><p><em>(plus 13 additional canonical signatures)</em></p></li>
 </ul>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">available_genes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">)</span>
@@ -1236,11 +1238,11 @@ Signature scores available: [&#39;sig_Cytotoxic T Cell Activity&#39;, &#39;sig_T
 <p>This is the primary analysis. We compare immune signatures between Mild and Severe patients at each DFO timepoint, using:</p>
 <ul class="simple">
 <li><p>Participant-level aggregation (to avoid pseudoreplication)</p></li>
-<li><p>Cell-type adjustment (to account for compositional differences)</p></li>
+<li><p>All cell types pooled into one value per participant (no cell-type adjustment; Section 10 analyses cell types separately)</p></li>
 <li><p>FDR correction for multiple testing</p></li>
 </ul>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run comparisons at each timepoint using sctrial's built-in function</span>
@@ -1709,7 +1711,7 @@ DFO_8-14:
 <section id="8.1-Adjusted-Cross-Sectional-Comparisons">
 <h3>8.1 Adjusted Cross-Sectional Comparisons<a class="headerlink" href="#8.1-Adjusted-Cross-Sectional-Comparisons" title="Link to this heading">#</a></h3>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Adjusted cross-sectional analysis (includes covariates)</span>
@@ -2141,7 +2143,7 @@ Adjusted results at visit: DFO_8-14
 <section id="9.-Visualization-of-Severity-Differences">
 <h2>9. Visualization of Severity Differences<a class="headerlink" href="#9.-Visualization-of-Severity-Differences" title="Link to this heading">#</a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize signature distributions by severity and timepoint</span>
@@ -2240,7 +2242,7 @@ Adjusted results at visit: DFO_8-14
 <h2>10. Cell-Type Specific Analysis<a class="headerlink" href="#10.-Cell-Type-Specific-Analysis" title="Link to this heading">#</a></h2>
 <p>Examine severity differences within specific immune cell populations.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Focus on major immune populations</span>
@@ -2506,7 +2508,7 @@ Results (participant-level Mann-Whitney U via sctrial):
 <h2>11. Cell Type Abundance Differences<a class="headerlink" href="#11.-Cell-Type-Abundance-Differences" title="Link to this heading">#</a></h2>
 <p>Compare cell type composition between severity groups.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Calculate cell type proportions per participant</span>
@@ -2596,7 +2598,7 @@ Note: Each data point = one participant&#39;s cell type proportion
 <section id="11.1-Adjusted-Abundance-DiD">
 <h3>11.1 Adjusted Abundance DiD<a class="headerlink" href="#11.1-Adjusted-Abundance-DiD" title="Link to this heading">#</a></h3>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Adjusted abundance DiD (covariates)</span>
@@ -3278,7 +3280,7 @@ No paired participants for abundance DiD. Running baseline cross-sectional abund
 <h2>12. Individual Gene Analysis<a class="headerlink" href="#12.-Individual-Gene-Analysis" title="Link to this heading">#</a></h2>
 <p>Examine specific genes of interest for COVID-19.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Key COVID-19 genes</span>
@@ -3367,7 +3369,7 @@ Analyzing 12 COVID-relevant genes
 <h3>13.1 Effect Sizes for Cross-Sectional Comparisons<a class="headerlink" href="#13.1-Effect-Sizes-for-Cross-Sectional-Comparisons" title="Link to this heading">#</a></h3>
 <p>Effect sizes quantify the magnitude of differences between Mild and Severe cases.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -3394,7 +3396,7 @@ Analyzing 12 COVID-relevant genes
             <span class="n">severe_vals</span> <span class="o">=</span> <span class="n">df_agg</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df_agg</span><span class="p">[</span><span class="s2">"severity"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"Severe"</span><span class="p">,</span> <span class="n">sig</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">values</span>
 
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mild_vals</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">severe_vals</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
-                <span class="c1"># Cohen's d and Hedge's g</span>
+                <span class="c1"># Cohen's d and Hedges' g</span>
                 <span class="n">d</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">cohens_d</span><span class="p">(</span><span class="n">severe_vals</span><span class="p">,</span> <span class="n">mild_vals</span><span class="p">)</span>  <span class="c1"># Positive = higher in Severe</span>
                 <span class="n">g</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">hedges_g</span><span class="p">(</span><span class="n">severe_vals</span><span class="p">,</span> <span class="n">mild_vals</span><span class="p">)</span>
 
@@ -3436,7 +3438,7 @@ Analyzing 12 COVID-relevant genes
         <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
         <span class="n">sns</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span>
             <span class="n">pivot</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">"RdBu_r"</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">annot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">".2f"</span><span class="p">,</span>
-            <span class="n">cbar_kws</span><span class="o">=</span><span class="p">{</span><span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Hedge's g"</span><span class="p">}</span>
+            <span class="n">cbar_kws</span><span class="o">=</span><span class="p">{</span><span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Hedges' g"</span><span class="p">}</span>
         <span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">"Effect Sizes: Severe vs Mild by Timepoint"</span><span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
@@ -3455,7 +3457,7 @@ Analyzing 12 COVID-relevant genes
             <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"black"</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">(</span><span class="n">y_pos</span><span class="p">)</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">set_yticklabels</span><span class="p">(</span><span class="n">visit_data</span><span class="p">[</span><span class="s2">"feature"</span><span class="p">])</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Hedge's g (95% CI)"</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Hedges' g (95% CI)"</span><span class="p">)</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">"Effect Sizes at DFO 8-14 (Severe vs Mild)"</span><span class="p">)</span>
 
             <span class="c1"># Reference lines</span>
@@ -3958,7 +3960,7 @@ Effect sizes (Severe vs Mild):
 <p>Power analysis helps understand what effect sizes this study could detect and plan future longitudinal studies.</p>
 <p><strong>Caveat</strong>: This dataset has <strong>no longitudinally paired participants</strong> for the primary Mild vs Severe comparison. The power curves below use the average group size as a rough guide for what a <em>future</em> paired longitudinal study of this scale could detect — they do <strong>not</strong> represent the power of the current cross-sectional design. Cross-sectional comparisons generally have lower power than paired longitudinal designs.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
@@ -4183,7 +4185,7 @@ KEY INSIGHTS
 <h3>Single-Gene Cross-Sectional Check (Participant-Level)<a class="headerlink" href="#Single-Gene-Cross-Sectional-Check-(Participant-Level)" title="Link to this heading">#</a></h3>
 <p>Here, we use a focused single-gene comparison to validate cross-sectional differences at the participant level. This avoids pseudoreplication and provides an interpretable effect for one gene in a specific lineage.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Single-Gene Cross-Sectional Check (Participant-Level) ==="</span><span class="p">)</span>
@@ -4432,7 +4434,7 @@ KEY INSIGHTS
 <div><p><strong>Note:</strong> This dataset has no longitudinally paired participants, so the code falls back to a <strong>repeated-cross-sectional (unpaired) OLS DiD</strong>. This is a weaker design than a true paired DiD — treat any discoveries as <strong>exploratory hypothesis-generating</strong> only, not confirmatory.</p>
 </div></blockquote>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">signature_cols</span><span class="p">:</span>
@@ -4655,7 +4657,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_99779/2438914800.py:67: UserWarning: FDR correction is applied within each &#39;module&#39; group (column FDR_DiD). Per-group FDR does not control the overall false discovery rate across all tests. Consult FDR_DiD_global (when fdr_global=True) for a globally corrected q-value.
+/tmp/ipykernel_3304278/2438914800.py:67: UserWarning: FDR correction is applied within each &#39;module&#39; group (column FDR_DiD). Per-group FDR does not control the overall false discovery rate across all tests. Consult FDR_DiD_global (when fdr_global=True) for a globally corrected q-value.
   return st.module_score_did_by_pool(
 </pre></div></div>
 </div>
@@ -4991,7 +4993,7 @@ Lineages with paired participants: [&#39;B_cells&#39;, &#39;CD4_T&#39;, &#39;CD8
 <h3>Parallel Trends Visualization (Early Visits)<a class="headerlink" href="#Parallel-Trends-Visualization-(Early-Visits)" title="Link to this heading">#</a></h3>
 <p>Here we visualize pre-treatment trends across early visits to assess whether arms move in parallel before divergence. This is a diagnostic, not a formal test.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">signature_cols</span><span class="p">:</span>

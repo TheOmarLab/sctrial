@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.plotting &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial.plotting &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../_static/documentation_options.js?v=2a705162"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,6 +49,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/plotting';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/_modules/sctrial/plotting.html" />
     <link rel="icon" href="../../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -122,8 +123,8 @@
       
     
     
-    <img src="../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -529,6 +530,7 @@
     <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">color_palette</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Axes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Plot mean expression (interaction plot) by arm and visit.</span>
 
@@ -551,6 +553,10 @@
 <span class="sd">        Optional colour mapping for arms.</span>
 <span class="sd">    ax</span>
 <span class="sd">        Optional matplotlib axes.</span>
+<span class="sd">    seed</span>
+<span class="sd">        Seed of the bootstrap that gives the error bars (95% confidence intervals of</span>
+<span class="sd">        the mean over participants, drawn by seaborn). The default gives the same</span>
+<span class="sd">        bars on every call; ``None`` draws new ones each time.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -601,6 +607,7 @@
         <span class="n">palette</span><span class="o">=</span><span class="n">color_palette</span><span class="p">,</span>
         <span class="n">dodge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">capsize</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
         <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Trial interaction: </span><span class="si">{</span><span class="n">feature</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
@@ -618,6 +625,7 @@
     <span class="o">*</span><span class="p">,</span>
     <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Axes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Plot pre-treatment trends by arm to visually assess parallel trends.</span>
 
@@ -638,6 +646,10 @@
 <span class="sd">        Layer for gene expression (``None`` uses ``adata.X``).</span>
 <span class="sd">    ax</span>
 <span class="sd">        Optional matplotlib axes; a new figure is created if ``None``.</span>
+<span class="sd">    seed</span>
+<span class="sd">        Seed of the bootstrap that gives the error bars (95% confidence intervals of</span>
+<span class="sd">        the mean over participants, drawn by seaborn). The default gives the same</span>
+<span class="sd">        bars on every call; ``None`` draws new ones each time.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -682,6 +694,7 @@
         <span class="n">hue</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">,</span>
         <span class="n">dodge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">capsize</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
         <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Parallel trends (pre-treatment): </span><span class="si">{</span><span class="n">feature</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
@@ -1207,6 +1220,7 @@
     <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span>
     <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">ax</span><span class="p">:</span> <span class="n">Axes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axes</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Plot cell type abundance (proportion) by arm and visit.</span>
 
@@ -1222,6 +1236,10 @@
 <span class="sd">        Tuple of (baseline, followup) visit labels.</span>
 <span class="sd">    ax</span>
 <span class="sd">        Optional matplotlib axes.</span>
+<span class="sd">    seed</span>
+<span class="sd">        Seed of the bootstrap that gives the error bars (95% confidence intervals of</span>
+<span class="sd">        the mean over participants, drawn by seaborn). The default gives the same</span>
+<span class="sd">        bars on every call; ``None`` draws new ones each time.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -1284,6 +1302,7 @@
         <span class="n">hue</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">,</span>  <span class="c1"># None → no hue coloring</span>
         <span class="n">dodge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">capsize</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
         <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Abundance: </span><span class="si">{</span><span class="n">celltype</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
@@ -1592,6 +1611,15 @@
 <span class="sd">        Only include pathways that are significant (FDR &lt; thresh) in at least one pool.</span>
 <span class="sd">    top_n</span>
 <span class="sd">        Number of top pathways to show (ranked by minimum FDR across pools).</span>
+<span class="sd">    pool_col</span>
+<span class="sd">        Column that identifies the pools (cell types). A table without it is drawn</span>
+<span class="sd">        as one pool named "Global".</span>
+<span class="sd">    term_col</span>
+<span class="sd">        Column with the pathway names.</span>
+<span class="sd">    nes_col</span>
+<span class="sd">        Column with the NES values that fill the heatmap.</span>
+<span class="sd">    fdr_col</span>
+<span class="sd">        Column with the FDR values used to select and rank the pathways.</span>
 <span class="sd">    figsize</span>
 <span class="sd">        Figure size.</span>
 <span class="sd">    title</span>

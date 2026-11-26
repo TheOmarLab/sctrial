@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.benchmark.subsample &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial.benchmark.subsample &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../../_static/documentation_options.js?v=2a705162"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,6 +49,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/benchmark/subsample';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/_modules/sctrial/benchmark/subsample.html" />
     <link rel="icon" href="../../../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -122,8 +123,8 @@
       
     
     
-    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -372,6 +373,9 @@
 <span class="sd">For each dataset, subsample participants at different fractions,</span>
 <span class="sd">run all methods, and measure ranking stability via Spearman ρ</span>
 <span class="sd">and top-k Jaccard overlap.</span>
+
+<span class="sd">The cohort is mapped once to the vocabulary of the runners</span>
+<span class="sd">(:func:`sctrial.benchmark.contracts.canonical_cohort`) before the resamples.</span>
 <span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
@@ -399,6 +403,12 @@
     <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"visit"</span><span class="p">,</span>
     <span class="n">output_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="n">arm_treated</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">arm_control</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">design_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"two_arm"</span><span class="p">,</span>
+    <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">"counts"</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Run subsampling reproducibility on a single dataset.</span>
 
@@ -414,10 +424,20 @@
 <span class="sd">        Participant fractions to subsample. Default: [0.5, 0.7, 0.9].</span>
 <span class="sd">    n_resamples : int</span>
 <span class="sd">        Number of random subsamples per fraction.</span>
+<span class="sd">    visits : tuple[str, str]</span>
+<span class="sd">        (baseline, follow-up) labels of ``visit_col`` in this cohort.</span>
+<span class="sd">    arm_treated, arm_control : str</span>
+<span class="sd">        The two labels of ``arm_col`` in this cohort. Required for a two-arm</span>
+<span class="sd">        design; rows of other arms are left out with one warning.</span>
+<span class="sd">    design_type : {"two_arm", "single_arm"}</span>
+<span class="sd">    counts_layer : str or None</span>
+<span class="sd">        Layer that holds raw counts (``None`` for ``adata.X``). The count models</span>
+<span class="sd">        refuse a matrix with non-integer values.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    DataFrame with: fraction, resample, method, spearman_rho, jaccard_top20</span>
+<span class="sd">    DataFrame with: fraction, resample, method, spearman_rho, jaccard_top20,</span>
+<span class="sd">    n_participants</span>
 <span class="sd">    """</span>
     <span class="k">if</span> <span class="n">methods</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">.orchestrator</span><span class="w"> </span><span class="kn">import</span> <span class="n">CORE_METHODS</span>
@@ -425,32 +445,40 @@
         <span class="n">methods</span> <span class="o">=</span> <span class="n">CORE_METHODS</span>
     <span class="k">if</span> <span class="n">fractions</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">fractions</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">design_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"two_arm"</span><span class="p">,</span> <span class="s2">"single_arm"</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"design_type must be 'two_arm' or 'single_arm', got </span><span class="si">{</span><span class="n">design_type</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">spearmanr</span>
 
-    <span class="kn">from</span><span class="w"> </span><span class="nn">.contracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">prepare_inputs_from_adata</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.contracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">canonical_cohort</span><span class="p">,</span> <span class="n">prepare_inputs_from_adata</span><span class="p">,</span> <span class="n">require_raw_counts</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_topk_jaccard</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.orchestrator</span><span class="w"> </span><span class="kn">import</span> <span class="n">_dispatch_method</span>
 
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">canonical_cohort</span><span class="p">(</span>
+        <span class="n">adata</span><span class="p">,</span>
+        <span class="n">participant_col</span><span class="o">=</span><span class="n">participant_col</span><span class="p">,</span>
+        <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span><span class="p">,</span>
+        <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">,</span>
+        <span class="n">arm_col</span><span class="o">=</span><span class="n">arm_col</span> <span class="k">if</span> <span class="n">design_type</span> <span class="o">==</span> <span class="s2">"two_arm"</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">arm_treated</span><span class="o">=</span><span class="n">arm_treated</span><span class="p">,</span>
+        <span class="n">arm_control</span><span class="o">=</span><span class="n">arm_control</span><span class="p">,</span>
+        <span class="n">counts_layer</span><span class="o">=</span><span class="n">counts_layer</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">require_raw_counts</span><span class="p">(</span><span class="n">methods</span><span class="p">,</span> <span class="n">adata</span><span class="p">)</span>
+
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
-    <span class="n">participants</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+    <span class="n">participants</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"participant"</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
     <span class="n">n_total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">participants</span><span class="p">)</span>
 
     <span class="c1"># First: run full-data reference for each method</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Running full-data reference (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">methods</span><span class="p">)</span><span class="si">}</span><span class="s2"> methods, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">gene_cols</span><span class="p">)</span><span class="si">}</span><span class="s2"> genes)..."</span><span class="p">)</span>
     <span class="c1"># Same contracts as the simulated path; see the note in permutation.py.</span>
-    <span class="n">inputs_full</span> <span class="o">=</span> <span class="n">prepare_inputs_from_adata</span><span class="p">(</span>
-        <span class="n">adata</span><span class="p">,</span>
-        <span class="n">gene_cols</span><span class="p">,</span>
-        <span class="n">participant_col</span><span class="o">=</span><span class="n">participant_col</span><span class="p">,</span>
-        <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span><span class="p">,</span>
-        <span class="n">arm_col</span><span class="o">=</span><span class="n">arm_col</span><span class="p">,</span>
-    <span class="p">)</span>
+    <span class="n">inputs_full</span> <span class="o">=</span> <span class="n">prepare_inputs_from_adata</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_cols</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
     <span class="n">full_pvals</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="n">methods</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">res</span> <span class="o">=</span> <span class="n">_dispatch_method</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">inputs_full</span><span class="p">)</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">_dispatch_method</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">inputs_full</span><span class="p">,</span> <span class="n">design_type</span><span class="o">=</span><span class="n">design_type</span><span class="p">)</span>
             <span class="n">full_pvals</span><span class="p">[</span><span class="n">method</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">({</span><span class="n">g</span><span class="p">:</span> <span class="n">res</span><span class="p">[</span><span class="n">g</span><span class="p">][</span><span class="s2">"pvalue"</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">gene_cols</span><span class="p">})</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"Full-data </span><span class="si">%s</span><span class="s2"> failed: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
@@ -468,20 +496,14 @@
 
         <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_resamples</span><span class="p">):</span>
             <span class="n">sub_pids</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">participants</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n_sub</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-            <span class="n">mask</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">sub_pids</span><span class="p">)</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"participant"</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">sub_pids</span><span class="p">)</span>
             <span class="n">adata_sub</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-            <span class="n">inputs_sub</span> <span class="o">=</span> <span class="n">prepare_inputs_from_adata</span><span class="p">(</span>
-                <span class="n">adata_sub</span><span class="p">,</span>
-                <span class="n">gene_cols</span><span class="p">,</span>
-                <span class="n">participant_col</span><span class="o">=</span><span class="n">participant_col</span><span class="p">,</span>
-                <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span><span class="p">,</span>
-                <span class="n">arm_col</span><span class="o">=</span><span class="n">arm_col</span><span class="p">,</span>
-            <span class="p">)</span>
+            <span class="n">inputs_sub</span> <span class="o">=</span> <span class="n">prepare_inputs_from_adata</span><span class="p">(</span><span class="n">adata_sub</span><span class="p">,</span> <span class="n">gene_cols</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
             <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="n">methods</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">res</span> <span class="o">=</span> <span class="n">_dispatch_method</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">inputs_sub</span><span class="p">)</span>
+                    <span class="n">res</span> <span class="o">=</span> <span class="n">_dispatch_method</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">inputs_sub</span><span class="p">,</span> <span class="n">design_type</span><span class="o">=</span><span class="n">design_type</span><span class="p">)</span>
                     <span class="n">sub_pvals</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">({</span><span class="n">g</span><span class="p">:</span> <span class="n">res</span><span class="p">[</span><span class="n">g</span><span class="p">][</span><span class="s2">"pvalue"</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">gene_cols</span><span class="p">})</span>
 
                     <span class="c1"># Spearman ρ</span>

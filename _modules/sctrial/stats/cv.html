@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.stats.cv &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial.stats.cv &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../../_static/documentation_options.js?v=2a705162"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,6 +49,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/stats/cv';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/_modules/sctrial/stats/cv.html" />
     <link rel="icon" href="../../../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -122,8 +123,8 @@
       
     
     
-    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -394,6 +395,7 @@
 <span class="sd">    3. Compare to full-sample beta_DiD</span>
 
 <span class="sd">Metrics:</span>
+
 <span class="sd">- Influence: ``|beta_DiD - beta_DiD^(-i)| / SE(beta_DiD)``</span>
 <span class="sd">- Cook's D analog for DiD</span>
 
@@ -407,6 +409,7 @@
 
 <span class="sd">Interpretation Guidelines</span>
 <span class="sd">-------------------------</span>
+
 <span class="sd">- High LOO variance: Effect driven by few participants</span>
 <span class="sd">- Consistently signed CV estimates: Robust effect</span>
 <span class="sd">- Estimate changes sign across folds: Unreliable effect</span>
@@ -421,7 +424,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">..adata_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">subset_primary</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..adata_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">subset_arms</span><span class="p">,</span> <span class="n">subset_primary</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="n">AggregateMode</span><span class="p">,</span> <span class="n">did_table</span>
 
@@ -474,11 +477,14 @@
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame</span>
 <span class="sd">        Long-format results with columns:</span>
+
 <span class="sd">        - feature: Feature name</span>
 <span class="sd">        - excluded: ID of excluded participant</span>
 <span class="sd">        - beta_DiD: DiD estimate without this participant</span>
-<span class="sd">        - se_DiD: Standard error</span>
-<span class="sd">        - influence: ``|beta_full - beta_loo| / SE``</span>
+<span class="sd">        - se_DiD: Standard error of the estimate without this participant</span>
+<span class="sd">        - beta_full: DiD estimate on all participants</span>
+<span class="sd">        - influence: ``|beta_full - beta_loo| / se_full``, with the standard error of the</span>
+<span class="sd">          fit on all participants</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -487,9 +493,15 @@
 <span class="sd">    &gt;&gt;&gt; influential = loo[loo["influence"] &gt; 1.0]</span>
 <span class="sd">    &gt;&gt;&gt; print(f"Influential participants: {influential['excluded'].unique()}")</span>
 <span class="sd">    """</span>
-    <span class="c1"># Get paired participants</span>
-    <span class="n">ad</span> <span class="o">=</span> <span class="n">subset_primary</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">)</span>
-    <span class="n">participants</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="c1"># The two visits and the two named arms. Restricting here reports excluded rows</span>
+    <span class="c1"># once. A design that does not match the labels of the data raises here; raised by</span>
+    <span class="c1"># did_table inside the loop it would be caught and recorded as a failed fit.</span>
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">subset_arms</span><span class="p">(</span>
+        <span class="n">subset_primary</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">),</span>
+        <span class="n">design</span><span class="p">,</span>
+        <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">participants</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
 
     <span class="c1"># Full-sample estimates for comparison</span>
     <span class="n">full_res</span> <span class="o">=</span> <span class="n">did_table</span><span class="p">(</span>
@@ -613,6 +625,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame</span>
 <span class="sd">        Results with one row per feature:</span>
+
 <span class="sd">        - feature: Feature name</span>
 <span class="sd">        - beta_full: Full-sample estimate</span>
 <span class="sd">        - beta_cv_mean: Mean CV estimate</span>
@@ -620,6 +633,8 @@
 <span class="sd">        - beta_cv_lower, beta_cv_upper: 2.5-97.5 percentiles</span>
 <span class="sd">        - cv_stability: beta_cv_mean / beta_cv_sd (higher = more stable)</span>
 <span class="sd">        - sign_consistency: Proportion of CV estimates with same sign as full</span>
+<span class="sd">        - n_cv_samples: Number of CV estimates that are not missing; the summaries are</span>
+<span class="sd">          missing when there are fewer than three</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -630,9 +645,16 @@
 <span class="sd">    """</span>
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
 
-    <span class="c1"># Get paired participants</span>
-    <span class="n">ad</span> <span class="o">=</span> <span class="n">subset_primary</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">)</span>
-    <span class="n">participants</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="c1"># The two visits and the two named arms. Restricting here reports excluded rows once</span>
+    <span class="c1"># and keeps other arms out of the fold assignment. A design that does not match the</span>
+    <span class="c1"># labels of the data raises here; raised by did_table inside the loop it would be</span>
+    <span class="c1"># caught and counted as a failed fold.</span>
+    <span class="n">adata</span> <span class="o">=</span> <span class="n">subset_arms</span><span class="p">(</span>
+        <span class="n">subset_primary</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="n">exclude_crossovers</span><span class="p">),</span>
+        <span class="n">design</span><span class="p">,</span>
+        <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">participants</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
     <span class="n">n_participants</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">participants</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">n_participants</span> <span class="o">&lt;</span> <span class="n">k</span><span class="p">:</span>
@@ -650,7 +672,7 @@
 
     <span class="c1"># Build a mapping from participant to arm for stratified assignment</span>
     <span class="n">_arm_map</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">ad</span><span class="o">.</span><span class="n">obs</span><span class="p">[[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]]</span>
+        <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]]</span>
         <span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">])</span>
         <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">)[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
     <span class="p">)</span>
@@ -771,18 +793,22 @@
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame</span>
 <span class="sd">        Per-participant influence with columns:</span>
+
 <span class="sd">        - feature: Feature name</span>
 <span class="sd">        - excluded: ID of excluded participant</span>
 <span class="sd">        - influence: Influence score for this participant</span>
 <span class="sd">        - beta_DiD: DiD estimate without this participant</span>
-<span class="sd">        - is_influential: Whether influence &gt; threshold</span>
+<span class="sd">        - beta_full: DiD estimate on all participants</span>
+<span class="sd">        - is_influential: Whether influence &gt; threshold. Missing (``pd.NA``) when the</span>
+<span class="sd">          influence is missing: the fit without this participant or the fit on everyone</span>
+<span class="sd">          gave no estimate, or the fit on everyone has no standard error.</span>
 <span class="sd">    """</span>
     <span class="k">if</span> <span class="n">loo_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
 
-    <span class="c1"># Return per-participant results with influence flag</span>
     <span class="n">result</span> <span class="o">=</span> <span class="n">loo_results</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-    <span class="n">result</span><span class="p">[</span><span class="s2">"is_influential"</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"influence"</span><span class="p">]</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">threshold</span>
+    <span class="n">influence</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"influence"</span><span class="p">]</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">"is_influential"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">influence</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">"boolean"</span><span class="p">)</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">influence</span><span class="o">.</span><span class="n">isna</span><span class="p">())</span>
     <span class="k">return</span> <span class="n">result</span><span class="p">[[</span><span class="s2">"feature"</span><span class="p">,</span> <span class="s2">"excluded"</span><span class="p">,</span> <span class="s2">"influence"</span><span class="p">,</span> <span class="s2">"beta_DiD"</span><span class="p">,</span> <span class="s2">"beta_full"</span><span class="p">,</span> <span class="s2">"is_influential"</span><span class="p">]]</span></div>
 
 
@@ -800,17 +826,21 @@
 <span class="sd">    cv_results</span>
 <span class="sd">        Output from loo_cv_did or kfold_cv_did.</span>
 <span class="sd">    alpha</span>
-<span class="sd">        Significance level for classification.</span>
+<span class="sd">        Not used; kept so that existing calls keep working.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame</span>
 <span class="sd">        Summary per feature with:</span>
+
 <span class="sd">        - feature: Feature name</span>
-<span class="sd">        - mean_estimate: Full-sample estimate (or mean LOO estimate)</span>
-<span class="sd">        - mean_loo: Mean of LOO estimates</span>
-<span class="sd">        - std_loo: Standard deviation of LOO estimates</span>
-<span class="sd">        - cv: Coefficient of variation (std/mean)</span>
+<span class="sd">        - mean_estimate: Full-sample estimate</span>
+<span class="sd">        - mean_loo: Mean of the leave-one-out estimates (of the fold estimates for</span>
+<span class="sd">          k-fold input)</span>
+<span class="sd">        - std_loo: Standard deviation of those estimates</span>
+<span class="sd">        - cv: Coefficient of variation, ``|std_loo / mean_loo|``</span>
+<span class="sd">        - n_loo: Number of leave-one-out estimates that are not missing (leave-one-out</span>
+<span class="sd">          input only)</span>
 <span class="sd">    """</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">cv_results</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 

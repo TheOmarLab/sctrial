@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.utils &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial.utils &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../_static/documentation_options.js?v=2a705162"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,6 +49,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/utils';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/_modules/sctrial/utils.html" />
     <link rel="icon" href="../../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -122,8 +123,8 @@
       
     
     
-    <img src="../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -372,6 +373,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">NamedTuple</span>
 
@@ -390,6 +392,7 @@
     <span class="s2">"looks_like_counts"</span><span class="p">,</span>
     <span class="s2">"get_counts_matrix"</span><span class="p">,</span>
     <span class="s2">"wild_cluster_bootstrap_t"</span><span class="p">,</span>
+    <span class="s2">"warn_unbounded_bootstrap_intervals"</span><span class="p">,</span>
     <span class="s2">"permutation_pvalue"</span><span class="p">,</span>
     <span class="s2">"permutation_pvalue_paired"</span><span class="p">,</span>
     <span class="s2">"resolve_feature"</span><span class="p">,</span>
@@ -404,15 +407,16 @@
 <span class="sd">    Attributes</span>
 <span class="sd">    ----------</span>
 <span class="sd">    p_boot : float</span>
-<span class="sd">        Two-sided bootstrap p-value.</span>
+<span class="sd">        Two-sided p-value of the restricted wild cluster bootstrap-t test of a zero coefficient.</span>
 <span class="sd">    se_boot : float</span>
-<span class="sd">        Bootstrap standard error (SD of bootstrap coefficient distribution).</span>
+<span class="sd">        Bootstrap standard error (SD of the unrestricted bootstrap coefficient estimates).</span>
 <span class="sd">    ci_lo : float</span>
-<span class="sd">        Lower bound of the bootstrap-t confidence interval.</span>
+<span class="sd">        Lower bound of the confidence interval obtained by inverting the bootstrap test</span>
+<span class="sd">        (``-inf`` when the test cannot reject at the requested level).</span>
 <span class="sd">    ci_hi : float</span>
-<span class="sd">        Upper bound of the bootstrap-t confidence interval.</span>
+<span class="sd">        Upper bound of that interval (``inf`` when the test cannot reject).</span>
 <span class="sd">    boot_distribution : np.ndarray</span>
-<span class="sd">        Array of bootstrap coefficient estimates (valid draws only).</span>
+<span class="sd">        Unrestricted bootstrap coefficient estimates, centred on the point estimate.</span>
 <span class="sd">    """</span>
 
     <span class="n">p_boot</span><span class="p">:</span> <span class="nb">float</span>
@@ -547,6 +551,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    tuple[np.ndarray | None, str | None]</span>
 <span class="sd">        A tuple containing the counts matrix and its source label.</span>
+
 <span class="sd">        - The counts matrix is the raw counts matrix.</span>
 <span class="sd">        - The source label is the layer name where the counts matrix is stored.</span>
 <span class="sd">        - If no counts matrix is found, returns (None, None).</span>
@@ -565,6 +570,95 @@
 
 
 
+<div class="viewcode-block" id="warn_unbounded_bootstrap_intervals">
+<a class="viewcode-back" href="../../api/utilities.html#sctrial.utils.warn_unbounded_bootstrap_intervals">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">warn_unbounded_bootstrap_intervals</span><span class="p">(</span>
+    <span class="n">res</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">lo_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"ci_lo_boot"</span><span class="p">,</span> <span class="n">hi_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"ci_hi_boot"</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Warn once when a results table holds unbounded bootstrap intervals.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    res</span>
+<span class="sd">        Results table. Nothing happens when it lacks either column.</span>
+<span class="sd">    lo_col, hi_col</span>
+<span class="sd">        Columns with the lower and upper bounds of the bootstrap interval.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">lo_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">hi_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">unbounded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="n">lo_col</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span>
+        <span class="n">res</span><span class="p">[</span><span class="n">hi_col</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">unbounded</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">unbounded</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">res</span><span class="p">)</span><span class="si">}</span><span class="s2"> bootstrap confidence intervals are unbounded: "</span>
+            <span class="s2">"with this few participants the sign-flip bootstrap cannot reject at the 5</span><span class="si">% le</span><span class="s2">vel."</span><span class="p">,</span>
+            <span class="ne">UserWarning</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+
+<span class="n">_BOOT_COV_TYPES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"cluster"</span><span class="p">,</span> <span class="s2">"nonrobust"</span><span class="p">)</span>
+<span class="c1"># Hypothesised values further than this many standard errors from the estimate are not examined:</span>
+<span class="c1"># an interval that reaches that far is reported as unbounded.</span>
+<span class="n">_BOOT_CI_MAX_RADIUS_SE</span> <span class="o">=</span> <span class="mf">1e4</span>
+<span class="c1"># Two statistics that are equal in exact arithmetic can differ in the last bits once computed</span>
+<span class="c1"># along different paths. A bootstrap t statistic within this relative margin of the observed</span>
+<span class="c1"># one is a tie; the margin is far above rounding error and far below any difference between</span>
+<span class="c1"># two statistics that are not equal.</span>
+<span class="n">_TIE_RTOL</span> <span class="o">=</span> <span class="mf">1e-9</span>
+<span class="c1"># A bootstrap variance below this fraction of the largest variance among the draws is too small</span>
+<span class="c1"># for the closed form, which obtains it as a difference of two larger numbers. It is computed</span>
+<span class="c1"># again from the residuals of the draw, and is zero when those do not exceed the rounding error</span>
+<span class="c1"># of the outcome they are residuals of.</span>
+<span class="n">_SMALL_VARIANCE_RTOL</span> <span class="o">=</span> <span class="mf">1e-12</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_tie_tolerance</span><span class="p">(</span><span class="n">centred</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Bound on the rounding error of a difference of two means of ``centred`` values.</span>
+
+<span class="sd">    Summing n values of magnitude at most m in two different orders gives results that differ</span>
+<span class="sd">    by at most about n * eps * m. The values must be centred: the difference of two means does</span>
+<span class="sd">    not depend on the origin of the measurements, and neither may the bound.</span>
+<span class="sd">    """</span>
+    <span class="n">scale</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">centred</span><span class="p">),</span> <span class="n">initial</span><span class="o">=</span><span class="mf">0.0</span><span class="p">))</span>
+    <span class="k">return</span> <span class="mf">8.0</span> <span class="o">*</span> <span class="n">centred</span><span class="o">.</span><span class="n">size</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">eps</span><span class="p">)</span> <span class="o">*</span> <span class="n">scale</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_sum_by_cluster</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">order</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">starts</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Sum the rows of ``values`` within each cluster (rows of the result follow cluster order)."""</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduceat</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">order</span><span class="p">],</span> <span class="n">starts</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_real_roots_by_row</span><span class="p">(</span><span class="n">coefs</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Real roots of the polynomial in each row of ``coefs`` (highest degree first).</span>
+
+<span class="sd">    Returns one row per polynomial, padded with NaN where a root is not real or the row holds a</span>
+<span class="sd">    non-finite coefficient.</span>
+<span class="sd">    """</span>
+    <span class="n">n_rows</span><span class="p">,</span> <span class="n">degree</span> <span class="o">=</span> <span class="n">coefs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">coefs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">roots</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">n_rows</span><span class="p">,</span> <span class="n">degree</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="o">+</span> <span class="mf">0.0</span><span class="n">j</span><span class="p">)</span>
+    <span class="n">finite</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">coefs</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">over</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">):</span>
+        <span class="n">first_row</span> <span class="o">=</span> <span class="o">-</span><span class="n">coefs</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">/</span> <span class="n">coefs</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">regular</span> <span class="o">=</span> <span class="n">finite</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">first_row</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">companion</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">regular</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span> <span class="n">degree</span><span class="p">,</span> <span class="n">degree</span><span class="p">))</span>
+    <span class="n">companion</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">first_row</span><span class="p">[</span><span class="n">regular</span><span class="p">]</span>
+    <span class="n">companion</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">degree</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">degree</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">roots</span><span class="p">[</span><span class="n">regular</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigvals</span><span class="p">(</span><span class="n">companion</span><span class="p">)</span>
+    <span class="c1"># A vanishing leading coefficient lowers the degree; np.roots drops leading zeros.</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">finite</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">regular</span><span class="p">):</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="n">coefs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">found</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">roots</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+        <span class="n">roots</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:</span> <span class="n">found</span><span class="o">.</span><span class="n">size</span><span class="p">]</span> <span class="o">=</span> <span class="n">found</span>
+    <span class="c1"># A statistic that touches the observed one without crossing it gives a double root, which</span>
+    <span class="c1"># rounding turns into a conjugate pair with a small imaginary part.</span>
+    <span class="n">real</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">roots</span><span class="o">.</span><span class="n">imag</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mf">1e-6</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">roots</span><span class="o">.</span><span class="n">real</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">real</span><span class="p">,</span> <span class="n">roots</span><span class="o">.</span><span class="n">real</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+
+
 <div class="viewcode-block" id="wild_cluster_bootstrap_t">
 <a class="viewcode-back" href="../../api/utilities.html#sctrial.utils.wild_cluster_bootstrap_t">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">wild_cluster_bootstrap_t</span><span class="p">(</span>
@@ -577,43 +671,82 @@
     <span class="n">cov_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"cluster"</span><span class="p">,</span>
     <span class="n">ci_level</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BootstrapResult</span><span class="p">:</span>
-<span class="w">    </span><span class="sa">r</span><span class="sd">"""Wild cluster bootstrap (Rademacher) for one coefficient.</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""Restricted wild cluster bootstrap (Rademacher) for one coefficient.</span>
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
-<span class="sd">    Implements a **wild cluster bootstrap-t** using Rademacher weights at the</span>
-<span class="sd">    cluster level. This is recommended when the number of clusters is small</span>
-<span class="sd">    and standard cluster-robust inference may be unreliable.</span>
+<span class="sd">    Tests :math:`H_0: \beta_j = \beta_0` with the restricted wild cluster bootstrap-t</span>
+<span class="sd">    (WCR; Cameron, Gelbach and Miller 2008). For each hypothesised value the model is</span>
+<span class="sd">    **refitted under the null**: the tested regressor is removed, the outcome</span>
+<span class="sd">    :math:`y - \beta_0 x_j` is regressed on the remaining regressors, and the</span>
+<span class="sd">    restricted fitted values and restricted residuals define the bootstrap</span>
+<span class="sd">    data-generating process. Each draw multiplies the restricted residuals of every</span>
+<span class="sd">    cluster by one Rademacher weight (±1 with equal probability), the unrestricted</span>
+<span class="sd">    model is fitted to the bootstrap outcome, and the statistic</span>
+<span class="sd">    :math:`t^* = (\hat\beta^*_j - \beta_0) / \mathrm{se}^*` is formed with the same</span>
+<span class="sd">    variance estimator as the observed statistic. The model is refitted in closed</span>
+<span class="sd">    form, so no regression is re-run per draw.</span>
 
-<span class="sd">    Each bootstrap draw perturbs the **restricted** residuals (imposing</span>
-<span class="sd">    H0: beta_j = 0) with cluster-level Rademacher weights (±1 with equal</span>
-<span class="sd">    probability), re-fits the full model via OLS (or WLS when the</span>
-<span class="sd">    original fit used weights) with **per-iteration cluster-robust SE**,</span>
-<span class="sd">    and forms a bootstrap t-statistic.  The two-sided p-value is the</span>
-<span class="sd">    fraction of bootstrap \|t*\| values that exceed the observed \|t\|.</span>
+<span class="sd">    When the clusters admit no more than ``B`` distinct sign assignments</span>
+<span class="sd">    (:math:`2^G \le B`), all of them are enumerated instead of sampled, which makes</span>
+<span class="sd">    the test exact and independent of ``seed``; the two-sided p-value for</span>
+<span class="sd">    :math:`\beta_0 = 0` is then the fraction of assignments with</span>
+<span class="sd">    :math:`|t^*| \ge |t|`. Otherwise ``B`` assignments are drawn and the p-value is</span>
+<span class="sd">    :math:`(1 + \#\{|t^*| \ge |t|\}) / (1 + B)`. Neither depends on which level of a</span>
+<span class="sd">    binary regressor is coded as 1.</span>
 
-<span class="sd">    Bootstrap confidence intervals use the bootstrap-t (studentized) method:</span>
-<span class="sd">    quantiles of the bootstrap t-distribution are applied to the observed</span>
-<span class="sd">    point estimate and SE, yielding asymmetry-respecting CIs that are</span>
-<span class="sd">    approximately consistent with the bootstrap p-value (Hall, 1992).</span>
-<span class="sd">    Note: this is not exact test-inversion; a full inversion CI would</span>
-<span class="sd">    require re-running the bootstrap at every candidate null, which is</span>
-<span class="sd">    computationally prohibitive.  The bootstrap-t is the standard</span>
-<span class="sd">    practical approach recommended by Cameron et al. (2008).</span>
+<span class="sd">    A bootstrap statistic within ``1e-9`` of the observed one (relative to the observed</span>
+<span class="sd">    statistic when that exceeds one) counts as a tie, so assignments that reproduce</span>
+<span class="sd">    the observed statistic in exact arithmetic (for example a flipped cluster whose</span>
+<span class="sd">    outcome did not change) are counted whatever the rounding of the two computations.</span>
 
-<span class="sd">    Reference:</span>
-<span class="sd">    Cameron, A.C., Gelbach, J.B., &amp; Miller, D.L. (2008).</span>
-<span class="sd">    Bootstrap-based improvements for inference with clustered errors.</span>
-<span class="sd">    The Review of Economics and Statistics, 90(3), 414–427.</span>
+<span class="sd">    An assignment that the model fits exactly has no residual variance and an</span>
+<span class="sd">    unbounded statistic, and counts as at least as extreme as the observed one. Its</span>
+<span class="sd">    residuals are zero within the rounding error of the outcome (``8 * n * eps`` times</span>
+<span class="sd">    the largest absolute outcome, measured from the mean when the other regressors</span>
+<span class="sd">    hold a constant). An assignment with a small positive variance is not such a case:</span>
+<span class="sd">    its statistic is computed from its own residuals and compared as any other. When</span>
+<span class="sd">    the model fits the observed outcome exactly by the same criterion, there is no</span>
+<span class="sd">    statistic to compare with and every result is NaN.</span>
+
+<span class="sd">    The confidence interval is obtained by **inverting the bootstrap test** with the</span>
+<span class="sd">    same bootstrap weights for every :math:`\beta_0`. The bootstrap p-value is a step</span>
+<span class="sd">    function of :math:`\beta_0` that changes only where a draw's statistic equals the</span>
+<span class="sd">    observed one, which is at the real roots of one quartic per draw. The interval</span>
+<span class="sd">    runs from the smallest to the largest :math:`\beta_0` whose p-value is at least</span>
+<span class="sd">    ``1 - ci_level``, so it contains every value the test does not reject, and it</span>
+<span class="sd">    contains zero whenever the p-value is at least ``1 - ci_level``. In small or</span>
+<span class="sd">    unbalanced designs the values that are not rejected can form more than one</span>
+<span class="sd">    interval; the reported interval then spans them, includes the rejected values in</span>
+<span class="sd">    between, and can contain zero although the p-value is below ``1 - ci_level``. The</span>
+<span class="sd">    two assignments that keep or flip every cluster reproduce the observed statistic,</span>
+<span class="sd">    so under enumeration the p-value cannot fall below :math:`2^{1-G}`. With five or</span>
+<span class="sd">    fewer clusters (enumerated whenever ``B &gt;= 32``) that floor exceeds 0.05, the</span>
+<span class="sd">    test cannot reject at the 5% level, and the interval is unbounded (``-inf``,</span>
+<span class="sd">    ``inf``).</span>
+
+<span class="sd">    The bootstrap standard error is that of the **unrestricted** wild cluster</span>
+<span class="sd">    bootstrap (unrestricted fitted values plus sign-flipped unrestricted residuals),</span>
+<span class="sd">    because a standard error must not depend on the hypothesis being tested. With</span>
+<span class="sd">    Rademacher weights it has a closed form, the square root of the sum of squared</span>
+<span class="sd">    cluster scores, which is the cluster-robust standard error without a small-sample</span>
+<span class="sd">    correction; it is returned exactly, not estimated from the draws.</span>
+<span class="sd">    ``boot_distribution`` holds the unrestricted estimates for the same assignments.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Cameron, A.C., Gelbach, J.B., &amp; Miller, D.L. (2008). Bootstrap-based improvements</span>
+<span class="sd">    for inference with clustered errors. The Review of Economics and Statistics,</span>
+<span class="sd">    90(3), 414–427.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    fit</span>
-<span class="sd">        Statsmodels regression results (with cluster-robust SE).</span>
+<span class="sd">        Statsmodels OLS or WLS results for the unrestricted model.</span>
 <span class="sd">    X</span>
-<span class="sd">        Design matrix (fit.model.exog).</span>
+<span class="sd">        Design matrix (``fit.model.exog``).</span>
 <span class="sd">    clusters</span>
-<span class="sd">        Array of cluster IDs.</span>
+<span class="sd">        Array of cluster IDs, one per row of ``X``.</span>
 <span class="sd">    term_name</span>
 <span class="sd">        Name of the coefficient to test.</span>
 <span class="sd">    B</span>
@@ -621,12 +754,12 @@
 <span class="sd">    seed</span>
 <span class="sd">        Random seed.</span>
 <span class="sd">    cov_type</span>
-<span class="sd">        Covariance type for bootstrap refits. Default ``"cluster"`` uses</span>
-<span class="sd">        cluster-robust SE (Cameron et al. 2008). Use ``"nonrobust"`` when</span>
-<span class="sd">        participant fixed effects already absorb within-cluster correlation</span>
-<span class="sd">        (e.g. participant_visit aggregation with 2 obs per cluster).</span>
+<span class="sd">        Variance estimator used to studentize the observed and the bootstrap</span>
+<span class="sd">        statistics: ``"cluster"`` (cluster-robust, as statsmodels computes it) or</span>
+<span class="sd">        ``"nonrobust"`` (homoskedastic; used when participant fixed effects leave two</span>
+<span class="sd">        observations per cluster and the cluster-robust estimate is degenerate).</span>
 <span class="sd">    ci_level</span>
-<span class="sd">        Confidence level for the bootstrap-t CI (default 0.95 → 95 % CI).</span>
+<span class="sd">        Confidence level of the interval (default 0.95).</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -634,6 +767,11 @@
 <span class="sd">        Named tuple with ``p_boot``, ``se_boot``, ``ci_lo``, ``ci_hi``,</span>
 <span class="sd">        and ``boot_distribution``.</span>
 <span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">cov_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_BOOT_COV_TYPES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"cov_type must be one of </span><span class="si">{</span><span class="n">_BOOT_COV_TYPES</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">cov_type</span><span class="si">!r}</span><span class="s2">."</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">ci_level</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"ci_level must be strictly between 0 and 1."</span><span class="p">)</span>
+
     <span class="n">_nan_result</span> <span class="o">=</span> <span class="n">BootstrapResult</span><span class="p">(</span>
         <span class="n">p_boot</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
         <span class="n">se_boot</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
@@ -642,97 +780,276 @@
         <span class="n">boot_distribution</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span>
     <span class="p">)</span>
 
-    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
     <span class="n">coef_names</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">exog_names</span>
     <span class="k">if</span> <span class="n">term_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">coef_names</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">_nan_result</span>
-
     <span class="n">j</span> <span class="o">=</span> <span class="n">coef_names</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">term_name</span><span class="p">)</span>
-    <span class="n">beta_hat</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
-    <span class="n">se_hat</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">bse</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
 
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">se_hat</span><span class="p">)</span> <span class="ow">or</span> <span class="n">se_hat</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">_nan_result</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">endog</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">n_obs</span><span class="p">,</span> <span class="n">k_params</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">rounding</span> <span class="o">=</span> <span class="mf">8.0</span> <span class="o">*</span> <span class="n">n_obs</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">eps</span><span class="p">)</span>
 
-    <span class="n">t_obs</span> <span class="o">=</span> <span class="n">beta_hat</span> <span class="o">/</span> <span class="n">se_hat</span>
-    <span class="n">uniq_cl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">clusters</span><span class="p">)</span>
-    <span class="n">G</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">uniq_cl</span><span class="p">)</span>
+    <span class="c1"># When the other regressors hold a constant, the estimate and every residual are the same</span>
+    <span class="c1"># wherever the origin of the outcome lies. The outcome is then measured from its mean, which</span>
+    <span class="c1"># keeps rounding error at the scale of its spread: far from zero, two statistics that are</span>
+    <span class="c1"># equal in exact arithmetic would differ by more than the tie margin. An outcome whose mean</span>
+    <span class="c1"># is zero within rounding is left as it is, and one whose spread is zero within rounding</span>
+    <span class="c1"># does not vary.</span>
+    <span class="n">others</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">others</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="n">ones</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n_obs</span><span class="p">)</span>
+        <span class="n">beyond</span> <span class="o">=</span> <span class="n">ones</span> <span class="o">-</span> <span class="n">others</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">lstsq</span><span class="p">(</span><span class="n">others</span><span class="p">,</span> <span class="n">ones</span><span class="p">,</span> <span class="n">rcond</span><span class="o">=</span><span class="kc">None</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">beyond</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mf">1e-8</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">n_obs</span><span class="p">):</span>
+            <span class="n">mean</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+            <span class="n">centred</span> <span class="o">=</span> <span class="n">y</span> <span class="o">-</span> <span class="n">mean</span>
+            <span class="n">spread</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">centred</span><span class="p">),</span> <span class="n">initial</span><span class="o">=</span><span class="mf">0.0</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">spread</span> <span class="o">&lt;=</span> <span class="n">rounding</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">mean</span><span class="p">):</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_obs</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">abs</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">rounding</span> <span class="o">*</span> <span class="n">spread</span><span class="p">:</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">centred</span>
 
-    <span class="c1"># Detect WLS vs OLS</span>
+    <span class="c1"># WLS is OLS on the outcome and regressors scaled by the square root of the weights,</span>
+    <span class="c1"># and a cluster-level sign flip commutes with that scaling.</span>
     <span class="n">weights</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s2">"weights"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-    <span class="n">use_wls</span> <span class="o">=</span> <span class="n">weights</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">root_w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">broadcast_to</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">y</span> <span class="o">*</span> <span class="n">root_w</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">X</span> <span class="o">*</span> <span class="n">root_w</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>
 
-    <span class="kn">import</span><span class="w"> </span><span class="nn">statsmodels.api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sm</span>
+    <span class="n">uniq_cl</span><span class="p">,</span> <span class="n">cluster_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">clusters</span><span class="p">),</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">n_clusters</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">uniq_cl</span><span class="p">)</span>
+    <span class="n">df_resid</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">df_resid</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n_clusters</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">df_resid</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_nan_result</span>
+    <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">cluster_idx</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"stable"</span><span class="p">)</span>
+    <span class="n">starts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">cluster_idx</span><span class="p">[</span><span class="n">order</span><span class="p">])</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">])</span>
 
-    <span class="c1"># Restricted residuals: impose H0 (beta_j = 0) by subtracting only the</span>
-    <span class="c1"># non-null components of the fit.</span>
-    <span class="n">restricted_fitted</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">fittedvalues</span> <span class="o">-</span> <span class="n">beta_hat</span> <span class="o">*</span> <span class="n">X</span><span class="p">[:,</span> <span class="n">j</span><span class="p">]</span>
-    <span class="n">resid_r</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">endog</span> <span class="o">-</span> <span class="n">restricted_fitted</span>
+    <span class="n">pinv_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">pinv</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">pinv_x</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+    <span class="n">beta_hat</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">a</span> <span class="o">@</span> <span class="n">y</span><span class="p">)</span>
+    <span class="n">resid_u</span> <span class="o">=</span> <span class="n">y</span> <span class="o">-</span> <span class="n">X</span> <span class="o">@</span> <span class="p">(</span><span class="n">pinv_x</span> <span class="o">@</span> <span class="n">y</span><span class="p">)</span>
 
-    <span class="n">t_boot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-    <span class="n">beta_boot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_residual_of</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Residual of the rows of ``values`` on the regressors, projected twice."""</span>
+        <span class="n">once</span> <span class="o">=</span> <span class="n">values</span> <span class="o">-</span> <span class="p">(</span><span class="n">values</span> <span class="o">@</span> <span class="n">pinv_x</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="o">@</span> <span class="n">X</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">return</span> <span class="n">once</span> <span class="o">-</span> <span class="p">(</span><span class="n">once</span> <span class="o">@</span> <span class="n">pinv_x</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="o">@</span> <span class="n">X</span><span class="o">.</span><span class="n">T</span>
 
-    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">B</span><span class="p">):</span>
-        <span class="n">w_g</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="n">G</span><span class="p">)</span>
-        <span class="n">w_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">uniq_cl</span><span class="p">,</span> <span class="n">w_g</span><span class="p">))</span>
-        <span class="n">w_i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">w_map</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">clusters</span><span class="p">])</span>
+    <span class="n">x_j</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span> <span class="n">j</span><span class="p">]</span>
+    <span class="n">X_r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">pinv_r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">pinv</span><span class="p">(</span><span class="n">X_r</span><span class="p">)</span>
+    <span class="n">resid_r_y</span> <span class="o">=</span> <span class="n">y</span> <span class="o">-</span> <span class="n">X_r</span> <span class="o">@</span> <span class="p">(</span><span class="n">pinv_r</span> <span class="o">@</span> <span class="n">y</span><span class="p">)</span>
+    <span class="n">resid_r_x</span> <span class="o">=</span> <span class="n">x_j</span> <span class="o">-</span> <span class="n">X_r</span> <span class="o">@</span> <span class="p">(</span><span class="n">pinv_r</span> <span class="o">@</span> <span class="n">x_j</span><span class="p">)</span>
 
-        <span class="n">e_star</span> <span class="o">=</span> <span class="n">resid_r</span> <span class="o">*</span> <span class="n">w_i</span>
-        <span class="n">y_star</span> <span class="o">=</span> <span class="n">restricted_fitted</span> <span class="o">+</span> <span class="n">e_star</span>
+    <span class="n">enumerate_all</span> <span class="o">=</span> <span class="n">n_clusters</span> <span class="o">&lt;</span> <span class="mi">31</span> <span class="ow">and</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">n_clusters</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">B</span>
+    <span class="k">if</span> <span class="n">enumerate_all</span><span class="p">:</span>
+        <span class="n">codes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">n_clusters</span><span class="p">)</span>
+        <span class="n">flips</span> <span class="o">=</span> <span class="p">(</span><span class="n">codes</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_clusters</span><span class="p">))</span> <span class="o">&amp;</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">flips</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">n_clusters</span><span class="p">))</span>
+    <span class="n">signs</span> <span class="o">=</span> <span class="n">flips</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="o">*</span> <span class="mf">2.0</span> <span class="o">-</span> <span class="mf">1.0</span>
+    <span class="c1"># Keeping or flipping every cluster reproduces the observed statistic for every hypothesised</span>
+    <span class="c1"># value, so those draws are ties by construction and are counted without a comparison.</span>
+    <span class="n">is_tie</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">signs</span> <span class="o">==</span> <span class="n">signs</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">1</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">n_ties</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">is_tie</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
 
-        <span class="n">cov_kwds</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"groups"</span><span class="p">:</span> <span class="n">clusters</span><span class="p">}</span> <span class="k">if</span> <span class="n">cov_type</span> <span class="o">==</span> <span class="s2">"cluster"</span> <span class="k">else</span> <span class="kc">None</span>
-        <span class="k">if</span> <span class="n">use_wls</span><span class="p">:</span>
-            <span class="n">fit_b</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">WLS</span><span class="p">(</span><span class="n">y_star</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">cov_type</span><span class="o">=</span><span class="n">cov_type</span><span class="p">,</span> <span class="n">cov_kwds</span><span class="o">=</span><span class="n">cov_kwds</span><span class="p">)</span>
+    <span class="c1"># A draw's outcome is the restricted fit plus sign-flipped restricted residuals, and the</span>
+    <span class="c1"># restricted fit has no component along the tested regressor. The bootstrap coefficients,</span>
+    <span class="c1"># residual sum of squares and cluster scores are therefore linear or quadratic forms in the</span>
+    <span class="c1"># cluster signs, with per-cluster sums computed once.</span>
+    <span class="n">ax_by_cluster</span> <span class="o">=</span> <span class="n">_sum_by_cluster</span><span class="p">(</span><span class="n">X</span> <span class="o">*</span> <span class="n">a</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">],</span> <span class="n">order</span><span class="p">,</span> <span class="n">starts</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_draw_terms</span><span class="p">(</span><span class="n">resid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+        <span class="n">coef</span> <span class="o">=</span> <span class="n">signs</span> <span class="o">@</span> <span class="n">_sum_by_cluster</span><span class="p">(</span><span class="n">pinv_x</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="n">resid</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">],</span> <span class="n">order</span><span class="p">,</span> <span class="n">starts</span><span class="p">)</span>
+        <span class="n">xty</span> <span class="o">=</span> <span class="n">signs</span> <span class="o">@</span> <span class="n">_sum_by_cluster</span><span class="p">(</span><span class="n">X</span> <span class="o">*</span> <span class="n">resid</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">],</span> <span class="n">order</span><span class="p">,</span> <span class="n">starts</span><span class="p">)</span>
+        <span class="n">score</span> <span class="o">=</span> <span class="n">signs</span> <span class="o">*</span> <span class="n">_sum_by_cluster</span><span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">resid</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">starts</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">coef</span> <span class="o">@</span> <span class="n">ax_by_cluster</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">return</span> <span class="n">coef</span><span class="p">,</span> <span class="n">xty</span><span class="p">,</span> <span class="n">score</span>
+
+    <span class="n">coef_y</span><span class="p">,</span> <span class="n">xty_y</span><span class="p">,</span> <span class="n">score_y</span> <span class="o">=</span> <span class="n">_draw_terms</span><span class="p">(</span><span class="n">resid_r_y</span><span class="p">)</span>
+    <span class="n">coef_x</span><span class="p">,</span> <span class="n">xty_x</span><span class="p">,</span> <span class="n">score_x</span> <span class="o">=</span> <span class="n">_draw_terms</span><span class="p">(</span><span class="n">resid_r_x</span><span class="p">)</span>
+    <span class="n">num_y</span><span class="p">,</span> <span class="n">num_x</span> <span class="o">=</span> <span class="n">coef_y</span><span class="p">[:,</span> <span class="n">j</span><span class="p">],</span> <span class="n">coef_x</span><span class="p">[:,</span> <span class="n">j</span><span class="p">]</span>
+    <span class="n">score_u</span> <span class="o">=</span> <span class="n">_sum_by_cluster</span><span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">resid_u</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">starts</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">cov_type</span> <span class="o">==</span> <span class="s2">"nonrobust"</span><span class="p">:</span>
+        <span class="n">var_scale</span> <span class="o">=</span> <span class="nb">float</span><span class="p">((</span><span class="n">pinv_x</span> <span class="o">@</span> <span class="n">pinv_x</span><span class="o">.</span><span class="n">T</span><span class="p">)[</span><span class="n">j</span><span class="p">,</span> <span class="n">j</span><span class="p">])</span> <span class="o">/</span> <span class="n">df_resid</span>
+        <span class="n">q_yy</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">resid_r_y</span> <span class="o">@</span> <span class="n">resid_r_y</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">"bk,bk-&gt;b"</span><span class="p">,</span> <span class="n">coef_y</span><span class="p">,</span> <span class="n">xty_y</span><span class="p">)</span>
+        <span class="n">q_xy</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">resid_r_y</span> <span class="o">@</span> <span class="n">resid_r_x</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">"bk,bk-&gt;b"</span><span class="p">,</span> <span class="n">coef_y</span><span class="p">,</span> <span class="n">xty_x</span><span class="p">)</span>
+        <span class="n">q_xx</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">resid_r_x</span> <span class="o">@</span> <span class="n">resid_r_x</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">"bk,bk-&gt;b"</span><span class="p">,</span> <span class="n">coef_x</span><span class="p">,</span> <span class="n">xty_x</span><span class="p">)</span>
+        <span class="n">var_obs</span> <span class="o">=</span> <span class="n">var_scale</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">resid_u</span> <span class="o">@</span> <span class="n">resid_u</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">n_obs</span> <span class="o">&lt;=</span> <span class="n">k_params</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_nan_result</span>
+        <span class="n">var_scale</span> <span class="o">=</span> <span class="n">n_clusters</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_clusters</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">n_obs</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_obs</span> <span class="o">-</span> <span class="n">k_params</span><span class="p">)</span>
+        <span class="n">q_yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">"bg,bg-&gt;b"</span><span class="p">,</span> <span class="n">score_y</span><span class="p">,</span> <span class="n">score_y</span><span class="p">)</span>
+        <span class="n">q_xy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">"bg,bg-&gt;b"</span><span class="p">,</span> <span class="n">score_y</span><span class="p">,</span> <span class="n">score_x</span><span class="p">)</span>
+        <span class="n">q_xx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">"bg,bg-&gt;b"</span><span class="p">,</span> <span class="n">score_x</span><span class="p">,</span> <span class="n">score_x</span><span class="p">)</span>
+        <span class="n">var_obs</span> <span class="o">=</span> <span class="n">var_scale</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">score_u</span> <span class="o">@</span> <span class="n">score_u</span><span class="p">)</span>
+
+    <span class="c1"># A model that fits the outcome exactly leaves no variance to studentize with. Rounding</span>
+    <span class="c1"># leaves its residuals a hair away from zero, so they are compared with the rounding error</span>
+    <span class="c1"># of the outcome, as those of a draw are below. Projecting the residuals once more removes</span>
+    <span class="c1"># the error that a badly scaled design adds to them (it lies along the regressors).</span>
+    <span class="n">refined_u</span> <span class="o">=</span> <span class="n">_residual_of</span><span class="p">(</span><span class="n">resid_u</span><span class="p">)</span>
+    <span class="n">observed_parts</span> <span class="o">=</span> <span class="n">refined_u</span> <span class="k">if</span> <span class="n">cov_type</span> <span class="o">==</span> <span class="s2">"nonrobust"</span> <span class="k">else</span> <span class="n">_sum_by_cluster</span><span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">refined_u</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">starts</span><span class="p">)</span>
+    <span class="n">observed_floor</span> <span class="o">=</span> <span class="n">rounding</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="n">initial</span><span class="o">=</span><span class="mf">0.0</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">cov_type</span> <span class="o">==</span> <span class="s2">"cluster"</span><span class="p">:</span>
+        <span class="n">observed_floor</span> <span class="o">*=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">a</span><span class="p">)))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">var_obs</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">observed_parts</span><span class="p">),</span> <span class="n">initial</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">observed_floor</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_nan_result</span>
+    <span class="n">se_obs</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var_obs</span><span class="p">))</span>
+
+    <span class="n">free</span> <span class="o">=</span> <span class="o">~</span><span class="n">is_tie</span>
+    <span class="n">num_y_f</span><span class="p">,</span> <span class="n">num_x_f</span> <span class="o">=</span> <span class="n">num_y</span><span class="p">[</span><span class="n">free</span><span class="p">],</span> <span class="n">num_x</span><span class="p">[</span><span class="n">free</span><span class="p">]</span>
+    <span class="n">q_yy_f</span><span class="p">,</span> <span class="n">q_xy_f</span><span class="p">,</span> <span class="n">q_xx_f</span> <span class="o">=</span> <span class="n">q_yy</span><span class="p">[</span><span class="n">free</span><span class="p">],</span> <span class="n">q_xy</span><span class="p">[</span><span class="n">free</span><span class="p">],</span> <span class="n">q_xx</span><span class="p">[</span><span class="n">free</span><span class="p">]</span>
+    <span class="n">signs_f</span> <span class="o">=</span> <span class="n">signs</span><span class="p">[</span><span class="n">free</span><span class="p">]</span>
+    <span class="c1"># The restricted residuals, projected once more on the restricted regressors: only the</span>
+    <span class="c1"># draws recomputed below use them, so every other number is that of the closed form.</span>
+    <span class="n">refined_r_y</span> <span class="o">=</span> <span class="n">resid_r_y</span> <span class="o">-</span> <span class="n">X_r</span> <span class="o">@</span> <span class="p">(</span><span class="n">pinv_r</span> <span class="o">@</span> <span class="n">resid_r_y</span><span class="p">)</span>
+    <span class="n">refined_r_x</span> <span class="o">=</span> <span class="n">resid_r_x</span> <span class="o">-</span> <span class="n">X_r</span> <span class="o">@</span> <span class="p">(</span><span class="n">pinv_r</span> <span class="o">@</span> <span class="n">resid_r_x</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_variance_from_residuals</span><span class="p">(</span>
+        <span class="n">beta_null</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">draws</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Variance of the given draws from their own residuals, and whether it is zero."""</span>
+        <span class="n">restricted</span> <span class="o">=</span> <span class="n">refined_r_y</span> <span class="o">-</span> <span class="n">beta_null</span> <span class="o">*</span> <span class="n">refined_r_x</span>
+        <span class="n">resid</span> <span class="o">=</span> <span class="n">_residual_of</span><span class="p">(</span><span class="n">signs_f</span><span class="p">[</span><span class="n">draws</span><span class="p">][:,</span> <span class="n">cluster_idx</span><span class="p">]</span> <span class="o">*</span> <span class="n">restricted</span><span class="p">)</span>
+        <span class="n">floor</span> <span class="o">=</span> <span class="n">rounding</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">beta_null</span> <span class="o">*</span> <span class="n">x_j</span><span class="p">),</span> <span class="n">initial</span><span class="o">=</span><span class="mf">0.0</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">cov_type</span> <span class="o">==</span> <span class="s2">"nonrobust"</span><span class="p">:</span>
+            <span class="n">parts</span> <span class="o">=</span> <span class="n">resid</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">fit_b</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">OLS</span><span class="p">(</span><span class="n">y_star</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">cov_type</span><span class="o">=</span><span class="n">cov_type</span><span class="p">,</span> <span class="n">cov_kwds</span><span class="o">=</span><span class="n">cov_kwds</span><span class="p">)</span>
+            <span class="n">parts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">reduceat</span><span class="p">((</span><span class="n">resid</span> <span class="o">*</span> <span class="n">a</span><span class="p">)[:,</span> <span class="n">order</span><span class="p">],</span> <span class="n">starts</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">floor</span> <span class="o">*=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">a</span><span class="p">)))</span>
+        <span class="n">variance</span> <span class="o">=</span> <span class="n">var_scale</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">"bi,bi-&gt;b"</span><span class="p">,</span> <span class="n">parts</span><span class="p">,</span> <span class="n">parts</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">variance</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">parts</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">initial</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">floor</span>
 
-        <span class="n">beta_b</span> <span class="o">=</span> <span class="n">fit_b</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
-        <span class="n">se_b</span> <span class="o">=</span> <span class="n">fit_b</span><span class="o">.</span><span class="n">bse</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
-        <span class="n">beta_boot</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">beta_b</span>
-        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">se_b</span><span class="p">)</span> <span class="ow">and</span> <span class="n">se_b</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">t_boot</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">beta_b</span> <span class="o">/</span> <span class="n">se_b</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_p_values</span><span class="p">(</span><span class="n">beta_nulls</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">beta_nulls</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="n">var_star</span> <span class="o">=</span> <span class="n">var_scale</span> <span class="o">*</span> <span class="p">(</span><span class="n">q_yy_f</span> <span class="o">-</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">b</span> <span class="o">*</span> <span class="n">q_xy_f</span> <span class="o">+</span> <span class="n">b</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">q_xx_f</span><span class="p">)</span>
+        <span class="n">valid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">var_star</span><span class="p">)</span>
+        <span class="c1"># A draw that the model fits exactly has no residual variance and an unbounded</span>
+        <span class="c1"># statistic, so it is at least as extreme as any observed one. The closed form leaves</span>
+        <span class="c1"># such a variance a hair above or below zero, and gives a small positive variance no</span>
+        <span class="c1"># better: both are computed again from the residuals of the draw, where a draw without</span>
+        <span class="c1"># variance is told from one with little.</span>
+        <span class="n">largest</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">valid</span><span class="p">,</span> <span class="n">var_star</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">initial</span><span class="o">=</span><span class="n">var_obs</span><span class="p">)</span>
+        <span class="n">small</span> <span class="o">=</span> <span class="n">valid</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">var_star</span> <span class="o">&lt;=</span> <span class="n">_SMALL_VARIANCE_RTOL</span> <span class="o">*</span> <span class="n">largest</span><span class="p">)</span>
+        <span class="n">unbounded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">small</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">small</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)):</span>
+            <span class="n">draws</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">small</span><span class="p">[</span><span class="n">row</span><span class="p">])</span>
+            <span class="n">var_star</span><span class="p">[</span><span class="n">row</span><span class="p">,</span> <span class="n">draws</span><span class="p">],</span> <span class="n">unbounded</span><span class="p">[</span><span class="n">row</span><span class="p">,</span> <span class="n">draws</span><span class="p">]</span> <span class="o">=</span> <span class="n">_variance_from_residuals</span><span class="p">(</span>
+                <span class="nb">float</span><span class="p">(</span><span class="n">b</span><span class="p">[</span><span class="n">row</span><span class="p">,</span> <span class="mi">0</span><span class="p">]),</span> <span class="n">draws</span>
+            <span class="p">)</span>
+        <span class="n">regular</span> <span class="o">=</span> <span class="n">valid</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">unbounded</span>
+        <span class="n">t_star</span> <span class="o">=</span> <span class="p">(</span><span class="n">num_y_f</span> <span class="o">-</span> <span class="n">b</span> <span class="o">*</span> <span class="n">num_x_f</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">regular</span><span class="p">,</span> <span class="n">var_star</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+        <span class="n">t_obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">beta_hat</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span> <span class="o">/</span> <span class="n">se_obs</span>
+        <span class="n">extreme</span> <span class="o">=</span> <span class="n">unbounded</span> <span class="o">|</span> <span class="p">(</span>
+            <span class="n">regular</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">t_star</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">t_obs</span> <span class="o">-</span> <span class="n">_TIE_RTOL</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">t_obs</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="n">n_extreme</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">extreme</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">n_ties</span>
+        <span class="n">n_valid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">valid</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">n_ties</span>
+        <span class="k">if</span> <span class="n">enumerate_all</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">n_extreme</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">n_valid</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">t_boot</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="n">n_extreme</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_valid</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">n_valid</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
 
-    <span class="c1"># Drop failed draws (non-finite SE → NaN t) before computing p-value.</span>
-    <span class="c1"># Use the same mask for beta so that se_boot/distribution are based on</span>
-    <span class="c1"># exactly the draws that contributed to the p-value and CI.</span>
-    <span class="n">valid_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">t_boot</span><span class="p">)</span>
-    <span class="n">valid_t</span> <span class="o">=</span> <span class="n">t_boot</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]</span>
-    <span class="n">valid_beta</span> <span class="o">=</span> <span class="n">beta_boot</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_p_value</span><span class="p">(</span><span class="n">beta_null</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">_p_values</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">beta_null</span><span class="p">]))[</span><span class="mi">0</span><span class="p">])</span>
 
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_t</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">p_boot</span> <span class="o">=</span> <span class="n">_p_value</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p_boot</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">_nan_result</span>
 
-    <span class="c1"># +1 correction (same as permutation_pvalue) to avoid p=0 and ensure</span>
-    <span class="c1"># the observed statistic is included in the reference distribution.</span>
-    <span class="n">count</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">valid_t</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">t_obs</span><span class="p">))</span>
-    <span class="n">p_boot</span> <span class="o">=</span> <span class="nb">float</span><span class="p">((</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">valid_t</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="c1"># 1 - 0.95 is 0.05000000000000004 in floating point; a p-value of exactly 0.05 must not</span>
+    <span class="c1"># count as below the level.</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">ci_level</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
 
-    <span class="c1"># Bootstrap SE: standard deviation of bootstrap coefficient estimates</span>
-    <span class="n">se_boot</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">valid_beta</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_beta</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="c1"># With s = (beta_null - beta_hat) / se_obs, a draw's statistic equals the observed one where</span>
+    <span class="c1"># (a0 - s * b1)**2 = s**2 * (c0 + c1 * s + c2 * s**2). The p-value is constant between</span>
+    <span class="c1"># consecutive real roots, so one value per gap decides the whole gap.</span>
+    <span class="n">a0</span> <span class="o">=</span> <span class="n">num_y_f</span> <span class="o">-</span> <span class="n">beta_hat</span> <span class="o">*</span> <span class="n">num_x_f</span>
+    <span class="n">b1</span> <span class="o">=</span> <span class="n">se_obs</span> <span class="o">*</span> <span class="n">num_x_f</span>
+    <span class="n">c0</span> <span class="o">=</span> <span class="n">var_scale</span> <span class="o">*</span> <span class="p">(</span><span class="n">q_yy_f</span> <span class="o">-</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">beta_hat</span> <span class="o">*</span> <span class="n">q_xy_f</span> <span class="o">+</span> <span class="n">beta_hat</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">q_xx_f</span><span class="p">)</span>
+    <span class="n">c1</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">var_scale</span> <span class="o">*</span> <span class="n">se_obs</span> <span class="o">*</span> <span class="p">(</span><span class="n">beta_hat</span> <span class="o">*</span> <span class="n">q_xx_f</span> <span class="o">-</span> <span class="n">q_xy_f</span><span class="p">)</span>
+    <span class="n">c2</span> <span class="o">=</span> <span class="n">var_scale</span> <span class="o">*</span> <span class="n">se_obs</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">q_xx_f</span>
+    <span class="n">crossings</span> <span class="o">=</span> <span class="n">_real_roots_by_row</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">c2</span><span class="p">,</span> <span class="n">c1</span><span class="p">,</span> <span class="n">c0</span> <span class="o">-</span> <span class="n">b1</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">a0</span> <span class="o">*</span> <span class="n">b1</span><span class="p">,</span> <span class="o">-</span><span class="p">(</span><span class="n">a0</span><span class="o">**</span><span class="mi">2</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+    <span class="c1"># A draw whose variance is positive at every hypothesised value is no longer as extreme as</span>
+    <span class="c1"># the observed statistic beyond its outermost crossing, because the observed statistic grows</span>
+    <span class="c1"># without bound and the draw's does not. The other draws are allowed anything.</span>
+    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">invalid</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">):</span>
+        <span class="n">settled</span> <span class="o">=</span> <span class="p">(</span><span class="n">c2</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">c1</span><span class="o">**</span><span class="mi">2</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="mf">1e-9</span><span class="p">)</span> <span class="o">*</span> <span class="mf">4.0</span> <span class="o">*</span> <span class="n">c0</span> <span class="o">*</span> <span class="n">c2</span><span class="p">)</span>
+    <span class="n">n_settled</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">settled</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="n">monte_carlo</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">enumerate_all</span> <span class="k">else</span> <span class="mi">1</span>
+    <span class="c1"># Number of settled draws that must be extreme for a p-value of at least alpha.</span>
+    <span class="n">n_needed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span>
+            <span class="n">alpha</span> <span class="o">*</span> <span class="p">(</span><span class="n">n_settled</span> <span class="o">+</span> <span class="n">n_ties</span> <span class="o">+</span> <span class="n">monte_carlo</span><span class="p">)</span>
+            <span class="o">-</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">settled</span><span class="p">)</span> <span class="o">-</span> <span class="n">n_settled</span><span class="p">)</span>
+            <span class="o">-</span> <span class="n">n_ties</span>
+            <span class="o">-</span> <span class="n">monte_carlo</span>
+            <span class="o">-</span> <span class="mf">1e-9</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
 
-    <span class="c1"># Bootstrap-t confidence interval (Hall 1992):</span>
-    <span class="c1"># Use quantiles of the bootstrap t-distribution to construct CI around</span>
-    <span class="c1"># the point estimate. This is the "bootstrap-t" or "studentized bootstrap"</span>
-    <span class="c1"># CI, which respects the same pivotal quantity used for p-value computation.</span>
-    <span class="c1">#   CI = [beta_hat - t*(1-alpha/2) * se_hat, beta_hat - t*(alpha/2) * se_hat]</span>
-    <span class="c1"># Note the reversal of quantiles (standard bootstrap-t construction).</span>
-    <span class="n">alpha</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">ci_level</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_t</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="n">t_lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">valid_t</span><span class="p">,</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span>
-        <span class="n">t_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">valid_t</span><span class="p">,</span> <span class="mi">100</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)))</span>
-        <span class="n">ci_lo</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">beta_hat</span> <span class="o">-</span> <span class="n">t_hi</span> <span class="o">*</span> <span class="n">se_hat</span><span class="p">)</span>
-        <span class="n">ci_hi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">beta_hat</span> <span class="o">-</span> <span class="n">t_lo</span> <span class="o">*</span> <span class="n">se_hat</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">ci_lo</span><span class="p">,</span> <span class="n">ci_hi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_bound</span><span class="p">(</span><span class="n">direction</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="n">signed</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">*</span> <span class="n">crossings</span>
+        <span class="n">positive</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">signed</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">signed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">roots</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">signed</span><span class="p">[</span><span class="n">positive</span><span class="p">])[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">remote</span> <span class="o">=</span> <span class="n">roots</span><span class="p">[</span><span class="n">roots</span> <span class="o">&gt;</span> <span class="n">_BOOT_CI_MAX_RADIUS_SE</span><span class="p">]</span>
+        <span class="n">roots</span> <span class="o">=</span> <span class="n">roots</span><span class="p">[</span><span class="n">roots</span> <span class="o">&lt;=</span> <span class="n">_BOOT_CI_MAX_RADIUS_SE</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">roots</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">direction</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="c1"># From beyond the outermost root inward: each root, where a tie can raise the p-value</span>
+        <span class="c1"># at that single value, followed by the gap between it and the next root (or the estimate).</span>
+        <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">roots</span><span class="o">.</span><span class="n">size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">points</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">roots</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1.0</span>
+        <span class="k">if</span> <span class="n">remote</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+            <span class="n">points</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">roots</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">remote</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">points</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">roots</span>
+        <span class="n">points</span><span class="p">[</span><span class="mi">2</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">roots</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">roots</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="mf">0.0</span><span class="p">))</span>
+
+        <span class="c1"># Beyond the n_needed-th largest outermost crossing too few draws can be extreme, so</span>
+        <span class="c1"># every point out there is rejected without being evaluated. The margin covers the</span>
+        <span class="c1"># stretch in which a draw still counts as tied.</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">outermost</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">positive</span><span class="p">,</span> <span class="n">signed</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="n">settled</span><span class="p">]</span>
+        <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">n_needed</span> <span class="o">&lt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">outermost</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">limit</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="n">outermost</span><span class="p">,</span> <span class="o">-</span><span class="n">n_needed</span><span class="p">)[</span><span class="o">-</span><span class="n">n_needed</span><span class="p">]</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="o">-</span><span class="n">points</span><span class="p">,</span> <span class="o">-</span><span class="p">(</span><span class="n">limit</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="mf">1e-3</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-3</span><span class="p">)))</span>
+
+        <span class="n">inner</span><span class="p">,</span> <span class="n">outer</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="mi">32</span>
+        <span class="k">while</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="n">points</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+            <span class="n">chunk</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">start</span> <span class="p">:</span> <span class="n">start</span> <span class="o">+</span> <span class="n">size</span><span class="p">]</span>
+            <span class="n">accepted</span> <span class="o">=</span> <span class="n">_p_values</span><span class="p">(</span><span class="n">beta_hat</span> <span class="o">+</span> <span class="n">direction</span> <span class="o">*</span> <span class="n">se_obs</span> <span class="o">*</span> <span class="n">chunk</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">alpha</span>
+            <span class="k">if</span> <span class="n">accepted</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="n">first</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">accepted</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">first</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">direction</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+                <span class="n">inner</span><span class="p">,</span> <span class="n">outer</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="n">first</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="n">first</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+                <span class="k">break</span>
+            <span class="n">start</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="n">size</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">size</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span>
+        <span class="c1"># ``inner`` is accepted and ``outer`` rejected; close in on the last accepted value.</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">mid</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">inner</span> <span class="o">+</span> <span class="n">outer</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">inner</span> <span class="o">&lt;</span> <span class="n">mid</span> <span class="o">&lt;</span> <span class="n">outer</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="k">if</span> <span class="n">_p_value</span><span class="p">(</span><span class="n">beta_hat</span> <span class="o">+</span> <span class="n">direction</span> <span class="o">*</span> <span class="n">se_obs</span> <span class="o">*</span> <span class="n">mid</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">alpha</span><span class="p">:</span>
+                <span class="n">inner</span> <span class="o">=</span> <span class="n">mid</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">outer</span> <span class="o">=</span> <span class="n">mid</span>
+        <span class="k">return</span> <span class="n">beta_hat</span> <span class="o">+</span> <span class="n">direction</span> <span class="o">*</span> <span class="n">se_obs</span> <span class="o">*</span> <span class="n">inner</span>
+
+    <span class="n">ci_lo</span><span class="p">,</span> <span class="n">ci_hi</span> <span class="o">=</span> <span class="n">_bound</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">_bound</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">p_boot</span> <span class="o">&gt;=</span> <span class="n">alpha</span><span class="p">:</span>
+        <span class="n">ci_lo</span><span class="p">,</span> <span class="n">ci_hi</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">ci_lo</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">ci_hi</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">BootstrapResult</span><span class="p">(</span>
         <span class="n">p_boot</span><span class="o">=</span><span class="n">p_boot</span><span class="p">,</span>
-        <span class="n">se_boot</span><span class="o">=</span><span class="n">se_boot</span><span class="p">,</span>
-        <span class="n">ci_lo</span><span class="o">=</span><span class="n">ci_lo</span><span class="p">,</span>
-        <span class="n">ci_hi</span><span class="o">=</span><span class="n">ci_hi</span><span class="p">,</span>
-        <span class="n">boot_distribution</span><span class="o">=</span><span class="n">valid_beta</span><span class="p">,</span>
+        <span class="n">se_boot</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">score_u</span> <span class="o">@</span> <span class="n">score_u</span><span class="p">)),</span>
+        <span class="n">ci_lo</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">ci_lo</span><span class="p">),</span>
+        <span class="n">ci_hi</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">ci_hi</span><span class="p">),</span>
+        <span class="n">boot_distribution</span><span class="o">=</span><span class="n">beta_hat</span> <span class="o">+</span> <span class="n">signs</span> <span class="o">@</span> <span class="n">score_u</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 
@@ -766,15 +1083,20 @@
 <span class="sd">    H0: mean(group1) = mean(group2)</span>
 <span class="sd">    """</span>
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
-    <span class="n">obs_diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">group1</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">group2</span><span class="p">)</span>
-    <span class="n">combined</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">group1</span><span class="p">,</span> <span class="n">group2</span><span class="p">])</span>
     <span class="n">n1</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">group1</span><span class="p">)</span>
+    <span class="c1"># The difference of two means does not depend on the origin of the measurements, so the</span>
+    <span class="c1"># pooled values are centred: the contrasts keep their precision whatever the origin.</span>
+    <span class="n">combined</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">group1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">group2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)])</span>
+    <span class="n">combined</span> <span class="o">=</span> <span class="n">combined</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">combined</span><span class="p">)</span>
+    <span class="n">obs_diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">combined</span><span class="p">[:</span><span class="n">n1</span><span class="p">])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">combined</span><span class="p">[</span><span class="n">n1</span><span class="p">:])</span>
+    <span class="c1"># A permutation that reproduces the observed split sums the same values in another order.</span>
+    <span class="n">tol</span> <span class="o">=</span> <span class="n">_tie_tolerance</span><span class="p">(</span><span class="n">combined</span><span class="p">)</span>
 
     <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_perm</span><span class="p">):</span>
         <span class="n">perm</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">permutation</span><span class="p">(</span><span class="n">combined</span><span class="p">)</span>
         <span class="n">p_diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">perm</span><span class="p">[:</span><span class="n">n1</span><span class="p">])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">perm</span><span class="p">[</span><span class="n">n1</span><span class="p">:])</span>
-        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p_diff</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">obs_diff</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p_diff</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">obs_diff</span><span class="p">)</span> <span class="o">-</span> <span class="n">tol</span><span class="p">:</span>
             <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
 
     <span class="k">return</span> <span class="p">(</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_perm</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span></div>
@@ -811,14 +1133,16 @@
 <span class="sd">    H0: mean(y - x) = 0</span>
 <span class="sd">    """</span>
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
-    <span class="n">diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">obs_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span>
+    <span class="c1"># The paired differences are free of the origin already; a sign flip keeps their size.</span>
+    <span class="n">tol</span> <span class="o">=</span> <span class="n">_tie_tolerance</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span>
 
     <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_perm</span><span class="p">):</span>
         <span class="n">signs</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">diff</span><span class="p">))</span>
         <span class="n">p_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">diff</span> <span class="o">*</span> <span class="n">signs</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p_mean</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">obs_mean</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p_mean</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">obs_mean</span><span class="p">)</span> <span class="o">-</span> <span class="n">tol</span><span class="p">:</span>
             <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
 
     <span class="k">return</span> <span class="p">(</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_perm</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span></div>

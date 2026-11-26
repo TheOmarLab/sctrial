@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Troubleshooting Guide &#8212; sctrial 0.3.3 documentation</title>
+    <title>Troubleshooting Guide &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="_static/documentation_options.js?v=d198571b"></script>
+    <script src="_static/documentation_options.js?v=2a705162"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,6 +50,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'troubleshooting';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/troubleshooting.html" />
     <link rel="icon" href="_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -125,8 +126,8 @@
       
     
     
-    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -389,7 +390,7 @@
 </li>
 <li><p><a class="reference internal" href="#statistical-issues" id="id6">Statistical Issues</a></p>
 <ul>
-<li><p><a class="reference internal" href="#insufficient-participants-warning" id="id7">Insufficient Participants Warning</a></p></li>
+<li><p><a class="reference internal" href="#too-few-paired-participants" id="id7">Too Few Paired Participants</a></p></li>
 <li><p><a class="reference internal" href="#all-results-are-nan" id="id8">All Results are NaN</a></p></li>
 <li><p><a class="reference internal" href="#non-significant-results" id="id9">Non-Significant Results</a></p></li>
 </ul>
@@ -515,9 +516,10 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'sctr
 </section>
 <section id="statistical-issues">
 <h2><a class="toc-backref" href="#id6" role="doc-backlink">Statistical Issues</a><a class="headerlink" href="#statistical-issues" title="Link to this heading">#</a></h2>
-<section id="insufficient-participants-warning">
-<h3><a class="toc-backref" href="#id7" role="doc-backlink">Insufficient Participants Warning</a><a class="headerlink" href="#insufficient-participants-warning" title="Link to this heading">#</a></h3>
-<p><strong>Warning</strong>: <code class="docutils literal notranslate"><span class="pre">n_units</span> <span class="pre">&lt;</span> <span class="pre">4,</span> <span class="pre">returning</span> <span class="pre">NaN</span></code></p>
+<section id="too-few-paired-participants">
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">Too Few Paired Participants</a><a class="headerlink" href="#too-few-paired-participants" title="Link to this heading">#</a></h3>
+<p><strong>Symptom</strong>: the DiD columns (<code class="docutils literal notranslate"><span class="pre">beta_DiD</span></code>, <code class="docutils literal notranslate"><span class="pre">se_DiD</span></code>, <code class="docutils literal notranslate"><span class="pre">p_DiD</span></code>) are <code class="docutils literal notranslate"><span class="pre">NaN</span></code> and
+<code class="docutils literal notranslate"><span class="pre">n_units</span></code> is below 4. No warning is raised.</p>
 <p><strong>Cause</strong>: DiD requires at least 4 paired participants for statistical estimation.</p>
 <p><strong>Solution</strong>:</p>
 <ol class="arabic simple">
@@ -644,8 +646,8 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'sctr
 </div>
 <ol class="arabic simple" start="4">
 <li><p><strong>Use hardware with sufficient memory.</strong> Do not subsample or downsample cells —
-this distorts pseudobulk means, alters cell-type composition, and changes WLS
-weights. See the <a class="reference internal" href="performance.html"><span class="doc">Performance Guide</span></a> guide for recommended hardware by dataset size.</p></li>
+this distorts pseudobulk means, alters cell-type composition, and changes the
+per-group cell counts. See the <a class="reference internal" href="performance.html"><span class="doc">Performance Guide</span></a> guide for recommended hardware by dataset size.</p></li>
 </ol>
 </section>
 </section>
@@ -853,7 +855,7 @@ weights. See the <a class="reference internal" href="performance.html"><span cla
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#statistical-issues">Statistical Issues</a><ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#insufficient-participants-warning">Insufficient Participants Warning</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#too-few-paired-participants">Too Few Paired Participants</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#all-results-are-nan">All Results are NaN</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#non-significant-results">Non-Significant Results</a></li>
 </ul>

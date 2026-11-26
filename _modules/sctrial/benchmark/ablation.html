@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.benchmark.ablation &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial.benchmark.ablation &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../../_static/documentation_options.js?v=2a705162"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,6 +49,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/benchmark/ablation';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/_modules/sctrial/benchmark/ablation.html" />
     <link rel="icon" href="../../../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -122,8 +123,8 @@
       
     
     
-    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -395,7 +396,23 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">..stats._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits_exactly</span>
+
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_coefficient_row</span><span class="p">(</span><span class="n">fit</span><span class="p">,</span> <span class="n">j</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Estimate, p-value and interval of coefficient ``j`` of a least-squares fit.</span>
+
+<span class="sd">    A model that fits its outcome exactly (a gene without variation) has an estimate and</span>
+<span class="sd">    no test: its standard error would be made of rounding error.</span>
+<span class="sd">    """</span>
+    <span class="n">beta</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">)[</span><span class="n">j</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">fits_exactly</span><span class="p">(</span><span class="n">fit</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"beta"</span><span class="p">:</span> <span class="n">beta</span><span class="p">,</span> <span class="s2">"pvalue"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"ci_lo"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"ci_hi"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">}</span>
+    <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">conf_int</span><span class="p">())[</span><span class="n">j</span><span class="p">]</span>
+    <span class="n">pvalue</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="p">)[</span><span class="n">j</span><span class="p">])</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"beta"</span><span class="p">:</span> <span class="n">beta</span><span class="p">,</span> <span class="s2">"pvalue"</span><span class="p">:</span> <span class="n">pvalue</span><span class="p">,</span> <span class="s2">"ci_lo"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">lo</span><span class="p">),</span> <span class="s2">"ci_hi"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">hi</span><span class="p">)}</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_cell_level_ols</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">gene_cols</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">cell_lib_size</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
@@ -434,12 +451,7 @@
             <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
                 <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">)</span>
                 <span class="n">fit</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">OLS</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
-            <span class="n">out</span><span class="p">[</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">"beta"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
-                <span class="s2">"pvalue"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
-                <span class="s2">"ci_lo"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">conf_int</span><span class="p">()[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">]),</span>
-                <span class="s2">"ci_hi"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">conf_int</span><span class="p">()[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span>
-            <span class="p">}</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="n">_coefficient_row</span><span class="p">(</span><span class="n">fit</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="n">out</span><span class="p">[</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"beta"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"pvalue"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"ci_lo"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"ci_hi"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">}</span>
     <span class="k">return</span> <span class="n">out</span>
@@ -462,12 +474,7 @@
             <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
                 <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">)</span>
                 <span class="n">fit</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">OLS</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
-            <span class="n">out</span><span class="p">[</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">"beta"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
-                <span class="s2">"pvalue"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
-                <span class="s2">"ci_lo"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">conf_int</span><span class="p">()[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">]),</span>
-                <span class="s2">"ci_hi"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">conf_int</span><span class="p">()[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span>
-            <span class="p">}</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="n">_coefficient_row</span><span class="p">(</span><span class="n">fit</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="n">out</span><span class="p">[</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"beta"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"pvalue"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"ci_lo"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"ci_hi"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">}</span>
     <span class="k">return</span> <span class="n">out</span>
@@ -493,12 +500,7 @@
                 <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">)</span>
                 <span class="n">fit</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">OLS</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
             <span class="c1"># interaction is at index 3</span>
-            <span class="n">out</span><span class="p">[</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">"beta"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
-                <span class="s2">"pvalue"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
-                <span class="s2">"ci_lo"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">conf_int</span><span class="p">()[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">]),</span>
-                <span class="s2">"ci_hi"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">conf_int</span><span class="p">()[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span>
-            <span class="p">}</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="n">_coefficient_row</span><span class="p">(</span><span class="n">fit</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="n">out</span><span class="p">[</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"beta"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"pvalue"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"ci_lo"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"ci_hi"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">}</span>
     <span class="k">return</span> <span class="n">out</span>
@@ -518,7 +520,10 @@
     <span class="k">for</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">gene_cols</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">y</span> <span class="o">=</span> <span class="n">pb</span><span class="p">[</span><span class="n">gene</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
-            <span class="n">X_base</span> <span class="o">=</span> <span class="n">pb</span><span class="p">[[</span><span class="s2">"post"</span><span class="p">,</span> <span class="s2">"treat"</span><span class="p">,</span> <span class="s2">"interact"</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span>
+            <span class="c1"># The arm is constant within a participant, so the participant indicators hold</span>
+            <span class="c1"># it; as a separate column it would only enlarge the small-sample factor of the</span>
+            <span class="c1"># cluster-robust covariance, which counts columns.</span>
+            <span class="n">X_base</span> <span class="o">=</span> <span class="n">pb</span><span class="p">[[</span><span class="s2">"post"</span><span class="p">,</span> <span class="s2">"interact"</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span>
             <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)),</span> <span class="n">X_base</span><span class="p">,</span> <span class="n">dummies</span><span class="o">.</span><span class="n">values</span><span class="p">])</span>
             <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
                 <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">)</span>
@@ -526,12 +531,7 @@
                     <span class="n">cov_type</span><span class="o">=</span><span class="s2">"cluster"</span><span class="p">,</span>
                     <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">"groups"</span><span class="p">:</span> <span class="n">pb</span><span class="p">[</span><span class="s2">"participant"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">},</span>
                 <span class="p">)</span>
-            <span class="n">out</span><span class="p">[</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">"beta"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
-                <span class="s2">"pvalue"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
-                <span class="s2">"ci_lo"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">conf_int</span><span class="p">()[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">]),</span>
-                <span class="s2">"ci_hi"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">conf_int</span><span class="p">()[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span>
-            <span class="p">}</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="n">_coefficient_row</span><span class="p">(</span><span class="n">fit</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="n">out</span><span class="p">[</span><span class="n">gene</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"beta"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"pvalue"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"ci_lo"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"ci_hi"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">}</span>
     <span class="k">return</span> <span class="n">out</span>
@@ -568,8 +568,12 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    dict : variant_name → {gene → {"beta", "pvalue", "ci_lo", "ci_hi"}}</span>
+<span class="sd">    dict : variant_name -&gt; {gene -&gt; {"beta", "pvalue", "ci_lo", "ci_hi", "converged",</span>
+<span class="sd">        "failure_mode"}}. A gene without a finite p-value is recorded as not tested</span>
+<span class="sd">        (:func:`sctrial.benchmark.runners.finalize_results`).</span>
 <span class="sd">    """</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.runners</span><span class="w"> </span><span class="kn">import</span> <span class="n">finalize_results</span>
+
     <span class="k">if</span> <span class="n">variants</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">variants</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ABLATION_VARIANTS</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
 
@@ -590,7 +594,7 @@
         <span class="k">elif</span> <span class="n">fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">results</span><span class="p">[</span><span class="n">var_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="n">inputs</span><span class="p">[</span><span class="s2">"participant_log1p_cpm"</span><span class="p">],</span> <span class="n">gene_cols</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">results</span></div>
+    <span class="k">return</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">finalize_results</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">rows</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span></div>
 
 </pre></div>
 

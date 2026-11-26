@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.design &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial.design &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../_static/documentation_options.js?v=2a705162"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,6 +49,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/design';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/_modules/sctrial/design.html" />
     <link rel="icon" href="../../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -122,8 +123,8 @@
       
     
     
-    <img src="../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -372,6 +373,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 
@@ -513,12 +515,20 @@
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        None</span>
+
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        KeyError</span>
 <span class="sd">            If required columns are missing.</span>
 <span class="sd">        ValueError</span>
 <span class="sd">            If arm labels are not found in ``adata.obs[self.arm_col]``.</span>
+
+<span class="sd">        Warns</span>
+<span class="sd">        -----</span>
+<span class="sd">        UserWarning</span>
+<span class="sd">            If ``adata.obs[self.arm_col]`` holds labels other than the two named</span>
+<span class="sd">            arms, or missing labels. Two-arm analyses exclude those rows (see</span>
+<span class="sd">            :func:`sctrial.subset_arms`).</span>
 <span class="sd">        """</span>
         <span class="n">obs</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
         <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span>
@@ -541,7 +551,8 @@
                     <span class="sa">f</span><span class="s2">"between-arm analyses, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">!r}</span><span class="s2"> for both. "</span>
                     <span class="sa">f</span><span class="s2">"For single-arm studies, use check_arm_labels=False."</span>
                 <span class="p">)</span>
-            <span class="n">arms</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="p">])</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="p">])</span>
+            <span class="n">arms</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">labels</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
             <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">arms</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">arms</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s2">"Arm labels not found in obs['</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">']. "</span>
@@ -549,14 +560,17 @@
                     <span class="sa">f</span><span class="s2">"Observed arms: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">arms</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
                 <span class="p">)</span>
             <span class="n">extra</span> <span class="o">=</span> <span class="n">arms</span> <span class="o">-</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="p">}</span>
-            <span class="k">if</span> <span class="n">extra</span><span class="p">:</span>
-                <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
-
+            <span class="n">n_missing</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">labels</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+            <span class="k">if</span> <span class="n">extra</span> <span class="ow">or</span> <span class="n">n_missing</span><span class="p">:</span>
+                <span class="n">found</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">if</span> <span class="n">extra</span><span class="p">:</span>
+                    <span class="n">found</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"arms beyond treated/control: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">extra</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">n_missing</span><span class="p">:</span>
+                    <span class="n">found</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_missing</span><span class="si">}</span><span class="s2"> rows with a missing arm label"</span><span class="p">)</span>
                 <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">"obs['</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">'] contains arms beyond treated/control: "</span>
-                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">extra</span><span class="p">)</span><span class="si">}</span><span class="s2">. These participants will be treated as "</span>
-                    <span class="sa">f</span><span class="s2">"control in arm_bin(). Consider subsetting your data to "</span>
-                    <span class="sa">f</span><span class="s2">"only the two arms of interest."</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"obs['</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">'] contains </span><span class="si">{</span><span class="s1">' and '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">found</span><span class="p">)</span><span class="si">}</span><span class="s2">. Two-arm "</span>
+                    <span class="sa">f</span><span class="s2">"analyses use only '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">}</span><span class="s2">' and '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="si">}</span><span class="s2">' and "</span>
+                    <span class="sa">f</span><span class="s2">"exclude these rows."</span><span class="p">,</span>
                     <span class="ne">UserWarning</span><span class="p">,</span>
                     <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
                 <span class="p">)</span></div>
@@ -567,6 +581,10 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">arm_bin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Return 0/1 treated indicator aligned to obs.index.</span>
 
+<span class="sd">        The indicator is 1 for ``arm_treated`` and 0 for ``arm_control``. It is</span>
+<span class="sd">        defined for those two arms only, so rows with any other label, or with a</span>
+<span class="sd">        missing label, must be removed first (:func:`sctrial.subset_arms`).</span>
+
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        obs</span>
@@ -576,10 +594,12 @@
 <span class="sd">        -------</span>
 <span class="sd">        pd.Series</span>
 <span class="sd">            A Series with 0/1 indicator of treated status.</span>
+
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        ValueError</span>
-<span class="sd">            If arm_treated and arm_control are the same.</span>
+<span class="sd">            If arm_treated and arm_control are the same, or if ``obs`` holds rows</span>
+<span class="sd">            whose arm is neither of them.</span>
 <span class="sd">        KeyError</span>
 <span class="sd">            If arm_col is not in obs.columns.</span>
 <span class="sd">        """</span>
@@ -595,7 +615,21 @@
             <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"arm_col '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">' not in obs."</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span></div>
+        <span class="n">arm</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
+        <span class="n">treated</span> <span class="o">=</span> <span class="n">arm</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">])</span>
+        <span class="n">outside</span> <span class="o">=</span> <span class="o">~</span><span class="p">(</span><span class="n">treated</span> <span class="o">|</span> <span class="n">arm</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="n">outside</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">other</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">pd</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">arm</span><span class="p">[</span><span class="n">outside</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()))</span>
+            <span class="n">n_missing</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">arm</span><span class="p">[</span><span class="n">outside</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+            <span class="n">found</span> <span class="o">=</span> <span class="p">([</span><span class="sa">f</span><span class="s2">"labels </span><span class="si">{</span><span class="n">other</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="k">if</span> <span class="n">other</span> <span class="k">else</span> <span class="p">[])</span> <span class="o">+</span> <span class="p">(</span>
+                <span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_missing</span><span class="si">}</span><span class="s2"> missing labels"</span><span class="p">]</span> <span class="k">if</span> <span class="n">n_missing</span> <span class="k">else</span> <span class="p">[]</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"arm_bin() is defined for '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">}</span><span class="s2">' and '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_control</span><span class="si">}</span><span class="s2">' only, "</span>
+                <span class="sa">f</span><span class="s2">"but obs['</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">arm_col</span><span class="si">}</span><span class="s2">'] also holds </span><span class="si">{</span><span class="s1">' and '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">found</span><span class="p">)</span><span class="si">}</span><span class="s2">. Remove those "</span>
+                <span class="sa">f</span><span class="s2">"rows first, for example with sctrial.subset_arms(obs, design)."</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">treated</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span></div>
 </div>
 
 </pre></div>

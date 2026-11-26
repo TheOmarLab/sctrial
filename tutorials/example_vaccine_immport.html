@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Vaccine Response Analysis &#8212; sctrial 0.3.3 documentation</title>
+    <title>Vaccine Response Analysis &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../_static/documentation_options.js?v=2a705162"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,6 +53,7 @@
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'tutorials/example_vaccine_immport';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/tutorials/example_vaccine_immport.html" />
     <link rel="icon" href="../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -128,8 +129,8 @@
       
     
     
-    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -388,12 +389,13 @@
 </section>
 <section id="1.-Setup">
 <h2>1. Setup<a class="headerlink" href="#1.-Setup" title="Link to this heading">#</a></h2>
-<div class="nbinput nblast docutils container">
+<div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">'ignore'</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">FutureWarning</span><span class="p">)</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">'ignore'</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s1">'IProgress not found'</span><span class="p">)</span>  <span class="c1"># tqdm without ipywidgets</span>
 <span class="c1"># Note: We do NOT suppress UserWarning — the package issues useful</span>
 <span class="c1"># recommendations (e.g. use_bootstrap=True for small samples)</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
@@ -405,10 +407,11 @@
 <span class="n">sns</span><span class="o">.</span><span class="n">set_context</span><span class="p">(</span><span class="s2">"notebook"</span><span class="p">)</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scanpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sctrial</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
 <span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">chained_assignment</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"sctrial version: </span><span class="si">{</span><span class="n">st</span><span class="o">.</span><span class="n">__version__</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="c1"># Configuration</span>
 <span class="n">SEED</span> <span class="o">=</span> <span class="mi">42</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">SEED</span><span class="p">)</span>  <span class="c1"># seaborn strip plots draw their jitter from NumPy's global generator</span>
 <span class="n">MIN_PAIRED</span> <span class="o">=</span> <span class="mi">4</span>
 <span class="n">MIN_GENES_FOR_SCORE</span> <span class="o">=</span> <span class="mi">5</span>
 <span class="n">FDR_ALPHA</span> <span class="o">=</span> <span class="mf">0.25</span>  <span class="c1"># Exploratory threshold; use 0.05 for confirmatory analyses</span>
@@ -420,6 +423,14 @@
 <br/></pre></div>
 </div>
 </div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+sctrial version: 1.1.0
+</pre></div></div>
+</div>
 </section>
 <section id="2.-Data-Loading-and-Processing">
 <h2>2. Data Loading and Processing<a class="headerlink" href="#2.-Data-Loading-and-Processing" title="Link to this heading">#</a></h2>
@@ -430,7 +441,6 @@
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dataset loader and helpers (from sctrial)</span>
 <span class="c1"># Also available at top-level: st.load_vaccine_gse171964, st.verify_paired_participants, st.ensure_fdr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sctrial.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_vaccine_gse171964</span><span class="p">,</span> <span class="n">verify_paired_participants</span><span class="p">,</span> <span class="n">ensure_fdr</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">multipletests</span>
 <br/></pre></div>
 </div>
 </div>
@@ -519,10 +529,7 @@ Name: pt_id, dtype: int64
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Ensure log1p CPM</span>
-<span class="k">if</span> <span class="s2">"log1p_cpm"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
-    <span class="n">adata</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_log1p_cpm_layer</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="s2">"counts"</span><span class="p">,</span> <span class="n">out_layer</span><span class="o">=</span><span class="s2">"log1p_cpm"</span><span class="p">)</span>
-<span class="c1"># Standardize metadata</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Standardize metadata</span>
 <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"visit"</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"day"</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
 <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"participant_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"pt_id"</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
 <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"cell_type"</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s2">"clustnm"</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
@@ -663,9 +670,9 @@ TrialDesign(participant_col=&#39;participant_id&#39;, visit_col=&#39;visit&#39;,
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compute UMAP on log1p CPM if missing</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compute UMAP on log1p norm if missing</span>
 <span class="n">adata_umap</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-<span class="n">adata_umap</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">adata_umap</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">"log1p_cpm"</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">adata_umap</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">adata_umap</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">"log1p_norm"</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 <span class="k">if</span> <span class="s2">"X_umap"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata_umap</span><span class="o">.</span><span class="n">obsm</span><span class="p">:</span>
     <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">adata_umap</span><span class="p">)</span>
     <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata_umap</span><span class="p">)</span>
@@ -696,24 +703,15 @@ TrialDesign(participant_col=&#39;participant_id&#39;, visit_col=&#39;visit&#39;,
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/sctrial_venv/lib/python3.13/site-packages/tqdm/auto.py:21: TqdmWarning: IProgress not found. Please update jupyter and ipywidgets. See https://ipywidgets.readthedocs.io/en/stable/user_install.html
-  from .autonotebook import tqdm as notebook_tqdm
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_example_vaccine_immport_15_1.png" src="../_images/tutorials_example_vaccine_immport_15_1.png" />
+<img alt="../_images/tutorials_example_vaccine_immport_15_0.png" src="../_images/tutorials_example_vaccine_immport_15_0.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_example_vaccine_immport_15_2.png" src="../_images/tutorials_example_vaccine_immport_15_2.png" />
+<img alt="../_images/tutorials_example_vaccine_immport_15_1.png" src="../_images/tutorials_example_vaccine_immport_15_1.png" />
 </div>
 </div>
 </section>
@@ -839,7 +837,7 @@ TrialDesign(participant_col=&#39;participant_id&#39;, visit_col=&#39;visit&#39;,
         <span class="n">filtered</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">present</span>
 <span class="k">if</span> <span class="n">filtered</span><span class="p">:</span>
     <span class="n">adata_analysis</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">score_gene_sets</span><span class="p">(</span>
-        <span class="n">adata_analysis</span><span class="p">,</span> <span class="n">filtered</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">"log1p_cpm"</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">"zmean"</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"sig_"</span>
+        <span class="n">adata_analysis</span><span class="p">,</span> <span class="n">filtered</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">"log1p_norm"</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">"zmean"</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"sig_"</span>
     <span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Scored </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">filtered</span><span class="p">)</span><span class="si">}</span><span class="s2"> gene sets using zmean."</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
@@ -1065,43 +1063,43 @@ WITHIN-ARM COMPARISONS: MODULE SCORES (Day 0 vs Day 7)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/292175458.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_within = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -1143,248 +1141,248 @@ WITHIN-ARM COMPARISONS: MODULE SCORES (Day 0 vs Day 7)
     <tr>
       <th>0</th>
       <td>sig_Cytotoxic T Cell Activity</td>
-      <td>1.2886</td>
-      <td>0.4382</td>
-      <td>0.025</td>
-      <td>0.025</td>
-      <td>0.5767</td>
-      <td>0.2483</td>
-      <td>2.0159</td>
-      <td>0.2375</td>
+      <td>1.2195</td>
+      <td>0.4262</td>
+      <td>0.0312</td>
+      <td>0.0312</td>
+      <td>0.2623</td>
+      <td>0.2225</td>
+      <td>2.0904</td>
+      <td>0.1484</td>
       <td>6</td>
     </tr>
     <tr>
       <th>1</th>
       <td>sig_T Cell Exhaustion</td>
-      <td>0.5348</td>
-      <td>0.6336</td>
-      <td>0.300</td>
-      <td>0.300</td>
-      <td>0.4280</td>
-      <td>-0.4506</td>
-      <td>1.5203</td>
-      <td>0.6333</td>
+      <td>0.5606</td>
+      <td>0.5827</td>
+      <td>0.2500</td>
+      <td>0.2500</td>
+      <td>0.3586</td>
+      <td>-1.0709</td>
+      <td>1.5548</td>
+      <td>0.4318</td>
       <td>6</td>
     </tr>
     <tr>
       <th>2</th>
       <td>sig_Checkpoint Receptors</td>
-      <td>0.6179</td>
-      <td>0.7618</td>
-      <td>0.287</td>
-      <td>0.287</td>
-      <td>0.5085</td>
-      <td>-0.4867</td>
-      <td>1.7225</td>
-      <td>0.6333</td>
+      <td>0.6635</td>
+      <td>0.7285</td>
+      <td>0.2188</td>
+      <td>0.2188</td>
+      <td>0.4484</td>
+      <td>-1.4752</td>
+      <td>1.8584</td>
+      <td>0.4318</td>
       <td>6</td>
     </tr>
     <tr>
       <th>3</th>
       <td>sig_Type I Interferon</td>
-      <td>0.8268</td>
-      <td>0.6900</td>
-      <td>0.117</td>
-      <td>0.117</td>
-      <td>0.5135</td>
-      <td>-0.1694</td>
-      <td>1.8229</td>
-      <td>0.4864</td>
+      <td>0.9397</td>
+      <td>0.3714</td>
+      <td>0.0312</td>
+      <td>0.0312</td>
+      <td>0.2286</td>
+      <td>0.1039</td>
+      <td>1.5572</td>
+      <td>0.1484</td>
       <td>6</td>
     </tr>
     <tr>
       <th>4</th>
       <td>sig_Type II Interferon</td>
-      <td>0.1349</td>
-      <td>0.5475</td>
-      <td>0.695</td>
-      <td>0.695</td>
-      <td>0.3307</td>
-      <td>-0.6381</td>
-      <td>0.9078</td>
-      <td>0.9006</td>
+      <td>0.2371</td>
+      <td>0.4410</td>
+      <td>0.5312</td>
+      <td>0.5312</td>
+      <td>0.2714</td>
+      <td>-0.2896</td>
+      <td>1.5298</td>
+      <td>0.8221</td>
       <td>6</td>
     </tr>
     <tr>
       <th>5</th>
       <td>sig_Memory T Cell</td>
-      <td>-0.8043</td>
-      <td>0.8785</td>
-      <td>0.154</td>
-      <td>0.154</td>
-      <td>0.6392</td>
-      <td>-1.8197</td>
-      <td>0.2111</td>
-      <td>0.4877</td>
+      <td>-0.8563</td>
+      <td>0.7818</td>
+      <td>0.1250</td>
+      <td>0.1250</td>
+      <td>0.4811</td>
+      <td>-3.2976</td>
+      <td>0.2532</td>
+      <td>0.2969</td>
       <td>6</td>
     </tr>
     <tr>
       <th>6</th>
       <td>sig_T Cell Activation</td>
-      <td>-0.6227</td>
-      <td>0.7585</td>
-      <td>0.266</td>
-      <td>0.266</td>
-      <td>0.5420</td>
-      <td>-1.4501</td>
-      <td>0.2048</td>
-      <td>0.6333</td>
+      <td>-0.8541</td>
+      <td>0.6796</td>
+      <td>0.1250</td>
+      <td>0.1250</td>
+      <td>0.4183</td>
+      <td>-2.9713</td>
+      <td>0.1583</td>
+      <td>0.2969</td>
       <td>6</td>
     </tr>
     <tr>
       <th>7</th>
       <td>sig_Inflammatory Response</td>
-      <td>-0.2234</td>
-      <td>0.3309</td>
-      <td>0.379</td>
-      <td>0.379</td>
-      <td>0.2283</td>
-      <td>-0.7879</td>
-      <td>0.3412</td>
-      <td>0.6546</td>
+      <td>-0.1863</td>
+      <td>0.5518</td>
+      <td>0.5625</td>
+      <td>0.5625</td>
+      <td>0.3396</td>
+      <td>-1.8451</td>
+      <td>0.9628</td>
+      <td>0.8221</td>
       <td>6</td>
     </tr>
     <tr>
       <th>8</th>
       <td>sig_Antigen Presentation</td>
-      <td>0.8333</td>
-      <td>0.6299</td>
-      <td>0.040</td>
-      <td>0.040</td>
-      <td>0.5128</td>
-      <td>0.0000</td>
-      <td>1.6571</td>
-      <td>0.2533</td>
+      <td>0.9368</td>
+      <td>0.7925</td>
+      <td>0.1250</td>
+      <td>0.1250</td>
+      <td>0.4878</td>
+      <td>-0.1233</td>
+      <td>3.4367</td>
+      <td>0.2969</td>
       <td>6</td>
     </tr>
     <tr>
       <th>9</th>
       <td>sig_Cell Proliferation</td>
-      <td>0.7657</td>
-      <td>0.6623</td>
-      <td>0.128</td>
-      <td>0.128</td>
-      <td>0.4965</td>
-      <td>-0.3319</td>
-      <td>1.8633</td>
-      <td>0.4864</td>
+      <td>1.1648</td>
+      <td>0.4436</td>
+      <td>0.0312</td>
+      <td>0.0312</td>
+      <td>0.2730</td>
+      <td>0.3577</td>
+      <td>2.2563</td>
+      <td>0.1484</td>
       <td>6</td>
     </tr>
     <tr>
       <th>10</th>
       <td>sig_Regulatory T Cell</td>
-      <td>0.2037</td>
-      <td>0.7132</td>
-      <td>0.688</td>
-      <td>0.688</td>
-      <td>0.4381</td>
-      <td>-0.8730</td>
-      <td>1.2805</td>
-      <td>0.9006</td>
+      <td>0.1237</td>
+      <td>0.6668</td>
+      <td>0.8750</td>
+      <td>0.8750</td>
+      <td>0.4104</td>
+      <td>-2.0830</td>
+      <td>0.9754</td>
+      <td>0.9375</td>
       <td>6</td>
     </tr>
     <tr>
       <th>11</th>
       <td>sig_NK Cell Activity</td>
-      <td>1.1442</td>
-      <td>0.4492</td>
-      <td>0.025</td>
-      <td>0.025</td>
-      <td>0.5266</td>
-      <td>0.1593</td>
-      <td>1.7954</td>
-      <td>0.2375</td>
+      <td>1.0984</td>
+      <td>0.4556</td>
+      <td>0.0312</td>
+      <td>0.0312</td>
+      <td>0.2804</td>
+      <td>0.1595</td>
+      <td>2.1744</td>
+      <td>0.1484</td>
       <td>6</td>
     </tr>
     <tr>
       <th>12</th>
       <td>sig_Apoptosis</td>
-      <td>-0.0700</td>
-      <td>0.6834</td>
-      <td>0.960</td>
-      <td>0.960</td>
-      <td>0.4168</td>
-      <td>-0.8979</td>
-      <td>0.7578</td>
-      <td>0.9880</td>
+      <td>-0.1421</td>
+      <td>0.6563</td>
+      <td>0.7812</td>
+      <td>0.7812</td>
+      <td>0.4039</td>
+      <td>-1.9709</td>
+      <td>1.0244</td>
+      <td>0.9277</td>
       <td>6</td>
     </tr>
     <tr>
       <th>13</th>
       <td>sig_Oxidative Stress Response</td>
-      <td>0.2509</td>
-      <td>0.6090</td>
-      <td>0.622</td>
-      <td>0.622</td>
-      <td>0.3749</td>
-      <td>-0.5859</td>
-      <td>1.0877</td>
-      <td>0.9006</td>
+      <td>0.5263</td>
+      <td>0.4026</td>
+      <td>0.1250</td>
+      <td>0.1250</td>
+      <td>0.2478</td>
+      <td>-0.6420</td>
+      <td>1.2718</td>
+      <td>0.2969</td>
       <td>6</td>
     </tr>
     <tr>
       <th>14</th>
       <td>sig_Humoral Plasma Cell</td>
-      <td>0.2759</td>
-      <td>0.3945</td>
-      <td>0.348</td>
-      <td>0.348</td>
-      <td>0.2619</td>
-      <td>-0.3146</td>
-      <td>0.8664</td>
-      <td>0.6546</td>
+      <td>0.2732</td>
+      <td>0.5340</td>
+      <td>0.6875</td>
+      <td>0.6875</td>
+      <td>0.3286</td>
+      <td>-0.4664</td>
+      <td>2.0094</td>
+      <td>0.8708</td>
       <td>6</td>
     </tr>
     <tr>
       <th>15</th>
       <td>sig_Monocyte Macrophage</td>
-      <td>0.5195</td>
-      <td>1.0860</td>
-      <td>0.765</td>
-      <td>0.765</td>
-      <td>0.7030</td>
-      <td>-0.7468</td>
-      <td>1.7857</td>
-      <td>0.9084</td>
+      <td>0.6153</td>
+      <td>1.0535</td>
+      <td>0.6875</td>
+      <td>0.6875</td>
+      <td>0.6484</td>
+      <td>-0.5405</td>
+      <td>4.0670</td>
+      <td>0.8708</td>
       <td>6</td>
     </tr>
     <tr>
       <th>16</th>
       <td>sig_Tissue-Resident Memory</td>
-      <td>-0.2779</td>
-      <td>0.5777</td>
-      <td>0.711</td>
-      <td>0.711</td>
-      <td>0.3744</td>
-      <td>-0.9250</td>
-      <td>0.3693</td>
-      <td>0.9006</td>
+      <td>-0.4756</td>
+      <td>0.4887</td>
+      <td>0.2500</td>
+      <td>0.2500</td>
+      <td>0.3008</td>
+      <td>-1.7472</td>
+      <td>0.4626</td>
+      <td>0.4318</td>
       <td>6</td>
     </tr>
     <tr>
       <th>17</th>
       <td>sig_T Follicular Helper</td>
-      <td>0.0800</td>
-      <td>0.8488</td>
-      <td>0.941</td>
-      <td>0.941</td>
-      <td>0.5137</td>
-      <td>-1.1531</td>
-      <td>1.3132</td>
-      <td>0.9880</td>
+      <td>0.0442</td>
+      <td>0.8190</td>
+      <td>0.9375</td>
+      <td>0.9375</td>
+      <td>0.5040</td>
+      <td>-2.6249</td>
+      <td>0.9262</td>
+      <td>0.9375</td>
       <td>6</td>
     </tr>
     <tr>
       <th>18</th>
       <td>sig_Hypoxia</td>
-      <td>-0.0853</td>
-      <td>0.7438</td>
-      <td>0.988</td>
-      <td>0.988</td>
-      <td>0.4553</td>
-      <td>-0.9949</td>
-      <td>0.8243</td>
-      <td>0.9880</td>
+      <td>-0.1023</td>
+      <td>0.6591</td>
+      <td>0.9375</td>
+      <td>0.9375</td>
+      <td>0.4057</td>
+      <td>-2.2475</td>
+      <td>0.6354</td>
+      <td>0.9375</td>
       <td>6</td>
     </tr>
   </tbody>
@@ -1398,8 +1396,10 @@ WITHIN-ARM COMPARISONS: MODULE SCORES (Day 0 vs Day 7)
 <div class="highlight"><pre>
 
 Module score changes (FDR &lt; 0.25):
-  sig_Cytotoxic T Cell Activity: increased (beta=1.289, FDR=0.238)
-  sig_NK Cell Activity: increased (beta=1.144, FDR=0.238)
+  sig_Cytotoxic T Cell Activity: increased (beta=1.220, FDR=0.148)
+  sig_Type I Interferon: increased (beta=0.940, FDR=0.148)
+  sig_Cell Proliferation: increased (beta=1.165, FDR=0.148)
+  sig_NK Cell Activity: increased (beta=1.098, FDR=0.148)
 
 Boxplots show participant-level distributions by day; points indicate individual participants.
 </pre></div></div>
@@ -1481,137 +1481,137 @@ Boxplots show participant-level distributions by day; points indicate individual
   </thead>
   <tbody>
     <tr>
-      <th>51</th>
-      <td>C11_pDC</td>
-      <td>sig_T Cell Activation</td>
-      <td>-0.055481</td>
-      <td>0.03125</td>
-      <td>6</td>
-      <td>0.177083</td>
-    </tr>
-    <tr>
-      <th>247</th>
-      <td>C5_B</td>
-      <td>sig_Antigen Presentation</td>
-      <td>0.083956</td>
-      <td>0.06250</td>
-      <td>5</td>
-      <td>0.177083</td>
-    </tr>
-    <tr>
-      <th>258</th>
-      <td>C5_B</td>
-      <td>sig_Oxidative Stress Response</td>
-      <td>0.043831</td>
-      <td>0.06250</td>
-      <td>5</td>
-      <td>0.106250</td>
-    </tr>
-    <tr>
-      <th>182</th>
-      <td>C1_NK</td>
-      <td>sig_Oxidative Stress Response</td>
-      <td>0.116826</td>
-      <td>0.06250</td>
-      <td>5</td>
-      <td>0.106250</td>
-    </tr>
-    <tr>
-      <th>181</th>
-      <td>C1_NK</td>
-      <td>sig_NK Cell Activity</td>
-      <td>0.315391</td>
-      <td>0.06250</td>
-      <td>5</td>
-      <td>0.354167</td>
-    </tr>
-    <tr>
       <th>63</th>
       <td>C12_Tregs</td>
       <td>sig_Hypoxia</td>
-      <td>0.063585</td>
-      <td>0.06250</td>
-      <td>5</td>
-      <td>0.132812</td>
-    </tr>
-    <tr>
-      <th>177</th>
-      <td>C1_NK</td>
-      <td>sig_Hypoxia</td>
-      <td>0.088562</td>
-      <td>0.06250</td>
-      <td>5</td>
-      <td>0.132812</td>
-    </tr>
-    <tr>
-      <th>262</th>
-      <td>C5_B</td>
-      <td>sig_T Follicular Helper</td>
-      <td>0.062958</td>
-      <td>0.06250</td>
-      <td>5</td>
-      <td>0.212500</td>
-    </tr>
-    <tr>
-      <th>264</th>
-      <td>C5_B</td>
-      <td>sig_Type I Interferon</td>
-      <td>0.074297</td>
-      <td>0.06250</td>
-      <td>5</td>
-      <td>0.132812</td>
-    </tr>
-    <tr>
-      <th>266</th>
-      <td>C6_CD8 T</td>
-      <td>sig_Antigen Presentation</td>
-      <td>0.065149</td>
-      <td>0.06250</td>
+      <td>0.042222</td>
+      <td>0.0625</td>
       <td>5</td>
       <td>0.177083</td>
-    </tr>
-    <tr>
-      <th>175</th>
-      <td>C1_NK</td>
-      <td>sig_Cytotoxic T Cell Activity</td>
-      <td>0.267165</td>
-      <td>0.06250</td>
-      <td>5</td>
-      <td>0.354167</td>
     </tr>
     <tr>
       <th>269</th>
       <td>C6_CD8 T</td>
       <td>sig_Checkpoint Receptors</td>
-      <td>0.090656</td>
-      <td>0.06250</td>
+      <td>0.053534</td>
+      <td>0.0625</td>
       <td>5</td>
-      <td>0.177083</td>
-    </tr>
-    <tr>
-      <th>270</th>
-      <td>C6_CD8 T</td>
-      <td>sig_Cytotoxic T Cell Activity</td>
-      <td>0.168289</td>
-      <td>0.06250</td>
-      <td>5</td>
-      <td>0.354167</td>
+      <td>0.265625</td>
     </tr>
     <tr>
       <th>271</th>
       <td>C6_CD8 T</td>
       <td>sig_Humoral Plasma Cell</td>
-      <td>0.041735</td>
-      <td>0.06250</td>
+      <td>0.023123</td>
+      <td>0.0625</td>
       <td>5</td>
       <td>0.531250</td>
     </tr>
     <tr>
-      <th>174</th>
-      <td>C1_NK</td>
-      <td>sig_Checkpoint Receptors</td>
-      <td>0.154767</td>
-      <td>0.06250</td>
+      <th>270</th>
+      <td>C6_CD8 T</td>
+      <td>sig_Cytotoxic T Cell Activity</td>
+      <td>0.160467</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.354167</td>
+    </tr>
+    <tr>
+      <th>268</th>
+      <td>C6_CD8 T</td>
+      <td>sig_Cell Proliferation</td>
+      <td>0.022254</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.354167</td>
+    </tr>
+    <tr>
+      <th>266</th>
+      <td>C6_CD8 T</td>
+      <td>sig_Antigen Presentation</td>
+      <td>0.052512</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.265625</td>
+    </tr>
+    <tr>
+      <th>264</th>
+      <td>C5_B</td>
+      <td>sig_Type I Interferon</td>
+      <td>0.053654</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.193182</td>
+    </tr>
+    <tr>
+      <th>225</th>
+      <td>C3_CD14+ monocytes</td>
+      <td>sig_Tissue-Resident Memory</td>
+      <td>-0.127905</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.265625</td>
+    </tr>
+    <tr>
+      <th>226</th>
+      <td>C3_CD14+ monocytes</td>
+      <td>sig_Type I Interferon</td>
+      <td>0.040982</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.193182</td>
+    </tr>
+    <tr>
+      <th>283</th>
+      <td>C6_CD8 T</td>
+      <td>sig_Type I Interferon</td>
+      <td>0.051078</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.193182</td>
+    </tr>
+    <tr>
+      <th>281</th>
+      <td>C6_CD8 T</td>
+      <td>sig_T Follicular Helper</td>
+      <td>0.057567</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.212500</td>
+    </tr>
+    <tr>
+      <th>280</th>
+      <td>C6_CD8 T</td>
+      <td>sig_T Cell Exhaustion</td>
+      <td>0.032949</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.265625</td>
+    </tr>
+    <tr>
+      <th>277</th>
+      <td>C6_CD8 T</td>
+      <td>sig_Oxidative Stress Response</td>
+      <td>0.052625</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.177083</td>
+    </tr>
+    <tr>
+      <th>276</th>
+      <td>C6_CD8 T</td>
+      <td>sig_NK Cell Activity</td>
+      <td>0.100696</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.265625</td>
+    </tr>
+    <tr>
+      <th>275</th>
+      <td>C6_CD8 T</td>
+      <td>sig_Monocyte Macrophage</td>
+      <td>-0.024590</td>
+      <td>0.0625</td>
       <td>5</td>
       <td>0.177083</td>
     </tr>
@@ -1619,44 +1619,44 @@ Boxplots show participant-level distributions by day; points indicate individual
       <th>272</th>
       <td>C6_CD8 T</td>
       <td>sig_Hypoxia</td>
-      <td>0.083226</td>
-      <td>0.06250</td>
+      <td>0.053507</td>
+      <td>0.0625</td>
       <td>5</td>
-      <td>0.132812</td>
+      <td>0.177083</td>
     </tr>
     <tr>
-      <th>173</th>
-      <td>C1_NK</td>
-      <td>sig_Cell Proliferation</td>
-      <td>0.031105</td>
-      <td>0.06250</td>
-      <td>5</td>
-      <td>0.212500</td>
-    </tr>
-    <tr>
-      <th>99</th>
-      <td>C14_Plasmablasts</td>
-      <td>sig_Cytotoxic T Cell Activity</td>
-      <td>0.521276</td>
-      <td>0.06250</td>
-      <td>5</td>
-      <td>0.354167</td>
-    </tr>
-    <tr>
-      <th>276</th>
-      <td>C6_CD8 T</td>
-      <td>sig_NK Cell Activity</td>
-      <td>0.123374</td>
-      <td>0.06250</td>
-      <td>5</td>
-      <td>0.354167</td>
-    </tr>
-    <tr>
-      <th>256</th>
+      <th>252</th>
       <td>C5_B</td>
-      <td>sig_Monocyte Macrophage</td>
-      <td>-0.049689</td>
-      <td>0.06250</td>
+      <td>sig_Humoral Plasma Cell</td>
+      <td>0.074290</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.531250</td>
+    </tr>
+    <tr>
+      <th>171</th>
+      <td>C1_NK</td>
+      <td>sig_Antigen Presentation</td>
+      <td>0.122659</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.265625</td>
+    </tr>
+    <tr>
+      <th>174</th>
+      <td>C1_NK</td>
+      <td>sig_Checkpoint Receptors</td>
+      <td>0.126898</td>
+      <td>0.0625</td>
+      <td>5</td>
+      <td>0.265625</td>
+    </tr>
+    <tr>
+      <th>222</th>
+      <td>C3_CD14+ monocytes</td>
+      <td>sig_T Cell Activation</td>
+      <td>-0.155568</td>
+      <td>0.0625</td>
       <td>5</td>
       <td>0.212500</td>
     </tr>
@@ -1694,7 +1694,7 @@ Boxplots show participant-level distributions by day; points indicate individual
         <span class="n">visits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">visits</span><span class="p">),</span>
         <span class="n">aggregate</span><span class="o">=</span><span class="s2">"participant_visit"</span><span class="p">,</span>
         <span class="n">standardize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">layer</span><span class="o">=</span><span class="s2">"log1p_cpm"</span><span class="p">,</span>
+        <span class="n">layer</span><span class="o">=</span><span class="s2">"log1p_norm"</span><span class="p">,</span>
         <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>   <span class="c1"># Recommended for small n (6 participants)</span>
         <span class="n">n_boot</span><span class="o">=</span><span class="mi">999</span><span class="p">,</span>
         <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">,</span>
@@ -1724,12 +1724,12 @@ Boxplots show participant-level distributions by day; points indicate individual
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"No panel genes available or missing visits."</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Boxplots show participant-level log1p CPM by day; points indicate individual participants."</span><span class="p">)</span>
-<span class="c1"># Plot participant-level panel genes by day (log1p CPM)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Boxplots show participant-level log1p norm by day; points indicate individual participants."</span><span class="p">)</span>
+<span class="c1"># Plot participant-level panel genes by day (log1p norm)</span>
 <span class="k">if</span> <span class="n">panel_genes</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">visits</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
     <span class="n">df_expr</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">obs</span><span class="p">[[</span><span class="s2">"participant_id"</span><span class="p">,</span> <span class="s2">"visit"</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">panel_genes</span><span class="p">:</span>
-        <span class="n">df_expr</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">extract_gene_vector</span><span class="p">(</span><span class="n">adata_analysis</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">"log1p_cpm"</span><span class="p">)</span>
+        <span class="n">df_expr</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">extract_gene_vector</span><span class="p">(</span><span class="n">adata_analysis</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">"log1p_norm"</span><span class="p">)</span>
     <span class="n">df_plot</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">df_expr</span>
         <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">"participant_id"</span><span class="p">,</span> <span class="s2">"visit"</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">panel_genes</span><span class="p">]</span>
@@ -1767,7 +1767,7 @@ Boxplots show participant-level distributions by day; points indicate individual
         <span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">feat</span><span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Day"</span><span class="p">)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"log1p CPM"</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"log1p norm"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ax</span><span class="o">.</span><span class="n">legend_</span><span class="p">:</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">legend_</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">axes</span><span class="p">)):</span>
@@ -1792,43 +1792,43 @@ WITHIN-ARM COMPARISONS: PANEL GENES (Day 0 vs Day 7)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
-/var/folders/xl/pr40r62n3wx54s8_6cgjzg2c0000gt/T/ipykernel_12724/4144594531.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
+/tmp/ipykernel_1277876/1183823430.py:7: UserWarning: Only 6 clusters (participants) available. Cluster-robust standard errors are unreliable with fewer than 10 clusters.
   res_genes = st.within_arm_comparison(
 </pre></div></div>
 </div>
@@ -1870,248 +1870,248 @@ WITHIN-ARM COMPARISONS: PANEL GENES (Day 0 vs Day 7)
     <tr>
       <th>0</th>
       <td>CD79A</td>
-      <td>-0.2144</td>
-      <td>0.4500</td>
-      <td>0.572</td>
-      <td>0.572</td>
-      <td>0.2805</td>
-      <td>-1.2647</td>
-      <td>0.4948</td>
-      <td>0.9057</td>
+      <td>-0.2662</td>
+      <td>0.4199</td>
+      <td>0.4062</td>
+      <td>0.4062</td>
+      <td>0.2584</td>
+      <td>-0.8843</td>
+      <td>0.9799</td>
+      <td>0.7017</td>
       <td>6</td>
     </tr>
     <tr>
       <th>1</th>
       <td>CD79B</td>
-      <td>0.3413</td>
-      <td>0.2993</td>
-      <td>0.111</td>
-      <td>0.111</td>
-      <td>0.2223</td>
-      <td>-0.0857</td>
-      <td>0.7684</td>
-      <td>0.3013</td>
+      <td>0.0604</td>
+      <td>0.1399</td>
+      <td>0.5312</td>
+      <td>0.5312</td>
+      <td>0.0861</td>
+      <td>-0.3048</td>
+      <td>0.3084</td>
+      <td>0.7764</td>
       <td>6</td>
     </tr>
     <tr>
       <th>2</th>
       <td>MS4A1</td>
-      <td>-0.4411</td>
-      <td>0.2317</td>
-      <td>0.102</td>
-      <td>0.102</td>
-      <td>0.2259</td>
-      <td>-0.9130</td>
-      <td>0.0307</td>
-      <td>0.3013</td>
+      <td>-0.4681</td>
+      <td>0.2025</td>
+      <td>0.0625</td>
+      <td>0.0625</td>
+      <td>0.1246</td>
+      <td>-0.8820</td>
+      <td>0.0727</td>
+      <td>0.2227</td>
       <td>6</td>
     </tr>
     <tr>
       <th>3</th>
       <td>MZB1</td>
-      <td>0.1605</td>
-      <td>0.5370</td>
-      <td>0.698</td>
-      <td>0.698</td>
-      <td>0.3281</td>
-      <td>-0.6446</td>
-      <td>0.8228</td>
-      <td>0.9334</td>
+      <td>0.2957</td>
+      <td>0.6915</td>
+      <td>0.8438</td>
+      <td>0.8438</td>
+      <td>0.4256</td>
+      <td>-0.6664</td>
+      <td>2.5279</td>
+      <td>1.0000</td>
       <td>6</td>
     </tr>
     <tr>
       <th>4</th>
       <td>XBP1</td>
-      <td>0.4776</td>
-      <td>0.6685</td>
-      <td>0.338</td>
-      <td>0.338</td>
-      <td>0.4393</td>
-      <td>-0.6300</td>
-      <td>1.5852</td>
-      <td>0.6422</td>
+      <td>0.7067</td>
+      <td>0.5776</td>
+      <td>0.1250</td>
+      <td>0.1250</td>
+      <td>0.3555</td>
+      <td>-1.0331</td>
+      <td>1.6419</td>
+      <td>0.2639</td>
       <td>6</td>
     </tr>
     <tr>
       <th>5</th>
       <td>ISG15</td>
-      <td>1.2238</td>
-      <td>0.3872</td>
-      <td>0.025</td>
-      <td>0.025</td>
-      <td>0.5260</td>
-      <td>0.4279</td>
-      <td>1.9762</td>
-      <td>0.1583</td>
+      <td>1.2355</td>
+      <td>0.4944</td>
+      <td>0.0312</td>
+      <td>0.0312</td>
+      <td>0.3043</td>
+      <td>0.2178</td>
+      <td>2.6378</td>
+      <td>0.1484</td>
       <td>6</td>
     </tr>
     <tr>
       <th>6</th>
       <td>IFI6</td>
-      <td>0.8093</td>
-      <td>0.1471</td>
-      <td>0.025</td>
-      <td>0.025</td>
-      <td>0.3352</td>
-      <td>0.5589</td>
-      <td>1.0741</td>
-      <td>0.1583</td>
+      <td>0.6147</td>
+      <td>0.5505</td>
+      <td>0.0312</td>
+      <td>0.0312</td>
+      <td>0.3388</td>
+      <td>0.1628</td>
+      <td>2.4609</td>
+      <td>0.1484</td>
       <td>6</td>
     </tr>
     <tr>
       <th>7</th>
       <td>IFIT1</td>
-      <td>0.4003</td>
-      <td>0.5250</td>
-      <td>0.261</td>
-      <td>0.261</td>
-      <td>0.3439</td>
-      <td>-0.4464</td>
-      <td>1.2471</td>
-      <td>0.5510</td>
+      <td>0.5220</td>
+      <td>0.3470</td>
+      <td>0.0938</td>
+      <td>0.0938</td>
+      <td>0.2135</td>
+      <td>-0.1446</td>
+      <td>1.4331</td>
+      <td>0.2227</td>
       <td>6</td>
     </tr>
     <tr>
       <th>8</th>
       <td>MX1</td>
-      <td>0.2257</td>
-      <td>0.3559</td>
-      <td>0.374</td>
-      <td>0.374</td>
-      <td>0.2283</td>
-      <td>-0.4036</td>
-      <td>0.9937</td>
-      <td>0.6460</td>
+      <td>0.3145</td>
+      <td>0.1806</td>
+      <td>0.0938</td>
+      <td>0.0938</td>
+      <td>0.1111</td>
+      <td>-0.1392</td>
+      <td>0.6561</td>
+      <td>0.2227</td>
       <td>6</td>
     </tr>
     <tr>
       <th>9</th>
       <td>S100A8</td>
-      <td>0.0192</td>
-      <td>1.1211</td>
-      <td>1.000</td>
-      <td>1.000</td>
-      <td>0.6871</td>
-      <td>-1.5854</td>
-      <td>1.4600</td>
+      <td>0.1135</td>
+      <td>1.1115</td>
+      <td>0.9688</td>
+      <td>0.9688</td>
+      <td>0.6841</td>
+      <td>-1.6639</td>
+      <td>3.6372</td>
       <td>1.0000</td>
       <td>6</td>
     </tr>
     <tr>
       <th>10</th>
       <td>S100A9</td>
-      <td>-0.0248</td>
-      <td>1.1591</td>
-      <td>0.988</td>
-      <td>0.988</td>
-      <td>0.7096</td>
-      <td>-1.6609</td>
-      <td>1.6113</td>
+      <td>0.1266</td>
+      <td>1.1436</td>
+      <td>1.0000</td>
+      <td>1.0000</td>
+      <td>0.7038</td>
+      <td>-1.5771</td>
+      <td>3.8285</td>
       <td>1.0000</td>
       <td>6</td>
     </tr>
     <tr>
       <th>11</th>
       <td>LYZ</td>
-      <td>-0.1066</td>
-      <td>1.1658</td>
-      <td>0.874</td>
-      <td>0.874</td>
-      <td>0.7117</td>
-      <td>-1.8138</td>
-      <td>1.6007</td>
-      <td>0.9768</td>
+      <td>0.1087</td>
+      <td>1.1372</td>
+      <td>1.0000</td>
+      <td>1.0000</td>
+      <td>0.6999</td>
+      <td>-1.3955</td>
+      <td>3.8494</td>
+      <td>1.0000</td>
       <td>6</td>
     </tr>
     <tr>
       <th>12</th>
       <td>VCAN</td>
-      <td>-0.2949</td>
-      <td>1.1511</td>
-      <td>0.747</td>
-      <td>0.747</td>
-      <td>0.7110</td>
-      <td>-2.4253</td>
-      <td>1.2187</td>
-      <td>0.9334</td>
+      <td>-0.4638</td>
+      <td>1.0957</td>
+      <td>0.5000</td>
+      <td>0.5000</td>
+      <td>0.6743</td>
+      <td>-2.6698</td>
+      <td>2.5818</td>
+      <td>0.7764</td>
       <td>6</td>
     </tr>
     <tr>
       <th>13</th>
       <td>CD69</td>
-      <td>-0.4584</td>
-      <td>1.0823</td>
-      <td>0.682</td>
-      <td>0.682</td>
-      <td>0.6973</td>
-      <td>-1.9404</td>
-      <td>1.0236</td>
-      <td>0.9334</td>
+      <td>-0.5055</td>
+      <td>1.1083</td>
+      <td>0.5938</td>
+      <td>0.5938</td>
+      <td>0.6821</td>
+      <td>-3.5421</td>
+      <td>1.1461</td>
+      <td>0.8058</td>
       <td>6</td>
     </tr>
     <tr>
       <th>14</th>
       <td>CD38</td>
-      <td>0.7915</td>
-      <td>0.7624</td>
-      <td>0.136</td>
-      <td>0.136</td>
-      <td>0.5452</td>
-      <td>-0.4147</td>
-      <td>1.9977</td>
-      <td>0.3230</td>
+      <td>0.9112</td>
+      <td>0.6774</td>
+      <td>0.1562</td>
+      <td>0.1562</td>
+      <td>0.4169</td>
+      <td>-0.6187</td>
+      <td>2.2033</td>
+      <td>0.2969</td>
       <td>6</td>
     </tr>
     <tr>
       <th>15</th>
       <td>IL2RA</td>
-      <td>0.1889</td>
-      <td>0.9749</td>
-      <td>0.786</td>
-      <td>0.786</td>
-      <td>0.5980</td>
-      <td>-1.7384</td>
-      <td>2.1162</td>
-      <td>0.9334</td>
+      <td>0.1076</td>
+      <td>0.9582</td>
+      <td>0.8125</td>
+      <td>0.8125</td>
+      <td>0.5897</td>
+      <td>-2.4168</td>
+      <td>1.8754</td>
+      <td>1.0000</td>
       <td>6</td>
     </tr>
     <tr>
       <th>16</th>
       <td>GZMB</td>
-      <td>1.0559</td>
-      <td>0.6822</td>
-      <td>0.086</td>
-      <td>0.086</td>
-      <td>0.6030</td>
-      <td>-0.0303</td>
-      <td>2.1422</td>
-      <td>0.3013</td>
+      <td>1.0138</td>
+      <td>0.6020</td>
+      <td>0.0938</td>
+      <td>0.0938</td>
+      <td>0.3705</td>
+      <td>-0.0988</td>
+      <td>2.5507</td>
+      <td>0.2227</td>
       <td>6</td>
     </tr>
     <tr>
       <th>17</th>
       <td>PRF1</td>
-      <td>0.9794</td>
-      <td>0.4015</td>
-      <td>0.025</td>
-      <td>0.025</td>
-      <td>0.4573</td>
-      <td>0.2039</td>
-      <td>1.6478</td>
-      <td>0.1583</td>
+      <td>0.9237</td>
+      <td>0.3977</td>
+      <td>0.0312</td>
+      <td>0.0312</td>
+      <td>0.2448</td>
+      <td>0.1956</td>
+      <td>1.8361</td>
+      <td>0.1484</td>
       <td>6</td>
     </tr>
     <tr>
       <th>18</th>
       <td>NKG7</td>
-      <td>1.1977</td>
-      <td>0.7179</td>
-      <td>0.071</td>
-      <td>0.071</td>
-      <td>0.6608</td>
-      <td>0.0000</td>
-      <td>2.3954</td>
-      <td>0.3013</td>
+      <td>1.1908</td>
+      <td>0.5592</td>
+      <td>0.0312</td>
+      <td>0.0312</td>
+      <td>0.3442</td>
+      <td>0.1659</td>
+      <td>2.4608</td>
+      <td>0.1484</td>
       <td>6</td>
     </tr>
   </tbody>
@@ -2125,11 +2125,16 @@ WITHIN-ARM COMPARISONS: PANEL GENES (Day 0 vs Day 7)
 <div class="highlight"><pre>
 
 Panel genes with significant changes (FDR &lt; 0.25):
-  ISG15: increased (beta=1.224, FDR=0.158)
-  IFI6: increased (beta=0.809, FDR=0.158)
-  PRF1: increased (beta=0.979, FDR=0.158)
+  MS4A1: decreased (beta=-0.468, FDR=0.223)
+  ISG15: increased (beta=1.236, FDR=0.148)
+  IFI6: increased (beta=0.615, FDR=0.148)
+  IFIT1: increased (beta=0.522, FDR=0.223)
+  MX1: increased (beta=0.314, FDR=0.223)
+  GZMB: increased (beta=1.014, FDR=0.223)
+  PRF1: increased (beta=0.924, FDR=0.148)
+  NKG7: increased (beta=1.191, FDR=0.148)
 
-Boxplots show participant-level log1p CPM by day; points indicate individual participants.
+Boxplots show participant-level log1p norm by day; points indicate individual participants.
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -2144,14 +2149,14 @@ Boxplots show participant-level log1p CPM by day; points indicate individual par
 <h2>8. Pseudobulk Within-Arm (Panel Genes)<a class="headerlink" href="#8.-Pseudobulk-Within-Arm-(Panel-Genes)" title="Link to this heading">#</a></h2>
 <p>Here, we aggregate counts to pseudobulk profiles and quantify gene‑level shifts by cell type.</p>
 <blockquote>
-<div><p><strong>Exploratory only:</strong> With permissive thresholds (<code class="docutils literal notranslate"><span class="pre">min_cells_per_group=5</span></code>, <code class="docutils literal notranslate"><span class="pre">min_paired=3</span></code>), many cell-type pools have very few paired observations (n≈5), producing discrete p-value distributions and unstable estimates. Treat these as hypothesis-generating, not confirmatory.</p>
+<div><p><strong>Exploratory only:</strong> With a permissive threshold (<code class="docutils literal notranslate"><span class="pre">min_paired=4</span></code>) and no minimum number of cells per cell type, the cell-type pools hold few paired participants (5 to 6 here), producing discrete p-value distributions and unstable estimates. Treat these as hypothesis-generating, not confirmatory.</p>
 </div></blockquote>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Note: scipy.stats.wilcoxon warns 'Sample size too small for normal approximation'</span>
-<span class="c1"># when n &lt;= 20, but uses exact p-values internally — the results are correct.</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># scipy.stats.wilcoxon uses the exact distribution when the paired differences have no zeros</span>
+<span class="c1"># or ties, and a normal approximation otherwise, in which case it warns that the sample is small.</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_w</span>
 <span class="n">_w</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">'ignore'</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s1">'Sample size too small'</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">UserWarning</span><span class="p">)</span>
 
@@ -2232,33 +2237,9 @@ Boxplots show participant-level log1p CPM by day; points indicate individual par
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/sctrial_venv/lib/python3.13/site-packages/scipy/stats/_wilcoxon.py:178: RuntimeWarning: invalid value encountered in scalar divide
-  z = (r_plus - mn) / se
-/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/sctrial_venv/lib/python3.13/site-packages/scipy/stats/_wilcoxon.py:178: RuntimeWarning: invalid value encountered in scalar divide
-  z = (r_plus - mn) / se
-/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/sctrial_venv/lib/python3.13/site-packages/scipy/stats/_wilcoxon.py:178: RuntimeWarning: invalid value encountered in scalar divide
-  z = (r_plus - mn) / se
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell type):
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/sctrial_venv/lib/python3.13/site-packages/scipy/stats/_wilcoxon.py:178: RuntimeWarning: invalid value encountered in scalar divide
-  z = (r_plus - mn) / se
-/Users/vasanthakup/Documents/Work/umcAmsterdam/sctrial/sctrial_venv/lib/python3.13/site-packages/scipy/stats/_wilcoxon.py:178: RuntimeWarning: invalid value encountered in scalar divide
-  z = (r_plus - mn) / se
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -2294,6 +2275,16 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
   </thead>
   <tbody>
     <tr>
+      <th>69</th>
+      <td>C6_CD8 T</td>
+      <td>VCAN</td>
+      <td>6</td>
+      <td>-1.334576</td>
+      <td>-1.385715</td>
+      <td>0.03125</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
       <th>74</th>
       <td>C6_CD8 T</td>
       <td>PRF1</td>
@@ -2301,7 +2292,7 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
       <td>0.548281</td>
       <td>0.352451</td>
       <td>0.03125</td>
-      <td>0.362288</td>
+      <td>0.356992</td>
     </tr>
     <tr>
       <th>75</th>
@@ -2311,27 +2302,7 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
       <td>0.296983</td>
       <td>0.189454</td>
       <td>0.03125</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>69</th>
-      <td>C6_CD8 T</td>
-      <td>VCAN</td>
-      <td>6</td>
-      <td>-1.334576</td>
-      <td>-1.385715</td>
-      <td>0.03125</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>27</th>
-      <td>C3_CD14+ monocytes</td>
-      <td>MX1</td>
-      <td>6</td>
-      <td>0.301871</td>
-      <td>0.225520</td>
-      <td>0.03125</td>
-      <td>0.362288</td>
+      <td>0.356992</td>
     </tr>
     <tr>
       <th>32</th>
@@ -2341,47 +2312,17 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
       <td>-1.042964</td>
       <td>-0.946489</td>
       <td>0.03125</td>
-      <td>0.362288</td>
+      <td>0.356992</td>
     </tr>
     <tr>
-      <th>113</th>
-      <td>C1_NK</td>
-      <td>NKG7</td>
-      <td>5</td>
-      <td>0.209747</td>
-      <td>0.122444</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>114</th>
-      <td>C7_cDC2</td>
-      <td>CD79A</td>
+      <th>27</th>
+      <td>C3_CD14+ monocytes</td>
+      <td>MX1</td>
       <td>6</td>
-      <td>-0.700714</td>
-      <td>-0.599609</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>49</th>
-      <td>C10_Naive CD8 T</td>
-      <td>LYZ</td>
-      <td>5</td>
-      <td>-1.617291</td>
-      <td>-1.729764</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>48</th>
-      <td>C10_Naive CD8 T</td>
-      <td>S100A9</td>
-      <td>5</td>
-      <td>-1.781619</td>
-      <td>-1.684003</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
+      <td>0.301871</td>
+      <td>0.225520</td>
+      <td>0.03125</td>
+      <td>0.356992</td>
     </tr>
     <tr>
       <th>47</th>
@@ -2391,67 +2332,7 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
       <td>-1.522718</td>
       <td>-1.711392</td>
       <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>238</th>
-      <td>C14_Plasmablasts</td>
-      <td>S100A9</td>
-      <td>5</td>
-      <td>-1.425896</td>
-      <td>-0.836746</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>44</th>
-      <td>C10_Naive CD8 T</td>
-      <td>IFI6</td>
-      <td>5</td>
-      <td>0.124808</td>
-      <td>0.149484</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>135</th>
-      <td>C5_B</td>
-      <td>MS4A1</td>
-      <td>5</td>
-      <td>0.100942</td>
-      <td>0.104866</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>302</th>
-      <td>C17_Naive B</td>
-      <td>PRF1</td>
-      <td>5</td>
-      <td>0.484833</td>
-      <td>0.567189</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>141</th>
-      <td>C5_B</td>
-      <td>MX1</td>
-      <td>5</td>
-      <td>0.267979</td>
-      <td>0.235982</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>36</th>
-      <td>C3_CD14+ monocytes</td>
-      <td>PRF1</td>
-      <td>6</td>
-      <td>-0.362479</td>
-      <td>-0.425572</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
+      <td>0.356992</td>
     </tr>
     <tr>
       <th>46</th>
@@ -2461,57 +2342,17 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
       <td>0.160142</td>
       <td>0.127109</td>
       <td>0.06250</td>
-      <td>0.362288</td>
+      <td>0.356992</td>
     </tr>
     <tr>
-      <th>112</th>
-      <td>C1_NK</td>
-      <td>PRF1</td>
+      <th>1</th>
+      <td>C0_CD4 T</td>
+      <td>CD79B</td>
       <td>5</td>
-      <td>0.197452</td>
-      <td>0.113769</td>
+      <td>0.188476</td>
+      <td>0.204396</td>
       <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>107</th>
-      <td>C1_NK</td>
-      <td>VCAN</td>
-      <td>5</td>
-      <td>-1.237192</td>
-      <td>-1.319447</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>106</th>
-      <td>C1_NK</td>
-      <td>LYZ</td>
-      <td>5</td>
-      <td>-1.469975</td>
-      <td>-1.444261</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>105</th>
-      <td>C1_NK</td>
-      <td>S100A9</td>
-      <td>5</td>
-      <td>-1.584973</td>
-      <td>-1.708566</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>104</th>
-      <td>C1_NK</td>
-      <td>S100A8</td>
-      <td>5</td>
-      <td>-1.492757</td>
-      <td>-1.522200</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
+      <td>0.356992</td>
     </tr>
     <tr>
       <th>58</th>
@@ -2521,57 +2362,17 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
       <td>0.673069</td>
       <td>0.305295</td>
       <td>0.06250</td>
-      <td>0.362288</td>
+      <td>0.356992</td>
     </tr>
     <tr>
-      <th>98</th>
-      <td>C1_NK</td>
-      <td>MZB1</td>
+      <th>44</th>
+      <td>C10_Naive CD8 T</td>
+      <td>IFI6</td>
       <td>5</td>
-      <td>-0.260559</td>
-      <td>-0.223154</td>
+      <td>0.124808</td>
+      <td>0.149484</td>
       <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>97</th>
-      <td>C1_NK</td>
-      <td>MS4A1</td>
-      <td>5</td>
-      <td>-1.192343</td>
-      <td>-1.182017</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>96</th>
-      <td>C1_NK</td>
-      <td>CD79B</td>
-      <td>5</td>
-      <td>0.191311</td>
-      <td>0.126330</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>90</th>
-      <td>C4_CD16+ monocytes</td>
-      <td>CD38</td>
-      <td>5</td>
-      <td>-0.329611</td>
-      <td>-0.229651</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
-    </tr>
-    <tr>
-      <th>89</th>
-      <td>C4_CD16+ monocytes</td>
-      <td>CD69</td>
-      <td>5</td>
-      <td>-0.606386</td>
-      <td>-0.824426</td>
-      <td>0.06250</td>
-      <td>0.362288</td>
+      <td>0.356992</td>
     </tr>
     <tr>
       <th>87</th>
@@ -2581,7 +2382,27 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
       <td>-0.265302</td>
       <td>-0.114227</td>
       <td>0.06250</td>
-      <td>0.362288</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>277</th>
+      <td>C12_Tregs</td>
+      <td>LYZ</td>
+      <td>5</td>
+      <td>-1.700936</td>
+      <td>-1.579290</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>274</th>
+      <td>C12_Tregs</td>
+      <td>MX1</td>
+      <td>5</td>
+      <td>2.090278</td>
+      <td>2.457126</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
     </tr>
     <tr>
       <th>270</th>
@@ -2591,7 +2412,167 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
       <td>-0.203194</td>
       <td>-0.202877</td>
       <td>0.06250</td>
-      <td>0.362288</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>C0_CD4 T</td>
+      <td>ISG15</td>
+      <td>5</td>
+      <td>0.104056</td>
+      <td>0.083618</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>C0_CD4 T</td>
+      <td>MS4A1</td>
+      <td>5</td>
+      <td>-0.238522</td>
+      <td>-0.191856</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>294</th>
+      <td>C17_Naive B</td>
+      <td>S100A8</td>
+      <td>5</td>
+      <td>-3.317868</td>
+      <td>-3.089721</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>106</th>
+      <td>C1_NK</td>
+      <td>LYZ</td>
+      <td>5</td>
+      <td>-1.469975</td>
+      <td>-1.444261</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>135</th>
+      <td>C5_B</td>
+      <td>MS4A1</td>
+      <td>5</td>
+      <td>0.100942</td>
+      <td>0.104866</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>238</th>
+      <td>C14_Plasmablasts</td>
+      <td>S100A9</td>
+      <td>5</td>
+      <td>-1.425896</td>
+      <td>-0.836746</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>107</th>
+      <td>C1_NK</td>
+      <td>VCAN</td>
+      <td>5</td>
+      <td>-1.237192</td>
+      <td>-1.319447</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>114</th>
+      <td>C7_cDC2</td>
+      <td>CD79A</td>
+      <td>6</td>
+      <td>-0.700714</td>
+      <td>-0.599609</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>113</th>
+      <td>C1_NK</td>
+      <td>NKG7</td>
+      <td>5</td>
+      <td>0.209747</td>
+      <td>0.122444</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>112</th>
+      <td>C1_NK</td>
+      <td>PRF1</td>
+      <td>5</td>
+      <td>0.197452</td>
+      <td>0.113769</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>105</th>
+      <td>C1_NK</td>
+      <td>S100A9</td>
+      <td>5</td>
+      <td>-1.584973</td>
+      <td>-1.708566</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>97</th>
+      <td>C1_NK</td>
+      <td>MS4A1</td>
+      <td>5</td>
+      <td>-1.192343</td>
+      <td>-1.182017</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>104</th>
+      <td>C1_NK</td>
+      <td>S100A8</td>
+      <td>5</td>
+      <td>-1.492757</td>
+      <td>-1.522200</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>98</th>
+      <td>C1_NK</td>
+      <td>MZB1</td>
+      <td>5</td>
+      <td>-0.260559</td>
+      <td>-0.223154</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>96</th>
+      <td>C1_NK</td>
+      <td>CD79B</td>
+      <td>5</td>
+      <td>0.191311</td>
+      <td>0.126330</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
+    </tr>
+    <tr>
+      <th>89</th>
+      <td>C4_CD16+ monocytes</td>
+      <td>CD69</td>
+      <td>5</td>
+      <td>-0.606386</td>
+      <td>-0.824426</td>
+      <td>0.06250</td>
+      <td>0.356992</td>
     </tr>
   </tbody>
 </table>
@@ -2601,14 +2582,14 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_example_vaccine_immport_26_4.png" src="../_images/tutorials_example_vaccine_immport_26_4.png" />
+<img alt="../_images/tutorials_example_vaccine_immport_26_2.png" src="../_images/tutorials_example_vaccine_immport_26_2.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_example_vaccine_immport_26_5.png" src="../_images/tutorials_example_vaccine_immport_26_5.png" />
+<img alt="../_images/tutorials_example_vaccine_immport_26_3.png" src="../_images/tutorials_example_vaccine_immport_26_3.png" />
 </div>
 </div>
 </section>
@@ -2655,8 +2636,8 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">features</span><span class="p">:</span>
     <span class="n">modules</span> <span class="o">=</span> <span class="n">features</span><span class="p">[:</span><span class="mi">4</span><span class="p">]</span>
     <span class="k">if</span> <span class="s2">"X_umap"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">obsm</span><span class="p">:</span>
-        <span class="c1"># Ensure UMAP is computed on log1p_cpm (same as Section 4)</span>
-        <span class="n">adata_analysis</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">"log1p_cpm"</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="c1"># Ensure UMAP is computed on log1p_norm (same as Section 4)</span>
+        <span class="n">adata_analysis</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">adata_analysis</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">"log1p_norm"</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">adata_analysis</span><span class="p">)</span>
         <span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">adata_analysis</span><span class="p">)</span>
         <span class="n">sc</span><span class="o">.</span><span class="n">tl</span><span class="o">.</span><span class="n">umap</span><span class="p">(</span><span class="n">adata_analysis</span><span class="p">)</span>
@@ -2755,7 +2736,7 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
             <span class="n">sd_delta</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
             <span class="n">d_paired</span> <span class="o">=</span> <span class="n">delta</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">/</span> <span class="n">sd_delta</span> <span class="k">if</span> <span class="n">sd_delta</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
 
-            <span class="c1"># Hedge's correction for small-sample bias (paired df = n-1)</span>
+            <span class="c1"># Hedges' correction for small-sample bias (paired df = n-1)</span>
             <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span>
             <span class="n">j</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="mi">3</span> <span class="o">/</span> <span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="k">else</span> <span class="mf">1.0</span>
             <span class="n">g_paired</span> <span class="o">=</span> <span class="n">d_paired</span> <span class="o">*</span> <span class="n">j</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">d_paired</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
@@ -2788,7 +2769,7 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
 
         <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Effect sizes for Day 0 → Day 7 changes:"</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">"  d_paired: standardized within-subject change (delta_mean / sd_delta)"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"  g_paired: bias-corrected paired effect size (Hedge's J correction)"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"  g_paired: bias-corrected paired effect size (Hedges' J correction)"</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
         <span class="n">display</span><span class="p">(</span><span class="n">df_effect</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
 
@@ -2803,7 +2784,7 @@ Pseudobulk paired deltas with Wilcoxon signed-rank test (panel genes × cell typ
         <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"black"</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">(</span><span class="n">y_pos</span><span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_yticklabels</span><span class="p">(</span><span class="n">df_effect</span><span class="p">[</span><span class="s2">"feature"</span><span class="p">])</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Paired Hedge's g (95% Bootstrap CI)"</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Paired Hedges' g (95% Bootstrap CI)"</span><span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">"Effect Sizes: Day 7 vs Day 0"</span><span class="p">)</span>
 
         <span class="c1"># Reference lines</span>
@@ -2828,7 +2809,7 @@ EFFECT SIZE ANALYSIS (Within-Arm)
 
 Effect sizes for Day 0 → Day 7 changes:
   d_paired: standardized within-subject change (delta_mean / sd_delta)
-  g_paired: bias-corrected paired effect size (Hedge&#39;s J correction)
+  g_paired: bias-corrected paired effect size (Hedges&#39; J correction)
 
 </pre></div></div>
 </div>
@@ -2867,191 +2848,191 @@ Effect sizes for Day 0 → Day 7 changes:
     <tr>
       <th>0</th>
       <td>sig_Cytotoxic T Cell Activity</td>
-      <td>0.219</td>
-      <td>1.781</td>
-      <td>1.500</td>
-      <td>0.917</td>
-      <td>6.142</td>
+      <td>0.221</td>
+      <td>1.733</td>
+      <td>1.459</td>
+      <td>0.926</td>
+      <td>4.394</td>
       <td>6</td>
     </tr>
     <tr>
       <th>1</th>
       <td>sig_T Cell Exhaustion</td>
-      <td>0.045</td>
-      <td>0.511</td>
-      <td>0.430</td>
-      <td>-0.204</td>
-      <td>3.474</td>
+      <td>0.038</td>
+      <td>0.583</td>
+      <td>0.491</td>
+      <td>-0.114</td>
+      <td>4.025</td>
       <td>6</td>
     </tr>
     <tr>
       <th>2</th>
       <td>sig_Checkpoint Receptors</td>
-      <td>0.052</td>
-      <td>0.491</td>
-      <td>0.414</td>
-      <td>-0.210</td>
-      <td>4.903</td>
+      <td>0.046</td>
+      <td>0.552</td>
+      <td>0.464</td>
+      <td>-0.197</td>
+      <td>2.794</td>
       <td>6</td>
     </tr>
     <tr>
       <th>3</th>
       <td>sig_Type I Interferon</td>
-      <td>0.055</td>
-      <td>0.726</td>
-      <td>0.611</td>
-      <td>-0.057</td>
-      <td>2.338</td>
+      <td>0.063</td>
+      <td>1.532</td>
+      <td>1.290</td>
+      <td>0.788</td>
+      <td>2.897</td>
       <td>6</td>
     </tr>
     <tr>
       <th>4</th>
       <td>sig_Type II Interferon</td>
-      <td>0.008</td>
-      <td>0.149</td>
-      <td>0.126</td>
-      <td>-0.467</td>
-      <td>1.467</td>
+      <td>0.010</td>
+      <td>0.326</td>
+      <td>0.274</td>
+      <td>-2.344</td>
+      <td>0.863</td>
       <td>6</td>
     </tr>
     <tr>
       <th>5</th>
       <td>sig_Memory T Cell</td>
-      <td>-0.125</td>
-      <td>-0.554</td>
-      <td>-0.467</td>
-      <td>-1.135</td>
-      <td>0.191</td>
+      <td>-0.115</td>
+      <td>-0.663</td>
+      <td>-0.559</td>
+      <td>-1.319</td>
+      <td>-0.106</td>
       <td>6</td>
     </tr>
     <tr>
       <th>6</th>
       <td>sig_T Cell Activation</td>
-      <td>-0.046</td>
-      <td>-0.497</td>
-      <td>-0.419</td>
-      <td>-1.057</td>
-      <td>0.197</td>
+      <td>-0.047</td>
+      <td>-0.761</td>
+      <td>-0.641</td>
+      <td>-1.660</td>
+      <td>-0.316</td>
       <td>6</td>
     </tr>
     <tr>
       <th>7</th>
       <td>sig_Inflammatory Response</td>
-      <td>-0.009</td>
-      <td>-0.409</td>
-      <td>-0.344</td>
-      <td>-1.097</td>
-      <td>0.508</td>
+      <td>-0.006</td>
+      <td>-0.204</td>
+      <td>-0.172</td>
+      <td>-1.065</td>
+      <td>0.663</td>
       <td>6</td>
     </tr>
     <tr>
       <th>8</th>
       <td>sig_Antigen Presentation</td>
-      <td>0.075</td>
-      <td>0.801</td>
-      <td>0.675</td>
-      <td>0.314</td>
-      <td>1.720</td>
+      <td>0.102</td>
+      <td>0.716</td>
+      <td>0.603</td>
+      <td>0.303</td>
+      <td>1.439</td>
       <td>6</td>
     </tr>
     <tr>
       <th>9</th>
       <td>sig_Cell Proliferation</td>
-      <td>0.028</td>
-      <td>0.700</td>
-      <td>0.590</td>
-      <td>-0.093</td>
-      <td>4.817</td>
+      <td>0.027</td>
+      <td>1.590</td>
+      <td>1.339</td>
+      <td>1.002</td>
+      <td>8.385</td>
       <td>6</td>
     </tr>
     <tr>
       <th>10</th>
       <td>sig_Regulatory T Cell</td>
-      <td>0.009</td>
-      <td>0.173</td>
-      <td>0.146</td>
-      <td>-0.447</td>
-      <td>4.454</td>
+      <td>0.004</td>
+      <td>0.112</td>
+      <td>0.095</td>
+      <td>-0.497</td>
+      <td>8.451</td>
       <td>6</td>
     </tr>
     <tr>
       <th>11</th>
       <td>sig_NK Cell Activity</td>
-      <td>0.204</td>
-      <td>1.543</td>
-      <td>1.299</td>
+      <td>0.201</td>
+      <td>1.460</td>
+      <td>1.229</td>
       <td>0.827</td>
-      <td>3.174</td>
+      <td>2.812</td>
       <td>6</td>
     </tr>
     <tr>
       <th>12</th>
       <td>sig_Apoptosis</td>
-      <td>-0.008</td>
-      <td>-0.062</td>
-      <td>-0.052</td>
-      <td>-0.610</td>
-      <td>3.176</td>
+      <td>-0.010</td>
+      <td>-0.131</td>
+      <td>-0.110</td>
+      <td>-0.757</td>
+      <td>1.543</td>
       <td>6</td>
     </tr>
     <tr>
       <th>13</th>
       <td>sig_Oxidative Stress Response</td>
-      <td>0.028</td>
-      <td>0.249</td>
-      <td>0.210</td>
-      <td>-0.377</td>
-      <td>6.175</td>
+      <td>0.034</td>
+      <td>0.791</td>
+      <td>0.666</td>
+      <td>0.011</td>
+      <td>3.421</td>
       <td>6</td>
     </tr>
     <tr>
       <th>14</th>
       <td>sig_Humoral Plasma Cell</td>
-      <td>0.019</td>
-      <td>0.424</td>
-      <td>0.357</td>
-      <td>-0.410</td>
-      <td>1.263</td>
+      <td>0.020</td>
+      <td>0.310</td>
+      <td>0.261</td>
+      <td>-0.899</td>
+      <td>0.843</td>
       <td>6</td>
     </tr>
     <tr>
       <th>15</th>
       <td>sig_Monocyte Macrophage</td>
-      <td>0.044</td>
-      <td>0.290</td>
-      <td>0.244</td>
-      <td>-1.306</td>
-      <td>0.746</td>
+      <td>0.053</td>
+      <td>0.354</td>
+      <td>0.298</td>
+      <td>-1.586</td>
+      <td>0.788</td>
       <td>6</td>
     </tr>
     <tr>
       <th>16</th>
       <td>sig_Tissue-Resident Memory</td>
-      <td>-0.023</td>
-      <td>-0.291</td>
-      <td>-0.245</td>
-      <td>-0.817</td>
-      <td>0.882</td>
+      <td>-0.027</td>
+      <td>-0.589</td>
+      <td>-0.496</td>
+      <td>-1.638</td>
+      <td>0.089</td>
       <td>6</td>
     </tr>
     <tr>
       <th>17</th>
       <td>sig_T Follicular Helper</td>
-      <td>0.005</td>
-      <td>0.057</td>
-      <td>0.048</td>
-      <td>-0.511</td>
-      <td>2.580</td>
+      <td>0.002</td>
+      <td>0.033</td>
+      <td>0.028</td>
+      <td>-0.546</td>
+      <td>2.361</td>
       <td>6</td>
     </tr>
     <tr>
       <th>18</th>
       <td>sig_Hypoxia</td>
-      <td>-0.009</td>
-      <td>-0.069</td>
-      <td>-0.058</td>
-      <td>-0.571</td>
-      <td>2.932</td>
+      <td>-0.007</td>
+      <td>-0.094</td>
+      <td>-0.079</td>
+      <td>-0.604</td>
+      <td>1.854</td>
       <td>6</td>
     </tr>
   </tbody>
@@ -3239,15 +3220,6 @@ Note: Participant-level aggregation accounts for clustering automatically.
 <div class="highlight"><pre>
 AnnData object with n_obs × n_vars = 202 × 5
     obs: &#39;participant_id&#39;, &#39;visit&#39;, &#39;cell_type&#39;
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/opt/homebrew/Cellar/python@3.13/3.13.13_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/functools.py:934: ImplicitModificationWarning: Transforming to str index.
-  return dispatch(args[0].__class__)(*args, **kw)
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">

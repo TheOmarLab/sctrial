@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.stats.simulation &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial.stats.simulation &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../../_static/documentation_options.js?v=2a705162"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,6 +49,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/stats/simulation';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/_modules/sctrial/stats/simulation.html" />
     <link rel="icon" href="../../../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -122,8 +123,8 @@
       
     
     
-    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -666,11 +667,17 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
+<span class="sd">    n_participants, n_genes, effect_sizes, noise_sd, n_cells_per_participant</span>
+<span class="sd">        Passed to :func:`simulate_did_data` for every iteration.</span>
 <span class="sd">    methods : list of str</span>
 <span class="sd">        Methods to compare. Options: ``"sctrial_did"``, ``"mixed_did"``,</span>
 <span class="sd">        ``"pseudobulk_ols"``, ``"wilcoxon"``.  Default: all four.</span>
 <span class="sd">    n_iterations : int</span>
 <span class="sd">        Number of simulation repetitions.</span>
+<span class="sd">    seed : int</span>
+<span class="sd">        Seed from which the seed of each iteration is drawn.</span>
+<span class="sd">    **sim_kwargs</span>
+<span class="sd">        Further arguments of :func:`simulate_did_data`.</span>
 <span class="sd">    n_jobs : int, optional</span>
 <span class="sd">        Number of parallel workers.  Defaults to ``min(cpu_count, 8)``.</span>
 <span class="sd">        Set to 1 to disable parallelisation.</span>
@@ -855,6 +862,8 @@
 <span class="sd">    """</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">statsmodels.formula.api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">smf</span>
 
+    <span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_identified</span>
+
     <span class="n">pb</span> <span class="o">=</span> <span class="n">pb</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">pb</span><span class="p">[</span><span class="s2">"arm_bin"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pb</span><span class="p">[</span><span class="s2">"arm"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"Treated"</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">pb</span><span class="p">[</span><span class="s2">"visit_bin"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pb</span><span class="p">[</span><span class="s2">"visit"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"Post"</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
@@ -865,7 +874,12 @@
     <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">gene_cols</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># Backtick-quote gene names for formula safety</span>
-            <span class="n">fit</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Q('</span><span class="si">{</span><span class="n">g</span><span class="si">}</span><span class="s2">') ~ arm_bin + visit_bin + interaction"</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">pb</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+            <span class="n">fit</span> <span class="o">=</span> <span class="n">fit_identified</span><span class="p">(</span>
+                <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Q('</span><span class="si">{</span><span class="n">g</span><span class="si">}</span><span class="s2">') ~ arm_bin + visit_bin + interaction"</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">pb</span><span class="p">),</span> <span class="s2">"interaction"</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">fit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># an arm seen at one visit only: the interaction is the arm or the visit column</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"interaction not identified"</span><span class="p">)</span>
             <span class="n">beta</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">"interaction"</span><span class="p">]</span>
             <span class="n">pval</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="p">[</span><span class="s2">"interaction"</span><span class="p">]</span>
             <span class="n">ci</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">conf_int</span><span class="p">()</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">"interaction"</span><span class="p">]</span>

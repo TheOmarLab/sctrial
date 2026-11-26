@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Concepts and Methods &#8212; sctrial 0.3.3 documentation</title>
+    <title>Concepts and Methods &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="_static/documentation_options.js?v=d198571b"></script>
+    <script src="_static/documentation_options.js?v=2a705162"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -52,6 +52,7 @@
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'concepts';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/concepts.html" />
     <link rel="icon" href="_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -127,8 +128,8 @@
       
     
     
-    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -507,7 +508,8 @@ are often adequate, though diagnostics remain important.</p>
 model with participant fixed effects on pseudobulk means, regressing the
 outcome on a visit indicator (<code class="docutils literal notranslate"><span class="pre">outcome</span> <span class="pre">~</span> <span class="pre">visit_num</span> <span class="pre">+</span> <span class="pre">C(participant)</span></code>).
 The coefficient on the visit term estimates the average
-within-participant change, and inference uses cluster-robust standard
+within-participant change, in standard deviations of the outcome with the
+default <code class="docutils literal notranslate"><span class="pre">standardize=True</span></code>, and inference uses cluster-robust standard
 errors (or bootstrap when specified).</p>
 <p>For cross-sectional between-arm comparisons at a fixed visit,
 <a class="reference internal" href="api/statistics.html#sctrial.stats.comparisons.between_arm_comparison" title="sctrial.stats.comparisons.between_arm_comparison"><code class="xref py py-func docutils literal notranslate"><span class="pre">between_arm_comparison()</span></code></a> aggregates to
@@ -532,13 +534,16 @@ samples.</p></li>
 </section>
 <section id="power-analysis">
 <h2>Power analysis<a class="headerlink" href="#power-analysis" title="Link to this heading">#</a></h2>
-<p>sctrial includes prospective power calculations for both study designs:</p>
+<p>sctrial includes prospective power calculations for each supported study design:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="api/statistics.html#sctrial.stats.power.power_did" title="sctrial.stats.power.power_did"><code class="xref py py-func docutils literal notranslate"><span class="pre">power_did()</span></code></a> /
 <a class="reference internal" href="api/statistics.html#sctrial.stats.power.sample_size_did" title="sctrial.stats.power.sample_size_did"><code class="xref py py-func docutils literal notranslate"><span class="pre">sample_size_did()</span></code></a> for two-arm DiD.</p></li>
 <li><p><a class="reference internal" href="api/statistics.html#sctrial.stats.power.power_paired" title="sctrial.stats.power.power_paired"><code class="xref py py-func docutils literal notranslate"><span class="pre">power_paired()</span></code></a> /
 <a class="reference internal" href="api/statistics.html#sctrial.stats.power.sample_size_paired" title="sctrial.stats.power.sample_size_paired"><code class="xref py py-func docutils literal notranslate"><span class="pre">sample_size_paired()</span></code></a> for single-arm
 paired designs.</p></li>
+<li><p><a class="reference internal" href="api/statistics.html#sctrial.stats.power.power_two_group" title="sctrial.stats.power.power_two_group"><code class="xref py py-func docutils literal notranslate"><span class="pre">power_two_group()</span></code></a> /
+<a class="reference internal" href="api/statistics.html#sctrial.stats.power.sample_size_two_group" title="sctrial.stats.power.sample_size_two_group"><code class="xref py py-func docutils literal notranslate"><span class="pre">sample_size_two_group()</span></code></a> for two groups of
+unequal size (a cross-sectional comparison, or a DiD with unequal arms).</p></li>
 </ul>
 <p>These use a two-sample <em>t</em>-test power formula (two-arm) or a
 one-sample <em>t</em>-test formula (single-arm) as the basis, since the

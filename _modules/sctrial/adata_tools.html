@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.adata_tools &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial.adata_tools &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../_static/documentation_options.js?v=2a705162"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,6 +49,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/adata_tools';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/_modules/sctrial/adata_tools.html" />
     <link rel="icon" href="../../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -122,8 +123,8 @@
       
     
     
-    <img src="../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -371,6 +372,8 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -379,11 +382,10 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"subset_primary"</span><span class="p">,</span> <span class="s2">"subset_cells"</span><span class="p">,</span> <span class="s2">"profile_features"</span><span class="p">]</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"subset_primary"</span><span class="p">,</span> <span class="s2">"subset_arms"</span><span class="p">,</span> <span class="s2">"subset_cells"</span><span class="p">,</span> <span class="s2">"profile_features"</span><span class="p">]</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_require_cols</span><span class="p">(</span><span class="n">obs</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">cols</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Require specific columns in the DataFrame."""</span>
@@ -453,9 +455,127 @@
     <span class="k">if</span> <span class="n">exclude_crossovers</span> <span class="ow">and</span> <span class="n">design</span><span class="o">.</span><span class="n">crossover_col</span><span class="p">:</span>
         <span class="n">_require_cols</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">crossover_col</span><span class="p">])</span>
         <span class="n">cross</span> <span class="o">=</span> <span class="n">_to_bool_series</span><span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">crossover_col</span><span class="p">])</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
-        <span class="n">mask</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="n">cross</span>
+        <span class="c1"># a new array: the mask can be a read-only view of the obs column (pandas 3)</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">cross</span>
 
     <span class="k">return</span> <span class="n">adata</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+
+
+<span class="n">_MAX_LABELS_IN_MESSAGE</span> <span class="o">=</span> <span class="mi">10</span>
+
+
+<div class="viewcode-block" id="subset_arms">
+<a class="viewcode-back" href="../../api/scoring.html#sctrial.adata_tools.subset_arms">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">subset_arms</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">AnnData</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">design</span><span class="p">:</span> <span class="n">TrialDesign</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">stacklevel</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AnnData</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Keep the rows of the two arms named by the design.</span>
+
+<span class="sd">    A two-arm analysis compares ``design.arm_treated`` with ``design.arm_control``.</span>
+<span class="sd">    A row whose arm is any other label, or is missing, belongs to neither group and</span>
+<span class="sd">    is removed. One ``UserWarning`` names the labels removed and counts the</span>
+<span class="sd">    participants that carry them. The two-arm functions of the package build their</span>
+<span class="sd">    model frame through this function.</span>
+
+<span class="sd">    Data that hold rows of other labels but no row of one named arm do not match the</span>
+<span class="sd">    design (for example ``arm_control="Control"`` on data labeled ``"Placebo"``), and</span>
+<span class="sd">    raise. Data that hold only one of the two named arms and nothing else are returned</span>
+<span class="sd">    unchanged; the estimators report a missing estimate for them.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data</span>
+<span class="sd">        AnnData, or a DataFrame that holds ``design.arm_col`` (``adata.obs`` or a</span>
+<span class="sd">        table with one row per participant and visit).</span>
+<span class="sd">    design</span>
+<span class="sd">        Trial design with ``arm_col``, ``arm_treated`` and ``arm_control``.</span>
+<span class="sd">    stacklevel</span>
+<span class="sd">        Passed to ``warnings.warn``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    AnnData or pd.DataFrame</span>
+<span class="sd">        ``data`` itself when every row belongs to a named arm, otherwise a copy</span>
+<span class="sd">        restricted to the rows of the two named arms.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the design has no arm column, if ``arm_treated`` equals ``arm_control``,</span>
+<span class="sd">        or if the data hold rows of other labels and no row of one named arm.</span>
+<span class="sd">    KeyError</span>
+<span class="sd">        If ``design.arm_col`` is not a column of the data.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; two_arms = subset_arms(adata, design)</span>
+<span class="sd">    &gt;&gt;&gt; res = did_table(two_arms, features=features, design=design, visits=("V1", "V2"))</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"A two-arm analysis requires design.arm_col. For a single-arm design "</span>
+            <span class="s2">"(arm_col=None) use the within-arm functions."</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span> <span class="o">==</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"A two-arm analysis requires two distinct arm labels, but "</span>
+            <span class="sa">f</span><span class="s2">"arm_treated == arm_control == </span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">!r}</span><span class="s2">. For one arm use "</span>
+            <span class="s2">"within_arm_comparison or a design with arm_col=None."</span>
+        <span class="p">)</span>
+    <span class="n">obs</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">obs</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">AnnData</span><span class="p">)</span> <span class="k">else</span> <span class="n">data</span>
+    <span class="n">_require_cols</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">])</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">data</span>
+
+    <span class="n">arm</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
+    <span class="n">is_treated</span> <span class="o">=</span> <span class="n">arm</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">])</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">is_control</span> <span class="o">=</span> <span class="n">arm</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">])</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">keep</span> <span class="o">=</span> <span class="n">is_treated</span> <span class="o">|</span> <span class="n">is_control</span>
+    <span class="k">if</span> <span class="n">keep</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">data</span>
+
+    <span class="n">absent</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">label</span>
+        <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">rows</span> <span class="ow">in</span> <span class="p">((</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">is_treated</span><span class="p">),</span> <span class="p">(</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="p">,</span> <span class="n">is_control</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">rows</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="n">absent</span><span class="p">:</span>
+        <span class="n">present</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">pd</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">arm</span><span class="o">.</span><span class="n">dropna</span><span class="p">()))</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"No rows of arm </span><span class="si">{</span><span class="s1">' or '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">absent</span><span class="p">)</span><span class="si">}</span><span class="s2"> in obs[</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="si">!r}</span><span class="s2">] "</span>
+            <span class="sa">f</span><span class="s2">"(labels present: </span><span class="si">{</span><span class="n">present</span><span class="si">}</span><span class="s2">). The design names arm_treated="</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">!r}</span><span class="s2"> and arm_control=</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="si">!r}</span><span class="s2">; a two-arm "</span>
+            <span class="sa">f</span><span class="s2">"analysis uses rows with these two labels only."</span>
+        <span class="p">)</span>
+
+    <span class="n">outside</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">keep</span><span class="p">]</span>
+    <span class="n">by_participant</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">participant_col</span> <span class="ow">in</span> <span class="n">outside</span><span class="o">.</span><span class="n">columns</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_count</span><span class="p">(</span><span class="n">rows</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">rows</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span> <span class="k">if</span> <span class="n">by_participant</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">outside</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
+    <span class="n">named</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="o">.</span><span class="n">dropna</span><span class="p">()),</span> <span class="n">key</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">label</span><span class="si">!r}</span><span class="s2"> (</span><span class="si">{</span><span class="n">_count</span><span class="p">(</span><span class="n">outside</span><span class="p">[</span><span class="n">labels</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="n">label</span><span class="p">])</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()])</span><span class="si">}</span><span class="s2">)"</span>
+        <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">named</span><span class="p">[:</span><span class="n">_MAX_LABELS_IN_MESSAGE</span><span class="p">]</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">named</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">_MAX_LABELS_IN_MESSAGE</span><span class="p">:</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">named</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">_MAX_LABELS_IN_MESSAGE</span><span class="si">}</span><span class="s2"> more labels"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">labels</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"missing label (</span><span class="si">{</span><span class="n">_count</span><span class="p">(</span><span class="n">outside</span><span class="p">[</span><span class="n">labels</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()])</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"obs[</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="si">!r}</span><span class="s2">] holds rows outside the two arms of the design "</span>
+        <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="si">!r}</span><span class="s2"> and </span><span class="si">{</span><span class="n">design</span><span class="o">.</span><span class="n">arm_control</span><span class="si">!r}</span><span class="s2">). They are excluded from the "</span>
+        <span class="sa">f</span><span class="s2">"two-arm analysis. </span><span class="si">{</span><span class="s1">'Participants'</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">by_participant</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">'Rows'</span><span class="si">}</span><span class="s2"> per excluded "</span>
+        <span class="sa">f</span><span class="s2">"label: </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span><span class="si">}</span><span class="s2">."</span><span class="p">,</span>
+        <span class="ne">UserWarning</span><span class="p">,</span>
+        <span class="n">stacklevel</span><span class="o">=</span><span class="n">stacklevel</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">AnnData</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
 
 
 

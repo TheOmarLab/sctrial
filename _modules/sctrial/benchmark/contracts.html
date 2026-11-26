@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.benchmark.contracts &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial.benchmark.contracts &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../../_static/documentation_options.js?v=2a705162"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,6 +49,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/benchmark/contracts';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/_modules/sctrial/benchmark/contracts.html" />
     <link rel="icon" href="../../../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -122,8 +123,8 @@
       
     
     
-    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -424,6 +425,10 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"CANONICAL_ARMS"</span><span class="p">,</span>
+    <span class="s2">"CANONICAL_VISITS"</span><span class="p">,</span>
+    <span class="s2">"canonical_cohort"</span><span class="p">,</span>
+    <span class="s2">"require_raw_counts"</span><span class="p">,</span>
     <span class="s2">"METHOD_ESTIMAND"</span><span class="p">,</span>
     <span class="s2">"METHOD_INPUT"</span><span class="p">,</span>
     <span class="s2">"prepare_inputs"</span><span class="p">,</span>
@@ -454,6 +459,12 @@
 <span class="sd">"""The input representation each method expects: ``participant_log1p_cpm``, ``pseudobulk_counts``, or ``cell_counts``."""</span>
 
 <span class="n">_META_COLS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"participant"</span><span class="p">,</span> <span class="s2">"visit"</span><span class="p">,</span> <span class="s2">"arm"</span><span class="p">)</span>
+
+<span class="n">CANONICAL_VISITS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"Pre"</span><span class="p">,</span> <span class="s2">"Post"</span><span class="p">)</span>
+<span class="sd">"""The visit labels every runner reads: (baseline, follow-up)."""</span>
+
+<span class="n">CANONICAL_ARMS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"Treated"</span><span class="p">,</span> <span class="s2">"Control"</span><span class="p">)</span>
+<span class="sd">"""The arm labels every runner reads: (treated, control)."""</span>
 
 
 <div class="viewcode-block" id="participant_log1p_cpm">
@@ -555,6 +566,184 @@
     <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">gene</span><span class="p">,</span> <span class="n">injected</span><span class="p">))</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_layer_names</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Names of the layers, sorted. anndata 0.13 also lists ``X`` under the key ``None``."""</span>
+    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_count_matrix</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""The matrix the caller named as raw counts; ``None`` names ``adata.X``.</span>
+
+<span class="sd">    A named layer that is absent raises. Falling back to ``adata.X`` would hand a</span>
+<span class="sd">    normalised matrix to the count models of a cohort that has no counts.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">counts_layer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span>
+    <span class="k">if</span> <span class="n">counts_layer</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"counts layer </span><span class="si">{</span><span class="n">counts_layer</span><span class="si">!r}</span><span class="s2"> not found (layers: </span><span class="si">{</span><span class="n">_layer_names</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span><span class="si">}</span><span class="s2">). "</span>
+            <span class="s2">"Name the layer that holds the counts, or pass counts_layer=None if they "</span>
+            <span class="s2">"are in adata.X."</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">counts_layer</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_require_vocabulary</span><span class="p">(</span><span class="n">obs</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">allowed</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Refuse labels the runners do not read: they would match neither group."""</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+    <span class="n">other</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">pd</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">dropna</span><span class="p">())</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">allowed</span><span class="p">)</span>
+    <span class="n">n_missing</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">other</span> <span class="ow">or</span> <span class="n">n_missing</span><span class="p">:</span>
+        <span class="n">found</span> <span class="o">=</span> <span class="p">([</span><span class="sa">f</span><span class="s2">"labels </span><span class="si">{</span><span class="n">other</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="k">if</span> <span class="n">other</span> <span class="k">else</span> <span class="p">[])</span> <span class="o">+</span> <span class="p">(</span>
+            <span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_missing</span><span class="si">}</span><span class="s2"> missing labels"</span><span class="p">]</span> <span class="k">if</span> <span class="n">n_missing</span> <span class="k">else</span> <span class="p">[]</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"obs[</span><span class="si">{</span><span class="n">col</span><span class="si">!r}</span><span class="s2">] holds </span><span class="si">{</span><span class="s1">' and '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">found</span><span class="p">)</span><span class="si">}</span><span class="s2">; the benchmark runners read "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">allowed</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">!r}</span><span class="s2"> and </span><span class="si">{</span><span class="n">allowed</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">!r}</span><span class="s2"> only. Map a real cohort with "</span>
+            <span class="s2">"canonical_cohort() first."</span>
+        <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">canonical_cohort</span><span class="p">(</span>
+    <span class="n">adata</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">visits</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="n">arm_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">arm_treated</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">arm_control</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">"counts"</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""A real cohort in the vocabulary of the benchmark.</span>
+
+<span class="sd">    The runners read the columns ``participant``, ``visit`` and ``arm`` and the</span>
+<span class="sd">    labels of :data:`CANONICAL_VISITS` and :data:`CANONICAL_ARMS`. A real cohort</span>
+<span class="sd">    names them differently (``response`` with ``Responder``/``Non-responder``),</span>
+<span class="sd">    and a label a runner does not read matches neither group: every method then</span>
+<span class="sd">    fails for every gene. This function maps a cohort once, from labels the caller</span>
+<span class="sd">    states; nothing is guessed.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    adata</span>
+<span class="sd">        The cohort.</span>
+<span class="sd">    participant_col, visit_col</span>
+<span class="sd">        Columns of ``adata.obs``.</span>
+<span class="sd">    visits</span>
+<span class="sd">        (baseline, follow-up) labels of ``visit_col``. Rows of other visits are</span>
+<span class="sd">        left out.</span>
+<span class="sd">    arm_col, arm_treated, arm_control</span>
+<span class="sd">        The arm column and its two labels, for a two-arm cohort. Rows of any other</span>
+<span class="sd">        arm, or with a missing arm label, are left out with one warning</span>
+<span class="sd">        (:func:`sctrial.subset_arms`). ``arm_col=None`` declares a single-arm</span>
+<span class="sd">        cohort.</span>
+<span class="sd">    counts_layer</span>
+<span class="sd">        Layer that holds raw counts; ``None`` names ``adata.X``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    AnnData</span>
+<span class="sd">        Counts in ``X`` and ``obs`` columns ``participant``, ``visit``, ``arm``</span>
+<span class="sd">        with the canonical labels.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    KeyError</span>
+<span class="sd">        If a column or the counts layer is absent.</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If a named visit or arm has no rows, if the arm labels of a two-arm</span>
+<span class="sd">        cohort are not given, or if a participant label is missing.</span>
+<span class="sd">    """</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ad</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..adata_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">subset_arms</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
+
+    <span class="n">obs</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
+    <span class="n">absent_cols</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">(</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">,</span> <span class="n">arm_col</span><span class="p">)</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="n">absent_cols</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"columns </span><span class="si">{</span><span class="n">absent_cols</span><span class="si">}</span><span class="s2"> not in adata.obs (columns: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+    <span class="n">baseline</span><span class="p">,</span> <span class="n">followup</span> <span class="o">=</span> <span class="n">visits</span>
+    <span class="k">if</span> <span class="n">baseline</span> <span class="o">==</span> <span class="n">followup</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"visits must name two different labels, got </span><span class="si">{</span><span class="n">visits</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">absent_visits</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">baseline</span><span class="p">,</span> <span class="n">followup</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">obs</span><span class="p">[</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="n">v</span><span class="p">])</span><span class="o">.</span><span class="n">any</span><span class="p">()]</span>
+    <span class="k">if</span> <span class="n">absent_visits</span><span class="p">:</span>
+        <span class="n">present</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">pd</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()))</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"No rows of visit </span><span class="si">{</span><span class="s1">' or '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">absent_visits</span><span class="p">)</span><span class="si">}</span><span class="s2"> in "</span>
+            <span class="sa">f</span><span class="s2">"obs[</span><span class="si">{</span><span class="n">visit_col</span><span class="si">!r}</span><span class="s2">] (labels present: </span><span class="si">{</span><span class="n">present</span><span class="si">}</span><span class="s2">)."</span>
+        <span class="p">)</span>
+    <span class="n">cohort</span> <span class="o">=</span> <span class="n">adata</span><span class="p">[</span><span class="n">obs</span><span class="p">[</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="n">baseline</span><span class="p">,</span> <span class="n">followup</span><span class="p">])</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()]</span>
+
+    <span class="k">if</span> <span class="n">arm_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">arm_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">cohort</span><span class="o">.</span><span class="n">n_obs</span><span class="p">,</span> <span class="n">CANONICAL_ARMS</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">arm_treated</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">arm_control</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">"A two-arm cohort needs arm_treated and arm_control; pass arm_col=None "</span>
+                <span class="s2">"for a single-arm cohort."</span>
+            <span class="p">)</span>
+        <span class="n">design</span> <span class="o">=</span> <span class="n">TrialDesign</span><span class="p">(</span>
+            <span class="n">participant_col</span><span class="o">=</span><span class="n">participant_col</span><span class="p">,</span>
+            <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span><span class="p">,</span>
+            <span class="n">arm_col</span><span class="o">=</span><span class="n">arm_col</span><span class="p">,</span>
+            <span class="n">arm_treated</span><span class="o">=</span><span class="n">arm_treated</span><span class="p">,</span>
+            <span class="n">arm_control</span><span class="o">=</span><span class="n">arm_control</span><span class="p">,</span>
+            <span class="n">celltype_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">cohort</span> <span class="o">=</span> <span class="n">subset_arms</span><span class="p">(</span><span class="n">cohort</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">arm</span> <span class="o">=</span> <span class="n">cohort</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">arm_col</span><span class="p">]</span>
+        <span class="n">absent_arms</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="p">(</span><span class="n">arm_treated</span><span class="p">,</span> <span class="n">arm_control</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">arm</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="n">a</span><span class="p">])</span><span class="o">.</span><span class="n">any</span><span class="p">()]</span>
+        <span class="k">if</span> <span class="n">absent_arms</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"No rows of arm </span><span class="si">{</span><span class="s1">' or '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">absent_arms</span><span class="p">)</span><span class="si">}</span><span class="s2"> in "</span>
+                <span class="sa">f</span><span class="s2">"obs[</span><span class="si">{</span><span class="n">arm_col</span><span class="si">!r}</span><span class="s2">] at visits </span><span class="si">{</span><span class="n">visits</span><span class="si">!r}</span><span class="s2">."</span>
+            <span class="p">)</span>
+        <span class="n">arm_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">arm</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="n">arm_treated</span><span class="p">])</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span> <span class="o">*</span><span class="n">CANONICAL_ARMS</span><span class="p">)</span>
+
+    <span class="n">participant</span> <span class="o">=</span> <span class="n">cohort</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">participant_col</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">participant</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"obs[</span><span class="si">{</span><span class="n">participant_col</span><span class="si">!r}</span><span class="s2">] has missing participant labels"</span><span class="p">)</span>
+    <span class="n">canonical_obs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">"participant"</span><span class="p">:</span> <span class="n">participant</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span>
+            <span class="s2">"visit"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                <span class="n">cohort</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="n">visit_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="n">baseline</span><span class="p">])</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span> <span class="o">*</span><span class="n">CANONICAL_VISITS</span>
+            <span class="p">),</span>
+            <span class="s2">"arm"</span><span class="p">:</span> <span class="n">arm_labels</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="n">index</span><span class="o">=</span><span class="n">cohort</span><span class="o">.</span><span class="n">obs_names</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">_count_matrix</span><span class="p">(</span><span class="n">cohort</span><span class="p">,</span> <span class="n">counts_layer</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">obs</span><span class="o">=</span><span class="n">canonical_obs</span><span class="p">)</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">var_names</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">require_raw_counts</span><span class="p">(</span><span class="n">methods</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">cohort</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Refuse to run a count model on a matrix that does not hold counts.</span>
+
+<span class="sd">    ``dreamlet``, ``limma_voom``, ``edger_qlf`` and ``nebula`` model raw counts.</span>
+<span class="sd">    A cohort measured as TPM, or a normalised matrix named as the counts layer,</span>
+<span class="sd">    has non-integer values.</span>
+<span class="sd">    """</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">sparse</span>
+
+    <span class="n">count_models</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">methods</span> <span class="k">if</span> <span class="n">METHOD_ESTIMAND</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"count_link"</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">count_models</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">cohort</span><span class="o">.</span><span class="n">X</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">data</span> <span class="k">if</span> <span class="n">sparse</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">values</span><span class="o">.</span><span class="n">size</span> <span class="ow">and</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">values</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">values</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">values</span><span class="p">))):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">count_models</span><span class="si">}</span><span class="s2"> model raw counts, but the count matrix holds non-integer or "</span>
+            <span class="s2">"negative values. Name a raw-count layer, or run only the methods that take "</span>
+            <span class="s2">"log(1 + CPM) (METHOD_ESTIMAND == 'log1p_cpm')."</span>
+        <span class="p">)</span>
+
+
 <div class="viewcode-block" id="prepare_inputs_from_adata">
 <a class="viewcode-back" href="../../../api/benchmark.html#sctrial.benchmark.prepare_inputs_from_adata">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">prepare_inputs_from_adata</span><span class="p">(</span>
@@ -563,7 +752,7 @@
     <span class="n">participant_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"participant"</span><span class="p">,</span>
     <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"visit"</span><span class="p">,</span>
     <span class="n">arm_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"arm"</span><span class="p">,</span>
-    <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"counts"</span><span class="p">,</span>
+    <span class="n">counts_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">"counts"</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""The same contracts, applied to REAL data.</span>
 
@@ -576,9 +765,18 @@
 
 <span class="sd">    The CPM denominator is the whole measured transcriptome, not the tested</span>
 <span class="sd">    panel, exactly as in :func:`prepare_inputs`.</span>
+
+<span class="sd">    The visit and arm labels must be those of :data:`CANONICAL_VISITS` and</span>
+<span class="sd">    :data:`CANONICAL_ARMS`, which the runners read; any other label raises.</span>
+<span class="sd">    :func:`canonical_cohort` maps a real cohort. ``counts_layer`` names the raw</span>
+<span class="sd">    counts (``None`` for ``adata.X``) and raises when the layer is absent.</span>
 <span class="sd">    """</span>
     <span class="n">obs</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span>
-    <span class="n">X</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">counts_layer</span><span class="p">]</span> <span class="k">if</span> <span class="n">counts_layer</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span> <span class="k">else</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span>
+    <span class="k">if</span> <span class="n">visit_col</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">_require_vocabulary</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">,</span> <span class="n">CANONICAL_VISITS</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">arm_col</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">_require_vocabulary</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">arm_col</span><span class="p">,</span> <span class="n">CANONICAL_ARMS</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">_count_matrix</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="p">)</span>
     <span class="n">gene_cols</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span><span class="p">]</span>
     <span class="n">panel</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">panel_genes</span> <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">gene_cols</span><span class="p">)]</span>
 
@@ -633,8 +831,7 @@
         <span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="n">participant_col</span><span class="p">:</span> <span class="s2">"participant"</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">:</span> <span class="s2">"visit"</span><span class="p">,</span> <span class="n">arm_col</span><span class="p">:</span> <span class="s2">"arm"</span><span class="p">}</span>
     <span class="p">)</span>
     <span class="n">keep</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"participant"</span><span class="p">,</span> <span class="s2">"visit"</span><span class="p">,</span> <span class="s2">"arm"</span><span class="p">)</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
-    <span class="n">X</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">counts_layer</span><span class="p">]</span> <span class="k">if</span> <span class="n">counts_layer</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">layers</span> <span class="k">else</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span>
-    <span class="n">out</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">_count_matrix</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="p">),</span> <span class="n">obs</span><span class="o">=</span><span class="n">obs</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
     <span class="n">out</span><span class="o">.</span><span class="n">var_names</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">var_names</span>
     <span class="k">return</span> <span class="n">out</span>
 </pre></div>

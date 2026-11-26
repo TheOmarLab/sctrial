@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.datasets &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial.datasets &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../_static/documentation_options.js?v=2a705162"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,6 +49,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/datasets';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/_modules/sctrial/datasets.html" />
     <link rel="icon" href="../../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -122,8 +123,8 @@
       
     
     
-    <img src="../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -1448,7 +1449,7 @@
         <span class="s2">"GEO matrix is log2(TPM+1); recovered layers['tpm']=linear TPM (2^x-1) "</span>
         <span class="s2">"and X=layers['log1p_tpm']=ln(1+TPM)."</span>
     <span class="p">)</span>
-    <span class="n">drop_artifact_genes</span><span class="p">(</span><span class="n">adata</span><span class="p">)</span>  <span class="c1"># QC: remove hemoglobin/ribosomal/histone genes (keep cell-cycle)</span>
+    <span class="n">drop_artifact_genes</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">counts_layer</span><span class="o">=</span><span class="s2">"tpm"</span><span class="p">)</span>  <span class="c1"># QC: remove hb/ribosomal/histone genes</span>
 
     <span class="c1"># ── PCA → neighbors → UMAP → Leiden ────────────────────────────────</span>
     <span class="c1"># Compute BEFORE annotation so that cell-type labels are assigned to</span>
@@ -1813,6 +1814,11 @@
 <span class="sd">        If True, download missing files from GEO automatically.</span>
 <span class="sd">    force_reprocess : bool</span>
 <span class="sd">        If True, reprocess even when a cached file exists.</span>
+<span class="sd">    days : sequence of int</span>
+<span class="sd">        Days of the time course to keep (default: 0 and 7).</span>
+<span class="sd">    min_cells_per_participant_visit : int</span>
+<span class="sd">        Participant-visit groups with fewer cells are named in a log warning. No cell</span>
+<span class="sd">        is removed.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -2097,6 +2103,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    dict</span>
 <span class="sd">        A dictionary containing the following keys:</span>
+
 <span class="sd">        - paired_ids: set of participant IDs with both visits (and non-NaN features if provided)</span>
 <span class="sd">        - dropped_ids: list of participant IDs dropped by validation</span>
 <span class="sd">        - n_paired: count of paired_ids</span>
@@ -2460,8 +2467,9 @@
 <span class="sd">        ``&lt;data_dir&gt;/processed/``.</span>
 <span class="sd">    processed_name : str</span>
 <span class="sd">        Filename for the cached processed h5ad file.</span>
-<span class="sd">    max_cells_per_sample : int</span>
-<span class="sd">        Maximum cells to keep per sample after subsampling.</span>
+<span class="sd">    max_cells_per_sample : int or None</span>
+<span class="sd">        Maximum number of cells kept per sample, drawn at random. If None (default),</span>
+<span class="sd">        every cell is kept.</span>
 <span class="sd">    seed : int</span>
 <span class="sd">        Random seed for reproducibility.</span>
 <span class="sd">    allow_download : bool</span>
@@ -2877,8 +2885,9 @@
 <span class="sd">        ``&lt;data_dir&gt;/processed/``.</span>
 <span class="sd">    processed_name : str</span>
 <span class="sd">        Filename for the cached processed h5ad file.</span>
-<span class="sd">    max_cells_per_sample : int</span>
-<span class="sd">        Maximum cells to keep per sample after subsampling.</span>
+<span class="sd">    max_cells_per_sample : int or None</span>
+<span class="sd">        Maximum number of cells kept per sample, drawn at random. If None (default),</span>
+<span class="sd">        every cell is kept.</span>
 <span class="sd">    seed : int</span>
 <span class="sd">        Random seed for reproducibility.</span>
 <span class="sd">    allow_download : bool</span>
@@ -3292,6 +3301,7 @@
 <span class="sd">    breast cancer. 12 paired patients with Pre- and Post-treatment tumor biopsies.</span>
 
 <span class="sd">    Processing pipeline (identical to AML and CAR-T loaders):</span>
+
 <span class="sd">    - QC: min_genes=200, max_genes=6000, pct_mt&lt;20, min_cells=10</span>
 <span class="sd">    - Normalization: normalize_total(1e4) + log1p -&gt; log1p_norm layer</span>
 <span class="sd">    - Embedding: HVG(2000) -&gt; PCA(50) -&gt; neighbors(15, 30PCs) -&gt; UMAP</span>
@@ -3562,7 +3572,8 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame</span>
-<span class="sd">        A copy of the DataFrame with the FDR-corrected p-value column added.</span>
+<span class="sd">        ``df`` itself, with the FDR column added in place. A table that is empty,</span>
+<span class="sd">        already holds ``fdr_col`` or lacks ``p_col`` is returned unchanged.</span>
 <span class="sd">    """</span>
     <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">df</span>

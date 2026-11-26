@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Best Practices Guide &#8212; sctrial 0.3.3 documentation</title>
+    <title>Best Practices Guide &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="_static/documentation_options.js?v=d198571b"></script>
+    <script src="_static/documentation_options.js?v=2a705162"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,6 +50,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'best_practices';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/best_practices.html" />
     <link rel="icon" href="_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -125,8 +126,8 @@
       
     
     
-    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -448,7 +449,10 @@
 <h3><a class="toc-backref" href="#id3" role="doc-backlink">Sample Size Recommendations</a><a class="headerlink" href="#sample-size-recommendations" title="Link to this heading">#</a></h3>
 <p>Use <code class="docutils literal notranslate"><span class="pre">st.power_did()</span></code> and <code class="docutils literal notranslate"><span class="pre">st.sample_size_did()</span></code> (two-arm) or
 <code class="docutils literal notranslate"><span class="pre">st.power_paired()</span></code> and <code class="docutils literal notranslate"><span class="pre">st.sample_size_paired()</span></code> (single-arm) to
-determine whether your study is adequately powered. For fewer than 15
+determine whether your study is adequately powered. When the two groups
+differ in size, as response groups or severity groups usually do, use
+<code class="docutils literal notranslate"><span class="pre">st.power_two_group()</span></code> and <code class="docutils literal notranslate"><span class="pre">st.sample_size_two_group()</span></code> with the
+group sizes or the expected allocation ratio. For fewer than 15
 participants, always use bootstrap inference (<code class="docutils literal notranslate"><span class="pre">use_bootstrap=True</span></code>).</p>
 <p>See <a class="reference internal" href="faq.html#faq-sample-size"><span class="std std-ref">What are the minimum sample size recommendations?</span></a> for detailed tables and code examples.</p>
 </section>
@@ -521,11 +525,11 @@ participants, always use bootstrap inference (<code class="docutils literal notr
 <p><code class="docutils literal notranslate"><span class="pre">add_log1p_cpm_layer()</span></code> performs input validation before normalizing:</p>
 <ul class="simple">
 <li><p><strong>Negative counts</strong> raise a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> — fix upstream QC before calling.</p></li>
-<li><p><strong>NaN or inf values</strong> emit a warning and may produce unexpected results.</p></li>
+<li><p><strong>NaN or inf values</strong> raise a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p></li>
 <li><p><strong>All-zero cells</strong> emit a warning (library size = 0 yields <code class="docutils literal notranslate"><span class="pre">log1p(0)</span> <span class="pre">=</span> <span class="pre">0</span></code> for every gene).</p></li>
 </ul>
-<p>The function also records provenance metadata in <code class="docutils literal notranslate"><span class="pre">adata.uns[&quot;log1p_cpm_info&quot;]</span></code>
-(source layer, target layer, timestamp) for reproducibility tracking.</p>
+<p>The function also records the scale it used in
+<code class="docutils literal notranslate"><span class="pre">adata.uns[&quot;sctrial&quot;][&quot;log1p_cpm_scale&quot;]</span></code>.</p>
 </div>
 <p><strong>Alternative for batch correction</strong>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># If you need batch correction, do it before sctrial</span>
@@ -574,6 +578,7 @@ participants, always use bootstrap inference (<code class="docutils literal notr
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
     <span class="n">aggregate</span><span class="o">=</span><span class="s2">"cell"</span>  <span class="c1"># Violates independence assumption</span>
 <span class="p">)</span>
 </pre></div>
@@ -593,10 +598,10 @@ participants, always use bootstrap inference (<code class="docutils literal notr
 <span class="p">)</span>
 
 <span class="c1"># Bootstrap adds extra columns to the result DataFrame:</span>
-<span class="c1">#   p_DiD_boot   — bootstrap p-value</span>
-<span class="c1">#   se_DiD_boot  — bootstrap standard error</span>
-<span class="c1">#   ci_lo_boot   — lower bound of bootstrap-t 95% CI</span>
-<span class="c1">#   ci_hi_boot   — upper bound of bootstrap-t 95% CI</span>
+<span class="c1">#   p_DiD_boot   : bootstrap p-value</span>
+<span class="c1">#   se_DiD_boot  : bootstrap standard error</span>
+<span class="c1">#   ci_lo_boot   : lower bound of the 95% CI (inverted bootstrap test)</span>
+<span class="c1">#   ci_hi_boot   : upper bound of the 95% CI (inverted bootstrap test)</span>
 </pre></div>
 </div>
 </section>
@@ -868,7 +873,7 @@ overwhelm the prior. Report results from multiple prior specifications.</p>
 <span class="c1"># Interaction plot for top feature</span>
 <span class="n">top_feature</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">"p_DiD"</span><span class="p">)</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"feature"</span><span class="p">]</span>
 
-<span class="n">fig</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">plot_trial_interaction</span><span class="p">(</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">plot_trial_interaction</span><span class="p">(</span>
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">feature</span><span class="o">=</span><span class="n">top_feature</span><span class="p">,</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
@@ -878,7 +883,7 @@ overwhelm the prior. Report results from multiple prior specifications.</p>
 
 <span class="c1"># Forest plot for all significant features</span>
 <span class="n">sig_res</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s2">"FDR_DiD"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">]</span>
-<span class="n">fig</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">sig_res</span><span class="p">)</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">plot_did_forest</span><span class="p">(</span><span class="n">sig_res</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">"forest_plot.pdf"</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">"tight"</span><span class="p">)</span>
 </pre></div>
 </div>

@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.stats.heterogeneity &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial.stats.heterogeneity &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../../_static/documentation_options.js?v=2a705162"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,6 +49,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/stats/heterogeneity';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/_modules/sctrial/stats/heterogeneity.html" />
     <link rel="icon" href="../../../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -122,8 +123,8 @@
       
     
     
-    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -379,12 +380,22 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">anndata</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnnData</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..design</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrialDesign</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_fdr</span><span class="p">,</span> <span class="n">encode_visit</span><span class="p">,</span> <span class="n">standardize_series</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._utils</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">apply_fdr</span><span class="p">,</span>
+    <span class="n">covariate_aggregator</span><span class="p">,</span>
+    <span class="n">drop_unused_levels</span><span class="p">,</span>
+    <span class="n">encode_visit</span><span class="p">,</span>
+    <span class="n">feature_aggregator</span><span class="p">,</span>
+    <span class="n">fit_identified</span><span class="p">,</span>
+    <span class="n">fits_exactly</span><span class="p">,</span>
+    <span class="n">standardize_series</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.did</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">MIN_CLUSTERS_FOR_ROBUST_SE</span><span class="p">,</span>
     <span class="n">AggregateFunc</span><span class="p">,</span>
     <span class="n">AggregateMode</span><span class="p">,</span>
     <span class="n">_add_feature_columns</span><span class="p">,</span>
+    <span class="n">_ensure_paired</span><span class="p">,</span>
     <span class="n">_prepare_did_obs</span><span class="p">,</span>
 <span class="p">)</span>
 
@@ -408,11 +419,20 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Test treatment effect heterogeneity via a 3-way interaction.</span>
 
-<span class="sd">    Fits: outcome ~ visit + arm + biomarker + visit:arm + visit:biomarker</span>
-<span class="sd">         + arm:biomarker + visit:arm:biomarker + C(participant)</span>
+<span class="sd">    Fits: outcome ~ visit + visit:arm + visit:biomarker + visit:arm:biomarker</span>
+<span class="sd">         + C(participant)</span>
 
 <span class="sd">    The coefficient of the 3-way interaction (visit:arm:biomarker) tests whether</span>
-<span class="sd">    the DiD effect differs by biomarker subgroup.</span>
+<span class="sd">    the DiD effect differs by biomarker subgroup. The arm, the biomarker group and</span>
+<span class="sd">    their product do not change within a participant, so the participant effects</span>
+<span class="sd">    absorb them and they are not separate terms of the model.</span>
+
+<span class="sd">    The model uses the participants observed at both visits. The biomarker is a</span>
+<span class="sd">    participant attribute: a participant's value is the mean of ``biomarker_col``</span>
+<span class="sd">    over its cells, and participants without a value are excluded. For each</span>
+<span class="sd">    feature the interaction needs at least two participants with a value at both</span>
+<span class="sd">    visits in each arm by biomarker group; when a group is smaller, the</span>
+<span class="sd">    coefficient and p-value of that feature are NaN and a warning is raised.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -428,8 +448,9 @@
 <span class="sd">        Column in `adata.obs` for stratification.</span>
 <span class="sd">    threshold</span>
 <span class="sd">        If provided, biomarker_high = biomarker &gt; threshold.</span>
-<span class="sd">        If None, median split is used for numeric biomarkers. For binary</span>
-<span class="sd">        biomarkers (0/1 or True/False), values are used directly.</span>
+<span class="sd">        If None, numeric biomarkers are split at the median over the participants</span>
+<span class="sd">        in the model. For binary biomarkers (0/1 or True/False), values are used</span>
+<span class="sd">        directly.</span>
 <span class="sd">    aggregate</span>
 <span class="sd">        Aggregation mode (default: participant_visit).</span>
 <span class="sd">    layer</span>
@@ -441,12 +462,22 @@
 <span class="sd">    covariates</span>
 <span class="sd">        Additional covariates for the model.</span>
 <span class="sd">    fdr</span>
-<span class="sd">        FDR correction mode: per feature or across all results.</span>
+<span class="sd">        ``"feature"`` or ``"all"``. Both give the same correction: Benjamini-Hochberg</span>
+<span class="sd">        over the p-values of all features in the table.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame</span>
-<span class="sd">        Table with heterogeneity effects for each feature.</span>
+<span class="sd">        One row per feature with columns:</span>
+
+<span class="sd">        - feature: Feature name</span>
+<span class="sd">        - beta_heterogeneity: Coefficient of the visit by arm by biomarker interaction</span>
+<span class="sd">        - p_heterogeneity: Its p-value (missing when the interaction is not estimable</span>
+<span class="sd">          or the model fits the outcome exactly)</span>
+<span class="sd">        - n_units: Participants in the model</span>
+<span class="sd">        - threshold: Value that splits the biomarker into low and high (missing for a</span>
+<span class="sd">          biomarker coded 0 and 1 when no threshold is given)</span>
+<span class="sd">        - FDR_heterogeneity: Benjamini-Hochberg FDR of ``p_heterogeneity``</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -464,24 +495,24 @@
         <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"biomarker_col '</span><span class="si">{</span><span class="n">biomarker_col</span><span class="si">}</span><span class="s2">' not found in adata.obs"</span><span class="p">)</span>
 
     <span class="n">ad</span><span class="p">,</span> <span class="n">obs</span> <span class="o">=</span> <span class="n">_prepare_did_obs</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">celltype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude_crossovers</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">obs</span><span class="p">[</span><span class="s2">"arm_bin"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_treated</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">unit</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">participant_col</span>
+    <span class="n">time</span> <span class="o">=</span> <span class="s2">"visit_num"</span>
+    <span class="n">arm_bin</span> <span class="o">=</span> <span class="s2">"arm_bin"</span>
 
-    <span class="n">biomarker</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">obs</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">biomarker_col</span><span class="p">]</span>
-    <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_bool_dtype</span><span class="p">(</span><span class="n">biomarker</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">set</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">biomarker</span><span class="o">.</span><span class="n">dropna</span><span class="p">()))</span> <span class="o">&lt;=</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">}:</span>
-        <span class="n">biomarker_high</span> <span class="o">=</span> <span class="n">biomarker</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">obs</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">biomarker_col</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_bool_dtype</span><span class="p">(</span><span class="n">raw</span><span class="p">):</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">biomarker</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">biomarker</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">"coerce"</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">biomarker</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">object</span><span class="p">),</span> <span class="n">errors</span><span class="o">=</span><span class="s2">"coerce"</span><span class="p">)</span>
+        <span class="n">n_coerced</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">values</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">raw</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">n_coerced</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">"biomarker_col '</span><span class="si">{</span><span class="n">biomarker_col</span><span class="si">}</span><span class="s2">' contained non-numeric values that were coerced to NaN."</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"biomarker_col '</span><span class="si">{</span><span class="n">biomarker_col</span><span class="si">}</span><span class="s2">' has </span><span class="si">{</span><span class="n">n_coerced</span><span class="si">}</span><span class="s2"> non-numeric values, "</span>
+                <span class="s2">"which are treated as missing."</span><span class="p">,</span>
                 <span class="ne">UserWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
             <span class="p">)</span>
-        <span class="k">if</span> <span class="n">threshold</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">threshold</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">biomarker</span><span class="p">))</span>
-        <span class="n">biomarker_high</span> <span class="o">=</span> <span class="p">(</span><span class="n">biomarker</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
-
-    <span class="n">obs</span><span class="p">[</span><span class="s2">"biomarker_high"</span><span class="p">]</span> <span class="o">=</span> <span class="n">biomarker_high</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">obs</span><span class="p">[</span><span class="s2">"_biomarker"</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 
     <span class="c1"># Add feature columns (genes or obs)</span>
     <span class="n">obs_feat</span><span class="p">,</span> <span class="n">final_features</span> <span class="o">=</span> <span class="n">_add_feature_columns</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">ad</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">features</span><span class="p">),</span> <span class="n">layer</span><span class="p">)</span>
@@ -489,23 +520,88 @@
     <span class="k">if</span> <span class="n">aggregate</span> <span class="o">!=</span> <span class="s2">"participant_visit"</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"test_treatment_heterogeneity supports participant_visit only."</span><span class="p">)</span>
 
-    <span class="n">grp_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">design</span><span class="o">.</span><span class="n">participant_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
-    <span class="n">use_cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">final_features</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="s2">"biomarker_high"</span><span class="p">,</span> <span class="s2">"arm_bin"</span><span class="p">]</span>
-    <span class="n">df_use</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">obs_feat</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">grp_cols</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">use_cols</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">numeric_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
-    <span class="p">)</span>
+    <span class="n">grp_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">unit</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">arm_col</span><span class="p">]</span>
+    <span class="n">use_cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">final_features</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="n">arm_bin</span><span class="p">]</span>
+    <span class="c1"># Covariates travel with the participant-visit rows: a numeric one as its mean over the</span>
+    <span class="c1"># cells (its median with agg="median"), any other as its value, which must be the same for</span>
+    <span class="c1"># every cell of the row.</span>
+    <span class="n">cov_agg</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">covariates</span> <span class="ow">or</span> <span class="p">[]:</span>
+        <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"covariate '</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">' not found in adata.obs"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">final_features</span> <span class="ow">or</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">use_cols</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"covariate '</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">' is also a feature of the model."</span><span class="p">)</span>
+        <span class="n">obs_feat</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">obs_feat</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_numeric_dtype</span><span class="p">(</span><span class="n">obs_feat</span><span class="p">[</span><span class="n">c</span><span class="p">]):</span>
+            <span class="n">cov_agg</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">covariate_aggregator</span><span class="p">(</span><span class="n">agg</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">obs_feat</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">grp_cols</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"Covariate '</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">' varies within participant-visit; "</span>
+                    <span class="s2">"use numeric or constant covariates only."</span>
+                <span class="p">)</span>
+            <span class="n">cov_agg</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"first"</span>
+    <span class="k">if</span> <span class="n">agg</span> <span class="o">==</span> <span class="s2">"mean"</span><span class="p">:</span>
+        <span class="n">df_use</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">obs_feat</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">grp_cols</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">use_cols</span><span class="p">]</span>
+            <span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">numeric_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># A feature read from obs is in the frame twice; one copy is aggregated.</span>
+        <span class="n">unique</span> <span class="o">=</span> <span class="n">obs_feat</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="o">~</span><span class="n">obs_feat</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">duplicated</span><span class="p">()]</span>
+        <span class="n">how</span> <span class="o">=</span> <span class="p">{</span><span class="n">f</span><span class="p">:</span> <span class="n">feature_aggregator</span><span class="p">(</span><span class="n">agg</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">final_features</span><span class="p">)}</span>
+        <span class="n">df_use</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">unique</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">grp_cols</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">agg</span><span class="p">({</span><span class="o">**</span><span class="n">how</span><span class="p">,</span> <span class="n">arm_bin</span><span class="p">:</span> <span class="s2">"mean"</span><span class="p">})</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">cov_agg</span><span class="p">:</span>
+        <span class="n">cov_rows</span> <span class="o">=</span> <span class="n">obs_feat</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">grp_cols</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="nb">list</span><span class="p">(</span><span class="n">cov_agg</span><span class="p">)]</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="n">cov_agg</span><span class="p">)</span>
+        <span class="n">df_use</span> <span class="o">=</span> <span class="n">df_use</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">cov_rows</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(),</span> <span class="n">on</span><span class="o">=</span><span class="n">grp_cols</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">"left"</span><span class="p">)</span>
+    <span class="n">df_use</span> <span class="o">=</span> <span class="n">_ensure_paired</span><span class="p">(</span><span class="n">df_use</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="n">visits</span><span class="p">)</span>
+    <span class="n">df_use</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_use</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+
+    <span class="c1"># The biomarker is a participant attribute: one value per participant, and the</span>
+    <span class="c1"># median split is taken over the participants that enter the model.</span>
+    <span class="n">per_participant</span> <span class="o">=</span> <span class="n">obs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">object</span><span class="p">))[</span><span class="s2">"_biomarker"</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">per_participant</span> <span class="o">=</span> <span class="n">per_participant</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">df_use</span><span class="p">[</span><span class="n">unit</span><span class="p">]))</span>
+    <span class="n">n_missing</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">per_participant</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">n_missing</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_missing</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">per_participant</span><span class="p">)</span><span class="si">}</span><span class="s2"> paired participants have no value of "</span>
+            <span class="sa">f</span><span class="s2">"'</span><span class="si">{</span><span class="n">biomarker_col</span><span class="si">}</span><span class="s2">' and are excluded."</span><span class="p">,</span>
+            <span class="ne">UserWarning</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">per_participant</span> <span class="o">=</span> <span class="n">per_participant</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">per_participant</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span> <span class="o">&lt;=</span> <span class="p">{</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">}:</span>
+        <span class="n">high</span> <span class="o">=</span> <span class="n">per_participant</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">threshold</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">threshold</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">per_participant</span><span class="o">.</span><span class="n">median</span><span class="p">())</span>
+        <span class="n">high</span> <span class="o">=</span> <span class="p">(</span><span class="n">per_participant</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="n">df_use</span> <span class="o">=</span> <span class="n">df_use</span><span class="p">[</span><span class="n">df_use</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">high</span><span class="o">.</span><span class="n">index</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">df_use</span><span class="p">[</span><span class="s2">"biomarker_high"</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_use</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">high</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">df_use</span><span class="p">[</span><span class="n">arm_bin</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_use</span><span class="p">[</span><span class="n">arm_bin</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
     <span class="n">df_use</span> <span class="o">=</span> <span class="n">encode_visit</span><span class="p">(</span><span class="n">df_use</span><span class="p">,</span> <span class="n">design</span><span class="o">.</span><span class="n">visit_col</span><span class="p">,</span> <span class="n">visits</span><span class="p">)</span>
-    <span class="n">unit</span> <span class="o">=</span> <span class="n">design</span><span class="o">.</span><span class="n">participant_col</span>
-    <span class="n">time</span> <span class="o">=</span> <span class="s2">"visit_num"</span>
-    <span class="n">arm_bin</span> <span class="o">=</span> <span class="s2">"arm_bin"</span>
     <span class="n">obs_feat</span> <span class="o">=</span> <span class="n">df_use</span>
 
+    <span class="n">model_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">unit</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">arm_bin</span><span class="p">,</span> <span class="s2">"biomarker_high"</span><span class="p">,</span> <span class="o">*</span><span class="p">(</span><span class="n">covariates</span> <span class="ow">or</span> <span class="p">[])]</span>
     <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">n_examined</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">not_estimable</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">final_features</span><span class="p">:</span>
-        <span class="n">tmp</span> <span class="o">=</span> <span class="n">obs_feat</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="c1"># Only the columns of this feature's model: a frame with a column for every feature,</span>
+        <span class="c1"># copied once per feature, makes the cost per feature grow with the number of features.</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">obs_feat</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">([</span><span class="o">*</span><span class="n">model_cols</span><span class="p">,</span> <span class="n">feat</span><span class="p">]))]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">tmp</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">duplicated</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
             <span class="n">tmp</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="o">~</span><span class="n">tmp</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">duplicated</span><span class="p">()]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">tmp</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">feat</span><span class="p">,</span> <span class="s2">"biomarker_high"</span><span class="p">])</span>
+        <span class="c1"># A row without the outcome or a covariate is not in the model; the formula would drop</span>
+        <span class="c1"># it from the model matrices only, not from the cluster labels passed beside it.</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">feat</span><span class="p">,</span> <span class="s2">"biomarker_high"</span><span class="p">,</span> <span class="o">*</span><span class="p">(</span><span class="n">covariates</span> <span class="ow">or</span> <span class="p">[])])</span>
+        <span class="c1"># A participant with a missing value at one visit has no change for this feature.</span>
+        <span class="n">visits_seen</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">time</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">[</span><span class="n">tmp</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits_seen</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">visits_seen</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">])]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">n_clusters</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">n_clusters</span> <span class="o">&lt;</span> <span class="n">MIN_CLUSTERS_FOR_ROBUST_SE</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
@@ -529,24 +625,56 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">tmp</span><span class="p">[</span><span class="s2">"outcome_std"</span><span class="p">]</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
 
-        <span class="n">df</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s2">"outcome_std"</span><span class="p">])</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">drop_unused_levels</span><span class="p">(</span><span class="n">tmp</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s2">"outcome_std"</span><span class="p">])</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
 
-        <span class="k">if</span> <span class="n">df</span><span class="p">[</span><span class="s2">"biomarker_high"</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="c1"># The interaction contrasts the change over time across the four arm by biomarker</span>
+        <span class="c1"># groups. A group with one participant fits that participant exactly and adds</span>
+        <span class="c1"># nothing to the cluster-robust variance, so each group needs at least two of the</span>
+        <span class="c1"># participants in this feature's model.</span>
+        <span class="n">group_sizes</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">unit</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">arm_bin</span><span class="p">,</span> <span class="s2">"biomarker_high"</span><span class="p">])</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+        <span class="n">counts</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">arm_name</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">level_name</span><span class="si">}</span><span class="s2">"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">group_sizes</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">),</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">arm_name</span> <span class="ow">in</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="s2">"control"</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">"treated"</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">b</span><span class="p">,</span> <span class="n">level_name</span> <span class="ow">in</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="s2">"low"</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">"high"</span><span class="p">))</span>
+        <span class="p">}</span>
+        <span class="n">n_examined</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="nb">min</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">not_estimable</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span> <span class="o">=</span> <span class="n">counts</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                    <span class="s2">"beta_heterogeneity"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">"p_heterogeneity"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">"n_units"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()),</span>
+                    <span class="s2">"threshold"</span><span class="p">:</span> <span class="n">threshold</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
             <span class="k">continue</span>
 
+        <span class="c1"># The arm, the biomarker group and their product are constant within a participant,</span>
+        <span class="c1"># so the participant effects absorb them; only the terms that involve time enter.</span>
         <span class="n">formula</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s2">"outcome_std ~ </span><span class="si">{</span><span class="n">time</span><span class="si">}</span><span class="s2"> + </span><span class="si">{</span><span class="n">arm_bin</span><span class="si">}</span><span class="s2"> + biomarker_high + "</span>
-            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">time</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">arm_bin</span><span class="si">}</span><span class="s2"> + </span><span class="si">{</span><span class="n">time</span><span class="si">}</span><span class="s2">:biomarker_high + </span><span class="si">{</span><span class="n">arm_bin</span><span class="si">}</span><span class="s2">:biomarker_high + "</span>
+            <span class="sa">f</span><span class="s2">"outcome_std ~ </span><span class="si">{</span><span class="n">time</span><span class="si">}</span><span class="s2"> + </span><span class="si">{</span><span class="n">time</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">arm_bin</span><span class="si">}</span><span class="s2"> + </span><span class="si">{</span><span class="n">time</span><span class="si">}</span><span class="s2">:biomarker_high + "</span>
             <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">time</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">arm_bin</span><span class="si">}</span><span class="s2">:biomarker_high + C(</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s2">)"</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="n">covariates</span><span class="p">:</span>
             <span class="n">formula</span> <span class="o">+=</span> <span class="s2">" + "</span> <span class="o">+</span> <span class="s2">" + "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">covariates</span><span class="p">)</span>
 
-        <span class="n">fit</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="n">formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
-            <span class="n">cov_type</span><span class="o">=</span><span class="s2">"cluster"</span><span class="p">,</span>
-            <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">"groups"</span><span class="p">:</span> <span class="n">df</span><span class="p">[</span><span class="n">unit</span><span class="p">]},</span>
-        <span class="p">)</span>
         <span class="n">term</span> <span class="o">=</span> <span class="s2">"visit_num:arm_bin:biomarker_high"</span>
+        <span class="n">fit</span> <span class="o">=</span> <span class="n">fit_identified</span><span class="p">(</span>
+            <span class="n">smf</span><span class="o">.</span><span class="n">ols</span><span class="p">(</span><span class="n">formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">),</span> <span class="n">term</span><span class="p">,</span> <span class="n">cov_type</span><span class="o">=</span><span class="s2">"cluster"</span><span class="p">,</span> <span class="n">cov_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">"groups"</span><span class="p">:</span> <span class="n">df</span><span class="p">[</span><span class="n">unit</span><span class="p">]}</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">fit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
+                    <span class="s2">"beta_heterogeneity"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">"p_heterogeneity"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                    <span class="s2">"n_units"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()),</span>
+                    <span class="s2">"threshold"</span><span class="p">:</span> <span class="n">threshold</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
         <span class="c1"># Report effective participant count after model row drops</span>
         <span class="n">model_row_idx</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">row_labels</span>
         <span class="n">n_units_eff</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">model_row_idx</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span>
@@ -554,10 +682,25 @@
             <span class="p">{</span>
                 <span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span>
                 <span class="s2">"beta_heterogeneity"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
-                <span class="s2">"p_heterogeneity"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)),</span>
+                <span class="c1"># an exact fit gives the estimate and no test</span>
+                <span class="s2">"p_heterogeneity"</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="k">if</span> <span class="n">fits_exactly</span><span class="p">(</span><span class="n">fit</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">pvalues</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+                <span class="p">),</span>
                 <span class="s2">"n_units"</span><span class="p">:</span> <span class="n">n_units_eff</span><span class="p">,</span>
                 <span class="s2">"threshold"</span><span class="p">:</span> <span class="n">threshold</span><span class="p">,</span>
             <span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">not_estimable</span><span class="p">:</span>
+        <span class="n">first</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">not_estimable</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"The arm by visit by biomarker interaction is not estimable for "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">not_estimable</span><span class="p">)</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">n_examined</span><span class="si">}</span><span class="s2"> features: it needs at least "</span>
+            <span class="s2">"2 paired participants in each arm by biomarker group, found "</span>
+            <span class="o">+</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">counts</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">" for '</span><span class="si">{</span><span class="n">first</span><span class="si">}</span><span class="s2">'."</span><span class="p">,</span>
+            <span class="ne">UserWarning</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="n">res</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>

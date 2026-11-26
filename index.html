@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>sctrial — Design-Aware Participant-Level Inference for Longitudinal Single-Cell Studies &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial — Design-Aware Participant-Level Inference for Longitudinal Single-Cell Studies &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="_static/documentation_options.js?v=d198571b"></script>
+    <script src="_static/documentation_options.js?v=2a705162"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -52,6 +52,7 @@
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'index';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/index.html" />
     <link rel="icon" href="_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -126,8 +127,8 @@
       
     
     
-    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -365,19 +366,20 @@ biological units in the study.</p>
 <section id="key-applications">
 <h2>Key Applications<a class="headerlink" href="#key-applications" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><strong>Difference-in-Differences (DiD)</strong> — Participant fixed-effects regression with wild cluster
-bootstrap inference for treatment effect estimation across arms and timepoints.</p></li>
-<li><p><strong>Paired within-arm contrasts</strong> — Pre→post comparisons with paired statistical tests and
-effect sizes (Cohen’s d, Hedges’ g, log₂ fold-change).</p></li>
-<li><p><strong>Between-arm comparisons</strong> — Cross-sectional tests between treatment and control arms at
+<li><p><strong>Difference-in-Differences (DiD)</strong>: Participant fixed-effects regression for treatment
+effect estimation across arms and timepoints, with cluster-robust inference by default
+and an optional wild cluster bootstrap for small cohorts.</p></li>
+<li><p><strong>Paired within-arm contrasts</strong>: Pre→post comparisons with paired statistical tests and
+effect sizes (Cohen’s d, Hedges’ g).</p></li>
+<li><p><strong>Between-arm comparisons</strong>: Cross-sectional tests between treatment and control arms at
 fixed timepoints with pseudobulk replication.</p></li>
-<li><p><strong>Cell-type abundance</strong> — Composition changes across conditions using proportion-based
+<li><p><strong>Cell-type abundance</strong>: Composition changes across conditions using proportion-based
 statistics and participant-level aggregation.</p></li>
-<li><p><strong>Gene Set Enrichment Analysis</strong> — GSEA on DiD-ranked gene lists with support for Hallmark,
+<li><p><strong>Gene Set Enrichment Analysis</strong>: GSEA on DiD-ranked gene lists with support for Hallmark,
 KEGG, Reactome, and custom gene set collections.</p></li>
-<li><p><strong>Power analysis</strong> — Sample size calculations, power curves, and minimum detectable effect
-sizes for two-arm DiD and single-arm paired designs.</p></li>
-<li><p><strong>Effect size estimation</strong> — Confidence intervals on all key estimands.</p></li>
+<li><p><strong>Power analysis</strong>: Sample size calculations, power curves, and minimum detectable effect
+sizes for two-arm DiD, single-arm paired and two-group designs.</p></li>
+<li><p><strong>Effect size estimation</strong>: Confidence intervals on all key estimands.</p></li>
 </ul>
 </section>
 <section id="getting-started">

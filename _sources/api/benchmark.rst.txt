@@ -68,9 +68,9 @@ inferred at call time.
 
    The input representation each method expects.
 
-   - ``participant_log1p_cpm`` — sctrial_did, sctrial_mixed, wilcoxon_paired
-   - ``pseudobulk_counts`` — dreamlet, limma_voom
-   - ``cell_counts`` — nebula
+   - ``participant_log1p_cpm``: sctrial_did, sctrial_mixed, wilcoxon_paired
+   - ``pseudobulk_counts``: dreamlet, limma_voom, edger_qlf
+   - ``cell_counts``: nebula
 
 .. py:data:: METHOD_ESTIMAND
    :module: sctrial.benchmark
@@ -78,8 +78,8 @@ inferred at call time.
 
    The estimand scale each method is scored against.
 
-   - ``log1p_cpm`` — sctrial_did, sctrial_mixed, wilcoxon_paired
-   - ``count_link`` — dreamlet, limma_voom, nebula
+   - ``log1p_cpm``: sctrial_did, sctrial_mixed, wilcoxon_paired
+   - ``count_link``: dreamlet, limma_voom, edger_qlf, nebula
 
 Calibration
 -----------
@@ -105,15 +105,16 @@ the simulator so it reproduces observed nuisance statistics.
 Validation gates
 ----------------
 
-Monte Carlo envelope tests (Gates A–E) that verify the simulator faithfully
-reproduces the empirical nuisance statistics it was calibrated against.
+Monte Carlo envelope tests (Gates A, B, C and E) that verify the simulator faithfully
+reproduces the empirical nuisance statistics it was calibrated against, and a
+composition ablation (Gate D).
 
 .. py:data:: GATE_STATISTICS
    :module: sctrial.benchmark.gates
    :type: dict[str, list[str]]
 
-   Maps each gate label (``"A"``, ``"B"``, …) to the list of statistics it
-   checks.
+   Maps each gate label (``"A_transcriptome"``, ``"B_depth_yield"``,
+   ``"C_dispersion"``, ``"E_longitudinal"``) to the list of statistics it checks.
 
 .. py:data:: PINNED_STATISTICS
    :module: sctrial.benchmark.gates
@@ -189,8 +190,8 @@ points for running and sensitivity-testing the benchmark.
    :type: list[str]
 
    The methods included in every standard benchmark run:
-   ``sctrial_did``, ``wilcoxon_paired``, ``dreamlet``, ``limma_voom``,
-   ``nebula``.
+   ``sctrial_did``, ``dreamlet``, ``nebula``, ``wilcoxon_paired``,
+   ``limma_voom``.
 
 .. autofunction:: sctrial.benchmark.run_benchmark
 
@@ -224,9 +225,18 @@ choices (normalisation scope, aggregation level, fixed effects).
    :module: sctrial.benchmark.ablation
    :type: dict[str, tuple]
 
-   Registry mapping variant name to ``(input_type, runner, label)``.
+   Registry mapping variant name to ``(label, runner, input_type)``.
 
 .. autofunction:: sctrial.benchmark.ablation.run_ablation
+
+Method results
+--------------
+
+Every method returns one row per gene with ``beta``, ``pvalue``, ``ci_lo``, ``ci_hi``,
+``converged`` and ``failure_mode``. A gene without a finite p-value was not tested and is
+recorded as not converged, whatever its runner returned.
+
+.. autofunction:: sctrial.benchmark.runners.finalize_results
 
 Infrastructure
 --------------

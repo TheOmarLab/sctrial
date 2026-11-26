@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Performance Guide &#8212; sctrial 0.3.3 documentation</title>
+    <title>Performance Guide &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="_static/documentation_options.js?v=d198571b"></script>
+    <script src="_static/documentation_options.js?v=2a705162"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,6 +50,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'performance';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/performance.html" />
     <link rel="icon" href="_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -125,8 +126,8 @@
       
     
     
-    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -430,18 +431,11 @@
 <h2><a class="toc-backref" href="#id1" role="doc-backlink">Performance Overview</a><a class="headerlink" href="#performance-overview" title="Link to this heading">#</a></h2>
 <section id="typical-performance">
 <h3><a class="toc-backref" href="#id2" role="doc-backlink">Typical Performance</a><a class="headerlink" href="#typical-performance" title="Link to this heading">#</a></h3>
-<p>On a standard laptop (16GB RAM):</p>
-<ul class="simple">
-<li><p><strong>10K cells, 50 features</strong>: &lt; 5 seconds</p></li>
-<li><p><strong>100K cells, 500 features</strong>: ~30-60 seconds</p></li>
-<li><p><strong>500K cells, 2000 features</strong>: ~5-10 minutes</p></li>
-</ul>
-<p>Memory requirements:</p>
-<ul class="simple">
-<li><p><strong>100K cells</strong>: ~2-4 GB</p></li>
-<li><p><strong>500K cells</strong>: ~8-12 GB</p></li>
-<li><p><strong>1M+ cells</strong>: Requires optimization strategies below</p></li>
-</ul>
+<p>With participant-level aggregation (the default), a DiD table costs one pass over the
+cells to aggregate them and one small regression per feature.</p>
+<p>The <a class="reference internal" href="tutorials/stress_test_real_scale.html"><span class="doc">stress test tutorial</span></a> reports measured run
+times and memory for a real cohort at several numbers of genes and cells. Datasets
+with more than a million cells usually need the strategies below.</p>
 </section>
 </section>
 <section id="optimization-strategies">
@@ -465,11 +459,13 @@
     <span class="n">adata</span><span class="p">,</span>
     <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
+    <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span>
     <span class="n">aggregate</span><span class="o">=</span><span class="s2">"cell"</span>  <span class="c1"># Not recommended</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p><strong>Performance impact</strong>: 10-100x faster with pseudobulk</p>
+<p><strong>Performance impact</strong>: with pseudobulk each model is fitted on one row per participant
+and visit instead of one row per cell.</p>
 </section>
 <section id="analyze-gene-sets-not-all-genes">
 <h3><a class="toc-backref" href="#id5" role="doc-backlink">2. Analyze Gene Sets, Not All Genes</a><a class="headerlink" href="#analyze-gene-sets-not-all-genes" title="Link to this heading">#</a></h3>
@@ -492,7 +488,7 @@
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">))</span>
 </pre></div>
 </div>
-<p><strong>Performance impact</strong>: 100-400x faster with gene sets</p>
+<p><strong>Performance impact</strong>: a panel of 50 gene sets needs 50 models instead of about 20,000.</p>
 </section>
 <section id="use-sparse-matrices">
 <h3><a class="toc-backref" href="#id6" role="doc-backlink">3. Use Sparse Matrices</a><a class="headerlink" href="#use-sparse-matrices" title="Link to this heading">#</a></h3>
@@ -507,7 +503,8 @@
     <span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">"counts"</span><span class="p">]</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">adata</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="s2">"counts"</span><span class="p">])</span>
 </pre></div>
 </div>
-<p><strong>Memory savings</strong>: 10-50x reduction for typical scRNA-seq data</p>
+<p><strong>Memory savings</strong>: a sparse matrix stores only the nonzero entries, a small fraction
+of a typical scRNA-seq count matrix.</p>
 </section>
 <section id="use-built-in-parallelization">
 <h3><a class="toc-backref" href="#id7" role="doc-backlink">4. Use Built-in Parallelization</a><a class="headerlink" href="#use-built-in-parallelization" title="Link to this heading">#</a></h3>
@@ -526,8 +523,8 @@
 <p class="admonition-title">Note</p>
 <p><strong>Do not subsample or downsample cells</strong> to work around memory limits.
 Subsampling distorts pseudobulk means, alters cell-type composition within
-participant groups, and changes WLS weights — especially for rare cell types
-and low-abundance signals. Instead, use sparse storage (strategy 3), feature
+participant groups, and changes per-group cell counts, especially for rare cell
+types and low-abundance signals. Instead, use sparse storage (strategy 3), feature
 batching (see below), per-cell-type decomposition, or run on hardware with
 sufficient memory.</p>
 </div>
@@ -578,7 +575,8 @@ sufficient memory.</p>
 <section id="batch-processing">
 <h3><a class="toc-backref" href="#id10" role="doc-backlink">Batch Processing</a><a class="headerlink" href="#batch-processing" title="Link to this heading">#</a></h3>
 <p>For genome-wide analysis, process genes in batches:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">process_in_batches</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">all_features</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Process features in batches to limit memory usage."""</span>
@@ -645,14 +643,16 @@ sufficient memory.</p>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Memory usage: </span><span class="si">{</span><span class="n">mem</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB"</span><span class="p">)</span>
 
 <span class="n">print_memory_usage</span><span class="p">()</span>  <span class="c1"># Before analysis</span>
-<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">))</span>
 <span class="n">print_memory_usage</span><span class="p">()</span>  <span class="c1"># After analysis</span>
 </pre></div>
 </div>
 </section>
 <section id="reduce-memory-footprint">
 <h3><a class="toc-backref" href="#id13" role="doc-backlink">Reduce Memory Footprint</a><a class="headerlink" href="#reduce-memory-footprint" title="Link to this heading">#</a></h3>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1. Use float32 instead of float64</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="c1"># 1. Use float32 instead of float64</span>
 <span class="n">adata</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 
 <span class="c1"># 2. Remove unnecessary layers</span>
@@ -714,6 +714,13 @@ sufficient memory.</p>
     <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span>
     <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">)</span>
 <span class="p">)</span>
+
+<span class="c1"># 4. Several gene set libraries: rank the genes once</span>
+<span class="c1"># Ranking fits one model per gene and takes most of the time. Each library</span>
+<span class="c1"># is then tested in its own run, with its own permutations and FDR.</span>
+<span class="n">ranking</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">rank_genes_did</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">),</span> <span class="n">rank_by</span><span class="o">=</span><span class="s2">"tstat"</span><span class="p">)</span>
+<span class="n">kegg</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">run_gsea_prerank</span><span class="p">(</span><span class="n">ranking</span><span class="p">,</span> <span class="s2">"KEGG_2021_Human"</span><span class="p">)</span>
+<span class="n">hallmark</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">run_gsea_prerank</span><span class="p">(</span><span class="n">ranking</span><span class="p">,</span> <span class="s2">"MSigDB_Hallmark_2020"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>

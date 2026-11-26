@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>sctrial.stats.bayes &#8212; sctrial 0.3.3 documentation</title>
+    <title>sctrial.stats.bayes &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="../../../_static/documentation_options.js?v=d198571b"></script>
+    <script src="../../../_static/documentation_options.js?v=2a705162"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,6 +49,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/sctrial/stats/bayes';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/_modules/sctrial/stats/bayes.html" />
     <link rel="icon" href="../../../_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -122,8 +123,8 @@
       
     
     
-    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="../../../_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -436,6 +437,18 @@
     <span class="k">return</span> <span class="n">model</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_missing_row</span><span class="p">(</span><span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">n_units</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Result row of a feature whose DiD is not estimable."""</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"feature"</span><span class="p">:</span> <span class="n">feature</span><span class="p">,</span>
+        <span class="s2">"beta_DiD"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+        <span class="s2">"ci_low"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+        <span class="s2">"ci_high"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+        <span class="s2">"p_bayes"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+        <span class="s2">"n_units"</span><span class="p">:</span> <span class="n">n_units</span><span class="p">,</span>
+    <span class="p">}</span>
+
+
 <div class="viewcode-block" id="did_table_bayes">
 <a class="viewcode-back" href="../../../api/statistics.html#sctrial.stats.bayes.did_table_bayes">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">did_table_bayes</span><span class="p">(</span>
@@ -468,6 +481,7 @@
 
 <span class="sd">    Prior specification</span>
 <span class="sd">    -------------------</span>
+
 <span class="sd">    - alpha_i ~ Normal(0, prior_scale) (participant random intercepts)</span>
 <span class="sd">    - beta_time ~ Normal(0, prior_scale)</span>
 <span class="sd">    - beta_arm ~ Normal(0, prior_scale)</span>
@@ -493,7 +507,8 @@
 <span class="sd">    celltype</span>
 <span class="sd">        If provided, subset to this cell type before analysis.</span>
 <span class="sd">    aggregate</span>
-<span class="sd">        Aggregation mode (``"participant_visit"`` or ``"cell"``).</span>
+<span class="sd">        Aggregation mode (``"participant_visit"``, ``"participant_visit_celltype"``</span>
+<span class="sd">        or ``"cell"``).</span>
 <span class="sd">    layer</span>
 <span class="sd">        Expression layer for gene features (``None`` uses ``adata.X``).</span>
 <span class="sd">    standardize</span>
@@ -524,6 +539,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame</span>
 <span class="sd">        Columns:</span>
+
 <span class="sd">        - feature: Feature name</span>
 <span class="sd">        - beta_DiD: Posterior mean of the DiD effect</span>
 <span class="sd">        - ci_low: 2.5th percentile of posterior</span>
@@ -567,8 +583,11 @@
     <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">final_features</span><span class="p">:</span>
         <span class="n">select_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">unit</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">arm_bin</span><span class="p">,</span> <span class="n">feat</span><span class="p">]</span> <span class="o">+</span> <span class="n">cov_cols</span>
         <span class="n">df_feat</span> <span class="o">=</span> <span class="n">df_use</span><span class="p">[</span><span class="n">select_cols</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="c1"># As in did_fit: a participant left with one visit for this feature is not in the model.</span>
+        <span class="n">visits_seen</span> <span class="o">=</span> <span class="n">df_feat</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">time</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+        <span class="n">df_feat</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">df_feat</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">visits_seen</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">visits_seen</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">])]</span>
         <span class="k">if</span> <span class="n">df_feat</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">"beta_DiD"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"n_units"</span><span class="p">:</span> <span class="mi">0</span><span class="p">})</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_missing_row</span><span class="p">(</span><span class="n">feat</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
             <span class="k">continue</span>
 
         <span class="c1"># participant index for random intercepts (remove unused categories)</span>
@@ -577,12 +596,17 @@
         <span class="n">n_units</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">unit_cat</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">categories</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
         <span class="n">time_vals</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">time</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
         <span class="n">arm_vals</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">arm_bin</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">arm_vals</span><span class="p">)</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="c1"># One arm has no participant in the model, so the DiD coefficient is not</span>
+            <span class="c1"># identified: its column is zero (control only) or equals time (treated only).</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_missing_row</span><span class="p">(</span><span class="n">feat</span><span class="p">,</span> <span class="n">n_units</span><span class="p">))</span>
+            <span class="k">continue</span>
 
         <span class="n">y</span> <span class="o">=</span> <span class="n">df_feat</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">standardize</span><span class="p">:</span>
             <span class="n">y_std</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">y_std</span><span class="p">)</span> <span class="ow">or</span> <span class="n">y_std</span> <span class="o">&lt;</span> <span class="mf">1e-12</span><span class="p">:</span>
-                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"feature"</span><span class="p">:</span> <span class="n">feat</span><span class="p">,</span> <span class="s2">"beta_DiD"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="s2">"n_units"</span><span class="p">:</span> <span class="n">n_units</span><span class="p">})</span>
+                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_missing_row</span><span class="p">(</span><span class="n">feat</span><span class="p">,</span> <span class="n">n_units</span><span class="p">))</span>
                 <span class="k">continue</span>
             <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">y</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">y_std</span>
 

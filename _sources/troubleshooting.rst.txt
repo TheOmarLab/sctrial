@@ -110,10 +110,11 @@ Missing Required Columns
 Statistical Issues
 ------------------
 
-Insufficient Participants Warning
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Too Few Paired Participants
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Warning**: ``n_units < 4, returning NaN``
+**Symptom**: the DiD columns (``beta_DiD``, ``se_DiD``, ``p_DiD``) are ``NaN`` and
+``n_units`` is below 4. No warning is raised.
 
 **Cause**: DiD requires at least 4 paired participants for statistical estimation.
 
@@ -246,8 +247,8 @@ Out of Memory Errors
    adata = adata[:, genes_of_interest].to_memory()
 
 4. **Use hardware with sufficient memory.** Do not subsample or downsample cells —
-   this distorts pseudobulk means, alters cell-type composition, and changes WLS
-   weights. See the :doc:`performance` guide for recommended hardware by dataset size.
+   this distorts pseudobulk means, alters cell-type composition, and changes the
+   per-group cell counts. See the :doc:`performance` guide for recommended hardware by dataset size.
 
 Performance Issues
 ------------------

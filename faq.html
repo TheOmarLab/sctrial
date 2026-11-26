@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Frequently Asked Questions &#8212; sctrial 0.3.3 documentation</title>
+    <title>Frequently Asked Questions &#8212; sctrial 1.1.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
 
-    <script src="_static/documentation_options.js?v=d198571b"></script>
+    <script src="_static/documentation_options.js?v=2a705162"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -52,6 +52,7 @@
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'faq';</script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="canonical" href="https://www.omar-lab.com/sctrial/faq.html" />
     <link rel="icon" href="_static/logo_icon.svg"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -127,8 +128,8 @@
       
     
     
-    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 0.3.3 documentation - Home"/>
-    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 0.3.3 documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-light" alt="sctrial 1.1.0 documentation - Home"/>
+    <img src="_static/logo_dark.svg" class="logo__image only-dark pst-js-only" alt="sctrial 1.1.0 documentation - Home"/>
   
   
 </a></div>
@@ -521,10 +522,14 @@ safeguard when:</p>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p><strong>Mathematical note</strong>: Bootstrap resamples at the participant level:</p>
+<p><strong>Mathematical note</strong>: the bootstrap is the restricted wild cluster bootstrap. To test
+<span class="math notranslate nohighlight">\(\beta = \beta_0\)</span>, the model is refitted without the tested term on
+<span class="math notranslate nohighlight">\(y - \beta_0 x\)</span>, the restricted residuals of each participant are multiplied by one
+random sign, the full model is fitted to the resulting outcome, and</p>
 <div class="math notranslate nohighlight">
-\[\hat{t}_b^* = \frac{\hat{\beta}^* - \hat{\beta}}{\text{SE}(\hat{\beta}^*)}\]</div>
-<p>where <span class="math notranslate nohighlight">\(\hat{\beta}^*\)</span> is the bootstrap estimate.</p>
+\[\hat{t}_b^* = \frac{\hat{\beta}_b^* - \beta_0}{\text{SE}(\hat{\beta}_b^*)}\]</div>
+<p>is compared with the observed <span class="math notranslate nohighlight">\((\hat{\beta} - \beta_0) / \text{SE}(\hat{\beta})\)</span>.
+The p-value tests <span class="math notranslate nohighlight">\(\beta_0 = 0\)</span>.</p>
 </section>
 <section id="what-are-the-minimum-sample-size-recommendations">
 <span id="faq-sample-size"></span><h3>What are the minimum sample size recommendations?<a class="headerlink" href="#what-are-the-minimum-sample-size-recommendations" title="Link to this heading">#</a></h3>
@@ -604,6 +609,11 @@ variance structure, and the degree of within-participant correlation.</p>
 
 <span class="n">mde</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">sensitivity_paired</span><span class="p">(</span><span class="n">n_participants</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.80</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Min detectable effect: </span><span class="si">{</span><span class="n">mde</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> SD"</span><span class="p">)</span>
+
+<span class="c1"># For two groups of unequal size (e.g. 3 responders and 8 non-responders):</span>
+<span class="n">power</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">power_two_group</span><span class="p">(</span><span class="n">n_treated</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">n_control</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">effect_size</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="n">n_resp</span><span class="p">,</span> <span class="n">n_nonresp</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">sample_size_two_group</span><span class="p">(</span><span class="n">effect_size</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">allocation_ratio</span><span class="o">=</span><span class="mi">3</span> <span class="o">/</span> <span class="mi">8</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Need </span><span class="si">{</span><span class="n">n_resp</span><span class="si">}</span><span class="s2"> responders and </span><span class="si">{</span><span class="n">n_nonresp</span><span class="si">}</span><span class="s2"> non-responders"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><strong>Practical considerations</strong>:</p>
@@ -691,9 +701,14 @@ variance structure, and the degree of within-participant correlation.</p>
 <h3>Should I use cell-level or participant-level aggregation?<a class="headerlink" href="#should-i-use-cell-level-or-participant-level-aggregation" title="Link to this heading">#</a></h3>
 <p><strong>Always use participant-level</strong> (<code class="docutils literal notranslate"><span class="pre">aggregate=&quot;participant_visit&quot;</span></code>, which is the default) for valid statistical inference.</p>
 <p>Why? Cells from the same participant are not independent, violating regression assumptions. Participant-level aggregation (pseudobulk) respects the experimental design.</p>
-<p>When aggregated, if an <code class="docutils literal notranslate"><span class="pre">n_cells</span></code> column is present, Weighted Least Squares (WLS) is
-used with inverse-variance weights proportional to the number of cells per group.
-This gives more weight to participant-visit groups with more cells (lower variance means).</p>
+<p>The participant-level model is fitted by ordinary least squares, so every participant
+contributes equally. With two visits this is exactly the difference of mean
+within-participant changes between arms. Weighting by the number of cells per group
+would assume that all variance in a participant-visit mean is cell-sampling noise; in
+clinical cohorts between-participant biological variation dominates, and cell counts can
+span two orders of magnitude, so a few participants would determine the estimate. To fit
+Weighted Least Squares (WLS) deliberately, pass <code class="docutils literal notranslate"><span class="pre">weight_col=&quot;n_cells&quot;</span></code> (or any column of
+finite, positive weights) to <code class="docutils literal notranslate"><span class="pre">did_table</span></code> or <code class="docutils literal notranslate"><span class="pre">DiDConfig</span></code>.</p>
 </section>
 <section id="what-are-wild-cluster-bootstrap-p-values">
 <h3>What are Wild Cluster Bootstrap p-values?<a class="headerlink" href="#what-are-wild-cluster-bootstrap-p-values" title="Link to this heading">#</a></h3>
@@ -705,10 +720,19 @@ When enabled, the output DataFrame includes additional columns:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">p_DiD_boot</span></code>: bootstrap p-value</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">se_DiD_boot</span></code>: bootstrap standard error</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">ci_lo_boot</span></code> / <code class="docutils literal notranslate"><span class="pre">ci_hi_boot</span></code>: bootstrap-t confidence interval</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ci_lo_boot</span></code> / <code class="docutils literal notranslate"><span class="pre">ci_hi_boot</span></code>: confidence interval from inverting the bootstrap test</p></li>
 </ul>
-<p>The CI uses the bootstrap-t method (Hall, 1992), which applies quantiles of the
-bootstrap <em>t</em>-distribution to the observed point estimate and standard error.</p>
+<p>The interval runs from the smallest to the largest value <span class="math notranslate nohighlight">\(\beta_0\)</span> that the bootstrap
+test does not reject, so it contains zero whenever the bootstrap p-value is at least 0.05. In
+small or unbalanced cohorts the values that are not rejected can form more than one interval;
+the reported interval spans them and can then contain zero although the p-value is below
+0.05. The standard error is
+the standard deviation of the unrestricted bootstrap estimates, which equals the
+cluster-robust standard error without small-sample correction. With nine or fewer
+participants (at the default 999 draws) every sign assignment is enumerated, so the result
+is exact and does not depend on the seed. An enumerated p-value cannot fall below
+<span class="math notranslate nohighlight">\(2^{1-G}\)</span> for <span class="math notranslate nohighlight">\(G\)</span> participants; with five or fewer the test therefore cannot
+reject at the 5% level, and the interval is reported as unbounded.</p>
 </section>
 <section id="how-do-i-interpret-beta-did">
 <h3>How do I interpret beta_DiD?<a class="headerlink" href="#how-do-i-interpret-beta-did" title="Link to this heading">#</a></h3>
@@ -719,7 +743,7 @@ bootstrap <em>t</em>-distribution to the observed point estimate and standard er
 <li><p><code class="docutils literal notranslate"><span class="pre">|beta_DiD|</span></code> &gt; 0.8: Large effect</p></li>
 </ul>
 <p>Positive beta_DiD = feature increased more (or decreased less) in treated vs. control.</p>
-<p>For standardized effect sizes (Cohen’s d or Hedge’s g), use <code class="docutils literal notranslate"><span class="pre">add_effect_sizes_to_did()</span></code>:</p>
+<p>For standardized effect sizes (Cohen’s d or Hedges’ g), use <code class="docutils literal notranslate"><span class="pre">add_effect_sizes_to_did()</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">))</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">add_effect_sizes_to_did</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
 
@@ -906,6 +930,23 @@ in linear models (Gelman &amp; Hill, 2006).</p>
 <li><p><strong>Post-hoc trend test</strong>: Use external tools on DiD estimates</p></li>
 </ol>
 </section>
+<section id="what-if-my-study-has-more-than-two-arms">
+<h3>What if my study has more than two arms?<a class="headerlink" href="#what-if-my-study-has-more-than-two-arms" title="Link to this heading">#</a></h3>
+<p>A two-arm analysis compares <code class="docutils literal notranslate"><span class="pre">arm_treated</span></code> with <code class="docutils literal notranslate"><span class="pre">arm_control</span></code>. Rows whose arm is
+any other label, or is missing, are excluded, and one warning names the excluded
+labels and counts their participants. They are not counted as control. When one of
+the two named arms then has no rows, the design does not match the labels of the
+data and a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> is raised.</p>
+<p>Run one analysis per comparison:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">dose</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"LowDose"</span><span class="p">,</span> <span class="s2">"HighDose"</span><span class="p">):</span>
+    <span class="n">design</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">TrialDesign</span><span class="p">(</span><span class="n">arm_col</span><span class="o">=</span><span class="s2">"arm"</span><span class="p">,</span> <span class="n">arm_treated</span><span class="o">=</span><span class="n">dose</span><span class="p">,</span> <span class="n">arm_control</span><span class="o">=</span><span class="s2">"Placebo"</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">did_table</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">design</span><span class="o">=</span><span class="n">design</span><span class="p">,</span> <span class="n">visits</span><span class="o">=</span><span class="p">(</span><span class="s2">"V1"</span><span class="p">,</span> <span class="s2">"V2"</span><span class="p">))</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">st.subset_arms(adata,</span> <span class="pre">design)</span></code> returns the data restricted to the two arms of a
+design. To pool arms into one group, write the pooled label into a new <code class="docutils literal notranslate"><span class="pre">obs</span></code>
+column and name that column in <code class="docutils literal notranslate"><span class="pre">arm_col</span></code>.</p>
+</section>
 <section id="what-if-i-have-crossover-design">
 <h3>What if I have crossover design?<a class="headerlink" href="#what-if-i-have-crossover-design" title="Link to this heading">#</a></h3>
 <p>Specify the crossover column in <code class="docutils literal notranslate"><span class="pre">TrialDesign</span></code>:</p>
@@ -1037,6 +1078,8 @@ score.  If fewer are found, the score is set to <code class="docutils literal no
 <li><p><strong>Zero variance</strong> in feature</p></li>
 <li><p><strong>Missing data</strong> in required columns</p></li>
 <li><p><strong>Wrong visit labels</strong></p></li>
+<li><p><strong>One arm without participants in the model</strong> (for example a cell type found in
+one arm only)</p></li>
 </ol>
 <p>Run diagnostics:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">diag</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">diagnose_trial_data</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">design</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1227,6 +1270,7 @@ For proteomics: Use protein abundance as features</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#can-i-test-for-batch-effects">Can I test for batch effects?</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-do-i-handle-multiple-time-points">How do I handle multiple time points?</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#can-i-do-dose-response-analysis">Can I do dose-response analysis?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-if-my-study-has-more-than-two-arms">What if my study has more than two arms?</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-if-i-have-crossover-design">What if I have crossover design?</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-do-i-test-for-cell-type-specific-effects">How do I test for cell-type-specific effects?</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-do-i-harmonize-response-labels-across-datasets">How do I harmonize response labels across datasets?</a></li>
