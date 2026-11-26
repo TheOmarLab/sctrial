@@ -1,246 +1,3941 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <title>Review the comparison · sctrial Interactive</title>
-  <style>
-    :root {
-      color-scheme: light;
-      --paper: #f5f4ef; --surface: #fffefa; --ink: #20241f; --muted: #575e55;
-      --rule: #d4d7cd; --faint: #e9ebe3; --accent: #b87215; --active: #edb257;
-      --focus: #095c69; --absent: #747b72;
-      font: 16px/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--paper); color: var(--ink); }
-    button, select { font: inherit; color: inherit; }
-    button, select, summary { cursor: pointer; }
-    :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-    [hidden] { display: none !important; }
-    button { border: 0; }
-    .top { background: var(--ink); color: #f9faf5; }
-    .top-inner, main { max-width: 1400px; margin: auto; padding-inline: clamp(20px, 4.7vw, 80px); }
-    .top-inner { height: 68px; display: flex; align-items: center; justify-content: space-between; }
-    .brand { display: inline-flex; align-items: baseline; gap: 13px; }
-    .brand strong { font-size: 28px; letter-spacing: -.07em; font-weight: 750; }
-    .brand span { border-left: 1px solid #646a5f; color: #d9ddd3; padding-left: 13px; font-size: 15px; }
-    .preview { color: #e0e4db; font-size: 13px; display: flex; align-items: center; gap: 9px; }
-    .preview::before { content: ""; width: 7px; height: 7px; border: 1px solid var(--active); border-radius: 50%; }
-    main { padding-block: clamp(27px,4vw,64px) 45px; }
-    .context { margin: 0 0 9px; font-size: 14px; color: var(--muted); }
-    h1, h2, h3, p { margin: 0; }
-    h1 { font-size: clamp(36px,4.6vw,65px); line-height: 1.05; letter-spacing: -.06em; font-weight: 600; }
-    .lede { margin-top: 14px; color: var(--muted); max-width: 66ch; }
-    .workspace { display: grid; grid-template-columns: minmax(0,1fr) minmax(245px, .32fr); gap: clamp(24px,3.2vw,52px); align-items: start; margin-top: clamp(25px,3vw,43px); }
-    .evidence { min-width: 0; }
-    .sheet { padding: clamp(20px,2.3vw,36px); background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; }
-    h2 { font-size: 21px; letter-spacing: -.04em; font-weight: 630; }
-    .metric { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin: 17px 0 25px; }
-    .metric-number { font-size: clamp(44px,5.2vw,74px); line-height: 1; font-weight: 550; letter-spacing: -.075em; font-variant-numeric: tabular-nums; }
-    .metric-number small { color: var(--muted); font-weight: 430; font-size: .49em; letter-spacing: -.06em; }
-    .metric-caption { max-width: 30ch; color: var(--muted); font-size: 15px; }
-    .groups { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,235px),1fr)); gap: 20px; }
-    .group { border-top: 2px solid var(--group-color, var(--ink)); padding: 14px 0 0; min-width: 0; }
-    .group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-    .group h3 { font-size: 18px; font-weight: 620; letter-spacing: -.035em; }
-    .group-head span { font-size: 13px; color: var(--muted); }
-    .grid { display: grid; grid-template-columns: minmax(50px, .95fr) repeat(6,minmax(0,.5fr)); margin-top: 12px; text-align: center; align-items: center; }
-    .pid { color: var(--muted); font: 11px/1.5 ui-monospace,monospace; padding-bottom: 6px; }
-    .visit { text-align: left; color: var(--muted); font-size: 12px; }
-    .mark { position: relative; height: 35px; display: grid; place-items: center; }
-    .mark::after { content: ""; width: 12px; height: 12px; border: 1px solid var(--ink); border-radius: 50%; background: var(--ink); z-index: 1; }
-    .mark.missing::after { width: 10px; height: 10px; border: 1.5px dashed var(--absent); background: var(--surface); }
-    .mark.link::before { position: absolute; content: ""; width: 1.5px; height: 35px; top: 50%; left: 50%; transform: translateX(-50%); background: var(--group-color, var(--ink)); }
-    .legend { display: flex; flex-wrap: wrap; gap: 6px 20px; color: var(--muted); font-size: 12px; margin-top: 18px; }
-    .legend span { display: inline-flex; align-items: center; gap: 7px; }
-    .legend i { width: 10px; height: 10px; border: 1px solid var(--ink); border-radius: 50%; background: var(--ink); }
-    .legend .empty { background: transparent; border: 1.5px dashed var(--absent); }
-    .question { border-top: 1px solid var(--rule); margin-top: 25px; padding-top: 18px; }
-    .question h3, .micro { font-size: 12px; text-transform: uppercase; letter-spacing: .09em; font-weight: 650; color: var(--muted); }
-    .question p { margin-top: 6px; font-size: clamp(18px,1.55vw,24px); letter-spacing: -.03em; line-height: 1.36; max-width: 48ch; }
-    aside { padding-top: 1px; }
-    aside h2 { margin-bottom: 16px; }
-    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
-    .field { margin-bottom: 16px; }
-    select { width: 100%; min-height: 44px; padding: 8px 27px 8px 11px; border-radius: 5px; border: 1px solid #9da498; background-color: var(--surface); font-size: 14px; }
-    .primary { background: var(--ink); color: white; padding: 11px 15px; min-height: 44px; width: 100%; border-radius: 5px; text-align: left; font-weight: 550; display:flex; justify-content: space-between; align-items:center; font-size: 14px; }
-    .primary:hover { background: #383f35; }
-    .primary .chevron { width: 8px; height: 8px; margin-right: 2px; border-top: 1.5px solid var(--active); border-right: 1.5px solid var(--active); transform: rotate(45deg); }
-    .note { font-size: 13px; color: var(--muted); margin-top: 10px; }
-    details { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); margin-top: 19px; padding: 0 2px; }
-    summary { font-size: 15px; font-weight: 600; padding: 14px 0; }
-    details ul { margin: 0 0 15px; padding-left: 21px; font-size: 14px; }
-    details p { font-size: 14px; margin: 0 0 12px; }
-    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-    dialog { position: fixed; max-width: min(485px, calc(100% - 32px)); max-height: 90dvh; width: 100%; padding: 26px; border: 1px solid var(--rule); border-radius: 12px; background: var(--surface); color: var(--ink); }
-    dialog::backdrop { background: rgb(21 27 20 / .48); }
-    dialog h2 { font-size: 27px; }
-    dl { display: grid; grid-template-columns: minmax(95px,.8fr) 1.4fr; font-size: 14px; margin: 20px 0; }
-    dt, dd { padding: 8px 0; border-top: 1px solid var(--rule); margin: 0; }
-    dt { color: var(--muted); } dd { overflow-wrap: anywhere; }
-    @media(max-width: 930px) {
-      .workspace { grid-template-columns: minmax(0,1fr) 230px; gap: 22px; }
-      .groups { grid-template-columns: 1fr; }
-    }
-    @media(max-width: 700px) {
-      .top-inner { height: 57px; } .brand strong { font-size: 24px; }
-      .workspace { display:flex; flex-direction: column; } .evidence, aside { width: 100%; }
-      .sheet { border-radius: 8px; } .lede { font-size: 15px; }
-      .groups { grid-template-columns: repeat(auto-fit,minmax(min(100%,235px),1fr)); }
-      aside { border-top: 1px solid var(--rule); padding-top: 18px; }
-      .narrow-link { color: var(--ink); display: inline-block; margin-top: 11px; font-size: 14px; }
-    }
-    @media(min-width: 701px) { .narrow-link { display: none; } }
-    @media(max-width: 360px) { .preview { font-size: 11px; } .brand { gap:8px; } .brand span { padding-left: 8px; } }
-  </style>
-</head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>sctrial · Study workspace</title><style>:root {
+  color-scheme: light;
+  --ink: #17243b;
+  --muted: #546478;
+  --line: #dfe5ed;
+  --violet: #684ce5;
+  --teal: #087f78;
+  --surface: #fff;
+  --base: #f5f7fb;
+  --nav: #131d36;
+  --focus: #4143b8;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Arial,
+    sans-serif;
+  font-synthesis: none;
+  color: var(--ink);
+  background: var(--base);
+  font-size: 14px;
+}
+* {
+  box-sizing: border-box;
+}
+body,
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+button,
+select {
+  cursor: pointer;
+}
+button {
+  background: none;
+  border: 0;
+}
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid #6861d6;
+  outline-offset: 3px;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+svg {
+  display: block;
+}
+i[data-icon],
+span[data-icon] {
+  display: inline-flex;
+  font-style: normal;
+  flex-shrink: 0;
+}
+button {
+  touch-action: manipulation;
+}
+[hidden] {
+  display: none !important;
+}
+.skip {
+  position: fixed;
+  top: -80px;
+  left: 10px;
+  z-index: 20;
+  background: white;
+  padding: 12px;
+}
+.skip:focus {
+  top: 8px;
+}
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 208px minmax(0, 1fr);
+}
+.rail {
+  background: linear-gradient(172deg, #16203a 5%, #17213f 70%, #202749);
+  color: #d8dff0;
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 15px;
+  z-index: 6;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 31px;
+  font-weight: 720;
+  letter-spacing: -1.9px;
+  color: #fff;
+  padding: 24px 11px 29px;
+  line-height: 1;
+}
+.study-switch {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  gap: 9px;
+  color: #edf0f9;
+  border: 1px solid #3a4461;
+  border-radius: 9px;
+  background: #232e4b;
+  padding: 12px 8px 12px 10px;
+  width: 100%;
+}
+.study-switch:hover,
+.rail nav button:hover {
+  background: #2c3756;
+}
+.dataset-icon {
+  width: 30px;
+  height: 33px;
+  align-items: center;
+  justify-content: center;
+  background: #3c4567;
+  color: #d4ceff;
+  border-radius: 6px;
+}
+.study-switch-text {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+.study-switch-text b,
+.study-switch-text small {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.study-switch-text b {
+  font-size: 12px;
+}
+.study-switch-text small,
+.rail-foot small {
+  font-size: 11px;
+  color: #b9c4db;
+  margin-top: 4px;
+}
+.rail-label {
+  padding: 27px 12px 10px;
+  color: #a7b4ce;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.secondary-nav {
+  padding-top: 30px;
+}
+.rail nav {
+  display: grid;
+  gap: 5px;
+}
+.rail nav button {
+  width: 100%;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border-radius: 7px;
+  text-align: left;
+  color: #d6dfef;
+  padding: 11px 13px;
+  font-size: 13px;
+  font-weight: 510;
+}
+.rail nav button[aria-current='page'] {
+  background: #3a3b69;
+  color: white;
+  box-shadow: inset 3px 0 #a99bff;
+}
+.rail nav button[aria-current='page'] i {
+  color: #c6bbff;
+}
+.rail-foot {
+  margin-top: auto;
+  border-top: 1px solid #394360;
+  padding: 19px 8px 22px;
+}
+.local-signal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #eff4fa;
+  font-size: 12px;
+  font-weight: 600;
+}
+.local-signal span {
+  width: 7px;
+  height: 7px;
+  background: #60d8ba;
+  border-radius: 50%;
+}
+.rail-foot small {
+  display: block;
+  margin-left: 15px;
+}
+.body {
+  min-width: 0;
+}
+.topbar {
+  height: 57px;
+  background: white;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(18px, 2.4vw, 39px);
+}
+.crumb,
+.top-actions,
+.title-line,
+.actions,
+.btn,
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.crumb {
+  font-size: 12px;
+  color: var(--muted);
+}
+.crumb strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.crumb b {
+  color: #9aa5b7;
+  font-weight: 400;
+  margin: 0 3px;
+}
+.crumb-symbol {
+  color: #6d708f;
+}
+.top-divider {
+  height: 21px;
+  border-left: 1px solid var(--line);
+  margin: 0 3px;
+}
+.search-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.search-btn kbd {
+  font-family: inherit;
+  border: 1px solid var(--line);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 6px;
+  color: #526079;
+}
+.icon-btn:hover,
+.search-btn:hover {
+  background: #f0f2f8;
+}
+.mobile {
+  display: none;
+}
+main {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: clamp(20px, 2.35vw, 38px);
+  outline: none;
+}
+.titlebar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 21px;
+}
+.title-line {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+h1 {
+  font-size: clamp(27px, 2.35vw, 39px);
+  line-height: 1.1;
+  letter-spacing: -0.055em;
+  font-weight: 690;
+}
+h2 {
+  font-size: 17px;
+  letter-spacing: -0.037em;
+  line-height: 1.22;
+  font-weight: 670;
+}
+h3 {
+  font-size: 15px;
+  letter-spacing: -0.024em;
+}
+.source-tag,
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: #ebe8fb;
+  color: #554093;
+  font-weight: 600;
+}
+.source-tag:before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  display: block;
+  border-radius: 50%;
+  background: #7955ba;
+}
+.subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+}
+.btn {
+  border: 1px solid #d4dbe7;
+  min-height: 36px;
+  border-radius: 7px;
+  padding: 7px 12px;
+  background: white;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background 0.14s,
+    border-color 0.14s;
+}
+.btn:hover {
+  background: #f1f3f9;
+  border-color: #a9b3c8;
+}
+.btn.primary {
+  background: #5141b6;
+  color: #fff;
+  border-color: #5141b6;
+}
+.btn.primary:hover {
+  background: #40318f;
+}
+.btn svg {
+  width: 15px;
+  height: 15px;
+}
+.muted,
+.small {
+  color: var(--muted);
+}
+.small {
+  font-size: 12px;
+}
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 2px 5px rgba(25, 42, 71, 0.035);
+  min-width: 0;
+}
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.section-head p,
+.section-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.select,
+select.field-input,
+input.field-input {
+  background: #fff;
+  border: 1px solid #cbd3e0;
+  border-radius: 6px;
+  min-height: 35px;
+  padding: 6px 9px;
+  color: var(--ink);
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.stat {
+  padding: 16px 16px 14px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #40506a;
+  font-size: 12px;
+  font-weight: 600;
+}
+.stat-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--tone);
+  background: var(--wash);
+}
+.stat-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.stat-number {
+  font-size: 32px;
+  letter-spacing: -0.06em;
+  line-height: 1.12;
+  font-weight: 680;
+  display: block;
+  margin: 9px 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+.stat-note {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.stat-fraction {
+  font: 500 15px/1 system-ui;
+  color: var(--muted);
+  letter-spacing: -0.04em;
+}
+.chart-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.38fr) minmax(0, 1fr);
+  gap: 16px;
+}
+.chart-card {
+  padding: 19px 18px 12px;
+  display: flex;
+  flex-direction: column;
+}
+.plot {
+  min-width: 0;
+  position: relative;
+  margin-top: 6px;
+}
+.chart-tools {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 14px 0 3px;
+}
+.feature-select {
+  max-width: 100%;
+  padding: 5px 22px 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  background: #fff;
+  min-height: 30px;
+}
+.switcher {
+  border-radius: 6px;
+  border: 1px solid #dfe4ee;
+  background: #f0f3f8;
+  display: inline-flex;
+  padding: 2px;
+}
+.switcher button {
+  font-size: 11px;
+  line-height: 1.3;
+  border-radius: 4px;
+  padding: 5px 8px;
+  color: var(--muted);
+}
+.switcher button[aria-pressed='true'] {
+  background: #fff;
+  color: #3d3490;
+  font-weight: 600;
+  box-shadow: 0 1px 3px #cbd2df;
+}
+.text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #504198;
+  font-size: 12px;
+  font-weight: 650;
+  padding: 5px 2px;
+}
+.text-btn:hover {
+  text-decoration: underline;
+}
+.text-btn svg {
+  width: 13px;
+  height: 13px;
+}
+.forest-meta {
+  margin: 14px 0 3px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.forest-meta .pill {
+  background: #edf1f8;
+  color: #485977;
+}
+.panel-footer {
+  border-top: 1px solid var(--line);
+  margin-top: auto;
+  padding-top: 9px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: 33px;
+}
+.panel-footer .small {
+  font-size: 11px;
+}
+.coverage {
+  padding: 17px 18px 13px;
+  margin-top: 16px;
+}
+.matrix-wrap {
+  overflow: auto;
+}
+.matrix {
+  width: 100%;
+  border-spacing: 5px;
+  margin: 8px -5px 1px;
+  width: calc(100% + 10px);
+  font-size: 12px;
+}
+.matrix th {
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  padding-bottom: 4px;
+}
+.matrix td:first-child,
+.matrix th:first-child {
+  text-align: left;
+}
+.matrix td:first-child {
+  font-weight: 600;
+}
+.arm-dot {
+  display: inline-block;
+  vertical-align: middle;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  margin-right: 7px;
+  background: var(--arm-color);
+}
+.matrix button {
+  width: 100%;
+  min-height: 29px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.matrix button:hover {
+  box-shadow: inset 0 0 0 2px var(--arm-color);
+}
+.matrix .denom {
+  opacity: 0.86;
+  font-size: 10px;
+}
+.coverage .section-head {
+  align-items: flex-start;
+}
+.legend-note {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 5px;
+}
+.modal {
+  width: min(calc(100% - 26px), 500px);
+  max-height: 85dvh;
+  border: 1px solid #cbd3df;
+  border-radius: 14px;
+  color: var(--ink);
+  padding: 0;
+  box-shadow: 0 18px 70px #13234344;
+}
+.modal::backdrop {
+  background: #101b36a3;
+}
+.modal-head {
+  padding: 19px 21px 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+  border-bottom: 1px solid var(--line);
+}
+#dialogBody {
+  padding: 18px 21px 21px;
+}
+.fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+}
+.field {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
+}
+.field.wide {
+  grid-column: 1/-1;
+}
+.field > span {
+  font-size: 12px;
+  font-weight: 620;
+}
+.field-input {
+  width: 100%;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 17px;
+}
+.hint {
+  margin: 10px 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.contrast-note {
+  margin-top: 14px;
+  border-radius: 7px;
+  background: #f2f1fc;
+  color: #463e7b;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.choice {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 13px;
+  padding: 12px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 7px 0;
+  background: #fff;
+  cursor: pointer;
+}
+.choice:hover {
+  border-color: #9b90d5;
+  background: #f8f7fe;
+}
+.choice > i {
+  color: #5948aa;
+}
+.choice span {
+  display: grid;
+  gap: 3px;
+}
+.choice strong {
+  font-size: 13px;
+}
+.choice small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.drop-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px dashed #9e99be;
+  border-radius: 9px;
+  background: #f7f6ff;
+  padding: 23px 12px;
+  color: #42388e;
+  cursor: pointer;
+}
+.drop-zone.over {
+  border: 2px solid var(--violet);
+}
+.drop-zone .btn {
+  margin: 3px;
+}
+.drop-zone strong {
+  font-size: 15px;
+}
+.drop-zone small {
+  color: var(--muted);
+}
+.error {
+  border-left: 3px solid #b43f48;
+  padding: 8px;
+  color: #913342;
+  background: #fff3f3;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.modal-list {
+  display: grid;
+  max-height: 42vh;
+  overflow: auto;
+  margin-top: 10px;
+}
+.modal-list button {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  gap: 8px;
+}
+.modal-list button:hover {
+  background: #f6f5fd;
+}
+.modal-list small {
+  color: var(--muted);
+}
+.meta-list {
+  display: grid;
+  gap: 0;
+}
+.meta-list div {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 7px;
+  border-bottom: 1px solid var(--line);
+  padding: 9px 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.meta-list dt {
+  color: var(--muted);
+}
+.meta-list dd {
+  margin: 0;
+}
+.toast {
+  position: fixed;
+  z-index: 20;
+  bottom: 22px;
+  right: 20px;
+  background: #1b2943;
+  color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 18px #13234335;
+  padding: 12px 15px;
+  font-size: 13px;
+}
+.empty {
+  color: var(--muted);
+  padding: 15px;
+  font-size: 13px;
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (min-width: 1550px) {
+  .shell {
+    grid-template-columns: 230px minmax(0, 1fr);
+  }
+  .stat {
+    padding: 18px 22px;
+  }
+  .chart-card {
+    padding: 22px 24px 14px;
+  }
+}
+@media (max-width: 1100px) {
+  .shell {
+    grid-template-columns: 172px minmax(0, 1fr);
+  }
+  .rail {
+    padding: 0 9px;
+  }
+  .chart-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+  .chart-card,
+  .stat {
+    padding: 13px 11px;
+  }
+  .chart-tools {
+    gap: 5px;
+  }
+  .chart-grid,
+  .stats {
+    gap: 11px;
+  }
+  .stat-top {
+    gap: 4px;
+  }
+  .study-switch {
+    padding: 10px 6px;
+  }
+  .stat-number {
+    font-size: 29px;
+  }
+  main {
+    padding: 19px 16px;
+  }
+}
+@media (max-width: 840px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rail {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 215px;
+    transform: translateX(-101%);
+    visibility: hidden;
+    transition: transform 0.15s ease;
+    z-index: 8;
+  }
+  .rail.open {
+    transform: translateX(0);
+    visibility: visible;
+  }
+  .mobile {
+    display: inline-grid;
+  }
+  #scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 7;
+    background: #17243b65;
+    width: 100%;
+  }
+  .topbar {
+    height: 48px;
+    padding: 0 12px;
+  }
+  .topbar .crumb-symbol {
+    display: none;
+  }
+  .stats {
+    gap: 9px;
+  }
+  .titlebar {
+    margin-bottom: 15px;
+  }
+}
+@media (max-width: 680px) {
+  main {
+    padding: 17px 12px;
+  }
+  .titlebar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .actions {
+    gap: 6px;
+  }
+  .title-line {
+    gap: 7px;
+  }
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 11px;
+  }
+  .stat {
+    padding: 10px 12px;
+  }
+  .stat-number {
+    font-size: 25px;
+    margin: 4px 0 1px;
+  }
+  .stat-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+  }
+  .stat-icon svg {
+    width: 14px;
+    height: 14px;
+  }
+  .stat-note {
+    font-size: 10.5px;
+  }
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+  .chart-card,
+  .coverage {
+    padding: 15px 12px 10px;
+  }
+  .coverage {
+    margin-top: 11px;
+  }
+  .section-head {
+    gap: 5px;
+  }
+  .search-btn span,
+  .search-btn kbd {
+    display: none;
+  }
+  .top-divider {
+    margin: 0;
+  }
+  .subtitle {
+    font-size: 12px;
+  }
+  .chart-tools,
+  .forest-meta {
+    margin-top: 10px;
+  }
+  .fields {
+    gap: 9px;
+  }
+  .source-tag {
+    font-size: 10px;
+  }
+  .matrix td:first-child {
+    white-space: nowrap;
+  }
+  .panel-footer {
+    margin-top: 6px;
+  }
+  .btn {
+    min-height: 34px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+.stat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  align-content: start;
+}
+.stat-top,
+.stat-note {
+  grid-column: 1/-1;
+}
+.stat-top {
+  margin-bottom: 1px;
+}
+.stat-number {
+  grid-column: 1;
+}
+.stat-mini {
+  grid-column: 2;
+  grid-row: 2;
+  color: var(--tone);
+  display: flex;
+  align-items: center;
+  margin: 4px 2px 0 0;
+}
+.stat-mini > svg {
+  width: 33px;
+  height: 33px;
+}
+.micro-split {
+  display: flex;
+  gap: 3px;
+  width: 43px;
+  height: 7px;
+}
+.micro-split i {
+  border-radius: 3px;
+}
+.micro-bars {
+  display: flex;
+  gap: 3px;
+  align-items: end;
+  height: 30px;
+}
+.micro-bars i {
+  width: 7px;
+  border-radius: 2px 2px 1px 1px;
+}
+.micro-visits {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(#d9ba98, #d9ba98) center/88% 1px no-repeat;
+}
+.micro-visits i {
+  width: 7px;
+  height: 7px;
+  border: 1px solid #b9864d;
+  background: #fff;
+  border-radius: 50%;
+}
+.micro-visits i.on {
+  background: #aa6b24;
+}
+.matrix {
+  margin: 8px 0 1px;
+  width: 100%;
+}
+.plot > div {
+  animation: plot-enter 0.18s ease-out;
+}
+@keyframes plot-enter {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 680px) {
+  .stat-mini > svg {
+    height: 24px;
+    width: 24px;
+  }
+  .micro-split {
+    width: 31px;
+  }
+  .stat-mini {
+    margin: 0;
+  }
+  .micro-bars {
+    height: 24px;
+    transform: scale(0.8);
+    transform-origin: right center;
+  }
+  .micro-visits {
+    gap: 3px;
+  }
+}
+
+.pe.card {
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line, #e2e5ed);
+  border-radius: 15px;
+  background: white;
+  color: var(--ink, #17243b);
+}
+.pe-head,
+.pe-filters,
+.pe-footer,
+.pe-notes {
+  padding-inline: clamp(16px, 2vw, 28px);
+}
+.pe-head {
+  padding-top: 21px;
+}
+.pe-head h2,
+.pe-detail h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+  color: var(--ink, #17243b);
+}
+.pe-sub,
+.pe-dialog-sub {
+  margin: 5px 0 0;
+  font-size: 13px;
+  color: #53647a;
+}
+.pe-filters {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-block: 16px;
+}
+.pe-control {
+  display: grid;
+  gap: 5px;
+  min-width: 132px;
+}
+.pe-label,
+.pe-dialog-label {
+  font-size: 12px;
+  color: #52617a;
+  font-weight: 600;
+}
+.pe-search {
+  flex: 1 1 185px;
+}
+.pe-input,
+.pe-control select {
+  max-width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #c5cede;
+  border-radius: 7px;
+  background: white;
+  color: var(--ink, #17243b);
+  font: inherit;
+  font-size: 13px;
+}
+.pe-control select {
+  cursor: pointer;
+  min-width: 118px;
+}
+.pe-input::placeholder {
+  color: #637086;
+}
+.pe :focus-visible,
+.pe-detail :focus-visible {
+  outline: 3px solid #5743c7;
+  outline-offset: 2px;
+}
+.pe-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.pe-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+  margin: 0;
+}
+.pe-table th,
+.pe-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid #e9edf3;
+  color: #35445b;
+  background: transparent;
+}
+.pe-table th:first-child,
+.pe-table td:first-child {
+  padding-left: clamp(16px, 2vw, 28px);
+}
+.pe-table th:last-child,
+.pe-table td:last-child {
+  padding-right: clamp(16px, 2vw, 28px);
+}
+.pe-table thead th {
+  padding-block: 9px;
+  background: #f4f6fb;
+  font-weight: 600;
+  font-size: 12px;
+  color: #54627a;
+  border-block: 1px solid #e2e6ee;
+}
+.pe-table tbody th {
+  font-weight: 550;
+}
+.pe-table tbody tr:hover td,
+.pe-table tbody tr:hover th {
+  background: #f8f9fe;
+}
+.pe-person {
+  color: #3d3289;
+  background: transparent;
+  border: 0;
+  padding: 4px 3px 4px 0;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.pe-person:hover {
+  text-decoration: underline;
+}
+.pe-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pe-group::before {
+  content: '';
+  display: block;
+  height: 8px;
+  width: 8px;
+  border-radius: 3px;
+  background: var(--violet, #684ce5);
+}
+.pe-group.pe-second::before {
+  background: var(--teal, #087f78);
+}
+.pe-num,
+.pe-page-number,
+.pe-detail-table {
+  font-variant-numeric: tabular-nums;
+}
+.pe-mark {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  box-sizing: border-box;
+  vertical-align: -1px;
+}
+.pe-yes {
+  background: #11887e;
+  box-shadow: inset 0 0 0 1px #087267;
+}
+.pe-partial {
+  border: 1px solid #997120;
+  background: repeating-linear-gradient(135deg, #f9e9bb 0 2px, #fff8e6 2px 4px);
+}
+.pe-no {
+  border: 1px dashed #78879d;
+  background: white;
+}
+.pe-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.pe-covered {
+  color: #126359;
+  background: #e5f5ef;
+}
+.pe-incomplete {
+  color: #79540b;
+  background: #fff2d3;
+}
+.pe-outside {
+  color: #536278;
+  background: #edf0f4;
+}
+.pe-table .pe-empty {
+  padding: 22px;
+  color: #53647a;
+  text-align: center;
+}
+.pe-footer,
+.pe-pages {
+  display: flex;
+  align-items: center;
+}
+.pe-footer {
+  min-height: 48px;
+  padding-block: 8px;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pe-range,
+.pe-note,
+.pe-legend,
+.pe-page-number {
+  margin: 0;
+  font-size: 12px;
+  color: #52617a;
+}
+.pe-pages {
+  gap: 8px;
+}
+.pe-step,
+.pe-close {
+  padding: 5px 9px;
+  border: 1px solid #c9d1de;
+  border-radius: 6px;
+  color: #293449;
+  background: white;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pe-step:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.pe-notes {
+  background: #f9fafd;
+  padding-block: 12px;
+  border-top: 1px solid #e2e6ee;
+}
+.pe-legend,
+.pe-key {
+  display: flex;
+  align-items: center;
+}
+.pe-legend {
+  gap: 4px 16px;
+  flex-wrap: wrap;
+}
+.pe-key {
+  gap: 5px;
+}
+.pe-key .pe-mark {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+.pe-note {
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.pe-detail {
+  box-sizing: border-box;
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(610px, calc(100% - 24px));
+  max-width: none;
+  max-height: 86dvh;
+  padding: 22px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid var(--line, #e2e5ed);
+  border-radius: 14px;
+  color: var(--ink, #17243b);
+  box-shadow: 0 20px 80px #17243b38;
+}
+.pe-detail::backdrop {
+  background: #15223c75;
+}
+.pe-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.pe-dialog-label {
+  margin: 0 0 4px;
+}
+.pe-dialog-sub {
+  margin-bottom: 15px;
+}
+.pe-detail .pe-table th,
+.pe-detail .pe-table td {
+  padding-inline: 9px;
+}
+.pe-detail-table thead th:last-child {
+  min-width: 78px;
+  white-space: normal;
+}
+.pe-detail-nav {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+@media (max-width: 600px) {
+  .pe-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+  }
+  .pe-control {
+    min-width: 0;
+  }
+  .pe-control select {
+    min-width: 0;
+  }
+  .pe-search {
+    grid-column: 1 / -1;
+  }
+  .pe-table {
+    font-size: 12px;
+  }
+  .pe-table th,
+  .pe-table td {
+    padding: 9px;
+  }
+  .pe-footer {
+    flex-wrap: wrap;
+  }
+  .pe-detail {
+    padding: 16px;
+  }
+}
+
+.results-layout {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.results-layout .card {
+  min-width: 0;
+  overflow: hidden;
+}
+.results-layout h2 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.3;
+  letter-spacing: -0.035em;
+}
+.results-layout .result-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 19px 21px;
+}
+.results-layout .results-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.results-layout .results-table {
+  width: 100%;
+  min-width: 500px;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.results-layout .results-table th,
+.results-layout .results-table td {
+  border-bottom: 1px solid var(--line, #e2e6ec);
+  padding: 11px 14px;
+  text-align: right;
+  white-space: nowrap;
+}
+.results-layout .results-table thead th {
+  font-size: 11px;
+  font-weight: 650;
+  color: #566178;
+  background: #f7f8fb;
+}
+.results-layout .results-table tr > *:first-child {
+  padding-left: 21px;
+  text-align: left;
+}
+.results-layout .results-table tr > *:last-child {
+  padding-right: 21px;
+}
+.results-layout .sort-head,
+.results-layout .feature-link {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  margin: 0;
+  padding: 3px 1px;
+  cursor: pointer;
+}
+.results-layout .sort-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  line-height: 1.25;
+}
+.results-layout .sort-arrow {
+  color: #66718b;
+}
+.results-layout .feature-link {
+  text-align: left;
+  color: var(--ink, #192238);
+  font-weight: 600;
+  white-space: normal;
+}
+.results-layout .results-table tbody tr {
+  cursor: pointer;
+}
+.results-layout .results-table tbody tr:hover {
+  background: #f6f6fd;
+}
+.results-layout .results-table .chosen-feature {
+  background: #f1effc;
+}
+.results-layout .chosen-feature .feature-link {
+  color: #5036ae;
+}
+.results-layout .result-number {
+  font-weight: 550;
+}
+.results-layout .result-interval {
+  color: #4a5267;
+}
+.results-layout .result-empty {
+  white-space: normal;
+  cursor: default;
+}
+.results-layout .result-foot {
+  margin: 0;
+  padding: 13px 21px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.results-layout .result-detail {
+  padding: 20px 21px;
+}
+.results-layout .result-detail-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.results-layout .detail-kicker {
+  display: block;
+  margin: 0 0 4px;
+  color: #5b647b;
+  font-size: 11px;
+  font-weight: 650;
+}
+.results-layout .detail-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 32px;
+  margin: 21px 0 17px;
+}
+.results-layout .fact dt,
+.results-layout .selected-contrast > span {
+  color: #5b647b;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.results-layout .fact dd {
+  margin: 4px 0 0;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.results-layout .feature-estimate dd {
+  font-size: 23px;
+  line-height: 1;
+  color: #5036ae;
+}
+.results-layout .selected-contrast {
+  border-top: 1px solid var(--line, #e2e6ec);
+  padding-top: 12px;
+}
+.results-layout .selected-contrast p {
+  margin: 3px 0 0;
+  line-height: 1.45;
+  font-size: 14px;
+}
+@media (max-width: 600px) {
+  .results-layout .result-head,
+  .results-layout .result-detail {
+    padding: 16px;
+  }
+  .results-layout .results-table tr > :first-child {
+    padding-left: 16px;
+  }
+  .results-layout .results-table th,
+  .results-layout .results-table td {
+    padding: 10px;
+  }
+  .results-layout .result-foot {
+    padding: 12px 16px;
+  }
+  .results-layout .detail-facts {
+    gap: 15px 22px;
+  }
+}
+</style></head>
 <body>
-  <header class="top"><div class="top-inner">
-    <div class="brand"><strong>sctrial</strong><span>Interactive</span></div>
-    <span class="preview">Design preview</span>
-  </div></header>
-  <main>
-    <p class="context">Synthetic cohort · 12 participants</p>
-    <h1>Review the comparison</h1>
-    <p class="lede">See which participants contribute before fitting the model.</p>
-    <a class="narrow-link" href="#settings">Change comparison settings</a>
-    <div class="workspace">
-      <section class="evidence" aria-label="Study design">
-        <div class="sheet" id="coverage" tabindex="-1">
-          <h2>Visit coverage</h2>
-          <div class="metric"><span class="metric-number" id="number"></span><span class="metric-caption" id="metric-label"></span></div>
-          <div class="groups" id="groups"></div>
-          <div class="legend" aria-hidden="true"><span><i></i>Observed</span><span><i class="empty"></i>Missing</span></div>
-          <div class="question"><h3>Analysis question</h3><p id="question"></p></div>
-        </div>
-        <details><summary id="exclusion-title">Review exclusions</summary><div id="exclusions"></div></details>
-        <p class="note">Coverage is calculated from specimen and cell-type availability. Missing feature values or covariates can further reduce the number in a fitted model.</p>
-      </section>
-      <aside id="settings" aria-labelledby="settings-title">
-        <h2 id="settings-title">Comparison settings</h2>
-        <div class="field"><label for="design">Study design</label><select id="design">
-          <option value="did">Two-arm longitudinal</option><option value="paired">Single-arm paired</option><option value="cross">Cross-sectional</option>
-        </select></div>
-        <div class="field"><label for="order" id="order-label">Group order</label><select id="order"></select></div>
-        <div class="field"><label for="visit" id="visit-label">Follow-up visit</label><select id="visit"></select></div>
-        <div class="field"><label for="population">Cell population</label><select id="population">
-          <option>All annotated cells</option><option>CD8 T cells</option><option>B cells</option>
-        </select></div>
-        <button class="primary" id="review" type="button"><span>Inspect contrast</span><span class="chevron" aria-hidden="true"></span></button>
-        <a class="narrow-link" href="#coverage">Return to visit coverage</a>
-      </aside>
-    </div>
-    <p class="sr-only" id="announcement" role="status" aria-live="polite"></p>
-  </main>
-  <dialog id="contrast" aria-labelledby="contrast-title"><h2 id="contrast-title">Contrast specification</h2>
-    <p class="note">These settings describe the proposed call for this example.</p>
-    <dl id="specification"></dl><form method="dialog"><button class="primary" autofocus>Back to comparison</button></form>
-  </dialog>
-  <script>
-    'use strict';
-    // Each record represents one person. Specimen availability and cell-type coverage
-    // have separate meanings, including when both would exclude the same observation.
-    const arms = ['Arm A', 'Arm B'];
-    const participants = arms.flatMap((arm, armIndex) =>
-      Array.from({length: 6}, (_, i) => ({arm, id: (armIndex === 0 ? 'A' : 'B') + String(i + 1).padStart(2, '0')})));
-    const missingSpecimens = {
-      'Baseline': [], 'Week 4': ['A05', 'B03'], 'Week 12': ['A02', 'A05', 'B04', 'B06']
+<a class="skip" href="#main">Skip to workspace</a>
+<div class="shell">
+ <aside class="rail" id="rail" aria-label="Workspace navigation">
+  <div class="brand"><svg aria-hidden="true" viewBox="0 0 40 36" width="37" height="34"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.5"><path d="m3 24 8-5 8 4 17-12" stroke="#9c99ff"/><path d="m3 17 8-5 8 4L36 4" stroke="#ebeaff"/><path d="m3 31 8-5 8 4 17-12" stroke="#706bdd"/></g></svg><span>sctrial</span></div>
+  <button class="study-switch" data-action="open"><span class="dataset-icon" data-icon="layers"></span><span class="study-switch-text"><b id="railStudy"></b><small id="railSource"></small></span><span data-icon="chevrons"></span></button>
+  <div class="rail-label">Workspace</div>
+  <nav><button data-view="overview"><i data-icon="dashboard"></i>Overview</button><button data-view="participants"><i data-icon="people"></i>Participants</button><button data-view="results"><i data-icon="chart"></i>Results</button></nav>
+  <div class="rail-label secondary-nav">Study tools</div>
+  <nav><button data-action="configure"><i data-icon="sliders"></i>Contrast settings</button><button data-action="open"><i data-icon="folder"></i>Open study</button></nav>
+  <div class="rail-foot"><div class="local-signal"><span></span>Local workspace</div><small>Participant-level analysis</small></div>
+ </aside><button id="scrim" aria-label="Close navigation" hidden></button>
+ <div class="body">
+ <header class="topbar"><div class="crumb"><button id="menu" class="icon-btn mobile" aria-label="Open navigation" aria-expanded="false"><i data-icon="menu"></i></button><i class="crumb-symbol" data-icon="layers"></i><span>Workspace</span><b aria-hidden="true">/</b><strong id="crumbTitle">Overview</strong></div><div class="top-actions"><button class="search-btn" aria-label="Find in study" data-action="search"><i data-icon="search"></i><span>Find in study</span><kbd>/</kbd></button><span class="top-divider"></span><button class="icon-btn info" data-action="info" aria-label="Study information" title="Study information"><i data-icon="info"></i></button></div></header>
+ <main id="main" tabindex="-1">
+ <div class="titlebar"><div><div class="title-line"><h1 id="pageTitle"></h1><span id="sourceBadge" class="source-tag"></span></div><div class="subtitle" id="caption"></div></div><div class="actions"><button class="btn" data-action="export"><i data-icon="download"></i>Export</button><button class="btn primary" data-action="configure"><i data-icon="sliders"></i>Edit contrast</button></div></div>
+ <div id="page"></div></main></div></div>
+ <dialog id="dialog" class="modal" aria-labelledby="dialogTitle"><div class="modal-head"><h2 id="dialogTitle"></h2><button class="icon-btn" id="dismiss" aria-label="Close dialog"><i data-icon="close"></i></button></div><div id="dialogBody"></div></dialog>
+ <div id="toast" class="toast" role="status" hidden></div>
+ <script type="application/json" id="dataset">{"study":{"name":"Longitudinal immune profiling","source":"Synthetic study","unit":"Mean module score","seed":62834,"cells":4335,"commit":"0315adfb91023d774b595cf5185d72874cd3b5ba","package":"sctrial 1.1.0","interval":"95% analytical confidence interval","methods":{"did":"Participant fixed effects with participant-clustered covariance. The 95% interval comes from the matching fitted model.","paired":"Participant fixed effects with participant-clustered covariance. The 95% interval is returned by within_arm_comparison.","cross":"Participant-level ordinary least squares. The 95% interval is returned by between_arm_comparison."},"multiplicity":"Benjamini\u2013Hochberg adjustment across four scores for the selected contrast and population.","pooled":"All annotated cells pools CD8 T cells, B cells, and CD4 T cells.","smallSample":"Small synthetic cohort. Analytical intervals and p-values are illustrative.","versions":{"anndata":"0.12.19","numpy":"2.3.5","pandas":"2.2.3","scipy":"1.18.1","statsmodels":"0.15.0"}},"participants":[{"id":"A01","arm":"Arm A"},{"id":"A02","arm":"Arm A"},{"id":"A03","arm":"Arm A"},{"id":"A04","arm":"Arm A"},{"id":"A05","arm":"Arm A"},{"id":"A06","arm":"Arm A"},{"id":"B01","arm":"Arm B"},{"id":"B02","arm":"Arm B"},{"id":"B03","arm":"Arm B"},{"id":"B04","arm":"Arm B"},{"id":"B05","arm":"Arm B"},{"id":"B06","arm":"Arm B"}],"visits":["Baseline","Week 4","Week 12"],"populations":["All annotated cells","CD8 T cells","B cells"],"cellTypes":["CD8 T cells","B cells","CD4 T cells"],"features":[{"id":"interferon","label":"Interferon response"},{"id":"cytotoxicity","label":"Cytotoxicity"},{"id":"inflammation","label":"Inflammatory response"},{"id":"proliferation","label":"Proliferation"}],"observations":[{"id":"A01","arm":"Arm A","visit":"Baseline","population":"All annotated cells","cells":132,"scores":{"interferon":0.31330986913020453,"cytotoxicity":0.24587399894181622,"inflammation":0.11523690783823794,"proliferation":0.198804693487067}},{"id":"A01","arm":"Arm A","visit":"Week 4","population":"All annotated cells","cells":97,"scores":{"interferon":0.6420738150167193,"cytotoxicity":0.7686725282984852,"inflammation":0.09765240967732892,"proliferation":0.21801734848591936}},{"id":"A01","arm":"Arm A","visit":"Week 12","population":"All annotated cells","cells":109,"scores":{"interferon":0.5563594634246641,"cytotoxicity":0.6207784514053064,"inflammation":0.12360251961369505,"proliferation":0.24055988122791064}},{"id":"A02","arm":"Arm A","visit":"Baseline","population":"All annotated cells","cells":156,"scores":{"interferon":0.08373260841400712,"cytotoxicity":0.32006654956646124,"inflammation":0.196803168054243,"proliferation":0.11722757680005962}},{"id":"A02","arm":"Arm A","visit":"Week 4","population":"All annotated cells","cells":204,"scores":{"interferon":0.7892790692833137,"cytotoxicity":0.5589599224886833,"inflammation":-0.09521294573867159,"proliferation":0.46903688322904985}},{"id":"A03","arm":"Arm A","visit":"Baseline","population":"All annotated cells","cells":174,"scores":{"interferon":0.2881911606477022,"cytotoxicity":0.3000448622762419,"inflammation":0.21672693642408805,"proliferation":0.2586282675458375}},{"id":"A03","arm":"Arm A","visit":"Week 4","population":"All annotated cells","cells":99,"scores":{"interferon":0.7731037797239617,"cytotoxicity":0.41632871390715825,"inflammation":0.2855056378497171,"proliferation":0.4787643250192986}},{"id":"A03","arm":"Arm A","visit":"Week 12","population":"All annotated cells","cells":135,"scores":{"interferon":0.6513533802560497,"cytotoxicity":0.2183851279155763,"inflammation":0.3630540367939584,"proliferation":0.32530234415557496}},{"id":"A04","arm":"Arm A","visit":"Baseline","population":"All annotated cells","cells":147,"scores":{"interferon":0.3029038889070151,"cytotoxicity":0.12206980282556473,"inflammation":0.3929497301915278,"proliferation":0.19919431041483193}},{"id":"A04","arm":"Arm A","visit":"Week 4","population":"All annotated cells","cells":161,"scores":{"interferon":1.3094203174426233,"cytotoxicity":0.4784559411322547,"inflammation":0.20092818562079598,"proliferation":0.512410153369458}},{"id":"A04","arm":"Arm A","visit":"Week 12","population":"All annotated cells","cells":169,"scores":{"interferon":0.8091002020061792,"cytotoxicity":0.24541860027354628,"inflammation":0.2838441782380941,"proliferation":0.2632859674755971}},{"id":"A05","arm":"Arm A","visit":"Baseline","population":"All annotated cells","cells":158,"scores":{"interferon":0.30149919307401235,"cytotoxicity":0.048545119054317354,"inflammation":0.367088706209378,"proliferation":0.10528902337964843}},{"id":"A06","arm":"Arm A","visit":"Baseline","population":"All annotated cells","cells":145,"scores":{"interferon":0.31498781314063146,"cytotoxicity":0.21047709765485592,"inflammation":0.14740829729336916,"proliferation":0.1631279545643966}},{"id":"A06","arm":"Arm A","visit":"Week 4","population":"All annotated cells","cells":77,"scores":{"interferon":0.6467485601031442,"cytotoxicity":0.48749910083266956,"inflammation":0.2578338750399844,"proliferation":0.46425325586584515}},{"id":"A06","arm":"Arm A","visit":"Week 12","population":"All annotated cells","cells":174,"scores":{"interferon":0.6294661766170327,"cytotoxicity":0.5799725119438177,"inflammation":0.029570205043045708,"proliferation":0.38764426167445537}},{"id":"B01","arm":"Arm B","visit":"Baseline","population":"All annotated cells","cells":120,"scores":{"interferon":0.41389086920717977,"cytotoxicity":0.3461014146795486,"inflammation":-0.03691108871234962,"proliferation":0.10151339532177404}},{"id":"B01","arm":"Arm B","visit":"Week 4","population":"All annotated cells","cells":125,"scores":{"interferon":0.5630250195068648,"cytotoxicity":0.3347858651841435,"inflammation":0.1857068186109604,"proliferation":0.048794413370190276}},{"id":"B01","arm":"Arm B","visit":"Week 12","population":"All annotated cells","cells":202,"scores":{"interferon":0.4936743646904475,"cytotoxicity":0.3777751691173306,"inflammation":0.056421713774281596,"proliferation":0.0032094867571725136}},{"id":"B02","arm":"Arm B","visit":"Baseline","population":"All annotated cells","cells":187,"scores":{"interferon":0.20211518237853482,"cytotoxicity":0.16145316853662553,"inflammation":0.1967347618901208,"proliferation":0.03138325573204808}},{"id":"B02","arm":"Arm B","visit":"Week 4","population":"All annotated cells","cells":225,"scores":{"interferon":0.5166522724148098,"cytotoxicity":0.21917813938453568,"inflammation":0.3528842759887624,"proliferation":0.09141224957861258}},{"id":"B02","arm":"Arm B","visit":"Week 12","population":"All annotated cells","cells":72,"scores":{"interferon":0.40740900403527974,"cytotoxicity":0.1162118423507523,"inflammation":0.5795913782465276,"proliferation":0.1157791711662843}},{"id":"B03","arm":"Arm B","visit":"Baseline","population":"All annotated cells","cells":149,"scores":{"interferon":0.15984261193107,"cytotoxicity":0.3203468141323959,"inflammation":0.2843088226252205,"proliferation":0.15244450963342576}},{"id":"B03","arm":"Arm B","visit":"Week 12","population":"All annotated cells","cells":118,"scores":{"interferon":0.31174075335981477,"cytotoxicity":0.21144748229203356,"inflammation":0.29502114766478077,"proliferation":0.26262676809499363}},{"id":"B04","arm":"Arm B","visit":"Baseline","population":"All annotated cells","cells":171,"scores":{"interferon":0.18530075314380556,"cytotoxicity":0.15135802522828742,"inflammation":0.32109313639693476,"proliferation":0.219823894068811}},{"id":"B04","arm":"Arm B","visit":"Week 4","population":"All annotated cells","cells":235,"scores":{"interferon":0.4410063693451774,"cytotoxicity":0.1265158204705064,"inflammation":0.1576366991795858,"proliferation":0.08134586119391898}},{"id":"B05","arm":"Arm B","visit":"Baseline","population":"All annotated cells","cells":110,"scores":{"interferon":0.35126261017720906,"cytotoxicity":0.31781612150022764,"inflammation":0.29450981295299544,"proliferation":0.12730705622846475}},{"id":"B05","arm":"Arm B","visit":"Week 4","population":"All annotated cells","cells":125,"scores":{"interferon":0.5714703446740939,"cytotoxicity":0.11492108964097972,"inflammation":0.37958597834063074,"proliferation":0.2503554326363118}},{"id":"B05","arm":"Arm B","visit":"Week 12","population":"All annotated cells","cells":102,"scores":{"interferon":0.4952690126669152,"cytotoxicity":0.4570456922485569,"inflammation":0.3866555530806877,"proliferation":0.20838368091329057}},{"id":"B06","arm":"Arm B","visit":"Baseline","population":"All annotated cells","cells":180,"scores":{"interferon":0.21027991898629772,"cytotoxicity":0.29784298999520403,"inflammation":0.10855508307996882,"proliferation":0.2514373250232944}},{"id":"B06","arm":"Arm B","visit":"Week 4","population":"All annotated cells","cells":77,"scores":{"interferon":0.5564238928418315,"cytotoxicity":0.7579564601619625,"inflammation":-0.011638626276413886,"proliferation":0.23765305817985485}},{"id":"A01","arm":"Arm A","visit":"Baseline","population":"CD8 T cells","cells":40,"scores":{"interferon":0.4756520778321217,"cytotoxicity":0.547963380839861,"inflammation":0.18045818300500918,"proliferation":0.2858981960895193}},{"id":"A01","arm":"Arm A","visit":"Week 4","population":"CD8 T cells","cells":43,"scores":{"interferon":0.8978916487741404,"cytotoxicity":1.1995540925926145,"inflammation":0.19695627427587822,"proliferation":0.31415536613963635}},{"id":"A01","arm":"Arm A","visit":"Week 12","population":"CD8 T cells","cells":34,"scores":{"interferon":0.8036193485509214,"cytotoxicity":1.157023407417437,"inflammation":0.16021000731324037,"proliferation":0.23354595797385536}},{"id":"A02","arm":"Arm A","visit":"Baseline","population":"CD8 T cells","cells":38,"scores":{"interferon":0.317804307949002,"cytotoxicity":0.47228405797121775,"inflammation":-0.09485186218738517,"proliferation":0.09983491231589184}},{"id":"A02","arm":"Arm A","visit":"Week 4","population":"CD8 T cells","cells":81,"scores":{"interferon":1.305153347860308,"cytotoxicity":0.7739917720586648,"inflammation":-0.5595171783332932,"proliferation":0.8130898533787284}},{"id":"A03","arm":"Arm A","visit":"Baseline","population":"CD8 T cells","cells":81,"scores":{"interferon":0.08588067736384777,"cytotoxicity":0.5235040134815814,"inflammation":0.06080334873028267,"proliferation":0.13741619445953232}},{"id":"A03","arm":"Arm A","visit":"Week 4","population":"CD8 T cells","cells":42,"scores":{"interferon":0.8062969496266179,"cytotoxicity":0.7872687068184907,"inflammation":0.3265633571680699,"proliferation":0.5083881016656625}},{"id":"A04","arm":"Arm A","visit":"Baseline","population":"CD8 T cells","cells":25,"scores":{"interferon":0.5374689919598065,"cytotoxicity":0.43504390038705965,"inflammation":0.3997829941579239,"proliferation":0.22402653297825162}},{"id":"A04","arm":"Arm A","visit":"Week 4","population":"CD8 T cells","cells":78,"scores":{"interferon":1.5085961147675853,"cytotoxicity":0.9753825749096808,"inflammation":0.40373167644459584,"proliferation":0.4709211847437662}},{"id":"A04","arm":"Arm A","visit":"Week 12","population":"CD8 T cells","cells":35,"scores":{"interferon":1.1494328011177937,"cytotoxicity":0.7810689785503224,"inflammation":0.5400204127095586,"proliferation":0.40796139033178075}},{"id":"A05","arm":"Arm A","visit":"Baseline","population":"CD8 T cells","cells":51,"scores":{"interferon":0.3982617646297373,"cytotoxicity":0.26486113339145184,"inflammation":0.41553078139998545,"proliferation":-0.027069599527770976}},{"id":"A06","arm":"Arm A","visit":"Baseline","population":"CD8 T cells","cells":23,"scores":{"interferon":0.197294253320073,"cytotoxicity":0.7337199176485427,"inflammation":0.07891911986045164,"proliferation":0.3440604466165314}},{"id":"A06","arm":"Arm A","visit":"Week 12","population":"CD8 T cells","cells":80,"scores":{"interferon":0.7063973114653599,"cytotoxicity":0.8734715936975072,"inflammation":-0.06081756507818349,"proliferation":0.5648467367821371}},{"id":"B01","arm":"Arm B","visit":"Baseline","population":"CD8 T cells","cells":60,"scores":{"interferon":0.44783281834250155,"cytotoxicity":0.54561647790166,"inflammation":-0.1283904739304522,"proliferation":0.11080430208554197}},{"id":"B01","arm":"Arm B","visit":"Week 4","population":"CD8 T cells","cells":41,"scores":{"interferon":0.7196463471514867,"cytotoxicity":0.5800321515741536,"inflammation":-0.06133775172037524,"proliferation":0.1129640006157542}},{"id":"B01","arm":"Arm B","visit":"Week 12","population":"CD8 T cells","cells":84,"scores":{"interferon":0.6651464948099256,"cytotoxicity":0.637324069132117,"inflammation":-0.11789645842187714,"proliferation":0.015555943502592675}},{"id":"B02","arm":"Arm B","visit":"Baseline","population":"CD8 T cells","cells":72,"scores":{"interferon":0.12573396820226687,"cytotoxicity":0.2640800998402081,"inflammation":0.012649203373291324,"proliferation":0.05244014941446906}},{"id":"B02","arm":"Arm B","visit":"Week 4","population":"CD8 T cells","cells":63,"scores":{"interferon":0.4924154296481907,"cytotoxicity":0.25831808775237564,"inflammation":-0.2097490617892445,"proliferation":0.39709354417231685}},{"id":"B03","arm":"Arm B","visit":"Baseline","population":"CD8 T cells","cells":61,"scores":{"interferon":0.14442059178618388,"cytotoxicity":0.8460329026599372,"inflammation":0.2370880227094512,"proliferation":0.07563673011696946}},{"id":"B03","arm":"Arm B","visit":"Week 12","population":"CD8 T cells","cells":35,"scores":{"interferon":0.3692219367688619,"cytotoxicity":0.8112180042422347,"inflammation":0.2970014706602557,"proliferation":0.2544504181194328}},{"id":"B04","arm":"Arm B","visit":"Baseline","population":"CD8 T cells","cells":63,"scores":{"interferon":0.29130969926701433,"cytotoxicity":0.6203228900241734,"inflammation":0.3737067292211846,"proliferation":0.10705904046854384}},{"id":"B04","arm":"Arm B","visit":"Week 4","population":"CD8 T cells","cells":71,"scores":{"interferon":0.788419487751046,"cytotoxicity":0.5318489421956134,"inflammation":0.1998410432197309,"proliferation":-0.15930384282346913}},{"id":"B05","arm":"Arm B","visit":"Baseline","population":"CD8 T cells","cells":49,"scores":{"interferon":0.5667763061635832,"cytotoxicity":0.4498413400260108,"inflammation":0.22056087800763377,"proliferation":-0.014209381081316806}},{"id":"B05","arm":"Arm B","visit":"Week 12","population":"CD8 T cells","cells":68,"scores":{"interferon":0.5689228586151042,"cytotoxicity":0.5360523846593955,"inflammation":0.3804865051741114,"proliferation":0.1804431100362634}},{"id":"B06","arm":"Arm B","visit":"Baseline","population":"CD8 T cells","cells":34,"scores":{"interferon":0.19887406329744983,"cytotoxicity":0.8182012155148025,"inflammation":-0.019798626520787743,"proliferation":0.3323717921679357}},{"id":"B06","arm":"Arm B","visit":"Week 4","population":"CD8 T cells","cells":50,"scores":{"interferon":0.5738628954186693,"cytotoxicity":1.0166844012318428,"inflammation":0.04444661430980862,"proliferation":0.10069574014834819}},{"id":"A01","arm":"Arm A","visit":"Baseline","population":"B cells","cells":43,"scores":{"interferon":0.1748065114324867,"cytotoxicity":0.15476796227073547,"inflammation":0.1500456258204759,"proliferation":0.12447074527989757}},{"id":"A01","arm":"Arm A","visit":"Week 4","population":"B cells","cells":27,"scores":{"interferon":0.3753632003524586,"cytotoxicity":0.22296534292234518,"inflammation":-0.1021715363464635,"proliferation":-0.09818536587133625}},{"id":"A02","arm":"Arm A","visit":"Baseline","population":"B cells","cells":50,"scores":{"interferon":0.014339755570995778,"cytotoxicity":0.07491701746975585,"inflammation":0.5044743865068498,"proliferation":0.040667342060793824}},{"id":"A02","arm":"Arm A","visit":"Week 4","population":"B cells","cells":75,"scores":{"interferon":0.46360286380728755,"cytotoxicity":0.16261209617823227,"inflammation":0.36028807293764564,"proliferation":0.20844783508850087}},{"id":"A03","arm":"Arm A","visit":"Baseline","population":"B cells","cells":57,"scores":{"interferon":0.38302102077661976,"cytotoxicity":-0.0748238798862811,"inflammation":0.24574144407259346,"proliferation":0.5171353979747368}},{"id":"A03","arm":"Arm A","visit":"Week 4","population":"B cells","cells":33,"scores":{"interferon":0.6520591150743937,"cytotoxicity":-0.15075912510924988,"inflammation":0.04644451706089049,"proliferation":0.6052497486690751}},{"id":"A03","arm":"Arm A","visit":"Week 12","population":"B cells","cells":60,"scores":{"interferon":0.5337085955486409,"cytotoxicity":-0.18449771742213972,"inflammation":0.1262125339756685,"proliferation":0.4639644969592219}},{"id":"A04","arm":"Arm A","visit":"Baseline","population":"B cells","cells":54,"scores":{"interferon":0.21560228681057939,"cytotoxicity":0.07853590222173601,"inflammation":0.5622081701916424,"proliferation":0.06632887814712658}},{"id":"A04","arm":"Arm A","visit":"Week 12","population":"B cells","cells":77,"scores":{"interferon":0.6064339991563383,"cytotoxicity":0.18821862020160576,"inflammation":0.2565070088237413,"proliferation":0.06124581261717233}},{"id":"A05","arm":"Arm A","visit":"Baseline","population":"B cells","cells":69,"scores":{"interferon":0.3128584918898549,"cytotoxicity":-0.01780579658743304,"inflammation":0.3770965020327521,"proliferation":0.117501811004231}},{"id":"A06","arm":"Arm A","visit":"Baseline","population":"B cells","cells":52,"scores":{"interferon":0.19205802803086697,"cytotoxicity":-0.1584975512690696,"inflammation":0.22258044752099085,"proliferation":0.12733545113884187}},{"id":"A06","arm":"Arm A","visit":"Week 4","population":"B cells","cells":44,"scores":{"interferon":0.3543700111434077,"cytotoxicity":0.1458079236928843,"inflammation":0.36667638430839405,"proliferation":0.4687536859869773}},{"id":"A06","arm":"Arm A","visit":"Week 12","population":"B cells","cells":50,"scores":{"interferon":0.3332459386771529,"cytotoxicity":0.0828597228938742,"inflammation":0.06857972482469804,"proliferation":0.21634294651547933}},{"id":"B01","arm":"Arm B","visit":"Week 4","population":"B cells","cells":25,"scores":{"interferon":0.44940706643727607,"cytotoxicity":0.04999469629589208,"inflammation":0.2622196928178211,"proliferation":0.04198583500240382}},{"id":"B01","arm":"Arm B","visit":"Week 12","population":"B cells","cells":68,"scores":{"interferon":0.2815666002777443,"cytotoxicity":0.15636570809087044,"inflammation":0.2246875083991335,"proliferation":0.003145974121920157}},{"id":"B02","arm":"Arm B","visit":"Baseline","population":"B cells","cells":41,"scores":{"interferon":-0.020873300730037906,"cytotoxicity":0.03794875295373538,"inflammation":0.3029398770280517,"proliferation":-0.0013061043667673617}},{"id":"B02","arm":"Arm B","visit":"Week 4","population":"B cells","cells":83,"scores":{"interferon":0.28436696712447745,"cytotoxicity":0.3347598384667281,"inflammation":0.5669110485877759,"proliferation":-0.11731153643351963}},{"id":"B02","arm":"Arm B","visit":"Week 12","population":"B cells","cells":35,"scores":{"interferon":0.1309828406532349,"cytotoxicity":0.24774749955223715,"inflammation":0.6019574287683047,"proliferation":0.07388814512127835}},{"id":"B03","arm":"Arm B","visit":"Baseline","population":"B cells","cells":41,"scores":{"interferon":0.29794611231998536,"cytotoxicity":-0.2082314978543987,"inflammation":0.3554239189438495,"proliferation":0.1787558743983804}},{"id":"B03","arm":"Arm B","visit":"Week 12","population":"B cells","cells":33,"scores":{"interferon":0.24148390161182073,"cytotoxicity":-0.16024589272816642,"inflammation":0.33084316549275194,"proliferation":0.22801239708458157}},{"id":"B04","arm":"Arm B","visit":"Baseline","population":"B cells","cells":63,"scores":{"interferon":0.27756595458361116,"cytotoxicity":-0.18450663044357118,"inflammation":0.34374852691244645,"proliferation":0.18092299533893672}},{"id":"B04","arm":"Arm B","visit":"Week 4","population":"B cells","cells":85,"scores":{"interferon":0.5295005863824648,"cytotoxicity":-0.06961293004229197,"inflammation":0.3503073425403829,"proliferation":0.003474200076045946}},{"id":"B05","arm":"Arm B","visit":"Baseline","population":"B cells","cells":34,"scores":{"interferon":0.23190426691978716,"cytotoxicity":0.2820587178392459,"inflammation":0.3477819444279485,"proliferation":0.13726490960516907}},{"id":"B05","arm":"Arm B","visit":"Week 4","population":"B cells","cells":61,"scores":{"interferon":0.5068766752184948,"cytotoxicity":0.13667016097255064,"inflammation":0.3682213593657064,"proliferation":0.2224197013500937}},{"id":"B06","arm":"Arm B","visit":"Baseline","population":"B cells","cells":62,"scores":{"interferon":-0.036780485380696455,"cytotoxicity":0.08153330895081883,"inflammation":0.36144670883771407,"proliferation":0.09760955599730906}},{"id":"A01","arm":"Arm A","visit":"Baseline","population":"CD4 T cells","cells":49,"scores":{"interferon":0.3023293800062287,"cytotoxicity":0.07922061732823824,"inflammation":0.03144862457482808,"proliferation":0.19293978876890772}},{"id":"A01","arm":"Arm A","visit":"Week 4","population":"CD4 T cells","cells":27,"scores":{"interferon":0.5013708425858283,"cytotoxicity":0.6281609260950863,"inflammation":0.1393257565256539,"proliferation":0.38111136806132934}},{"id":"A01","arm":"Arm A","visit":"Week 12","population":"CD4 T cells","cells":75,"scores":{"interferon":0.4442683155007608,"cytotoxicity":0.3776807380131407,"inflammation":0.10700712518990116,"proliferation":0.24373952643641572}},{"id":"A02","arm":"Arm A","visit":"Baseline","population":"CD4 T cells","cells":68,"scores":{"interferon":0.0039519916466653725,"cytotoxicity":0.4152608331760866,"inflammation":0.13355802432705954,"proliferation":0.18324129720243704}},{"id":"A02","arm":"Arm A","visit":"Week 4","population":"CD4 T cells","cells":48,"scores":{"interferon":0.42761029524092736,"cytotoxicity":0.815387154949419,"inflammation":-0.023419894916993433,"proliferation":0.29561788382107507}},{"id":"A03","arm":"Arm A","visit":"Baseline","population":"CD4 T cells","cells":36,"scores":{"interferon":0.5932424694989223,"cytotoxicity":0.39080394715488936,"inflammation":0.5216153716250164,"proliferation":0.12205247547760018}},{"id":"A03","arm":"Arm A","visit":"Week 4","population":"CD4 T cells","cells":24,"scores":{"interferon":0.8814521462874692,"cytotoxicity":0.5469295049598873,"inflammation":0.5423636701272364,"proliferation":0.2530052583697194}},{"id":"A03","arm":"Arm A","visit":"Week 12","population":"CD4 T cells","cells":75,"scores":{"interferon":0.7454692080219769,"cytotoxicity":0.5406914041857491,"inflammation":0.5525272390485904,"proliferation":0.2143726219126574}},{"id":"A04","arm":"Arm A","visit":"Baseline","population":"CD4 T cells","cells":68,"scores":{"interferon":0.28599446150830543,"cytotoxicity":0.041576835083937974,"inflammation":0.2560263866743795,"proliferation":0.2955756012732231}},{"id":"A04","arm":"Arm A","visit":"Week 4","population":"CD4 T cells","cells":83,"scores":{"interferon":1.122243062125189,"cytotoxicity":0.011464646739011103,"inflammation":0.010341772557465961,"proliferation":0.5513997865357707}},{"id":"A04","arm":"Arm A","visit":"Week 12","population":"CD4 T cells","cells":57,"scores":{"interferon":0.8739011958751476,"cytotoxicity":-0.006219378220273873,"inflammation":0.16347214031535556,"proliferation":0.4473816187761635}},{"id":"A05","arm":"Arm A","visit":"Baseline","population":"CD4 T cells","cells":38,"scores":{"interferon":0.15100754129414143,"cytotoxicity":-0.12129444810128995,"inflammation":0.28390229182691007,"proliferation":0.26075237659496936}},{"id":"A06","arm":"Arm A","visit":"Baseline","population":"CD4 T cells","cells":70,"scores":{"interferon":0.4449778231632115,"cytotoxicity":0.3126499102861321,"inflammation":0.11406971542366591,"proliferation":0.13026742400625013}},{"id":"A06","arm":"Arm A","visit":"Week 4","population":"CD4 T cells","cells":33,"scores":{"interferon":1.0365866253827927,"cytotoxicity":0.94308733701905,"inflammation":0.1127105293487714,"proliferation":0.45825268237100186}},{"id":"A06","arm":"Arm A","visit":"Week 12","population":"CD4 T cells","cells":44,"scores":{"interferon":0.8262052927335742,"cytotoxicity":0.6112387144938637,"inflammation":0.14958260551158478,"proliferation":0.2601185287047792}},{"id":"B01","arm":"Arm B","visit":"Baseline","population":"CD4 T cells","cells":60,"scores":{"interferon":0.3799489200718581,"cytotoxicity":0.14658635145743723,"inflammation":0.054568296505752935,"proliferation":0.09222248855800612}},{"id":"B01","arm":"Arm B","visit":"Week 4","population":"CD4 T cells","cells":59,"scores":{"interferon":0.5023296702409362,"cytotoxicity":0.2850347038318703,"inflammation":0.32496114960101535,"proliferation":0.0070869791689451775}},{"id":"B01","arm":"Arm B","visit":"Week 12","population":"CD4 T cells","cells":50,"scores":{"interferon":0.49406774569100054,"cytotoxicity":0.24284988408847535,"inflammation":0.12043476237402981,"proliferation":-0.017446183391190147}},{"id":"B02","arm":"Arm B","visit":"Baseline","population":"CD4 T cells","cells":74,"scores":{"interferon":0.3999797124885722,"cytotoxicity":0.13002806022636273,"inflammation":0.3170016604381823,"proliferation":0.029007139771468637}},{"id":"B02","arm":"Arm B","visit":"Week 4","population":"CD4 T cells","cells":79,"scores":{"interferon":0.7800269741033491,"cytotoxicity":0.06653133215673959,"inflammation":0.5767029868026399,"proliferation":0.06693316957359487}},{"id":"B02","arm":"Arm B","visit":"Week 12","population":"CD4 T cells","cells":37,"scores":{"interferon":0.6688932126399169,"cytotoxicity":-0.008213779326327936,"inflammation":0.55843430342863,"proliferation":0.15540581742507376}},{"id":"B03","arm":"Arm B","visit":"Baseline","population":"CD4 T cells","cells":47,"scores":{"interferon":0.059385159013889535,"cytotoxicity":0.09917360969151405,"inflammation":0.2835588193443301,"proliferation":0.22917873506195124}},{"id":"B03","arm":"Arm B","visit":"Week 12","population":"CD4 T cells","cells":50,"scores":{"interferon":0.317873447127158,"cytotoxicity":0.036925744440224804,"inflammation":0.2699923898014873,"proliferation":0.29119569794475814}},{"id":"B04","arm":"Arm B","visit":"Baseline","population":"CD4 T cells","cells":45,"scores":{"interferon":-0.09228305344441472,"cytotoxicity":-0.034982267545350845,"inflammation":0.2157165597212686,"proliferation":0.4321559473310091}},{"id":"B04","arm":"Arm B","visit":"Week 4","population":"CD4 T cells","cells":79,"scores":{"interferon":0.03355902940864445,"cytotoxicity":-0.026746304199047215,"inflammation":-0.08759764401684515,"proliferation":0.38141193942497925}},{"id":"B05","arm":"Arm B","visit":"Baseline","population":"CD4 T cells","cells":27,"scores":{"interferon":0.1104482608223947,"cytotoxicity":0.12324264063763532,"inflammation":0.3616300108113035,"proliferation":0.37159366413110734}},{"id":"B05","arm":"Arm B","visit":"Week 4","population":"CD4 T cells","cells":64,"scores":{"interferon":0.6330361858739619,"cytotoxicity":0.09419150602807616,"inflammation":0.39041788080110534,"proliferation":0.2769816765184885}},{"id":"B05","arm":"Arm B","visit":"Week 12","population":"CD4 T cells","cells":34,"scores":{"interferon":0.34796132077053715,"cytotoxicity":0.29903230742687964,"inflammation":0.3989936488938403,"proliferation":0.2642648226673448}},{"id":"B06","arm":"Arm B","visit":"Baseline","population":"CD4 T cells","cells":84,"scores":{"interferon":0.3972506828455175,"cytotoxicity":0.24687894900812696,"inflammation":-0.026150329664727343,"proliferation":0.33221767974583355}},{"id":"B06","arm":"Arm B","visit":"Week 4","population":"CD4 T cells","cells":27,"scores":{"interferon":0.5241294436254653,"cytotoxicity":0.2788306433658879,"inflammation":-0.11550018291756665,"proliferation":0.49127772120116325}}],"results":{"did|Arm A|Week 4|All annotated cells":[{"feature":"interferon","estimate":0.3143543272880904,"lo":-0.06523652784305772,"hi":0.6939451824192386,"p":0.10456282535777046,"q":0.20912565071554093,"n":10,"nFirst":5,"nOther":5},{"feature":"cytotoxicity","estimate":0.24651964809841526,"lo":-0.120504881182321,"hi":0.6135441773791515,"p":0.18802287605913903,"q":0.25069716807885206,"n":10,"nFirst":5,"nOther":5},{"feature":"inflammation","estimate":-0.10052226351763327,"lo":-0.40884327415003685,"hi":0.2077987471147703,"p":0.5228168334388348,"q":0.5228168334388348,"n":10,"nFirst":5,"nOther":5},{"feature":"proliferation","estimate":0.24548061491457535,"lo":0.03282349925415598,"hi":0.45813773057499474,"p":0.023667561998822747,"q":0.09467024799529099,"n":10,"nFirst":5,"nOther":5}],"did|Arm A|Week 12|All annotated cells":[{"feature":"interferon","estimate":0.2114761573549773,"lo":0.03572836193257792,"hi":0.38722395277737665,"p":0.018353326943457107,"q":0.07341330777382843,"n":8,"nFirst":4,"nOther":4},{"feature":"cytotoxicity","estimate":0.19233156566997323,"lo":-0.157791104689938,"hi":0.5424542360298845,"p":0.28163235763138905,"q":0.3755098101751854,"n":8,"nFirst":4,"nOther":4},{"feature":"inflammation","estimate":-0.16282460401718046,"lo":-0.456863748741064,"hi":0.13121454070670308,"p":0.2777742363593505,"q":0.3755098101751854,"n":8,"nFirst":4,"nOther":4},{"feature":"proliferation","estimate":0.05492158462634392,"lo":-0.12828739812664602,"hi":0.23813056737933386,"p":0.5568347832792337,"q":0.5568347832792337,"n":8,"nFirst":4,"nOther":4}],"paired|Arm A|Week 4|All annotated cells":[{"feature":"interferon","estimate":0.5715000402660403,"lo":0.19322779069469054,"hi":0.94977228983739,"p":0.0030649624748360074,"q":0.006129924949672015,"n":5,"nFirst":5,"nOther":0},{"feature":"cytotoxicity","estimate":0.30227677907886225,"lo":0.10417775860321227,"hi":0.5003757995545122,"p":0.002783532407287025,"q":0.006129924949672015,"n":5,"nFirst":5,"nOther":0},{"feature":"inflammation","estimate":-0.06448357547046213,"lo":-0.2908675856595092,"hi":0.16190043471858492,"p":0.5766537417553415,"q":0.5766537417553415,"n":5,"nFirst":5,"nOther":0},{"feature":"proliferation","estimate":0.2410998326314756,"lo":0.066261066322962,"hi":0.4159385989399892,"p":0.006876665771674013,"q":0.00916888769556535,"n":5,"nFirst":5,"nOther":0}],"paired|Arm A|Week 12|All annotated cells":[{"feature":"interferon","estimate":0.35672162261959306,"lo":0.1902753004864862,"hi":0.5231679447526999,"p":2.6629961811700432e-05,"q":0.00010651984724680173,"n":4,"nFirst":4,"nOther":0},{"feature":"cytotoxicity","estimate":0.19652223245994202,"lo":-0.13198805185085608,"hi":0.5250325167707401,"p":0.24099858359777715,"q":0.3213314447970362,"n":4,"nFirst":4,"nOther":0},{"feature":"inflammation","estimate":-0.018062733014607396,"lo":-0.2033587433348462,"hi":0.1672332773056314,"p":0.8484800636508314,"q":0.8484800636508314,"n":4,"nFirst":4,"nOther":0},{"feature":"proliferation","estimate":0.09925930713035128,"lo":-0.026859719598093246,"hi":0.2253783338587958,"p":0.12294045489183579,"q":0.24588090978367158,"n":4,"nFirst":4,"nOther":0}],"cross|Arm A|Baseline|All annotated cells":[{"feature":"interferon","estimate":0.0136554312482461,"lo":-0.11118337431982979,"hi":0.138494236816322,"p":0.812371874991844,"q":0.812371874991844,"n":12,"nFirst":6,"nOther":6},{"feature":"cytotoxicity","estimate":-0.05797351729217182,"lo":-0.1816454516630407,"hi":0.06569841707869704,"p":0.3208538665920029,"q":0.7412115973107523,"n":12,"nFirst":6,"nOther":6},{"feature":"inflammation","estimate":0.044653869629658914,"lo":-0.11863753312570832,"hi":0.20794527238502616,"p":0.5559086979830642,"q":0.7412115973107523,"n":12,"nFirst":6,"nOther":6},{"feature":"proliferation","estimate":0.026393731697337226,"lo":-0.06322950247926176,"hi":0.11601696587393623,"p":0.5265184625106862,"q":0.7412115973107523,"n":12,"nFirst":6,"nOther":6}],"cross|Arm A|Week 4|All annotated cells":[{"feature":"interferon","estimate":0.3024095285573967,"lo":0.012907142619408507,"hi":0.5919119144953849,"p":0.04258688779142727,"q":0.08517377558285454,"n":10,"nFirst":5,"nOther":5},{"feature":"cytotoxicity","estimate":0.23131176636342443,"lo":-0.07622544333030357,"hi":0.5388489760571524,"p":0.12106218430093037,"q":0.16141624573457383,"n":10,"nFirst":5,"nOther":5},{"feature":"inflammation","estimate":-0.06349359667887416,"lo":-0.2923823567416374,"hi":0.16539516338388907,"p":0.5402598010388654,"q":0.5402598010388654,"n":10,"nFirst":5,"nOther":5},{"feature":"proliferation","estimate":0.28658419020213655,"lo":0.12966777423008752,"hi":0.4435006061741856,"p":0.0029495481808714074,"q":0.01179819272348563,"n":10,"nFirst":5,"nOther":5}],"cross|Arm A|Week 12|All annotated cells":[{"feature":"interferon","estimate":0.2345465218878673,"lo":0.0662837722242211,"hi":0.40280927155151347,"p":0.014304133581804707,"q":0.05721653432721883,"n":8,"nFirst":4,"nOther":4},{"feature":"cytotoxicity","estimate":0.12551862638239347,"lo":-0.19736775035188903,"hi":0.44840500311667597,"p":0.37822497792764576,"q":0.37822497792764576,"n":8,"nFirst":4,"nOther":4},{"feature":"inflammation","estimate":-0.1294047132693711,"lo":-0.45315646255386133,"hi":0.19434703601511907,"p":0.3658262488892283,"q":0.37822497792764576,"n":8,"nFirst":4,"nOther":4},{"feature":"proliferation","estimate":0.15669833690044938,"lo":-0.004251982857643499,"hi":0.31764865665854225,"p":0.05459883945657389,"q":0.10919767891314779,"n":8,"nFirst":4,"nOther":4}],"did|Arm B|Week 4|All annotated cells":[{"feature":"interferon","estimate":-0.31435432728808765,"lo":-0.6939451824192362,"hi":0.06523652784306072,"p":0.10456282535777374,"q":0.20912565071554748,"n":10,"nFirst":5,"nOther":5},{"feature":"cytotoxicity","estimate":-0.24651964809841398,"lo":-0.6135441773791492,"hi":0.12050488118232128,"p":0.18802287605913992,"q":0.2506971680788532,"n":10,"nFirst":5,"nOther":5},{"feature":"inflammation","estimate":0.10052226351763263,"lo":-0.20779874711477037,"hi":0.4088432741500357,"p":0.5228168334388367,"q":0.5228168334388367,"n":10,"nFirst":5,"nOther":5},{"feature":"proliferation","estimate":-0.2454806149145749,"lo":-0.458137730574994,"hi":-0.032823499254155675,"p":0.02366756199882287,"q":0.09467024799529147,"n":10,"nFirst":5,"nOther":5}],"did|Arm B|Week 12|All annotated cells":[{"feature":"interferon","estimate":-0.21147615735497716,"lo":-0.3872239527773767,"hi":-0.035728361932577835,"p":0.018353326943457243,"q":0.07341330777382897,"n":8,"nFirst":4,"nOther":4},{"feature":"cytotoxicity","estimate":-0.1923315656699735,"lo":-0.5424542360298849,"hi":0.15779110468993784,"p":0.2816323576313885,"q":0.37550981017518464,"n":8,"nFirst":4,"nOther":4},{"feature":"inflammation","estimate":0.16282460401718046,"lo":-0.1312145407067032,"hi":0.4568637487410641,"p":0.2777742363593506,"q":0.37550981017518464,"n":8,"nFirst":4,"nOther":4},{"feature":"proliferation","estimate":-0.054921584626344305,"lo":-0.2381305673793343,"hi":0.12828739812664564,"p":0.556834783279231,"q":0.556834783279231,"n":8,"nFirst":4,"nOther":4}],"paired|Arm B|Week 4|All annotated cells":[{"feature":"interferon","estimate":0.25714571297795014,"lo":0.1547793304438811,"hi":0.3595120955120192,"p":8.502918918061199e-07,"q":3.4011675672244797e-06,"n":5,"nFirst":5,"nOther":0},{"feature":"cytotoxicity","estimate":0.05575713098044695,"lo":-0.2672383583797407,"hi":0.37875262034063456,"p":0.7351077423744514,"q":0.9484397144398906,"n":5,"nFirst":5,"nOther":0},{"feature":"inflammation","estimate":0.036038688047171086,"lo":-0.18771607573991284,"hi":0.259793451834255,"p":0.7522466748432068,"q":0.9484397144398906,"n":5,"nFirst":5,"nOther":0},{"feature":"proliferation","estimate":-0.004380782283100754,"lo":-0.13715749416576203,"hi":0.1283959295995605,"p":0.9484397144398906,"q":0.9484397144398906,"n":5,"nFirst":5,"nOther":0}],"paired|Arm B|Week 12|All annotated cells":[{"feature":"interferon","estimate":0.1452454652646159,"lo":0.068249061976016,"hi":0.22224186855321582,"p":0.00021793732932130777,"q":0.0008717493172852311,"n":4,"nFirst":4,"nOther":0},{"feature":"cytotoxicity","estimate":0.004190666789968989,"lo":-0.1556949187106583,"hi":0.16407625229059628,"p":0.9590295262590358,"q":0.9590295262590358,"n":4,"nFirst":4,"nOther":0},{"feature":"inflammation","estimate":0.14476187100257262,"lo":-0.09979825103247028,"hi":0.3893219930376155,"p":0.2459850303250255,"q":0.491970060650051,"n":4,"nFirst":4,"nOther":0},{"feature":"proliferation","estimate":0.04433772250400711,"lo":-0.09933943380879681,"hi":0.18801487881681103,"p":0.5452915658227504,"q":0.7270554210970005,"n":4,"nFirst":4,"nOther":0}],"cross|Arm B|Baseline|All annotated cells":[{"feature":"interferon","estimate":-0.013655431248245996,"lo":-0.13849423681632203,"hi":0.11118337431983003,"p":0.8123718749918457,"q":0.8123718749918457,"n":12,"nFirst":6,"nOther":6},{"feature":"cytotoxicity","estimate":0.05797351729217198,"lo":-0.065698417078697,"hi":0.18164545166304097,"p":0.3208538665920021,"q":0.741211597310753,"n":12,"nFirst":6,"nOther":6},{"feature":"inflammation","estimate":-0.04465386962965891,"lo":-0.20794527238502636,"hi":0.11863753312570853,"p":0.5559086979830647,"q":0.741211597310753,"n":12,"nFirst":6,"nOther":6},{"feature":"proliferation","estimate":-0.02639373169733717,"lo":-0.11601696587393626,"hi":0.06322950247926193,"p":0.5265184625106876,"q":0.741211597310753,"n":12,"nFirst":6,"nOther":6}],"cross|Arm B|Week 4|All annotated cells":[{"feature":"interferon","estimate":-0.3024095285573972,"lo":-0.5919119144953855,"hi":-0.012907142619408951,"p":0.042586887791427046,"q":0.08517377558285409,"n":10,"nFirst":5,"nOther":5},{"feature":"cytotoxicity","estimate":-0.23131176636342485,"lo":-0.5388489760571529,"hi":0.07622544333030315,"p":0.12106218430092978,"q":0.16141624573457306,"n":10,"nFirst":5,"nOther":5},{"feature":"inflammation","estimate":0.06349359667887411,"lo":-0.16539516338388915,"hi":0.2923823567416374,"p":0.5402598010388657,"q":0.5402598010388657,"n":10,"nFirst":5,"nOther":5},{"feature":"proliferation","estimate":-0.2865841902021366,"lo":-0.44350060617418563,"hi":-0.12966777423008755,"p":0.0029495481808714074,"q":0.01179819272348563,"n":10,"nFirst":5,"nOther":5}],"cross|Arm B|Week 12|All annotated cells":[{"feature":"interferon","estimate":-0.2345465218878672,"lo":-0.4028092715515134,"hi":-0.066283772224221,"p":0.014304133581804738,"q":0.05721653432721895,"n":8,"nFirst":4,"nOther":4},{"feature":"cytotoxicity","estimate":-0.12551862638239336,"lo":-0.4484050031166759,"hi":0.1973677503518892,"p":0.37822497792764637,"q":0.37822497792764637,"n":8,"nFirst":4,"nOther":4},{"feature":"inflammation","estimate":0.1294047132693712,"lo":-0.19434703601511905,"hi":0.45315646255386144,"p":0.36582624888922816,"q":0.37822497792764637,"n":8,"nFirst":4,"nOther":4},{"feature":"proliferation","estimate":-0.15669833690044935,"lo":-0.31764865665854225,"hi":0.004251982857643527,"p":0.05459883945657389,"q":0.10919767891314779,"n":8,"nFirst":4,"nOther":4}],"did|Arm A|Week 4|CD8 T cells":[{"feature":"interferon","estimate":0.39763459876592866,"lo":-0.005212025560409339,"hi":0.8004812230922661,"p":0.05303866438309113,"q":0.10607732876618226,"n":8,"nFirst":4,"nOther":4},{"feature":"cytotoxicity","estimate":0.4046847235566472,"lo":0.08535230332590565,"hi":0.7240171437873888,"p":0.012997779822010372,"q":0.05199111928804149,"n":8,"nFirst":4,"nOther":4},{"feature":"inflammation","estimate":0.021626863493185183,"lo":-0.46810520551663426,"hi":0.5113589325030046,"p":0.9310266739850892,"q":0.9310266739850892,"n":8,"nFirst":4,"nOther":4},{"feature":"proliferation","estimate":0.3776511280270344,"lo":-0.19845047583612685,"hi":0.9537527318901956,"p":0.1988577721055267,"q":0.26514369614070227,"n":8,"nFirst":4,"nOther":4}],"did|Arm A|Week 12|CD8 T cells":[{"feature":"interferon","estimate":0.3349241880401509,"lo":0.0135525645683367,"hi":0.6562958115119648,"p":0.04109030380640046,"q":0.16436121522560185,"n":6,"nFirst":3,"nOther":3},{"feature":"cytotoxicity","estimate":0.31724434778122124,"lo":-0.09540399804900712,"hi":0.7298926936114494,"p":0.13185635709342955,"q":0.2637127141868591,"n":6,"nFirst":3,"nOther":3},{"feature":"inflammation","estimate":-0.08336017756820821,"lo":-0.3515503465189742,"hi":0.18482999138255762,"p":0.5423881862434341,"q":0.7231842483245788,"n":6,"nFirst":3,"nOther":3},{"feature":"proliferation","estimate":0.024717029622124964,"lo":-0.3450405731444524,"hi":0.39447463238870256,"p":0.8957619533569078,"q":0.8957619533569078,"n":6,"nFirst":3,"nOther":3}],"paired|Arm A|Week 4|CD8 T cells":[{"feature":"interferon","estimate":0.7752830014809682,"lo":0.37830781473021685,"hi":1.1722581882317196,"p":0.00012931340563887648,"q":0.0005172536225555059,"n":4,"nFirst":4,"nOther":0},{"feature":"cytotoxicity","estimate":0.4393504484249328,"lo":0.15927002226408504,"hi":0.7194308745857806,"p":0.0021084616822351194,"q":0.004216923364470239,"n":4,"nFirst":4,"nOther":0},{"feature":"inflammation","estimate":-0.04461463353764486,"lo":-0.5010143042708142,"hi":0.4117850371955244,"p":0.8480608668374986,"q":0.8480608668374986,"n":4,"nFirst":4,"nOther":0},{"feature":"proliferation","estimate":0.33984466752114956,"lo":-0.08892956271992292,"hi":0.768618897762222,"p":0.12031344922730822,"q":0.16041793230307763,"n":4,"nFirst":4,"nOther":0}],"paired|Arm A|Week 12|CD8 T cells":[{"feature":"interferon","estimate":0.48301137934069127,"lo":0.22575232328616163,"hi":0.740270435395221,"p":0.00023333501060995116,"q":0.0009333400424398047,"n":3,"nFirst":3,"nOther":0},{"feature":"cytotoxicity","estimate":0.3649455935966011,"lo":-0.05591862864646291,"hi":0.7858098158396651,"p":0.08921540935899028,"q":0.17843081871798055,"n":3,"nFirst":3,"nOther":0},{"feature":"inflammation","estimate":-0.006582480692923033,"lo":-0.2579399852514833,"hi":0.24477502386563724,"p":0.9590649584782287,"q":0.9590649584782287,"n":3,"nFirst":3,"nOther":0},{"feature":"proliferation","estimate":0.11745630313449035,"lo":-0.14771719380514747,"hi":0.38262980007412817,"p":0.38531273288622303,"q":0.513750310514964,"n":3,"nFirst":3,"nOther":0}],"cross|Arm A|Baseline|CD8 T cells":[{"feature":"interferon","estimate":0.03956910433259816,"lo":-0.18468541887447976,"hi":0.2638236275396761,"p":0.7024604090607925,"q":0.7024604090607925,"n":12,"nFirst":6,"nOther":6},{"feature":"cytotoxicity","estimate":-0.09445308704117934,"lo":-0.33990387191399657,"hi":0.1509976978316379,"p":0.41129013607291504,"q":0.7024604090607925,"n":12,"nFirst":6,"nOther":6},{"feature":"inflammation","estimate":0.05747113868432449,"lo":-0.1947280270944761,"hi":0.30967030446312505,"p":0.6226405232004399,"q":0.7024604090607925,"n":12,"nFirst":6,"nOther":6},{"feature":"proliferation","estimate":0.0666773416266354,"lo":-0.09630818417073765,"hi":0.22966286742400843,"p":0.38346317990767664,"q":0.7024604090607925,"n":12,"nFirst":6,"nOther":6}],"cross|Arm A|Week 4|CD8 T cells":[{"feature":"interferon","estimate":0.48589847526481517,"lo":0.046391980434100255,"hi":0.92540497009553,"p":0.035331046155533403,"q":0.07288998884643849,"n":8,"nFirst":4,"nOther":4},{"feature":"cytotoxicity","estimate":0.3373283909063666,"lo":-0.11756961135925253,"hi":0.7922263931719857,"p":0.11952744180208544,"q":0.15936992240278058,"n":8,"nFirst":4,"nOther":4},{"feature":"inflammation","estimate":0.09863332138383282,"lo":-0.48263762594751136,"hi":0.6799042687151771,"p":0.6924300119377109,"q":0.6924300119377109,"n":8,"nFirst":4,"nOther":4},{"feature":"proliferation","estimate":0.4137762659537111,"lo":0.03625151941050475,"hi":0.7913010124969174,"p":0.036444994423219246,"q":0.07288998884643849,"n":8,"nFirst":4,"nOther":4}],"cross|Arm A|Week 12|CD8 T cells":[{"feature":"interferon","estimate":0.35205272364672757,"lo":-0.09277113110525353,"hi":0.7968765783987086,"p":0.09292187723890076,"q":0.1571721643663503,"n":6,"nFirst":3,"nOther":3},{"feature":"cytotoxicity","estimate":0.27565650721050655,"lo":-0.10955560423071914,"hi":0.6608686186517323,"p":0.11787912327476271,"q":0.1571721643663503,"n":6,"nFirst":3,"nOther":3},{"feature":"inflammation","estimate":0.026607112510708464,"lo":-0.621762351903,"hi":0.6749765769244169,"p":0.914777669672818,"q":0.914777669672818,"n":6,"nFirst":3,"nOther":3},{"feature":"proliferation","estimate":0.2519682044764946,"lo":-0.07818978201729193,"hi":0.5821261909702811,"p":0.10146626052994388,"q":0.1571721643663503,"n":6,"nFirst":3,"nOther":3}],"did|Arm B|Week 4|CD8 T cells":[{"feature":"interferon","estimate":-0.39763459876592955,"lo":-0.800481223092267,"hi":0.00521202556040834,"p":0.0530386643830907,"q":0.1060773287661814,"n":8,"nFirst":4,"nOther":4},{"feature":"cytotoxicity","estimate":-0.4046847235566481,"lo":-0.7240171437873895,"hi":-0.08535230332590626,"p":0.012997779822010185,"q":0.05199111928804074,"n":8,"nFirst":4,"nOther":4},{"feature":"inflammation","estimate":-0.021626863493186863,"lo":-0.5113589325030063,"hi":0.4681052055166326,"p":0.9310266739850839,"q":0.9310266739850839,"n":8,"nFirst":4,"nOther":4},{"feature":"proliferation","estimate":-0.37765112802703454,"lo":-0.9537527318901959,"hi":0.1984504758361268,"p":0.1988577721055267,"q":0.26514369614070227,"n":8,"nFirst":4,"nOther":4}],"did|Arm B|Week 12|CD8 T cells":[{"feature":"interferon","estimate":-0.3349241880401493,"lo":-0.6562958115119634,"hi":-0.013552564568335312,"p":0.041090303806401295,"q":0.16436121522560518,"n":6,"nFirst":3,"nOther":3},{"feature":"cytotoxicity","estimate":-0.3172443477812211,"lo":-0.7298926936114492,"hi":0.0954039980490069,"p":0.1318563570934293,"q":0.2637127141868586,"n":6,"nFirst":3,"nOther":3},{"feature":"inflammation","estimate":0.08336017756820886,"lo":-0.1848299913825569,"hi":0.3515503465189748,"p":0.5423881862434308,"q":0.7231842483245744,"n":6,"nFirst":3,"nOther":3},{"feature":"proliferation","estimate":-0.024717029622125075,"lo":-0.39447463238870245,"hi":0.3450405731444521,"p":0.8957619533569073,"q":0.8957619533569073,"n":6,"nFirst":3,"nOther":3}],"paired|Arm B|Week 4|CD8 T cells":[{"feature":"interferon","estimate":0.37764840271504,"lo":0.23936798845840374,"hi":0.5159288169716763,"p":8.663864612113951e-08,"q":3.4655458448455806e-07,"n":4,"nFirst":4,"nOther":0},{"feature":"cytotoxicity","estimate":0.03466572486828534,"lo":-0.1458680211664976,"hi":0.2151994709030683,"p":0.7066579602121312,"q":0.8604071190501762,"n":4,"nFirst":4,"nOther":0},{"feature":"inflammation","estimate":-0.06624149703082902,"lo":-0.29614523516556945,"hi":0.16366224110391142,"p":0.5722650881891557,"q":0.8604071190501762,"n":4,"nFirst":4,"nOther":0},{"feature":"proliferation","estimate":-0.037806460505885126,"lo":-0.45917010702525496,"hi":0.38355718601348476,"p":0.8604071190501762,"q":0.8604071190501762,"n":4,"nFirst":4,"nOther":0}],"paired|Arm B|Week 12|CD8 T cells":[{"feature":"interferon","estimate":0.14808719130054096,"lo":-0.07814520400020161,"hi":0.3743195866012835,"p":0.19950849437398688,"q":0.5331024343293033,"n":3,"nFirst":3,"nOther":0},{"feature":"cytotoxicity","estimate":0.04770124581537982,"lo":-0.08025101348061439,"hi":0.17565350511137404,"p":0.4649719272067361,"q":0.5331024343293033,"n":3,"nFirst":3,"nOther":0},{"feature":"inflammation","estimate":0.07677769687528566,"lo":-0.05943338195126896,"hi":0.21298877570184027,"p":0.2692605129777129,"q":0.5331024343293033,"n":3,"nFirst":3,"nOther":0},{"feature":"proliferation","estimate":0.09273927351236477,"lo":-0.19888965350010984,"hi":0.3843682005248394,"p":0.5331024343293033,"q":0.5331024343293033,"n":3,"nFirst":3,"nOther":0}],"cross|Arm B|Baseline|CD8 T cells":[{"feature":"interferon","estimate":-0.039569104332598054,"lo":-0.2638236275396762,"hi":0.1846854188744801,"p":0.7024604090607935,"q":0.7024604090607935,"n":12,"nFirst":6,"nOther":6},{"feature":"cytotoxicity","estimate":0.0944530870411797,"lo":-0.1509976978316378,"hi":0.3399038719139972,"p":0.4112901360729137,"q":0.7024604090607935,"n":12,"nFirst":6,"nOther":6},{"feature":"inflammation","estimate":-0.05747113868432446,"lo":-0.30967030446312527,"hi":0.19472802709447634,"p":0.6226405232004404,"q":0.7024604090607935,"n":12,"nFirst":6,"nOther":6},{"feature":"proliferation","estimate":-0.06667734162663538,"lo":-0.22966286742400857,"hi":0.0963081841707378,"p":0.38346317990767714,"q":0.7024604090607935,"n":12,"nFirst":6,"nOther":6}],"cross|Arm B|Week 4|CD8 T cells":[{"feature":"interferon","estimate":-0.4858984752648148,"lo":-0.9254049700955298,"hi":-0.04639198043409981,"p":0.035331046155533535,"q":0.07288998884643852,"n":8,"nFirst":4,"nOther":4},{"feature":"cytotoxicity","estimate":-0.33732839090636646,"lo":-0.7922263931719857,"hi":0.11756961135925281,"p":0.11952744180208563,"q":0.15936992240278083,"n":8,"nFirst":4,"nOther":4},{"feature":"inflammation","estimate":-0.09863332138383275,"lo":-0.6799042687151771,"hi":0.4826376259475116,"p":0.6924300119377111,"q":0.6924300119377111,"n":8,"nFirst":4,"nOther":4},{"feature":"proliferation","estimate":-0.41377626595371103,"lo":-0.7913010124969175,"hi":-0.036251519410504585,"p":0.03644499442321926,"q":0.07288998884643852,"n":8,"nFirst":4,"nOther":4}],"cross|Arm B|Week 12|CD8 T cells":[{"feature":"interferon","estimate":-0.35205272364672807,"lo":-0.7968765783987091,"hi":0.09277113110525287,"p":0.09292187723890037,"q":0.15717216436634998,"n":6,"nFirst":3,"nOther":3},{"feature":"cytotoxicity","estimate":-0.2756565072105068,"lo":-0.6608686186517325,"hi":0.10955560423071892,"p":0.11787912327476249,"q":0.15717216436634998,"n":6,"nFirst":3,"nOther":3},{"feature":"inflammation","estimate":-0.026607112510708686,"lo":-0.674976576924417,"hi":0.6217623519029997,"p":0.9147776696728174,"q":0.9147776696728174,"n":6,"nFirst":3,"nOther":3},{"feature":"proliferation","estimate":-0.2519682044764949,"lo":-0.5821261909702813,"hi":0.07818978201729154,"p":0.10146626052994355,"q":0.15717216436634998,"n":6,"nFirst":3,"nOther":3}],"did|Arm A|Week 4|B cells":[{"feature":"interferon","estimate":-0.007089967342381362,"lo":-0.19999448988705817,"hi":0.18581455520229548,"p":0.942573215263332,"q":0.9732436124958245,"n":7,"nFirst":4,"nOther":3},{"feature":"cytotoxicity","estimate":0.0072935959255764765,"lo":-0.41891377211394004,"hi":0.433500963965093,"p":0.9732436124958245,"q":0.9732436124958245,"n":7,"nFirst":4,"nOther":3},{"feature":"inflammation","estimate":-0.20989091719858338,"lo":-0.5601191622906613,"hi":0.1403373278934944,"p":0.24015416421494595,"q":0.8775358929180213,"n":7,"nFirst":4,"nOther":3},{"feature":"proliferation","estimate":0.16309738704964227,"lo":-0.24975959326106512,"hi":0.5759543673603493,"p":0.4387679464590106,"q":0.8775358929180213,"n":7,"nFirst":4,"nOther":3}],"did|Arm A|Week 12|B cells":[{"feature":"interferon","estimate":0.17987210058380165,"lo":-0.1972369356256582,"hi":0.5569811367932616,"p":0.3498622503057288,"q":0.5961397791083112,"n":5,"nFirst":3,"nOther":2},{"feature":"cytotoxicity","estimate":-0.04843679099338209,"lo":-0.4329037760305896,"hi":0.3360301940438254,"p":0.8049665587728877,"q":0.8049665587728877,"n":5,"nFirst":3,"nOther":2},{"feature":"inflammation","estimate":-0.330295330531617,"lo":-0.7992994378943928,"hi":0.1387087768311588,"p":0.16749391259182955,"q":0.5961397791083112,"n":5,"nFirst":3,"nOther":2},{"feature":"proliferation","estimate":-0.05197420981006706,"lo":-0.18596632515716396,"hi":0.08201790553702984,"p":0.4471048343312334,"q":0.5961397791083112,"n":5,"nFirst":3,"nOther":2}],"paired|Arm A|Week 4|B cells":[{"feature":"interferon","estimate":0.2702924686416445,"lo":0.07985056423975304,"hi":0.46073437304353604,"p":0.005406515220080974,"q":0.021626060880323896,"n":4,"nFirst":4,"nOther":0},{"feature":"cytotoxicity","estimate":0.09606567227476778,"lo":-0.13871311612626205,"hi":0.33084446067579765,"p":0.4225710195700271,"q":0.5634280260933694,"n":4,"nFirst":4,"nOther":0},{"feature":"inflammation","estimate":-0.11290111649011075,"lo":-0.3777373329172758,"hi":0.15193509993705429,"p":0.40341188661971117,"q":0.5634280260933694,"n":4,"nFirst":4,"nOther":0},{"feature":"proliferation","estimate":0.09366424185473679,"lo":-0.2594848519035998,"hi":0.44681333561307346,"p":0.603180000689873,"q":0.603180000689873,"n":4,"nFirst":4,"nOther":0}],"paired|Arm A|Week 12|B cells":[{"feature":"interferon","estimate":0.22756906592135537,"lo":-0.025547083708909096,"hi":0.4806852155516198,"p":0.07804492488500707,"q":0.15608984977001414,"n":3,"nFirst":3,"nOther":0},{"feature":"cytotoxicity","estimate":0.08045538486898496,"lo":-0.2368247291853755,"hi":0.3977354989233454,"p":0.6191858507513621,"q":0.8255811343351495,"n":3,"nFirst":3,"nOther":0},{"feature":"inflammation","estimate":-0.19307693138703957,"lo":-0.37029062180156125,"hi":-0.0158632409725179,"p":0.03272755983671019,"q":0.13091023934684076,"n":3,"nFirst":3,"nOther":0},{"feature":"proliferation","estimate":0.01025117627705618,"lo":-0.11914143832718996,"hi":0.13964379088130233,"p":0.8766014891838966,"q":0.8766014891838966,"n":3,"nFirst":3,"nOther":0}],"cross|Arm A|Baseline|B cells":[{"feature":"interferon","estimate":0.06549517287603736,"lo":-0.13309596535093005,"hi":0.2640863111030048,"p":0.47466761198250146,"q":0.9853055180048186,"n":11,"nFirst":6,"nOther":5},{"feature":"cytotoxicity","estimate":0.007755078747407891,"lo":-0.2118221950602963,"hi":0.22733235255511205,"p":0.9380688179918335,"q":0.9853055180048186,"n":11,"nFirst":6,"nOther":5},{"feature":"inflammation","estimate":0.0014229007942152538,"lo":-0.16856384980087405,"hi":0.17140965138930456,"p":0.9853055180048186,"q":0.9853055180048186,"n":11,"nFirst":6,"nOther":5},{"feature":"proliferation","estimate":0.046923824739665665,"lo":-0.1452715256268146,"hi":0.23911917510614594,"p":0.5941923198683647,"q":0.9853055180048186,"n":11,"nFirst":6,"nOther":5}],"cross|Arm A|Week 4|B cells":[{"feature":"interferon","estimate":0.01881097380370869,"lo":-0.1954169459446768,"hi":0.23303889355209417,"p":0.8369939880620122,"q":0.8863673194969941,"n":8,"nFirst":4,"nOther":4},{"feature":"cytotoxicity","estimate":-0.01779638200216674,"lo":-0.30987562351085807,"hi":0.27428285950652453,"p":0.8863673194969941,"q":0.8863673194969941,"n":8,"nFirst":4,"nOther":4},{"feature":"inflammation","estimate":-0.21910550133780493,"lo":-0.5457570279677575,"hi":0.10754602529214757,"p":0.1518447544946651,"q":0.3597167825578285,"n":8,"nFirst":4,"nOther":4},{"feature":"proliferation","estimate":0.2584244259695485,"lo":-0.1581896620779245,"hi":0.6750385140170215,"p":0.17985839127891426,"q":0.3597167825578285,"n":8,"nFirst":4,"nOther":4}],"cross|Arm A|Week 12|B cells":[{"feature":"interferon","estimate":0.2731183969464441,"lo":0.01415003391971964,"hi":0.5320867599731685,"p":0.04289291830798085,"q":0.1715716732319234,"n":6,"nFirst":3,"nOther":3},{"feature":"cytotoxicity","estimate":-0.05242889641386711,"lo":-0.5135705800130107,"hi":0.4087127871852765,"p":0.7680412803937074,"q":0.7680412803937074,"n":6,"nFirst":3,"nOther":3},{"feature":"inflammation","estimate":-0.2353962783453608,"lo":-0.5833573465642854,"hi":0.11256478987356383,"p":0.13354796438386599,"q":0.26709592876773197,"n":6,"nFirst":3,"nOther":3},{"feature":"proliferation","estimate":0.14550224658803124,"lo":-0.22864743418343403,"hi":0.5196519273594965,"p":0.3410215315082936,"q":0.4546953753443915,"n":6,"nFirst":3,"nOther":3}],"did|Arm B|Week 4|B cells":[{"feature":"interferon","estimate":0.007089967342380765,"lo":-0.18581455520229628,"hi":0.19999448988705765,"p":0.9425732152633368,"q":0.9732436124958304,"n":7,"nFirst":3,"nOther":4},{"feature":"cytotoxicity","estimate":-0.007293595925574867,"lo":-0.4335009639650899,"hi":0.41891377211394015,"p":0.9732436124958304,"q":0.9732436124958304,"n":7,"nFirst":3,"nOther":4},{"feature":"inflammation","estimate":0.20989091719858338,"lo":-0.14033732789349385,"hi":0.5601191622906607,"p":0.2401541642149453,"q":0.8775358929180148,"n":7,"nFirst":3,"nOther":4},{"feature":"proliferation","estimate":-0.16309738704964336,"lo":-0.5759543673603503,"hi":0.24975959326106387,"p":0.4387679464590074,"q":0.8775358929180148,"n":7,"nFirst":3,"nOther":4}],"did|Arm B|Week 12|B cells":[{"feature":"interferon","estimate":-0.17987210058380088,"lo":-0.5569811367932604,"hi":0.1972369356256588,"p":0.3498622503057307,"q":0.5961397791083082,"n":5,"nFirst":2,"nOther":3},{"feature":"cytotoxicity","estimate":0.048436790993381676,"lo":-0.3360301940438254,"hi":0.4329037760305888,"p":0.8049665587728891,"q":0.8049665587728891,"n":5,"nFirst":2,"nOther":3},{"feature":"inflammation","estimate":0.330295330531617,"lo":-0.1387087768311585,"hi":0.7992994378943927,"p":0.16749391259182933,"q":0.5961397791083082,"n":5,"nFirst":2,"nOther":3},{"feature":"proliferation","estimate":0.051974209810067264,"lo":-0.08201790553702948,"hi":0.185966325157164,"p":0.44710483433123116,"q":0.5961397791083082,"n":5,"nFirst":2,"nOther":3}],"paired|Arm B|Week 4|B cells":[{"feature":"interferon","estimate":0.2773824359840255,"lo":0.2295493792877411,"hi":0.3252154926803099,"p":6.191512694423741e-30,"q":2.4766050777694964e-29,"n":3,"nFirst":3,"nOther":0},{"feature":"cytotoxicity","estimate":0.08877207634919225,"lo":-0.3088836593807107,"hi":0.48642781207909525,"p":0.6617201714773772,"q":0.6617201714773772,"n":3,"nFirst":3,"nOther":0},{"feature":"inflammation","estimate":0.09698980070847284,"lo":-0.16204356698277006,"hi":0.35602316839971576,"p":0.46302868162458843,"q":0.6617201714773772,"n":3,"nFirst":3,"nOther":0},{"feature":"proliferation","estimate":-0.06943314519490618,"lo":-0.31519115275158294,"hi":0.17632486236177056,"p":0.5797556128702621,"q":0.6617201714773772,"n":3,"nFirst":3,"nOther":0}],"paired|Arm B|Week 12|B cells":[{"feature":"interferon","estimate":0.04769696533755405,"lo":-0.3058981477218371,"hi":0.40129207839694525,"p":0.7914852510079569,"q":0.7914852510079569,"n":2,"nFirst":2,"nOther":0},{"feature":"cytotoxicity","estimate":0.128892175862367,"lo":-0.14576598785173717,"hi":0.4035503395764712,"p":0.3576897602033302,"q":0.7153795204066604,"n":2,"nFirst":2,"nOther":0},{"feature":"inflammation","estimate":0.13721839914457779,"lo":-0.41205043944406083,"hi":0.6864872377332164,"p":0.6243897921072115,"q":0.7914852510079569,"n":2,"nFirst":2,"nOther":0},{"feature":"proliferation","estimate":0.0622253860871234,"lo":0.018199243652124768,"hi":0.10625152852212202,"p":0.005602853967794082,"q":0.02241141587117633,"n":2,"nFirst":2,"nOther":0}],"cross|Arm B|Baseline|B cells":[{"feature":"interferon","estimate":-0.06549517287603741,"lo":-0.2640863111030048,"hi":0.13309596535092993,"p":0.474667611982501,"q":0.9853055180048175,"n":11,"nFirst":5,"nOther":6},{"feature":"cytotoxicity","estimate":-0.007755078747407912,"lo":-0.22733235255511197,"hi":0.21182219506029615,"p":0.9380688179918333,"q":0.9853055180048175,"n":11,"nFirst":5,"nOther":6},{"feature":"inflammation","estimate":-0.0014229007942153649,"lo":-0.1714096513893046,"hi":0.16856384980087388,"p":0.9853055180048175,"q":0.9853055180048175,"n":11,"nFirst":5,"nOther":6},{"feature":"proliferation","estimate":-0.04692382473966569,"lo":-0.23911917510614591,"hi":0.14527152562681453,"p":0.5941923198683644,"q":0.9853055180048175,"n":11,"nFirst":5,"nOther":6}],"cross|Arm B|Week 4|B cells":[{"feature":"interferon","estimate":-0.01881097380370861,"lo":-0.23303889355209412,"hi":0.1954169459446769,"p":0.836993988062013,"q":0.8863673194969942,"n":8,"nFirst":4,"nOther":4},{"feature":"cytotoxicity","estimate":0.01779638200216673,"lo":-0.27428285950652465,"hi":0.30987562351085807,"p":0.8863673194969942,"q":0.8863673194969942,"n":8,"nFirst":4,"nOther":4},{"feature":"inflammation","estimate":0.21910550133780504,"lo":-0.10754602529214752,"hi":0.5457570279677576,"p":0.15184475449466497,"q":0.35971678255782846,"n":8,"nFirst":4,"nOther":4},{"feature":"proliferation","estimate":-0.25842442596954845,"lo":-0.6750385140170215,"hi":0.15818966207792462,"p":0.17985839127891423,"q":0.35971678255782846,"n":8,"nFirst":4,"nOther":4}],"cross|Arm B|Week 12|B cells":[{"feature":"interferon","estimate":-0.2731183969464442,"lo":-0.5320867599731686,"hi":-0.014150033919719807,"p":0.04289291830798077,"q":0.17157167323192307,"n":6,"nFirst":3,"nOther":3},{"feature":"cytotoxicity","estimate":0.05242889641386689,"lo":-0.40871278718527654,"hi":0.5135705800130104,"p":0.7680412803937082,"q":0.7680412803937082,"n":6,"nFirst":3,"nOther":3},{"feature":"inflammation","estimate":0.2353962783453606,"lo":-0.11256478987356394,"hi":0.5833573465642852,"p":0.13354796438386615,"q":0.2670959287677323,"n":6,"nFirst":3,"nOther":3},{"feature":"proliferation","estimate":-0.14550224658803113,"lo":-0.5196519273594964,"hi":0.22864743418343408,"p":0.3410215315082938,"q":0.4546953753443917,"n":6,"nFirst":3,"nOther":3}]}}
+</script>
+ <script>/* Local participant-level summaries. A missing specimen is represented by an omitted row. */
+(() => {
+  'use strict';
+
+  const required = ['participant', 'arm', 'visit', 'population', 'cells'];
+  const maxRows = 50000;
+  const maxFeatures = 32;
+  const maxBytes = 8 * 1024 * 1024;
+  const decimal = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+
+  function fieldLabel(value, name, line) {
+    const result = value.trim();
+    if (!result) throw new Error('Row ' + line + ' has an empty ' + name + '.');
+    if (result.length > 160 || /[\u0000-\u001f\u007f]/.test(result)) {
+      throw new Error(
+        'Row ' + line + ' has an invalid ' + name + '. Use a single line of up to 160 characters.',
+      );
+    }
+    return result;
+  }
+
+  function parseRows(text, accept) {
+    let field = '',
+      fields = [],
+      quoted = false,
+      closed = false;
+    let line = 1,
+      start = 1;
+
+    function endField() {
+      fields.push(field);
+      if (fields.length > required.length + maxFeatures) {
+        throw new Error(
+          'Row ' + start + ' has too many fields. Include up to ' + maxFeatures + ' score columns.',
+        );
+      }
+      field = '';
+      closed = false;
+    }
+
+    function endRow() {
+      endField();
+      if (fields.length !== 1 || fields[0].trim()) accept(fields, start);
+      fields = [];
+    }
+
+    for (let i = 0; i < text.length; i++) {
+      const character = text[i];
+      if (character === '\r' || character === '\n') {
+        if (character === '\r' && text[i + 1] === '\n') i++;
+        if (quoted) field += '\n';
+        else endRow();
+        line++;
+        if (!quoted) start = line;
+      } else if (quoted) {
+        if (character !== '"') field += character;
+        else if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          quoted = false;
+          closed = true;
+        }
+      } else if (character === ',') {
+        endField();
+      } else if (closed) {
+        if (character !== ' ' && character !== '\t') {
+          throw new Error(
+            'Row ' + line + ' has text after a closing quote. Use a comma between fields.',
+          );
+        }
+      } else if (character === '"') {
+        if (field.trim())
+          throw new Error('Row ' + line + ' has a misplaced quote. Enclose the whole field in quotes.');
+        field = '';
+        quoted = true;
+      } else field += character;
+    }
+    if (quoted) throw new Error('Row ' + start + ' has an unclosed quoted field.');
+    endRow();
+  }
+
+  function readStudyCSV(text, fileName) {
+    if (typeof text !== 'string') throw new Error('Choose a UTF-8 CSV file.');
+    if (text.length > maxBytes || new Blob([text]).size > maxBytes) {
+      throw new Error(
+        'This preview supports CSV files up to 8 MiB. Select a smaller set of participant summaries.',
+      );
+    }
+    const groups = new Set(),
+      people = new Map(),
+      visits = new Set(),
+      populations = new Set();
+    const keys = new Set(),
+      observations = [];
+    let positions, features, columnCount;
+
+    function readHeader(fields, line) {
+      const headers = fields.map((value) => fieldLabel(value, 'column name', line));
+      const names = headers.map((name) => name.toLowerCase());
+      if (new Set(names).size !== names.length)
+        throw new Error('The header has duplicate column names. Give each column a unique name.');
+      const missing = required.filter((name) => !names.includes(name));
+      if (missing.length) throw new Error('Add the required CSV columns ' + missing.join(', ') + '.');
+      positions = Object.fromEntries(required.map((name) => [name, names.indexOf(name)]));
+      features = headers.flatMap((label, index) =>
+        required.includes(names[index]) ? [] : [{ id: 'score_' + (index + 1), label, index }],
+      );
+      if (!features.length)
+        throw new Error('Include at least one numeric score column after the study fields.');
+      columnCount = fields.length;
+    }
+
+    function readObservation(fields, line) {
+      if (observations.length >= maxRows)
+        throw new Error('This preview supports up to 50,000 participant-level rows.');
+      if (fields.length !== columnCount) {
+        throw new Error(
+          'Row ' + line + ' has ' + fields.length + ' fields. The header has ' + columnCount + '.',
+        );
+      }
+      const id = fieldLabel(fields[positions.participant], 'participant ID', line);
+      const arm = fieldLabel(fields[positions.arm], 'group label', line);
+      const visit = fieldLabel(fields[positions.visit], 'visit label', line);
+      const population = fieldLabel(fields[positions.population], 'population label', line);
+      const previous = people.get(id);
+      if (previous !== undefined && previous !== arm) {
+        throw new Error(
+          'Row ' + line + ' assigns ' + id + ' to a second group. Use one group per participant.',
+        );
+      }
+      if (groups.size === 2 && !groups.has(arm)) {
+        throw new Error(
+          'Row ' + line + ' adds a third group. Import one or two groups for this comparison.',
+        );
+      }
+      const key = JSON.stringify([id, visit, population]);
+      if (keys.has(key)) {
+        throw new Error(
+          'Row ' +
+            line +
+            ' repeats ' +
+            id +
+            ' / ' +
+            visit +
+            ' / ' +
+            population +
+            '. Combine replicates before import.',
+        );
+      }
+      const countText = fields[positions.cells].trim();
+      const cells = Number(countText);
+      if (!decimal.test(countText) || !Number.isSafeInteger(cells) || cells < 1) {
+        throw new Error(
+          'Row ' + line + ' requires a positive whole cell count. Omit rows with no observed cells.',
+        );
+      }
+      const scores = {};
+      for (const feature of features) {
+        const value = fields[feature.index].trim();
+        const score = Number(value);
+        if (!decimal.test(value) || !Number.isFinite(score)) {
+          throw new Error(
+            'Row ' + line + ' requires a finite numeric value in “' + feature.label + '”.',
+          );
+        }
+        scores[feature.id] = score;
+      }
+      keys.add(key);
+      groups.add(arm);
+      people.set(id, arm);
+      visits.add(visit);
+      populations.add(population);
+      observations.push({ id, arm, visit, population, cells, scores });
+    }
+
+    parseRows(text.replace(/^\uFEFF/, ''), (fields, line) => {
+      if (positions) readObservation(fields, line);
+      else readHeader(fields, line);
+    });
+    if (!positions) throw new Error('The CSV is empty. Start with the example template.');
+    if (!observations.length)
+      throw new Error('The CSV contains a header only. Add at least one participant observation.');
+    const stem = String(fileName || '')
+      .split(/[\\/]/)
+      .pop()
+      .replace(/\.csv$/i, '')
+      .replace(/[\u0000-\u001f\u007f]/g, '')
+      .trim();
+    return {
+      title: stem.slice(0, 100) || 'Imported study',
+      source: 'import',
+      participants: Array.from(people, ([id, arm]) => ({ id, arm })),
+      visits: Array.from(visits),
+      populations: Array.from(populations),
+      features: features.map(({ id, label }) => ({ id, label })),
+      observations,
+      results: {},
     };
-    const missingCells = {
-      'CD8 T cells': {'Baseline': [], 'Week 4': ['A06','B05'], 'Week 12': ['A03','B02']},
-      'B cells': {'Baseline': ['B01'], 'Week 4': ['A04','B06'], 'Week 12': ['A01','B05']}
+  }
+
+  function studyCSVTemplate() {
+    const lines = ['participant,arm,visit,population,cells,Interferon response,Cytotoxicity'];
+    const visits = ['Baseline', 'Week 4', 'Week 12'];
+    const populations = ['CD8 T cells', 'B cells'];
+    for (let person = 0; person < 6; person++) {
+      const first = person < 3;
+      const participant = (first ? 'A' : 'B') + '0' + ((person % 3) + 1);
+      for (let t = 0; t < visits.length; t++) {
+        if (person === 5 && t === 2) continue;
+        for (let c = 0; c < populations.length; c++) {
+          const baseline = (person % 3) * 0.08;
+          const response = 0.62 + baseline + (first ? 0.27 : 0.13) * t - c * 0.11;
+          const cytotoxicity = 0.88 + baseline + (first ? 0.16 : 0.09) * t - c * 0.49;
+          lines.push(
+            [
+              participant,
+              first ? 'Arm A' : 'Arm B',
+              visits[t],
+              populations[c],
+              32 + person * 3 + t * 4 + c,
+              response.toFixed(2),
+              cytotoxicity.toFixed(2),
+            ].join(','),
+          );
+        }
+      }
+    }
+    return lines.join('\r\n') + '\r\n';
+  }
+
+  globalThis.readStudyCSV = readStudyCSV;
+  globalThis.studyCSVTemplate = studyCSVTemplate;
+})();
+
+(() => {
+  'use strict';
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const ink = '#273246',
+    muted = '#526078',
+    grid = '#e4e8f0';
+  const colors = ['#684ce5', '#078776'];
+  const active = new WeakMap();
+  let sequence = 0;
+
+  function node(parent, tag, attrs = {}, content) {
+    const out = document.createElementNS(NS, tag);
+    for (const [name, value] of Object.entries(attrs)) out.setAttribute(name, String(value));
+    if (content !== undefined) out.textContent = content;
+    parent.append(out);
+    return out;
+  }
+
+  function label(parent, x, y, value, extra = {}) {
+    return node(parent, 'text', { x, y, fill: muted, 'font-size': 11, ...extra }, value);
+  }
+
+  function fitLabel(text, maxWidth, addHint = true) {
+    const full = text.textContent;
+    if (text.getComputedTextLength() <= maxWidth) return;
+    let low = 0,
+      high = full.length;
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2);
+      text.textContent = full.slice(0, middle) + '…';
+      if (text.getComputedTextLength() <= maxWidth) low = middle;
+      else high = middle - 1;
+    }
+    text.textContent = full.slice(0, low) + '…';
+    if (addHint) {
+      text.setAttribute('aria-label', full);
+      node(text, 'title', {}, full);
+    }
+  }
+
+  function number(value, digits = 2, signed = false) {
+    if (!Number.isFinite(value)) return 'unavailable';
+    const v = Math.abs(value) < 0.5 * 10 ** -digits ? 0 : value;
+    return (
+      (v < 0 ? '−' : signed && v > 0 ? '+' : '') +
+      Math.abs(v).toLocaleString('en-US', {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+      })
+    );
+  }
+
+  function tickText(v, step) {
+    const precision = Math.max(
+      0,
+      Math.min(
+        6,
+        -Math.floor(Math.log10(step)) +
+          (Number((step / 10 ** Math.floor(Math.log10(step))).toFixed(4)) === 2.5 ? 1 : 0),
+      ),
+    );
+    return number(v, precision);
+  }
+
+  function stepSize(span, intervals) {
+    const raw = Math.max(span / intervals, 1e-10);
+    const power = 10 ** Math.floor(Math.log10(raw));
+    return ([1, 2, 2.5, 5, 10].find((factor) => factor * power >= raw - 1e-12) || 10) * power;
+  }
+
+  function yDomain(values) {
+    let min = Infinity,
+      max = -Infinity;
+    for (const value of values) {
+      min = Math.min(min, value);
+      max = Math.max(max, value);
+    }
+    const delta = Math.max(max - min, Math.abs(max || 1) * 0.08, 0.02);
+    const step = stepSize(delta * 1.15, 4);
+    return {
+      min: Math.floor((min - delta * 0.06) / step) * step,
+      max: Math.ceil((max + delta * 0.06) / step) * step,
+      step,
     };
-    const byId = id => document.getElementById(id);
-    const design = byId('design'), order = byId('order'), visit = byId('visit'), population = byId('population');
-    function element(tag, className, text) {
-      const node = document.createElement(tag);
-      if (className) node.className = className;
-      if (text !== undefined) node.textContent = text;
-      return node;
+  }
+
+  function ticks(domain) {
+    const count = Math.round((domain.max - domain.min) / domain.step);
+    return Array.from({ length: count + 1 }, (_, i) => domain.min + i * domain.step);
+  }
+
+  function pointMark(parent, x, y, size, color, index, hollow = true) {
+    const attrs = { fill: hollow ? '#fff' : color, stroke: color, 'stroke-width': hollow ? 2.5 : 0 };
+    if (index % 2) {
+      return node(parent, 'path', {
+        d:
+          'M ' +
+          x +
+          ' ' +
+          (y - size) +
+          ' l ' +
+          size +
+          ' ' +
+          size +
+          ' -' +
+          size +
+          ' ' +
+          size +
+          ' -' +
+          size +
+          ' -' +
+          size +
+          ' Z',
+        ...attrs,
+      });
     }
-    function updateDesignOptions() {
-      const previousOrder = order.value || 'Arm A', previousVisit = visit.value || 'Week 4';
-      byId('order-label').textContent = design.value === 'paired' ? 'Study arm' : 'Group order';
-      byId('visit-label').textContent = design.value === 'cross' ? 'Visit' : 'Follow-up visit';
-      order.replaceChildren(...arms.map(arm => new Option(design.value === 'paired' ? arm :
-        arm + ' minus ' + arms.find(other => other !== arm), arm)));
-      order.value = previousOrder;
-      const visits = Object.keys(missingSpecimens).filter(v => design.value === 'cross' || v !== 'Baseline');
-      visit.replaceChildren(...visits.map(v => new Option(v, v)));
-      visit.value = visits.includes(previousVisit) ? previousVisit : 'Week 4';
+    return node(parent, 'circle', { cx: x, cy: y, r: size, ...attrs });
+  }
+
+  function mount(container, options, paint) {
+    if (!container) return;
+    let store = active.get(container);
+    if (!store) {
+      store = { width: -1 };
+      active.set(container, store);
+      const redraw = () => {
+        const currentWidth = Math.round(container.getBoundingClientRect().width);
+        if (currentWidth > 0 && currentWidth !== store.width) {
+          store.width = currentWidth;
+          store.paint(container, store.options, currentWidth);
+        }
+      };
+      if (typeof ResizeObserver === 'function') {
+        store.observer = new ResizeObserver(redraw);
+        store.observer.observe(container);
+      }
     }
-    function absenceReason(person, time) {
-      if (missingSpecimens[time].includes(person.id)) return 'no specimen';
-      if (missingCells[population.value]?.[time].includes(person.id)) return 'no ' + population.value;
-      return '';
+    store.options = options;
+    store.paint = paint;
+    store.width = Math.round(container.getBoundingClientRect().width) || 480;
+    paint(container, options, store.width);
+  }
+
+  function frame(container, width, height, title, description) {
+    container.replaceChildren();
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:relative;width:100%;min-width:0';
+    container.append(wrap);
+    const id = 'sct-chart-' + ++sequence;
+    const svg = node(wrap, 'svg', {
+      viewBox: '0 0 ' + width + ' ' + height,
+      width: '100%',
+      height,
+      role: 'group',
+      'aria-labelledby': id + '-title',
+      'aria-describedby': id + '-desc',
+      style: 'display:block;overflow:visible;font-family:inherit;font-variant-numeric:tabular-nums',
+    });
+    node(svg, 'title', { id: id + '-title' }, title);
+    node(svg, 'desc', { id: id + '-desc' }, description);
+    node(
+      svg,
+      'style',
+      {},
+      '.sct-hit:focus-visible{outline:2px solid #4935bc;outline-offset:1px}' +
+        '.sct-effect:hover .sct-rowfill{fill:#efedff}.sct-hit{outline:none}',
+    );
+    const tip = document.createElement('div');
+    tip.hidden = true;
+    tip.setAttribute('aria-hidden', 'true');
+    tip.style.cssText =
+      'position:absolute;z-index:4;pointer-events:none;background:#253044;' +
+      'color:white;padding:7px 10px;border-radius:7px;font:500 12px/1.5 system-ui,sans-serif;' +
+      'box-shadow:0 3px 10px #1d29492b;max-width:calc(100% - 8px);width:max-content;white-space:normal';
+    wrap.append(tip);
+    function bind(target, message, action, anchor = target) {
+      target.setAttribute('tabindex', '0');
+      target.setAttribute('class', (target.getAttribute('class') || '') + ' sct-hit');
+      target.setAttribute('role', action ? 'button' : 'img');
+      target.setAttribute('aria-label', message);
+      if (action) target.style.cursor = 'pointer';
+      const show = () => {
+        tip.textContent = message;
+        tip.hidden = false;
+        const box = wrap.getBoundingClientRect(),
+          rect = anchor.getBoundingClientRect();
+        const x = rect.left - box.left + rect.width / 2;
+        tip.style.left =
+          Math.max(4, Math.min(box.width - tip.offsetWidth - 4, x - tip.offsetWidth / 2)) + 'px';
+        const y = rect.top - box.top;
+        tip.style.top =
+          Math.max(0, y < tip.offsetHeight + 5 ? rect.bottom - box.top + 3 : y - tip.offsetHeight - 4) +
+          'px';
+      };
+      const hide = () => {
+        tip.hidden = true;
+      };
+      target.addEventListener('pointerenter', show);
+      target.addEventListener('pointerleave', hide);
+      target.addEventListener('focus', show);
+      target.addEventListener('blur', hide);
+      target.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') hide();
+        if (action && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          action();
+        }
+      });
+      if (action) target.addEventListener('click', action);
     }
-    function evidenceGroup(arm, records, visits, first) {
-      const group = element('section','group');
-      group.style.setProperty('--group-color', first ? 'var(--accent)' : 'var(--ink)');
-      const header = element('div','group-head');
-      header.append(element('h3','',arm), element('span','',records.filter(r => r.eligible).length + ' of ' + records.length));
-      const grid = element('div','grid');
-      grid.setAttribute('aria-hidden', 'true');
-      grid.append(element('span'));
-      records.forEach(r => grid.append(element('span', 'pid', r.person.id)));
-      visits.forEach((time, index) => {
-        grid.append(element('span', 'visit', time));
-        records.forEach(r => {
-          const connected = visits.length === 2 && index === 0 && r.eligible;
-          const mark = element('span','mark' + (r.reasons[index] ? ' missing' : '') + (connected ? ' link' : ''));
-          grid.append(mark);
+    return { svg, bind };
+  }
+
+  // Start a new segment at each gap, including gaps inside a person's repeated visits.
+  function segments(parent, values, attrs) {
+    let path = '',
+      connected = false;
+    for (const p of values) {
+      if (!p) {
+        connected = false;
+        continue;
+      }
+      path += (connected ? ' L ' : ' M ') + p.x + ' ' + p.y;
+      connected = true;
+    }
+    node(parent, 'path', {
+      d: path,
+      fill: 'none',
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      ...attrs,
+    });
+  }
+
+  function trajectory(container, opt, width) {
+    const series = opt.series || [],
+      visits = opt.visits || [];
+    const points = series.map((s) =>
+      visits.map((visit) =>
+        (s.means || []).find(
+          (p) => p.visit === visit && Number.isFinite(p.mean) && (p.n === undefined || p.n > 0),
+        ),
+      ),
+    );
+    const values = points
+      .flat()
+      .filter(Boolean)
+      .map((p) => p.mean);
+    if (opt.showIndividuals) {
+      for (const s of series)
+        for (const person of s.people || []) {
+          for (const p of person.points || [])
+            if (visits.includes(p.visit) && Number.isFinite(p.value)) values.push(p.value);
+        }
+    }
+    const height = width < 360 ? 202 : 226;
+    const { svg, bind } = frame(
+      container,
+      width,
+      height,
+      (opt.featureLabel || 'Outcome') + ' by visit',
+      'Points show descriptive group means. Focus a point for its value and participant count.' +
+        (opt.showIndividuals ? ' Thin lines link observations from the same participant.' : ''),
+    );
+    const left = width < 360 ? 32 : 40,
+      right = width < 360 ? 24 : 32,
+      top = 50,
+      bottom = height - 34;
+    if (!values.length || !visits.length) {
+      label(svg, width / 2, height / 2, 'No observations for this selection', {
+        'text-anchor': 'middle',
+      });
+      return;
+    }
+    const domain = yDomain(values);
+    const xAt = (index) =>
+      visits.length === 1
+        ? (left + width - right) / 2
+        : left + 12 + (index * (width - right - left - 24)) / (visits.length - 1);
+    const yAt = (value) => bottom - ((value - domain.min) * (bottom - top)) / (domain.max - domain.min);
+    label(svg, 2, 15, opt.unit || 'Score', { 'font-size': 10, 'font-weight': 600 });
+    // Anchor the legend to the right, leaving the scale visible above the y-axis.
+    const preferred = series.map((s) => 32 + String(s.label).length * 6.4);
+    const available = Math.max(30, width - 4);
+    const useSecondLine =
+      preferred.reduce((a, b) => a + b, 0) + String(opt.unit || 'Score').length * 6 + 8 > available;
+    const widths = preferred.map((w) => Math.min(w, available / Math.max(series.length, 1)));
+    let lx = Math.max(3, width - widths.reduce((a, b) => a + b, 0));
+    series.forEach((s, i) => {
+      const ly = useSecondLine ? 30 : 12;
+      const color = s.color || colors[i % colors.length];
+      node(svg, 'line', { x1: lx, x2: lx + 15, y1: ly, y2: ly, stroke: color, 'stroke-width': 2 });
+      pointMark(svg, lx + 7.5, ly, 3.2, color, i);
+      const text = label(svg, lx + 20, ly + 3.5, s.label, { 'font-size': 10.4, fill: ink });
+      fitLabel(text, Math.max(8, widths[i] - 26));
+      lx += widths[i];
+    });
+    for (const value of ticks(domain)) {
+      const y = yAt(value);
+      node(svg, 'line', {
+        x1: left,
+        x2: width - right + 6,
+        y1: y,
+        y2: y,
+        stroke: grid,
+        'stroke-width': 1,
+      });
+      label(svg, left - 7, y + 4, tickText(value, domain.step), {
+        'text-anchor': 'end',
+        'font-size': 10,
+      });
+    }
+    const visibleCount = Math.max(2, Math.floor((width - right - left) / 68));
+    const visibleTicks = new Set(
+      Array.from({ length: Math.min(visits.length, visibleCount) }, (_, i) =>
+        Math.round((i * (visits.length - 1)) / Math.max(1, Math.min(visits.length, visibleCount) - 1)),
+      ),
+    );
+    const visibleSpacing = (width - right - left - 24) / Math.max(1, visibleTicks.size - 1);
+    visits.forEach((visit, i) => {
+      const x = xAt(i);
+      node(svg, 'line', {
+        x1: x,
+        x2: x,
+        y1: top,
+        y2: bottom,
+        stroke: '#e9ebf4',
+        'stroke-dasharray': '2 5',
+      });
+      if (visibleTicks.has(i)) {
+        const text = label(svg, x, bottom + 20, visit, { 'text-anchor': 'middle', 'font-size': 11 });
+        fitLabel(text, Math.max(18, Math.min(visibleSpacing - 5, 2 * x - 4, 2 * (width - x) - 4)));
+      }
+    });
+    if (opt.showIndividuals) {
+      series.forEach((s, i) => {
+        const color = s.color || colors[i % colors.length];
+        for (const person of s.people || []) {
+          const lookup = new Map((person.points || []).map((p) => [p.visit, p.value]));
+          const coords = visits.map((v, j) =>
+            Number.isFinite(lookup.get(v)) ? { x: xAt(j), y: yAt(lookup.get(v)) } : null,
+          );
+          segments(svg, coords, { stroke: color, 'stroke-width': 1.05, opacity: 0.25 });
+          coords
+            .filter(Boolean)
+            .forEach((p) =>
+              node(svg, 'circle', { cx: p.x, cy: p.y, r: 1.8, fill: color, opacity: 0.34 }),
+            );
+        }
+      });
+    }
+    const markers = [];
+    series.forEach((s, i) => {
+      const color = s.color || colors[i % colors.length];
+      const coords = points[i].map((p, j) => (p ? { x: xAt(j), y: yAt(p.mean), p } : null));
+      segments(svg, coords, { stroke: color, 'stroke-width': 3.1 });
+      for (const c of coords.filter(Boolean)) markers.push({ ...c, color, i, label: s.label });
+    });
+    for (const m of markers) {
+      const g = node(svg, 'g');
+      node(g, 'circle', { cx: m.x, cy: m.y, r: 10, fill: 'transparent' });
+      const mark = pointMark(g, m.x, m.y, 5.2, m.color, m.i);
+      const count = Number.isFinite(m.p.n) ? ' · n = ' + m.p.n : '';
+      const message = m.label + ' · ' + m.p.visit + ' · Mean ' + number(m.p.mean) + count;
+      bind(g, message, opt.onPoint ? () => opt.onPoint({ label: m.label, ...m.p }) : undefined, mark);
+    }
+  }
+
+  function endpoint(v) {
+    if (v === Infinity || v === 'Infinity' || v === '+Infinity' || v === 'inf') return Infinity;
+    if (v === -Infinity || v === '-Infinity' || v === '-inf') return -Infinity;
+    return Number.isFinite(v) ? v : null;
+  }
+
+  function forest(container, opt, width) {
+    const rows = opt.rows || [];
+    const rowHeight = 37,
+      top = 24,
+      bottom = top + Math.max(rows.length, 1) * rowHeight,
+      height = bottom + 43;
+    const { svg, bind } = frame(
+      container,
+      width,
+      height,
+      'Feature effects',
+      'Select a feature to view its trajectory. Focus a row for the effect and available interval endpoints.',
+    );
+    if (!rows.length) {
+      label(svg, width / 2, height / 2, 'No estimates for this comparison', { 'text-anchor': 'middle' });
+      return;
+    }
+    const left = Math.min(width * 0.4, 153),
+      right = width - (width < 350 ? 47 : 60);
+    const numeric = rows
+      .flatMap((r) => [r.estimate, endpoint(r.lo), endpoint(r.hi)])
+      .filter(Number.isFinite);
+    const range = Math.max(...numeric.map(Math.abs), 0.015);
+    const step = stepSize(range, width >= 440 ? 2 : 1);
+    const extent = Math.ceil(range / step) * step;
+    const domain = { min: -extent, max: extent, step };
+    const xAt = (v) => left + ((v + extent) * (right - left)) / (extent * 2);
+    label(svg, 7, 13, 'Feature', { 'font-size': 10.5, 'font-weight': 600 });
+    label(svg, width - 7, 13, 'Estimate', {
+      'text-anchor': 'end',
+      'font-size': 10.5,
+      'font-weight': 600,
+    });
+    const gx = node(svg, 'g');
+    rows.forEach((r, i) => {
+      if (r.id === opt.selected)
+        node(gx, 'rect', {
+          x: 0,
+          y: top + i * rowHeight + 1,
+          width,
+          height: rowHeight - 2,
+          rx: 5,
+          fill: '#f3f1ff',
         });
+    });
+    for (const tick of ticks(domain)) {
+      const x = xAt(tick);
+      node(svg, 'line', {
+        x1: x,
+        x2: x,
+        y1: top,
+        y2: bottom,
+        stroke: tick === 0 ? '#989fb0' : grid,
+        'stroke-dasharray': tick === 0 ? '3 3' : '1 4',
+        'stroke-width': 1,
       });
-      const alternative = element('ul','sr-only');
-      records.forEach(r => alternative.append(element('li','', r.person.id + '. ' +
-        visits.map((v,i) => v + ' ' + (r.reasons[i] || 'observed')).join('. '))));
-      group.append(header, grid, alternative);
-      return group;
+      label(svg, x, bottom + 13, tickText(tick, step), { 'text-anchor': 'middle', 'font-size': 9.5 });
     }
-    function render() {
-      const primary = order.value, reference = arms.find(arm => arm !== primary);
-      const paired = design.value === 'paired', cross = design.value === 'cross';
-      const visits = cross ? [visit.value] : ['Baseline', visit.value];
-      const armOrder = paired ? [primary] : [primary, reference];
-      const records = participants.filter(person => armOrder.includes(person.arm)).map(person => {
-        const reasons = visits.map(time => absenceReason(person, time));
-        return {person, reasons, eligible: reasons.every(reason => !reason)};
+    rows.forEach((r, i) => {
+      const y = top + (i + 0.5) * rowHeight;
+      const chosen = r.id === opt.selected;
+      const color = chosen ? '#6747db' : '#526078';
+      const group = node(svg, 'g', { class: 'sct-effect', 'aria-pressed': String(chosen) });
+      node(group, 'rect', {
+        class: 'sct-rowfill',
+        x: 0,
+        y: y - rowHeight / 2 + 1,
+        width,
+        height: rowHeight - 2,
+        rx: 5,
+        fill: 'transparent',
+        opacity: 0.53,
       });
-      const included = records.filter(record => record.eligible).length;
-      const excluded = records.filter(record => !record.eligible);
-      byId('number').replaceChildren(document.createTextNode(String(included)),element('small','', ' / ' + records.length));
-      const caption = cross ? 'participants observed at this visit' : 'participants with both visits';
-      byId('metric-label').textContent = caption;
-      byId('groups').replaceChildren(...armOrder.map((arm,i) =>
-        evidenceGroup(arm, records.filter(r => r.person.arm === arm), visits, i === 0)));
-      const change = 'from baseline to ' + visit.value.toLowerCase();
-      const outcome = 'interferon-response score';
-      const question = cross ? 'How does the ' + outcome + ' at ' + visit.value.toLowerCase() + ' differ between ' + primary + ' and ' + reference + '?' :
-        paired ? 'How does the ' + outcome + ' change within ' + primary + ' ' + change + '?' :
-        'How does the change in ' + outcome + ' ' + change + ' differ between ' + primary + ' and ' + reference + '?';
-      byId('question').textContent = question;
-      byId('exclusion-title').textContent = 'Review exclusions (' + excluded.length + ')';
-      const reasons = element('ul');
-      excluded.forEach(r => reasons.append(element('li','', r.person.id + ' · ' +
-        visits.flatMap((v,i) => r.reasons[i] ? [v + ', ' + r.reasons[i]] : []).join(' · '))));
-      byId('exclusions').replaceChildren(excluded.length ? reasons : element('p','','Every participant in the selected cohort has coverage.'));
-      const compare = cross ? primary + ' − ' + reference + ' at ' + visit.value :
-        paired ? visit.value + ' − Baseline in ' + primary :
-        '(' + visit.value + ' − Baseline) in ' + primary + ' minus (' + visit.value + ' − Baseline) in ' + reference;
-      const fields = [
-        ['Design', design.selectedOptions[0].text], ['Population', population.value], ['Outcome', 'Interferon-response score'], ['Contrast', compare],
-        ['Coverage', included + ' of ' + records.length + ' participants'], ['Function', cross ? 'between_arm_comparison' : paired ? 'within_arm_comparison' : 'did_table']
-      ];
-      byId('specification').replaceChildren(...fields.flatMap(([key,value]) => [element('dt','',key),element('dd','',value)]));
-      byId('announcement').textContent = included + ' of ' + records.length + ' ' + caption + '. ' + question;
+      if (chosen) node(group, 'rect', { x: 0, y: y - 8, width: 2.5, height: 16, rx: 1.25, fill: color });
+      const labelText = String(r.label || r.id);
+      const title = label(group, 7, y + 3.8, labelText, {
+        fill: chosen ? '#45359a' : ink,
+        'font-size': width < 365 ? 10.5 : 11.5,
+        'font-weight': chosen ? 650 : 500,
+      });
+      // Use actual font metrics so wide glyphs do not overlap the intervals.
+      fitLabel(title, left - 17, false);
+      const lo = endpoint(r.lo),
+        hi = endpoint(r.hi);
+      const interval = lo !== null && hi !== null && lo <= hi && lo !== Infinity && hi !== -Infinity;
+      if (interval) {
+        const l = lo === -Infinity ? left : xAt(lo),
+          h = hi === Infinity ? right : xAt(hi);
+        node(group, 'line', { x1: l, x2: h, y1: y, y2: y, stroke: color, 'stroke-width': 2.1 });
+        [
+          [l, lo, -1],
+          [h, hi, 1],
+        ].forEach(([x, end, direction]) => {
+          if (Number.isFinite(end))
+            node(group, 'line', {
+              x1: x,
+              x2: x,
+              y1: y - 4,
+              y2: y + 4,
+              stroke: color,
+              'stroke-width': 1.5,
+            });
+          else
+            node(group, 'path', {
+              d:
+                'M ' +
+                (x - direction * 4) +
+                ' ' +
+                (y - 3) +
+                ' L ' +
+                x +
+                ' ' +
+                y +
+                ' L ' +
+                (x - direction * 4) +
+                ' ' +
+                (y + 3),
+              fill: 'none',
+              stroke: color,
+              'stroke-width': 1.5,
+            });
+        });
+      }
+      if (Number.isFinite(r.estimate))
+        node(group, 'circle', {
+          cx: xAt(r.estimate),
+          cy: y,
+          r: chosen ? 4.8 : 3.9,
+          fill: color,
+          stroke: '#fff',
+          'stroke-width': 1.3,
+        });
+      const displayEstimate = Number.isFinite(r.estimate) ? number(r.estimate, 2, true) : '—';
+      label(group, width - 7, y + 3.8, displayEstimate, {
+        'text-anchor': 'end',
+        'font-size': 11,
+        'font-weight': chosen ? 680 : 550,
+        fill: chosen ? '#4936a4' : ink,
+      });
+      const printed = (x) => (x === -Infinity ? '−∞' : x === Infinity ? '+∞' : number(x));
+      const desc =
+        labelText +
+        ' · Estimate ' +
+        number(r.estimate) +
+        (interval ? ' · 95% CI ' + printed(lo) + ' to ' + printed(hi) : ' · Interval unavailable');
+      bind(group, desc, opt.onSelect ? () => opt.onSelect(r.id) : undefined);
+      group.setAttribute('aria-label', title.textContent + ' ' + displayEstimate);
+      const descId = 'sct-effect-desc-' + sequence + '-' + i;
+      node(svg, 'desc', { id: descId }, desc);
+      group.setAttribute('aria-describedby', descId);
+    });
+    label(svg, (left + right) / 2, bottom + 33, opt.unit || 'Effect', {
+      'text-anchor': 'middle',
+      'font-size': 10.5,
+    });
+  }
+
+  window.disposeStudyPlot = (container) => {
+    const store = active.get(container);
+    if (!store) return;
+    if (store.observer) store.observer.disconnect();
+    active.delete(container);
+  };
+  window.drawTrajectory = (container, options) => mount(container, options, trajectory);
+  window.drawForest = (container, options) => mount(container, options, forest);
+})();
+
+(() => {
+  'use strict';
+
+  const recordsPerPage = 12;
+  const previousViews = new WeakMap();
+  const counts = new Intl.NumberFormat('en-US');
+  const scores = new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 });
+  let nextId = 0;
+
+  function node(tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+
+  function makeButton(label, className, handler) {
+    const button = node('button', className, label);
+    button.type = 'button';
+    button.addEventListener('click', handler);
+    return button;
+  }
+
+  function makeSelect(name, items, initial, change) {
+    const field = node('label', 'pe-control');
+    field.append(node('span', 'pe-label', name));
+    const select = node('select', 'select');
+    select.setAttribute('aria-label', name);
+    for (const [value, label] of items) select.add(new Option(label, value));
+    select.value = initial;
+    select.addEventListener('change', () => change(select.value));
+    field.append(select);
+    return field;
+  }
+
+  function indexVisits(observations, population) {
+    const index = new Map();
+    for (const obs of observations) {
+      let visits = index.get(obs.id);
+      if (!visits) {
+        visits = new Map();
+        index.set(obs.id, visits);
+      }
+      // A specimen may contain other populations but no observations in the selected one.
+      if (!visits.has(obs.visit)) visits.set(obs.visit, null);
+      if (obs.population === population && obs.cells > 0) visits.set(obs.visit, obs);
     }
-    design.addEventListener('change', () => { updateDesignOptions(); render(); });
-    [order,visit,population].forEach(select => select.addEventListener('change', render));
-    byId('review').addEventListener('click', () => byId('contrast').showModal());
-    updateDesignOptions();
+    return index;
+  }
+
+  function visitMark(entry) {
+    const present = Boolean(entry);
+    const label = present
+      ? 'Observed'
+      : entry === null
+        ? 'Population absent from summary'
+        : 'No specimen recorded';
+    const mark = node('span', 'pe-mark pe-' + (present ? 'yes' : entry === null ? 'partial' : 'no'));
+    mark.setAttribute('role', 'img');
+    mark.setAttribute('aria-label', label);
+    mark.title = label;
+    return mark;
+  }
+
+  function status(entry) {
+    return entry === undefined
+      ? 'No specimen recorded'
+      : entry === null
+        ? 'Population absent from summary'
+        : 'Observed';
+  }
+
+  function pageControls(page, pageCount, onPage) {
+    const pager = node('div', 'pe-pages');
+    const prev = makeButton('Previous', 'pe-step', () => onPage(page - 1));
+    const next = makeButton('Next', 'pe-step', () => onPage(page + 1));
+    prev.disabled = page === 0;
+    next.disabled = page >= pageCount - 1;
+    pager.append(prev, node('span', 'pe-page-number', page + 1 + ' / ' + pageCount), next);
+    return pager;
+  }
+
+  function renderPeople(container, model, actions = {}) {
+    const old = previousViews.get(container);
+    const state =
+      old && old.study === model.participants
+        ? old
+        : {
+            study: model.participants,
+            arm: '',
+            coverage: '',
+            query: '',
+            page: 0,
+          };
+    const prefix = 'pe-' + ++nextId;
+    const { participants, arms, visits, population, feature } = model;
+    const selected = [...new Set(model.selectedVisits)];
+    const analysisArms = new Set(model.analysisArms);
+    const index = indexVisits(model.observations, population);
+    const shownVisits = visits.length <= 5 ? visits : selected;
+    const unused = new Map();
+    if (model.filterArm !== undefined && model.filterArm !== state.requestedArm) {
+      state.arm = model.filterArm;
+      state.requestedArm = model.filterArm;
+    }
+    if (model.query !== undefined && model.query !== state.requestedQuery) {
+      state.query = model.query;
+      state.requestedQuery = model.query;
+    }
+    if (!arms.includes(state.arm)) state.arm = '';
+    const rows = participants.map((person) => {
+      const visitsByPerson = index.get(person.id) || unused;
+      const observed = selected.map((v) => visitsByPerson.get(v));
+      const inArm = analysisArms.has(person.arm);
+      const covered = inArm && selected.length > 0 && observed.every(Boolean);
+      const cells = observed.reduce((sum, obs) => sum + (obs?.cells || 0), 0);
+      return { person, visitsByPerson, inArm, covered, cells };
+    });
+    previousViews.set(container, state);
+
+    const root = node('section', 'pe card');
+    root.setAttribute('aria-labelledby', prefix + '-title');
+    const head = node('div', 'pe-head');
+    const title = node('h2', '', 'Visit coverage');
+    title.id = prefix + '-title';
+    head.append(
+      title,
+      node('p', 'pe-sub', [population, selected.join(' and ')].filter(Boolean).join(' · ')),
+    );
+    const filters = node('div', 'pe-filters');
+    const searchField = node('label', 'pe-control pe-search');
+    searchField.append(node('span', 'pe-label', 'Participant ID'));
+    const input = node('input', 'pe-input');
+    input.type = 'search';
+    input.placeholder = 'Search participants';
+    input.value = state.query;
+    searchField.append(input);
+    const groupSelect = makeSelect(
+      'Group',
+      [['', 'All groups'], ...arms.map((a) => [a, a])],
+      state.arm,
+      (value) => {
+        state.arm = value;
+        state.page = 0;
+        update();
+      },
+    );
+    const coverageSelect = makeSelect(
+      'Coverage',
+      [
+        ['', 'All participants'],
+        ['included', 'Eligible by coverage'],
+        ['missing', 'Incomplete coverage'],
+        ['outside', 'Outside selected groups'],
+      ],
+      state.coverage,
+      (value) => {
+        state.coverage = value;
+        state.page = 0;
+        update();
+      },
+    );
+    filters.append(searchField, groupSelect, coverageSelect);
+    const scroller = node('div', 'pe-scroll');
+    const table = node('table', 'pe-table');
+    table.setAttribute('aria-label', 'Participant visit coverage');
+    const tableHead = table.createTHead().insertRow();
+    ['Participant', 'Group', ...shownVisits, 'Cells¹', 'Coverage'].forEach((header) => {
+      const th = node('th', '', header);
+      th.scope = 'col';
+      tableHead.append(th);
+    });
+    const body = table.createTBody();
+    scroller.append(table);
+    const footer = node('div', 'pe-footer'),
+      range = node('p', 'pe-range');
+    range.setAttribute('aria-live', 'polite');
+    const pager = node('div');
+    footer.append(range, pager);
+    const legend = node('div', 'pe-legend');
+    for (const [entry, label] of [
+      [true, 'Observed'],
+      [null, 'Population unobserved'],
+      [undefined, 'Specimen unrecorded'],
+    ]) {
+      const k = node('span', 'pe-key');
+      const mark = visitMark(entry);
+      mark.setAttribute('aria-hidden', 'true');
+      k.append(mark, node('span', '', label));
+      legend.append(k);
+    }
+    const note = node(
+      'p',
+      'pe-note',
+      '¹ Cells in the selected population and visits. Coverage describes specimen availability. Fitted counts can vary by feature.',
+    );
+    const extras = node('div', 'pe-notes');
+    extras.append(legend, note);
+    root.append(head, filters, scroller, footer, extras);
+    container.replaceChildren(root);
+
+    function update() {
+      const needle = state.query.trim().toLocaleLowerCase();
+      const visible = rows.filter(
+        (r) =>
+          (!needle || String(r.person.id).toLocaleLowerCase().includes(needle)) &&
+          (!state.arm || r.person.arm === state.arm) &&
+          (!state.coverage ||
+            (state.coverage === 'included' && r.covered) ||
+            (state.coverage === 'missing' && r.inArm && !r.covered) ||
+            (state.coverage === 'outside' && !r.inArm)),
+      );
+      const pages = Math.max(1, Math.ceil(visible.length / recordsPerPage));
+      state.page = Math.max(0, Math.min(state.page, pages - 1));
+      const first = state.page * recordsPerPage;
+      body.replaceChildren();
+      visible.slice(first, first + recordsPerPage).forEach((record) => {
+        const tr = body.insertRow();
+        const id = node('th');
+        id.scope = 'row';
+        const open = makeButton(String(record.person.id), 'pe-person', () => openParticipant(record));
+        open.setAttribute('aria-label', 'Inspect participant ' + record.person.id);
+        id.append(open);
+        tr.append(id);
+        const group = tr.insertCell();
+        const badge = node('span', 'pe-group', record.person.arm);
+        badge.classList.toggle('pe-second', arms.indexOf(record.person.arm) === 1);
+        group.append(badge);
+        shownVisits.forEach((v) => tr.insertCell().append(visitMark(record.visitsByPerson.get(v))));
+        tr.insertCell().append(node('span', 'pe-num', counts.format(record.cells)));
+        const label = record.covered ? 'Eligible' : record.inArm ? 'Incomplete' : 'Outside groups';
+        tr.insertCell().append(
+          node(
+            'span',
+            'pe-status pe-' + (record.covered ? 'covered' : record.inArm ? 'incomplete' : 'outside'),
+            label,
+          ),
+        );
+      });
+      if (!visible.length) {
+        const td = body.insertRow().insertCell();
+        td.colSpan = shownVisits.length + 4;
+        td.className = 'pe-empty';
+        td.textContent = 'No participants match these filters.';
+      }
+      const last = Math.min(first + recordsPerPage, visible.length);
+      range.textContent = visible.length
+        ? first + 1 + '–' + last + ' of ' + counts.format(visible.length) + ' participants'
+        : '0 participants';
+      pager.replaceChildren();
+      if (pages > 1) {
+        const move = (page) => {
+          state.page = page;
+          update();
+          const preferred = page > 0 ? 'button:first-child' : 'button:last-child';
+          pager.querySelector(preferred)?.focus();
+        };
+        pager.append(pageControls(state.page, pages, move));
+      }
+    }
+
+    function openParticipant(record) {
+      const dialog = node('dialog', 'pe-detail');
+      const title = node('h2', '', String(record.person.id));
+      title.id = prefix + '-detail-title';
+      dialog.setAttribute('aria-labelledby', title.id);
+      const heading = node('div', 'pe-dialog-head');
+      const titleBlock = node('div');
+      titleBlock.append(node('p', 'pe-dialog-label', 'Participant'), title);
+      const close = makeButton('Close', 'pe-close', () => dialog.close());
+      heading.append(titleBlock, close);
+      const context = node('p', 'pe-dialog-sub', record.person.arm + ' · ' + population);
+      const panel = node('div', 'pe-scroll');
+      const detail = node('table', 'pe-table pe-detail-table');
+      const thead = detail.createTHead().insertRow();
+      for (const h of ['Visit', 'Status', 'Cells', feature.label]) {
+        const th = node('th', '', h);
+        th.scope = 'col';
+        thead.append(th);
+      }
+      const detailBody = detail.createTBody();
+      panel.append(detail);
+      const nav = node('div', 'pe-detail-nav');
+      const totalPages = Math.max(1, Math.ceil(visits.length / recordsPerPage));
+      function detailPage(page) {
+        detailBody.replaceChildren();
+        visits.slice(page * recordsPerPage, (page + 1) * recordsPerPage).forEach((v) => {
+          const obs = record.visitsByPerson.get(v);
+          const tr = detailBody.insertRow();
+          const th = node('th', '', v);
+          th.scope = 'row';
+          tr.append(th);
+          tr.insertCell().textContent = status(obs);
+          tr.insertCell().textContent = obs ? counts.format(obs.cells) : '—';
+          const val = obs?.scores?.[feature.id];
+          tr.insertCell().textContent = Number.isFinite(val) ? scores.format(val) : '—';
+        });
+        nav.replaceChildren();
+        if (totalPages > 1) nav.append(pageControls(page, totalPages, detailPage));
+      }
+      detailPage(0);
+      dialog.append(heading, context, panel, nav);
+      root.append(dialog);
+      dialog.addEventListener('close', () => dialog.remove(), { once: true });
+      dialog.showModal();
+      close.focus();
+      if (typeof actions.onParticipant === 'function') actions.onParticipant(record.person.id);
+    }
+
+    input.addEventListener('input', () => {
+      state.query = input.value;
+      state.page = 0;
+      update();
+    });
+    update();
+    if (model.initialId !== undefined) {
+      const initial = rows.find((record) => record.person.id === model.initialId);
+      if (initial) openParticipant(initial);
+    }
+  }
+
+  globalThis.renderPeople = renderPeople;
+})();
+
+(() => {
+  'use strict';
+
+  const sorting = new WeakMap();
+  const formatDecimal = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const signed = (n) =>
+    Number.isFinite(n) ? (n < 0 ? '−' : n > 0 ? '+' : '') + formatDecimal.format(Math.abs(n)) : '—';
+  const bound = (n) => (n === Infinity ? '∞' : n === -Infinity ? '−∞' : signed(n));
+  const interval = (row) =>
+    row.lo === null ||
+    row.lo === undefined ||
+    Number.isNaN(row.lo) ||
+    row.hi === null ||
+    row.hi === undefined ||
+    Number.isNaN(row.hi)
+      ? '—'
+      : bound(row.lo) + ' to ' + bound(row.hi);
+  function probability(n) {
+    if (!Number.isFinite(n)) return '—';
+    if (n === 0) return '0';
+    return n < 0.001 ? n.toExponential(1).replace('e-', 'e−') : n.toFixed(3);
+  }
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function renderResults(container, model, actions) {
+    const isMean = !model.reference && Boolean(model.isMean);
+    const currentFocus = container.contains(document.activeElement)
+      ? document.activeElement.dataset.resultFocus
+      : undefined;
+    const sort = sorting.get(container) || { key: '', ascending: true };
+    const source = Array.isArray(model.rows) ? model.rows : [];
+    const selected = source.find((row) => row.id === model.selected) || source[0];
+    const rows = [...source];
+    const available = model.reference
+      ? ['label', 'estimate', 'p', 'q', 'n']
+      : ['label', 'estimate', 'n'];
+    if (available.includes(sort.key)) {
+      rows.sort((a, b) => {
+        if (sort.key === 'label') return a.label.localeCompare(b.label) * (sort.ascending ? 1 : -1);
+        const x = a[sort.key],
+          y = b[sort.key];
+        if (!Number.isFinite(x)) return Number.isFinite(y) ? 1 : 0;
+        if (!Number.isFinite(y)) return -1;
+        return (x - y) * (sort.ascending ? 1 : -1);
+      });
+    }
+    const layout = el('div', 'results-layout');
+    const card = el('section', 'card results-table-card');
+    const heading = el('div', 'section-head result-head');
+    const left = el('div');
+    left.append(
+      el(
+        'h2',
+        '',
+        model.reference ? 'Feature estimates' : isMean ? 'Participant means' : 'Descriptive contrasts',
+      ),
+    );
+    heading.append(left);
+    const exportButton = el('button', 'btn small', 'Export CSV');
+    exportButton.type = 'button';
+    exportButton.dataset.resultFocus = 'export';
+    exportButton.disabled = source.length === 0;
+    exportButton.addEventListener('click', actions.onExport);
+    heading.append(exportButton);
+    card.append(heading);
+
+    const scroller = el('div', 'results-scroll');
+    const table = el('table', 'results-table');
+    table.setAttribute(
+      'aria-label',
+      model.reference
+        ? 'Feature estimates and uncertainty'
+        : isMean
+          ? 'Participant means by feature'
+          : 'Descriptive participant-level contrasts',
+    );
+    const header = table.createTHead().insertRow();
+    function createColumn(key, name) {
+      const th = el('th');
+      th.scope = 'col';
+      if (!available.includes(key)) {
+        th.textContent = name;
+        header.append(th);
+        return;
+      }
+      const sorted = sort.key === key;
+      if (sorted) th.setAttribute('aria-sort', sort.ascending ? 'ascending' : 'descending');
+      const button = el('button', 'sort-head');
+      button.type = 'button';
+      button.title = 'Sort by ' + name;
+      button.dataset.resultFocus = 'sort-' + key;
+      const glyph = el('span', 'sort-arrow', sorted ? (sort.ascending ? '↑' : '↓') : '↕');
+      glyph.setAttribute('aria-hidden', 'true');
+      button.append(document.createTextNode(name), glyph);
+      button.addEventListener('click', () => {
+        sorting.set(container, {
+          key,
+          ascending: sorted ? !sort.ascending : key !== 'n' && key !== 'estimate',
+        });
+        renderResults(container, model, actions);
+      });
+      th.append(button);
+      header.append(th);
+    }
+    createColumn('label', 'Feature');
+    createColumn('estimate', model.reference ? 'Estimate' : isMean ? 'Mean' : 'Difference');
+    if (model.reference) {
+      createColumn('ci', '95% CI');
+      createColumn('p', 'p');
+      createColumn('q', 'FDR');
+    }
+    createColumn('n', 'n');
+    const body = table.createTBody();
+    for (const row of rows) {
+      const tr = body.insertRow();
+      if (row.id === selected?.id) tr.classList.add('chosen-feature');
+      const nameCell = el('th', 'feature-cell');
+      nameCell.scope = 'row';
+      const featureButton = el('button', 'feature-link', row.label);
+      featureButton.type = 'button';
+      featureButton.dataset.resultFocus = 'feature-' + row.id;
+      featureButton.setAttribute('aria-pressed', String(row.id === selected?.id));
+      function selectRow() {
+        actions.onSelect(row.id);
+      }
+      featureButton.addEventListener('click', selectRow);
+      tr.addEventListener('click', (event) => {
+        if (!featureButton.contains(event.target)) selectRow();
+      });
+      nameCell.append(featureButton);
+      tr.append(nameCell);
+      tr.append(el('td', 'result-number', signed(row.estimate)));
+      if (model.reference) {
+        tr.append(
+          el('td', 'result-interval', interval(row)),
+          el('td', 'result-number', probability(row.p)),
+          el('td', 'result-number', probability(row.q)),
+        );
+      }
+      tr.append(el('td', 'result-number', Number.isFinite(row.n) ? String(row.n) : '—'));
+    }
+    if (!source.length) {
+      const td = el('td', 'result-empty', 'No features are available for this comparison.');
+      td.colSpan = header.cells.length;
+      body.insertRow().append(td);
+    }
+    scroller.append(table);
+    card.append(scroller);
+    const foot = el(
+      'p',
+      'result-foot muted',
+      model.reference
+        ? 'n = contributing participants. FDR is reported across the tested features.'
+        : isMean
+          ? 'Each participant contributes one summary at the selected visit.'
+          : 'Differences are calculated from the imported participant summaries.',
+    );
+    card.append(foot);
+    layout.append(card);
+
+    if (selected) {
+      const detail = el('section', 'card result-detail');
+      const group = el('div', 'result-detail-top');
+      const name = el('div');
+      name.append(el('span', 'detail-kicker', 'Selected feature'), el('h2', '', selected.label));
+      group.append(name);
+      const trace = el('button', 'btn small', 'View trajectory');
+      trace.type = 'button';
+      trace.dataset.resultFocus = 'trace';
+      trace.addEventListener('click', () => actions.onShowOverview(selected.id));
+      group.append(trace);
+      detail.append(group);
+      const facts = el('dl', 'detail-facts');
+      function fact(label, value, special) {
+        const div = el('div', special ? 'fact feature-estimate' : 'fact');
+        div.append(el('dt', '', label), el('dd', '', value));
+        facts.append(div);
+      }
+      fact(
+        model.reference ? 'Estimate' : isMean ? 'Participant mean' : 'Descriptive difference',
+        signed(selected.estimate),
+        true,
+      );
+      if (model.reference) fact('95% confidence interval', interval(selected));
+      fact('Participants', Number.isFinite(selected.n) ? String(selected.n) : '—');
+      if (model.unit) fact('Units', model.unit);
+      detail.append(facts);
+      if (model.contrast) {
+        const contrast = el('div', 'selected-contrast');
+        contrast.append(el('span', '', isMean ? 'Summary' : 'Contrast'), el('p', '', model.contrast));
+        detail.append(contrast);
+      }
+      layout.append(detail);
+    }
+    container.replaceChildren(layout);
+    if (currentFocus)
+      Array.from(container.querySelectorAll('[data-result-focus]'))
+        .find((node) => node.dataset.resultFocus === currentFocus)
+        ?.focus({ preventScroll: true });
+  }
+  globalThis.renderResults = renderResults;
+})();
+
+(() => {
+  'use strict';
+  const icons = {
+    dashboard:
+      '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    people:
+      '<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2m0-15a3 3 0 0 1 0 6m2 3a5 5 0 0 1 4 5"/>',
+    chart:
+      '<path d="M3 4v16h18M6 14h11m-6-5h9"/><circle cx="10" cy="14" r="2"/><circle cx="16" cy="9" r="2"/>',
+    sliders:
+      '<path d="M3 6h7m4 0h7M3 12h12m4 0h2M3 18h3m4 0h11"/><circle cx="12" cy="6" r="2"/><circle cx="17" cy="12" r="2"/><circle cx="8" cy="18" r="2"/>',
+    folder: '<path d="M3 6h7l2 2h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/>',
+    layers: '<path d="m3 8 9-5 9 5-9 5Zm0 4 9 5 9-5M3 16l9 5 9-5"/>',
+    chevrons: '<path d="m8 9 4-4 4 4m-8 6 4 4 4-4"/>',
+    search: '<circle cx="10" cy="10" r="6.5"/><path d="m15 15 5.5 5.5"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/>',
+    download: '<path d="M12 3v11m-4-4 4 4 4-4M4 16v4h16v-4"/>',
+    menu: '<path d="M3 5h18M3 12h18M3 19h18"/>',
+    close: '<path d="m6 6 12 12m0-12L6 18"/>',
+    paired: '<circle cx="6" cy="15" r="3"/><circle cx="18" cy="8" r="3"/><path d="m8.5 13.4 7-4.2"/>',
+    cells:
+      '<circle cx="8" cy="8" r="4"/><circle cx="16.5" cy="14.5" r="4.5"/><circle cx="6" cy="18" r="2"/>',
+    calendar:
+      '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v5m10-5v5M3 11h18m-12 4h2"/>',
+    arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
+    file: '<path d="M5 3h9l5 5v13H5Zm9 0v6h5M8 14h8m-8 3h6"/>',
+    code: '<path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-14-2 18"/>',
+    check: '<path d="m4 12 5 5L20 6"/>',
+    upload: '<path d="M12 16V4m-5 5 5-5 5 5M4 16v4h16v-4"/>',
+  };
+  const icon = (name) =>
+    '<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
+    (icons[name] || '') +
+    '</svg>';
+  document.querySelectorAll('[data-icon]').forEach((node) => {
+    node.innerHTML = icon(node.dataset.icon);
+  });
+  const $ = (id) => document.getElementById(id);
+  const esc = (value) =>
+    String(value ?? '').replace(
+      /[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+    );
+  const option = (value, chosen, label = value) =>
+    '<option value="' +
+    esc(value) +
+    '"' +
+    (value === chosen ? ' selected' : '') +
+    '>' +
+    esc(label) +
+    '</option>';
+  const labels = {
+    did: 'Difference-in-differences',
+    paired: 'Paired change',
+    cross: 'Cross-sectional',
+    observe: 'Single-visit mean',
+  };
+  const titles = { overview: 'Study overview', participants: 'Participants', results: 'Results' };
+  const sample = JSON.parse($('dataset').textContent);
+  let study = sample,
+    arms = [],
+    obsByPerson,
+    byPopulation,
+    state = {},
+    peopleContext = {},
+    previousTrigger = null,
+    toastTimer;
+  const color = (arm) => (arm === arms[0] ? '#684ce5' : '#078478');
+  const reference = () => study === sample;
+  const name = () => (reference() ? sample.study.name : study.title);
+  const feature = () => study.features.find((f) => f.id === state.feature) || study.features[0];
+  const displayUnit = () => (reference() ? 'Mean module score' : 'Recorded score');
+  const mean = (values) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : null);
+  const fmt = (n) => (Number.isFinite(n) ? n.toLocaleString('en-US') : '—');
+  const armsIn = () =>
+    ['paired', 'observe'].includes(state.design)
+      ? [state.arm]
+      : [state.arm, ...arms.filter((a) => a !== state.arm)];
+  const datesIn = () =>
+    ['cross', 'observe'].includes(state.design) ? [state.visit] : [state.baseline, state.visit];
+  const designs = () => [
+    ...(arms.length > 1 && study.visits.length > 1 ? ['did'] : []),
+    ...(study.visits.length > 1 ? ['paired'] : []),
+    ...(arms.length > 1 ? ['cross'] : []),
+    ...(arms.length === 1 && study.visits.length === 1 ? ['observe'] : []),
+  ];
+  const other = () => arms.find((a) => a !== state.arm);
+  const contrast = () =>
+    ['cross', 'observe'].includes(state.design)
+      ? (state.design === 'observe' ? state.arm : state.arm + ' − ' + other()) + ' · ' + state.visit
+      : (state.design === 'paired' ? state.arm : state.arm + ' − ' + other()) +
+        ' · ' +
+        state.baseline +
+        ' → ' +
+        state.visit;
+  function init(next) {
+    study = next;
+    arms = [...new Set(study.participants.map((p) => p.arm))];
+    obsByPerson = new Map();
+    byPopulation = new Map();
+    for (const row of study.observations) {
+      if (!byPopulation.has(row.population)) byPopulation.set(row.population, []);
+      byPopulation.get(row.population).push(row);
+      if (!obsByPerson.has(row.id)) obsByPerson.set(row.id, new Map());
+      const byVisit = obsByPerson.get(row.id);
+      if (!byVisit.has(row.visit)) byVisit.set(row.visit, new Map());
+      byVisit.get(row.visit).set(row.population, row);
+    }
+    const baseline =
+      study.visits.find((v) =>
+        /^(baseline|pre|pretreatment|pre-treatment|day 0|week 0)$/i.test(v.trim()),
+      ) || study.visits[0];
+    state = {
+      view: 'overview',
+      design: designs()[0],
+      arm: arms[0],
+      baseline,
+      visit: study.visits.find((v) => v !== baseline) || baseline,
+      population: study.populations[0],
+      feature: study.features[0].id,
+      individuals: true,
+    };
+    peopleContext = {};
     render();
-  </script>
-</body>
-</html>
+  }
+  const rowAt = (id, v) => obsByPerson.get(id)?.get(v)?.get(state.population);
+  function eligible(person) {
+    return armsIn().includes(person.arm) && datesIn().every((v) => rowAt(person.id, v));
+  }
+  function currentRows() {
+    if (reference()) {
+      const raw =
+        study.results[[state.design, state.arm, state.visit, state.population].join('|')] || [];
+      return raw.map((r) => ({
+        ...r,
+        id: r.feature,
+        label: study.features.find((f) => f.id === r.feature).label,
+      }));
+    }
+    const groups = armsIn(),
+      visits = datesIn();
+    return study.features.map((f) => {
+      const values = groups.map((arm) =>
+        study.participants
+          .filter((p) => p.arm === arm)
+          .flatMap((p) => {
+            const vv = visits.map((v) => rowAt(p.id, v)?.scores[f.id]);
+            return vv.every(Number.isFinite) ? [vv.length === 2 ? vv[1] - vv[0] : vv[0]] : [];
+          }),
+      );
+      const means = values.map(mean),
+        usable = means.every(Number.isFinite);
+      return {
+        id: f.id,
+        label: f.label,
+        estimate: usable ? (means.length === 1 ? means[0] : means[0] - means[1]) : null,
+        lo: null,
+        hi: null,
+        p: null,
+        q: null,
+        n: values.reduce((n, v) => n + v.length, 0),
+        nFirst: values[0].length,
+        nOther: values[1]?.length ?? null,
+      };
+    });
+  }
+  function visitCoverageBulk(popRecords) {
+    const summary = new Map(arms.map((a) => [a, new Map(study.visits.map((v) => [v, 0]))]));
+    for (const r of popRecords) summary.get(r.arm).set(r.visit, summary.get(r.arm).get(r.visit) + 1);
+    return summary;
+  }
+  function metric(title, value, note, glyph, tone, wash, mini) {
+    return (
+      '<article class="card stat" style="--tone:' +
+      tone +
+      ';--wash:' +
+      wash +
+      '"><div class="stat-top"><span class="stat-icon">' +
+      icon(glyph) +
+      '</span>' +
+      esc(title) +
+      '</div><span class="stat-number">' +
+      value +
+      '</span><div class="stat-mini" aria-hidden="true">' +
+      mini +
+      '</div><div class="stat-note">' +
+      esc(note) +
+      '</div></article>'
+    );
+  }
+  function miniBtn(text, action) {
+    return (
+      '<button class="text-btn" data-action="' + action + '">' + esc(text) + icon('arrow') + '</button>'
+    );
+  }
+  function releasePlots() {
+    for (const id of ['trajectory', 'forest']) {
+      const el = $(id);
+      if (el) disposeStudyPlot(el);
+    }
+  }
+  function overview() {
+    releasePlots();
+    const tested = armsIn(),
+      people = study.participants.filter((p) => tested.includes(p.arm)),
+      n = people.filter(eligible).length;
+    const popRows = byPopulation.get(state.population) || [],
+      records = popRows.filter((r) => tested.includes(r.arm));
+    const cells = records.reduce((a, r) => a + r.cells, 0);
+    const relevantDates = datesIn();
+    const rows = currentRows(),
+      counts = visitCoverageBulk(popRows);
+    const groupSizes = arms.map((a) => study.participants.filter((p) => p.arm === a).length);
+    const ratios = groupSizes.map((v) => v / study.participants.length);
+    const split = ratios
+      .map((r, i) => '<i style="width:' + 100 * r + '%;background:' + color(arms[i]) + '"></i>')
+      .join('');
+    const ring =
+      '<svg viewBox="0 0 38 38"><circle cx="19" cy="19" r="14" fill="none" stroke="#d6eae6" stroke-width="4"/><circle cx="19" cy="19" r="14" fill="none" stroke="#148a7c" stroke-width="4" pathLength="100" stroke-dasharray="' +
+      (people.length ? (100 * n) / people.length : 0) +
+      ' 100" transform="rotate(-90 19 19)"/></svg>';
+    const visitCells = new Map(study.visits.map((v) => [v, 0]));
+    records.forEach((r) => visitCells.set(r.visit, visitCells.get(r.visit) + r.cells));
+    const totals = [...visitCells.values()],
+      max = totals.reduce((a, b) => Math.max(a, b), 1);
+    const bars = totals
+      .slice(0, 9)
+      .map(
+        (v, i) =>
+          '<i style="height:' +
+          Math.max(1, Math.round((26 * v) / max)) +
+          'px;background:' +
+          (study.visits[i] === state.visit ? '#4279aa' : '#a3bdd6') +
+          '"></i>',
+      )
+      .join('');
+    const sequence = study.visits
+      .slice(0, 7)
+      .map((v) => '<i class="' + (v === state.visit ? 'on' : '') + '"></i>')
+      .join('');
+    const head =
+      '<div class="stats">' +
+      metric(
+        'Participants',
+        fmt(study.participants.length),
+        arms.map((a) => study.participants.filter((p) => p.arm === a).length + ' in ' + a).join(' · '),
+        'people',
+        '#5a48b2',
+        '#eeeafb',
+        '<span class="micro-split">' + split + '</span>',
+      ) +
+      metric(
+        relevantDates.length > 1 ? 'Paired participants' : 'At selected visit',
+        fmt(n) + '<span class="stat-fraction"> / ' + fmt(people.length) + '</span>',
+        relevantDates.join(' → '),
+        'paired',
+        '#08746d',
+        '#dff3ed',
+        ring,
+      ) +
+      metric(
+        'Cells in view',
+        fmt(cells),
+        'Selected groups and population · all visits',
+        'cells',
+        '#3c6da2',
+        '#e7eff9',
+        '<span class="micro-bars">' + bars + '</span>',
+      ) +
+      metric(
+        'Sampling visits',
+        fmt(study.visits.length),
+        study.visits.length > 1 ? study.visits[0] + ' → ' + study.visits.at(-1) : study.visits[0],
+        'calendar',
+        '#976224',
+        '#fbecdb',
+        '<span class="micro-visits">' + sequence + '</span>',
+      ) +
+      '</div>';
+    const plotCards =
+      '<div class="chart-grid"><section class="card chart-card"><div class="section-head"><div><h2>Participant trajectories</h2><p>Observed score by visit</p></div></div><div class="chart-tools"><select id="featureSelect" class="feature-select" aria-label="Outcome score">' +
+      study.features.map((f) => option(f.id, state.feature, f.label)).join('') +
+      '</select><div class="switcher" role="group" aria-label="Trajectory display">' +
+      [false, true]
+        .map(
+          (v, i) =>
+            '<button data-lines="' +
+            i +
+            '" aria-pressed="' +
+            (v === state.individuals) +
+            '">' +
+            (v ? 'Individuals' : 'Means') +
+            '</button>',
+        )
+        .join('') +
+      '</div></div><div class="plot" id="trajectory"></div><div class="panel-footer"><span class="small">All observed participants at each visit</span>' +
+      miniBtn('Explore cohort', 'people') +
+      '</div></section>' +
+      '<section class="card chart-card"><div class="section-head"><div><h2>' +
+      (reference()
+        ? 'Effect estimates'
+        : state.design === 'observe'
+          ? 'Observed means'
+          : 'Descriptive estimates') +
+      '</h2><p>' +
+      esc(contrast()) +
+      '</p></div></div><div class="forest-meta"><span class="pill">' +
+      esc(labels[state.design]) +
+      '</span><span>' +
+      (reference() ? '95% CI' : state.design === 'observe' ? 'Observed mean' : 'Observed contrasts') +
+      '</span></div><div class="plot" id="forest"></div><div class="panel-footer"><span class="small">' +
+      (reference() ? 'Analytical intervals · synthetic study' : 'Participant summaries') +
+      '</span>' +
+      miniBtn('Full results', 'results') +
+      '</div></section></div>';
+    const matrix =
+      '<section class="card coverage"><div class="section-head"><div><h2>Visit coverage</h2><p>' +
+      esc(state.population) +
+      ' · observed participants per group</p></div>' +
+      miniBtn('Participants', 'people') +
+      '</div><div class="matrix-wrap"><table class="matrix"><thead><tr><th scope="col">Group</th>' +
+      study.visits.map((v) => '<th scope="col">' + esc(v) + '</th>').join('') +
+      '</tr></thead><tbody>' +
+      arms
+        .map((a, groupIndex) => {
+          const total = study.participants.filter((p) => p.arm === a).length;
+          return (
+            '<tr style="--arm-color:' +
+            color(a) +
+            '"><td><span class="arm-dot"></span>' +
+            esc(a) +
+            '</td>' +
+            study.visits
+              .map((v, vi) => {
+                const num = counts.get(a).get(v),
+                  ratio = num / total,
+                  bg = groupIndex === 0 ? '104,76,229' : '9,136,120';
+                return (
+                  '<td><button data-cell="' +
+                  groupIndex +
+                  ',' +
+                  vi +
+                  '" aria-label="' +
+                  esc(
+                    a + ', ' + v + ', ' + num + ' / ' + total + ' participants. Inspect participants',
+                  ) +
+                  '" style="background:rgba(' +
+                  bg +
+                  ',' +
+                  (0.04 + 0.17 * ratio) +
+                  ')">' +
+                  num +
+                  ' <span class="denom">/ ' +
+                  total +
+                  '</span></button></td>'
+                );
+              })
+              .join('') +
+            '</tr>'
+          );
+        })
+        .join('') +
+      '</tbody></table></div></section>';
+    $('page').innerHTML = head + plotCards + matrix;
+    const id = state.feature,
+      visits =
+        !reference() && datesIn().length === 2
+          ? [state.baseline, ...study.visits.filter((v) => v !== state.baseline)]
+          : study.visits;
+    const series = tested.map((arm) => {
+      const pp = study.participants.filter((p) => p.arm === arm);
+      const means = visits.map((visit) => {
+        const vv = pp.map((p) => rowAt(p.id, visit)?.scores[id]).filter(Number.isFinite);
+        return { visit, mean: mean(vv), n: vv.length };
+      });
+      // Limit individual paths for legibility. All observations contribute to visit means.
+      const candidates = !state.individuals
+        ? []
+        : pp.length <= 120
+          ? pp
+          : Array.from({ length: 120 }, (_, i) => pp[Math.floor((i * pp.length) / 120)]);
+      const paths = candidates.map((p) => ({
+        id: p.id,
+        points: visits.flatMap((visit) => {
+          const v = rowAt(p.id, visit)?.scores[id];
+          return Number.isFinite(v) ? [{ visit, value: v }] : [];
+        }),
+      }));
+      return { label: arm, color: color(arm), means, people: paths };
+    });
+    if (
+      state.individuals &&
+      tested.some((a) => study.participants.filter((p) => p.arm === a).length > 120)
+    )
+      document.querySelector('#trajectory + .panel-footer .small').textContent =
+        'Up to 120 individual paths per group · means include all participants';
+    drawTrajectory($('trajectory'), {
+      series,
+      visits,
+      showIndividuals: state.individuals,
+      featureLabel: feature().label,
+      unit: displayUnit(),
+      onPoint: (point) => visitDetail(point),
+    });
+    drawForest($('forest'), {
+      rows,
+      selected: id,
+      unit: displayUnit(),
+      onSelect: (next) => {
+        const keyboard = $('forest').contains(document.activeElement);
+        state.feature = next;
+        overview();
+        if (keyboard)
+          requestAnimationFrame(() => $('forest')?.querySelector('[aria-pressed="true"]')?.focus());
+      },
+    });
+    $('featureSelect').onchange = (e) => {
+      state.feature = e.target.value;
+      overview();
+      $('featureSelect').focus();
+    };
+    document.querySelectorAll('[data-lines]').forEach(
+      (b) =>
+        (b.onclick = () => {
+          state.individuals = b.dataset.lines === '1';
+          overview();
+          document.querySelector('[data-lines="' + b.dataset.lines + '"]').focus();
+        }),
+    );
+    document.querySelectorAll('[data-cell]').forEach(
+      (b) =>
+        (b.onclick = () => {
+          const [groupIndex, vi] = b.dataset.cell.split(',').map(Number);
+          visitDetail({
+            label: arms[groupIndex],
+            visit: study.visits[vi],
+            n: counts.get(arms[groupIndex]).get(study.visits[vi]),
+          });
+        }),
+    );
+  }
+  function render() {
+    $('railStudy').textContent = reference() ? 'Immune study' : name();
+    $('railStudy').closest('button').title = name();
+    $('railSource').textContent = reference() ? 'Synthetic cohort' : 'Imported CSV';
+    $('pageTitle').textContent = titles[state.view];
+    $('crumbTitle').textContent = state.view === 'overview' ? 'Overview' : titles[state.view];
+    $('sourceBadge').textContent = reference() ? 'Example study' : 'Local CSV';
+    $('caption').textContent = name() + '  ·  ' + state.population;
+    document.querySelectorAll('[data-view]').forEach((b) => {
+      if (b.dataset.view === state.view) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
+    if (state.view !== 'overview') releasePlots();
+    if (state.view === 'overview') overview();
+    else if (state.view === 'participants') {
+      renderPeople(
+        $('page'),
+        {
+          ...peopleContext,
+          participants: study.participants,
+          arms,
+          visits: study.visits,
+          observations: study.observations,
+          population: state.population,
+          selectedVisits: datesIn(),
+          analysisArms: armsIn(),
+          feature: feature(),
+        },
+        {},
+      );
+      peopleContext = {};
+    } else {
+      renderResults(
+        $('page'),
+        {
+          rows: currentRows(),
+          selected: state.feature,
+          unit: displayUnit(),
+          reference: reference(),
+          isMean: state.design === 'observe',
+          contrast: contrast(),
+        },
+        {
+          onSelect: (id) => {
+            state.feature = id;
+            render();
+          },
+          onShowOverview: (id) => {
+            state.feature = id;
+            navigate('overview');
+          },
+          onExport: () => exportFile('results'),
+        },
+      );
+    }
+  }
+  function navigate(view, context = {}) {
+    peopleContext = context;
+    state.view = view;
+    closeMenu();
+    render();
+    window.scrollTo(0, 0);
+  }
+  function closeMenu() {
+    document.querySelector('.body').inert = false;
+    $('rail').classList.remove('open');
+    $('scrim').hidden = true;
+    $('menu').setAttribute('aria-expanded', 'false');
+  }
+  function modal(title, html) {
+    const d = $('dialog');
+    if (!d.open) previousTrigger = document.activeElement;
+    $('dialogTitle').textContent = title;
+    $('dialogBody').innerHTML = html;
+    if (!d.open) d.showModal();
+  }
+  function finish() {
+    if ($('dialog').open) $('dialog').close();
+  }
+  function toast(text) {
+    $('toast').textContent = text;
+    $('toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      $('toast').hidden = true;
+    }, 2600);
+  }
+  $('dialog').addEventListener('close', () => {
+    if (previousTrigger?.isConnected) previousTrigger.focus();
+    previousTrigger = null;
+  });
+  $('dismiss').onclick = finish;
+  $('dialog').addEventListener('click', (e) => {
+    if (e.target === $('dialog')) {
+      const r = $('dialog').getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)
+        finish();
+    }
+  });
+  function configure() {
+    const draft = { ...state };
+    function build() {
+      const two = ['cross', 'observe'].includes(draft.design) ? false : true;
+      const allowed = two ? study.visits.filter((v) => v !== draft.baseline) : study.visits;
+      if (!allowed.includes(draft.visit)) draft.visit = allowed[0];
+      const field = (label, id, options, wide = false) =>
+        '<label class="field' +
+        (wide ? ' wide' : '') +
+        '"><span>' +
+        label +
+        '</span><select class="field-input" id="' +
+        id +
+        '">' +
+        options +
+        '</select></label>';
+      modal(
+        'Contrast settings',
+        '<div class="fields">' +
+          field(
+            'Study design',
+            'draftDesign',
+            designs()
+              .map((x) => option(x, draft.design, labels[x]))
+              .join(''),
+            true,
+          ) +
+          field(
+            ['paired', 'observe'].includes(draft.design) ? 'Study group' : 'Group order',
+            'draftArm',
+            arms
+              .map((a) =>
+                option(
+                  a,
+                  draft.arm,
+                  ['paired', 'observe'].includes(draft.design)
+                    ? a
+                    : a + ' minus ' + arms.find((b) => b !== a),
+                ),
+              )
+              .join(''),
+            true,
+          ) +
+          (two && !reference()
+            ? field(
+                'Baseline visit',
+                'draftBase',
+                study.visits.map((v) => option(v, draft.baseline)).join(''),
+              )
+            : '') +
+          field(
+            two ? 'Follow-up visit' : 'Visit',
+            'draftVisit',
+            allowed.map((v) => option(v, draft.visit)).join(''),
+          ) +
+          field(
+            'Cell population',
+            'draftPop',
+            study.populations.map((p) => option(p, draft.population)).join(''),
+          ) +
+          '</div>' +
+          '<div class="contrast-note" id="contrastDescr"></div><div class="form-actions"><button class="btn" id="cancelEdit">Cancel</button><button class="btn primary" id="applyEdit">Apply contrast</button></div>',
+      );
+      function summary() {
+        const s = two
+          ? 'Change from ' + draft.baseline + ' to ' + draft.visit
+          : 'Score at ' + draft.visit;
+        $('contrastDescr').textContent =
+          s +
+          ' · ' +
+          draft.arm +
+          (['did', 'cross'].includes(draft.design)
+            ? ' minus ' + arms.find((a) => a !== draft.arm)
+            : '') +
+          ' · ' +
+          draft.population;
+      }
+      summary();
+      $('draftDesign').onchange = (e) => {
+        draft.design = e.target.value;
+        build();
+        $('draftDesign').focus();
+      };
+      if ($('draftBase'))
+        $('draftBase').onchange = (e) => {
+          draft.baseline = e.target.value;
+          build();
+          $('draftBase').focus();
+        };
+      for (const [id, key] of [
+        ['draftArm', 'arm'],
+        ['draftVisit', 'visit'],
+        ['draftPop', 'population'],
+      ])
+        $(id).onchange = (e) => {
+          draft[key] = e.target.value;
+          summary();
+        };
+      $('cancelEdit').onclick = finish;
+      $('applyEdit').onclick = () => {
+        Object.assign(state, draft);
+        finish();
+        render();
+        toast('Contrast updated');
+      };
+    }
+    build();
+  }
+  function visitDetail(point) {
+    const ids = (byPopulation.get(state.population) || [])
+      .filter((r) => r.arm === point.label && r.visit === point.visit)
+      .sort((a, b) => a.id.localeCompare(b.id));
+    modal(
+      point.label + ' · ' + point.visit,
+      '<p class="small">' +
+        esc(state.population) +
+        ' · ' +
+        fmt(ids.length) +
+        ' observed participants</p><div class="modal-list">' +
+        ids
+          .slice(0, 100)
+          .map(
+            (r, i) =>
+              '<button data-record="' +
+              i +
+              '"><b>' +
+              esc(r.id) +
+              '</b><small>' +
+              fmt(r.cells) +
+              ' cells</small></button>',
+          )
+          .join('') +
+        (!ids.length ? '<p class="empty">No participants observed.</p>' : '') +
+        '</div><div class="form-actions"><button id="exploreGroup" class="btn">Explore group</button></div>',
+    );
+    document.querySelectorAll('[data-record]').forEach(
+      (b) =>
+        (b.onclick = () => {
+          finish();
+          navigate('participants', { initialId: ids[Number(b.dataset.record)].id });
+        }),
+    );
+    $('exploreGroup').onclick = () => {
+      finish();
+      navigate('participants', { filterArm: point.label });
+    };
+  }
+  function search() {
+    modal(
+      'Find in study',
+      '<label class="field"><span>Participant ID or score</span><input class="field-input" id="query" autocomplete="off" type="search" placeholder="Search this study"></label><div class="modal-list" id="matches"></div>',
+    );
+    const data = [
+      ...study.features.map((f) => ({ key: f.id, title: f.label, type: 'Outcome score' })),
+      ...study.participants.map((p) => ({ key: p.id, title: p.id, type: p.arm })),
+    ];
+    function update() {
+      const q = $('query').value.trim().toLowerCase(),
+        hits = data.filter((i) => (i.title + ' ' + i.type).toLowerCase().includes(q)).slice(0, 30);
+      $('matches').innerHTML =
+        hits
+          .map(
+            (i, n) =>
+              '<button data-match="' +
+              n +
+              '"><b>' +
+              esc(i.title) +
+              '</b><small>' +
+              esc(i.type) +
+              '</small></button>',
+          )
+          .join('') || '<p class="empty">No matches.</p>';
+      document.querySelectorAll('[data-match]').forEach(
+        (b) =>
+          (b.onclick = () => {
+            const i = hits[Number(b.dataset.match)];
+            finish();
+            if (data.indexOf(i) < study.features.length) {
+              state.feature = i.key;
+              navigate('overview');
+            } else navigate('participants', { initialId: i.key });
+          }),
+      );
+    }
+    $('query').oninput = update;
+    update();
+    $('query').focus();
+  }
+  function download(file, data, type) {
+    const url = URL.createObjectURL(new Blob([data], { type }));
+    const a = document.createElement('a');
+    a.download = file;
+    a.href = url;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+  const choice = (id, glyph, title, note) =>
+    '<button class="choice" id="' +
+    id +
+    '"><i>' +
+    icon(glyph) +
+    '</i><span><strong>' +
+    esc(title) +
+    '</strong><small>' +
+    esc(note) +
+    '</small></span></button>';
+  function openStudy() {
+    modal(
+      'Open study',
+      '<label class="drop-zone" id="drop" tabindex="0" role="button">' +
+        icon('upload') +
+        '<strong>Choose a participant CSV</strong><small>or drop a file here · up to 8 MB</small><input id="csvFile" type="file" accept=".csv,text/csv" hidden></label><p class="hint">One row per participant, group, visit, and cell population. Include cell counts and at least one numeric score. Imported studies support descriptive comparisons.</p><div id="importError" class="error" role="alert" hidden></div>' +
+        choice('template', 'file', 'Download example CSV', 'Column names and a small test study') +
+        choice(
+          'restore',
+          'layers',
+          'Open example study',
+          'Synthetic cohort with fitted reference results',
+        ),
+    );
+    async function read(file) {
+      if (!file) return;
+      try {
+        if (file.size > 8 * 1024 * 1024) throw Error('Choose a CSV smaller than 8 MB.');
+        const next = readStudyCSV(await file.text(), file.name);
+        finish();
+        init(next);
+        toast('Study opened');
+      } catch (e) {
+        $('importError').textContent = e.message;
+        $('importError').hidden = false;
+      }
+    }
+    $('csvFile').onchange = (e) => read(e.target.files[0]);
+    $('drop').onkeydown = (e) => {
+      if ([' ', 'Enter'].includes(e.key)) {
+        e.preventDefault();
+        $('csvFile').click();
+      }
+    };
+    for (const event of ['dragenter', 'dragover'])
+      $('drop').addEventListener(event, (e) => {
+        e.preventDefault();
+        $('drop').classList.add('over');
+      });
+    $('drop').ondragleave = () => $('drop').classList.remove('over');
+    $('drop').ondrop = (e) => {
+      e.preventDefault();
+      $('drop').classList.remove('over');
+      read(e.dataTransfer.files[0]);
+    };
+    $('template').onclick = () => download('participant-summaries.csv', studyCSVTemplate(), 'text/csv');
+    $('restore').onclick = () => {
+      finish();
+      init(sample);
+      toast('Example study opened');
+    };
+  }
+  function csv(rows) {
+    return (
+      rows
+        .map((row) =>
+          row
+            .map((v) => {
+              if (v == null) return '';
+              if (typeof v === 'number') return String(v);
+              let s = String(v);
+              if (/^[\s]*[=+@-]/.test(s)) s = "'" + s;
+              return '"' + s.replace(/"/g, '""') + '"';
+            })
+            .join(','),
+        )
+        .join('\r\n') + '\r\n'
+    );
+  }
+  function exportFile(kind) {
+    if (kind === 'settings') {
+      const spec = {
+        study: name(),
+        source: reference() ? 'synthetic reference' : 'local participant summaries',
+        design: state.design,
+        orderedGroups: armsIn(),
+        visits: datesIn(),
+        population: state.population,
+        featurePanel: study.features,
+        selectedFeature: state.feature,
+        unit: displayUnit(),
+        method: reference()
+          ? study.study.methods[state.design]
+          : state.design === 'observe'
+            ? 'Mean across observed participants'
+            : 'Unadjusted descriptive participant differences',
+        ...(reference()
+          ? { package: study.study.package, commit: study.study.commit, seed: study.study.seed }
+          : {}),
+      };
+      download('sctrial-comparison.json', JSON.stringify(spec, null, 2), 'application/json');
+    } else if (kind === 'results') {
+      const headers = [
+        'feature',
+        'measure',
+        'design',
+        'first_group',
+        'second_group',
+        'visits',
+        'population',
+        'estimate',
+        'n',
+        ...(reference() ? ['ci_lower', 'ci_upper', 'p', 'fdr'] : []),
+      ];
+      const rows = currentRows().map((r) => [
+        r.label,
+        state.design === 'observe' ? 'mean' : reference() ? 'model estimate' : 'descriptive difference',
+        state.design,
+        state.arm,
+        armsIn()[1] ?? '',
+        datesIn().join(' to '),
+        state.population,
+        r.estimate,
+        r.n,
+        ...(reference() ? [r.lo, r.hi, r.p, r.q] : []),
+      ]);
+      download('sctrial-results.csv', csv([headers, ...rows]), 'text/csv');
+    } else {
+      const header = [
+        'participant',
+        'arm',
+        'visit',
+        'population',
+        'cells',
+        ...study.features.map((f) => f.label),
+      ];
+      const rows = (byPopulation.get(state.population) || [])
+        .filter((r) => armsIn().includes(r.arm) && datesIn().includes(r.visit))
+        .map((r) => [
+          r.id,
+          r.arm,
+          r.visit,
+          r.population,
+          r.cells,
+          ...study.features.map((f) => r.scores[f.id]),
+        ]);
+      download('sctrial-participant-summaries.csv', csv([header, ...rows]), 'text/csv');
+    }
+    toast('Export downloaded');
+  }
+  function exportMenu() {
+    modal(
+      'Export study data',
+      choice(
+        'resFile',
+        'chart',
+        'Feature results · CSV',
+        reference()
+          ? 'Estimates, intervals, p-values and fitted counts'
+          : 'Descriptive estimates and participant counts',
+      ) +
+        choice(
+          'setFile',
+          'code',
+          'Comparison settings · JSON',
+          'Group order, visits, population and feature panel',
+        ) +
+        choice(
+          'obsFile',
+          'people',
+          'Participant summaries · CSV',
+          'Includes participant IDs for the selected groups and visits',
+        ),
+    );
+    for (const [id, kind] of [
+      ['resFile', 'results'],
+      ['setFile', 'settings'],
+      ['obsFile', 'observations'],
+    ])
+      $(id).onclick = () => {
+        finish();
+        exportFile(kind);
+      };
+  }
+  function info() {
+    const entries = [
+      ['Study', name()],
+      ['Source', reference() ? 'Synthetic reference cohort' : 'Local participant summary CSV'],
+      ['Unit', displayUnit()],
+      [
+        'Method',
+        reference()
+          ? study.study.methods[state.design]
+          : 'Unadjusted descriptive summary by participant.',
+      ],
+      ...(reference()
+        ? [
+            ['Package', study.study.package],
+            ['Multiplicity', study.study.multiplicity],
+            ['Interpretation', study.study.smallSample],
+          ]
+        : []),
+    ];
+    modal(
+      'Study information',
+      '<dl class="meta-list">' +
+        entries.map(([a, b]) => '<div><dt>' + esc(a) + '</dt><dd>' + esc(b) + '</dd></div>').join('') +
+        '</dl>',
+    );
+  }
+  const actions = {
+    open: openStudy,
+    configure,
+    export: exportMenu,
+    search,
+    info,
+    results: () => navigate('results'),
+    people: () => navigate('participants'),
+  };
+  document.addEventListener('click', (e) => {
+    const view = e.target.closest('[data-view]');
+    if (view) {
+      navigate(view.dataset.view);
+      return;
+    }
+    const b = e.target.closest('[data-action]');
+    if (b) {
+      closeMenu();
+      actions[b.dataset.action]?.();
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const wasOpen = $('rail').classList.contains('open');
+      closeMenu();
+      if (wasOpen) $('menu').focus();
+      return;
+    }
+    if (
+      e.key === '/' &&
+      !e.ctrlKey &&
+      !e.metaKey &&
+      !e.altKey &&
+      !document.querySelector('dialog[open]') &&
+      !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)
+    ) {
+      e.preventDefault();
+      search();
+    }
+  });
+  $('menu').onclick = () => {
+    const open = $('rail').classList.toggle('open');
+    $('scrim').hidden = !open;
+    document.querySelector('.body').inert = open;
+    $('menu').setAttribute('aria-expanded', String(open));
+    if (open) $('rail').querySelector('[aria-current="page"]').focus();
+  };
+  $('scrim').onclick = () => {
+    closeMenu();
+    $('menu').focus();
+  };
+  window.matchMedia('(min-width:841px)').addEventListener('change', (e) => {
+    if (e.matches) closeMenu();
+  });
+  init(sample);
+})();
+</script>
+ </body></html>
