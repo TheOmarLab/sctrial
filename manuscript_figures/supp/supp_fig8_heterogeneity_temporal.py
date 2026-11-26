@@ -47,6 +47,10 @@ from .._shared import (
     get_tnbc_zhang,
     get_vaccine,
     harmonize_response,
+    key_below_axes,
+    letter_at_panel_corner,
+    output_dpi,
+    report_layout_problems,
     save_panel,
 )
 
@@ -286,17 +290,8 @@ def _draw_heatmap_row_annotations(ax, pid_order, annotations, n_features, compos
 
     total_left = gap_to_heatmap + n_strips * strip_w + (n_strips - 1) * gap_between
     ax.set_xlim(-total_left, n_features)
-
-    _leg_fs = 5 if composite else 6
-    _ncol = 2
-    ax.legend(handles=all_handles, fontsize=_leg_fs, frameon=True,
-              loc="lower center", ncol=_ncol,
-              handlelength=0.7, handleheight=0.7,
-              borderpad=0.3, labelspacing=0.15,
-              bbox_to_anchor=(0.5, 1.01),
-              bbox_transform=ax.transAxes)
-    # Report the legend's row count so the caller can lift the title clear of it.
-    return int(np.ceil(len(all_handles) / _ncol))
+    # Placed below the axes by the caller (key_below_axes) once the fonts are final.
+    ax.legend(handles=all_handles, fontsize=5 if composite else 6)
 
 
 def _panel_heatmap(ax, effects: pd.DataFrame, features: list[str], title: str,
@@ -336,21 +331,13 @@ def _panel_heatmap(ax, effects: pd.DataFrame, features: list[str], title: str,
         linecolor="white",
     )
     _xtk_fs = 5 if composite else 8
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right", fontsize=_xtk_fs)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=90, ha="center", fontsize=_xtk_fs)
     ax.set_ylabel("Participants")
-
+    ax.set_title(title, fontweight="bold")
     if annotations:
-        n_leg_rows = _draw_heatmap_row_annotations(
-            ax, mat.index.tolist(), annotations, len(features), composite)
-        # The row-annotation legend is anchored just above the axes (lower center at
-        # y=1.01). Lift the title clear of it so they never overprint. The composite
-        # re-issues its own title y afterward, so only the standalone needs this.
-        if composite:
-            ax.set_title(title, fontweight="bold")
-        else:
-            ax.set_title(title, fontweight="bold", y=1.05 + 0.075 * max(1, n_leg_rows))
+        _draw_heatmap_row_annotations(ax, mat.index.tolist(), annotations, len(features),
+                                      composite)
     else:
-        ax.set_title(title, fontweight="bold")
         ax.yaxis.set_label_coords(-0.06, 0.5)
 
 
@@ -401,17 +388,14 @@ def _panel_variance_decomp(ax, effects: pd.DataFrame, features: list[str], title
     ax.set_xlim(0, 1)
     ax.set_xlabel("Fraction of total SS (η²)")
     ax.set_title(title, fontweight="bold")
-    if composite:
-        ax.legend(fontsize=5, frameon=True, loc="lower right", ncol=2)
-    else:
-        ax.legend(fontsize=8, frameon=True)
+    ax.legend(fontsize=5 if composite else 8)
     ax.invert_yaxis()
     despine(ax)
 
 
 def _panel_direction_diversity(ax, effects: pd.DataFrame, features: list[str],
                                title: str, *, effect_threshold: float = 0.05,
-                               composite: bool = False, legend_loc: str | None = None):
+                               composite: bool = False):
     """Direction-diversity bar chart with effect-size threshold."""
     if effects is None or effects.empty:
         ax.text(0.5, 0.5, "No paired effects", ha="center", va="center", transform=ax.transAxes)
@@ -447,9 +431,7 @@ def _panel_direction_diversity(ax, effects: pd.DataFrame, features: list[str],
     ax.set_xlim(-1.05, 1.05)
     ax.set_xlabel("Fraction of participants")
     ax.set_title(title, fontweight="bold")
-    _leg_fs = 5 if composite else 8
-    _leg_loc = legend_loc if legend_loc else ("lower right" if composite else "best")
-    ax.legend(fontsize=_leg_fs, frameon=True, loc=_leg_loc)
+    ax.legend(fontsize=5 if composite else 8)
     despine(ax)
 
 
@@ -660,6 +642,127 @@ def _panel_treated_fc_concordance(ax, data: dict[str, dict]):
     ax.set_title("Treated-arm fold-change concordance", fontweight="bold")
 
 
+
+# Keys sit below their axes (lab rule); columns per key, standalone and composite.
+_KEY_NCOL = {"panel_A": 4, "panel_G": 3, "panel_H": 3, "panel_J": 3}
+
+_SMALL_RC = {
+    "font.size": 5,
+    "axes.titlesize": 5.5,
+    "axes.labelsize": 5,
+    "xtick.labelsize": 4.5,
+    "ytick.labelsize": 4.5,
+    "legend.fontsize": 4,
+    "legend.title_fontsize": 4,
+}
+_MAX_FONT = 6
+
+
+def _cap_fontsize(fig_obj, maximum):
+    for ax_i in fig_obj.get_axes():
+        for txt in ([ax_i.title, ax_i.xaxis.label, ax_i.yaxis.label]
+                    + ax_i.get_xticklabels() + ax_i.get_yticklabels()
+                    + ax_i.texts):
+            if txt.get_fontsize() > maximum:
+                txt.set_fontsize(maximum)
+        leg = ax_i.get_legend()
+        if leg:
+            for txt in leg.get_texts():
+                if txt.get_fontsize() > maximum:
+                    txt.set_fontsize(maximum)
+            t = leg.get_title()
+            if t and t.get_fontsize() > maximum:
+                t.set_fontsize(maximum)
+
+
+def _build_composite(data: dict[str, dict], tnbc_name: str, mel_name: str,
+                     tnbc_annotations: list, mel_annotations: list) -> None:
+    """Assemble panels A-K on a 180 mm wide artboard.
+
+    ``data`` holds each dataset's ``cfg``, ``features`` and ``delta`` (participant
+    Post - Pre effects), without AnnData, so the composite can be rebuilt from saved inputs.
+
+      Row 0: A | B | C   TNBC heatmap | variance decomposition | direction diversity
+      Row 1: D | E | F   Melanoma, same panels
+      Row 2: G | H | I   SD bars | SD scatter | TNBC within-arm profile
+      Row 3: J | K       single-arm profiles | treated-arm concordance
+    """
+    print("  Building composite figure ...")
+    tnbc_ds = data.get(tnbc_name, {})
+    tnbc_eff = tnbc_ds.get("delta")
+    tnbc_feats = tnbc_ds.get("features", FEATURES)
+    mel_eff = data[mel_name].get("delta")
+    mel_feats = data[mel_name].get("features", FEATURES)
+
+    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
+    plt.rcParams.update(_SMALL_RC)
+
+    # Heights in mm. Each gap holds its row's tick labels, x labels and keys and the
+    # titles of the next row.
+    _mm = 1.0 / 25.4
+    rows_mm = [40.0, 23.0, 40.0, 23.0, 38.0, 26.0, 38.0]
+    top_mm, bottom_mm = 7.0, 24.0
+    height_mm = top_mm + sum(rows_mm) + bottom_mm
+    # Laid out at the resolution it is written at, so measured placements hold in the file.
+    fig_c = plt.figure(figsize=(180 * _mm, height_mm * _mm), dpi=output_dpi())
+    outer = fig_c.add_gridspec(len(rows_mm), 1, height_ratios=rows_mm, hspace=0.0,
+                               left=0.07, right=0.97,
+                               top=1 - top_mm / height_mm, bottom=bottom_mm / height_mm)
+
+    gs0 = outer[0].subgridspec(1, 3, width_ratios=[1.1, 1.0, 1.0], wspace=0.50)
+    ax_a, ax_b, ax_c = (fig_c.add_subplot(gs0[i]) for i in range(3))
+    _panel_heatmap(ax_a, tnbc_eff, tnbc_feats, f"{tnbc_name} participant × feature map",
+                   composite=True, annotations=tnbc_annotations)
+    _panel_variance_decomp(ax_b, tnbc_eff, tnbc_feats,
+                           f"{tnbc_name} variance decomposition", composite=True)
+    _panel_direction_diversity(ax_c, tnbc_eff, tnbc_feats,
+                               f"{tnbc_name} effect direction diversity", composite=True)
+
+    gs1 = outer[2].subgridspec(1, 3, width_ratios=[1.1, 1.0, 1.0], wspace=0.50)
+    ax_d, ax_e, ax_f = (fig_c.add_subplot(gs1[i]) for i in range(3))
+    _panel_heatmap(ax_d, mel_eff, mel_feats, f"{mel_name} participant × feature map",
+                   composite=True, annotations=mel_annotations)
+    _panel_variance_decomp(ax_e, mel_eff, mel_feats,
+                           f"{mel_name} variance decomposition", composite=True)
+    _panel_direction_diversity(ax_f, mel_eff, mel_feats,
+                               f"{mel_name} effect direction diversity", composite=True)
+
+    gs2 = outer[4].subgridspec(1, 3, width_ratios=[1.1, 1.0, 1.1], wspace=0.50)
+    ax_g, ax_h, ax_i = (fig_c.add_subplot(gs2[i]) for i in range(3))
+    _panel_sd_bars(ax_g, data, composite=True)
+    _panel_sd_scatter(ax_h, data, composite=True)
+    _panel_within_arm_profile(ax_i, tnbc_eff, tnbc_feats,
+                              f"{tnbc_name} within-arm change profile", composite=True)
+
+    gs3 = outer[6].subgridspec(1, 2, width_ratios=[1.0, 1.0], wspace=0.45)
+    ax_j, ax_k = (fig_c.add_subplot(gs3[i]) for i in range(2))
+    _panel_aml_cart_profile(ax_j, data, composite=True)
+    _panel_treated_fc_concordance(ax_k, data)
+
+    _cap_fontsize(fig_c, _MAX_FONT)
+
+    for row, names in (((ax_a, ax_b, ax_c), ("panel_A", "panel_B", "panel_C")),
+                       ((ax_d, ax_e, ax_f), ("panel_D", "panel_E", "panel_F")),
+                       ((ax_g, ax_h, ax_i), ("panel_G", "panel_H", "panel_I")),
+                       ((ax_j, ax_k), ("panel_J", "panel_K"))):
+        keyed = [a for a in row if a.get_legend() is not None]  # one baseline per row of keys
+        for ax_r, name in zip(row, names):
+            key_below_axes(ax_r, ncol=_KEY_NCOL.get(name, 2), clear_of=keyed)
+
+    for ax_lbl, lbl in zip((ax_a, ax_b, ax_c, ax_d, ax_e, ax_f, ax_g, ax_h, ax_i, ax_j, ax_k),
+                           "ABCDEFGHIJK"):
+        letter_at_panel_corner(ax_lbl, lbl, fontsize=9, keep_clear=True)
+
+    report_layout_problems(fig_c, FIGURE_NAME)
+    plt.rcParams.update(_prev_rc)
+
+    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
+    pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
+    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight", facecolor="white")
+    plt.close(fig_c)
+    print("    Saved combined artboard (PNG + PDF)")
+
+
 def generate():
     print("Supplementary Figure 8: Participant Heterogeneity and Temporal Dynamics")
     data = _load_all()
@@ -736,7 +839,7 @@ def generate():
         # Row 1 — TNBC
         ("panel_A", lambda ax: _panel_heatmap(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} participant × feature map", annotations=tnbc_annotations), (9.5, 6.8)),
         ("panel_B", lambda ax: _panel_variance_decomp(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} variance decomposition"), (8.2, 6.8)),
-        ("panel_C", lambda ax: _panel_direction_diversity(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} effect direction diversity", legend_loc="upper right"), (8.2, 6.8)),
+        ("panel_C", lambda ax: _panel_direction_diversity(ax, tnbc_eff, tnbc_feats, f"{tnbc_name} effect direction diversity"), (8.2, 6.8)),
         # Row 2 — Melanoma
         ("panel_D", lambda ax: _panel_heatmap(ax, mel_eff, mel_feats, f"{mel_name} participant × feature map", annotations=mel_annotations), (9.5, 6.8)),
         ("panel_E", lambda ax: _panel_variance_decomp(ax, mel_eff, mel_feats, f"{mel_name} variance decomposition"), (8.2, 6.8)),
@@ -756,188 +859,17 @@ def generate():
             fig, ax = plt.subplots(figsize=size)
             fn(ax)
             fig.tight_layout()
+            key_below_axes(ax, ncol=_KEY_NCOL.get(panel_name, 2))
             save_panel(fig, panel_name, FIGURE_NAME, SUPP_OUTPUT)
         except Exception as exc:
             print(f"    {panel_name}: failed ({exc})")
             plt.close("all")
 
-    # ==================================================================
-    # Composite artboard  (180 mm × ≤ 270 mm)
-    # ==================================================================
-    #   Row 0: A | B | C   (Melanoma: heatmap | variance | direction)
-    #   Row 2: D | E | F   (TNBC:     heatmap | variance | direction)
-    #   Row 4: G | H | I   (SD bars | SD scatter | within-arm profile)
-    #   Row 6: J | K       (single-arm profile | FC concordance)
-    # ==================================================================
-    print("  Building composite figure ...")
-
-    _SMALL_RC = {
-        "font.size": 5,
-        "axes.titlesize": 5.5,
-        "axes.labelsize": 5,
-        "xtick.labelsize": 4.5,
-        "ytick.labelsize": 4.5,
-        "legend.fontsize": 4,
-        "legend.title_fontsize": 4,
-    }
-    _MAX_FONT = 6
-
-    def _cap_fontsize(fig_obj, maximum):
-        for ax_i in fig_obj.get_axes():
-            for txt in ([ax_i.title, ax_i.xaxis.label, ax_i.yaxis.label]
-                        + ax_i.get_xticklabels() + ax_i.get_yticklabels()
-                        + ax_i.texts):
-                if txt.get_fontsize() > maximum:
-                    txt.set_fontsize(maximum)
-            leg = ax_i.get_legend()
-            if leg:
-                for txt in leg.get_texts():
-                    if txt.get_fontsize() > maximum:
-                        txt.set_fontsize(maximum)
-                t = leg.get_title()
-                if t and t.get_fontsize() > maximum:
-                    t.set_fontsize(maximum)
-
-    _prev_rc = {k: plt.rcParams[k] for k in _SMALL_RC}
-    plt.rcParams.update(_SMALL_RC)
-
-    _mm = 1.0 / 25.4
-    fig_c = plt.figure(figsize=(180 * _mm, 200 * _mm))
-
-    # 7 rows: 4 content rows interleaved with 3 spacer rows
-    outer = fig_c.add_gridspec(
-        7, 1,
-        height_ratios=[
-            0.50,   # row 0: A | B | C  (Melanoma)
-            0.18,   # spacer
-            0.43,   # row 2: D | E | F  (TNBC)
-            0.18,   # spacer
-            0.50,   # row 4: G | H | I  (cross-dataset + within-arm)
-            0.18,   # spacer
-            0.50,   # row 6: J | K      (single-arm + FC concordance)
-        ],
-        hspace=0.0,
-        left=0.06, right=0.98, top=0.97, bottom=0.04,
+    _build_composite(
+        {name: {k: v for k, v in ds.items() if k != "adata"} for name, ds in data.items()},
+        tnbc_name, mel_name, tnbc_annotations, mel_annotations,
     )
 
-    _HEAT_SHRINK_A = 0.80   # TNBC heatmap (two annotation strips need more space above)
-    _HEAT_SHRINK_D = 0.90   # Melanoma heatmap (one annotation strip)
-
-    # ── Row 0: A | B | C  (TNBC) ─────────────────────────────────────
-    gs0 = outer[0].subgridspec(1, 3, width_ratios=[1.1, 1.0, 1.0], wspace=0.50)
-    ax_a = fig_c.add_subplot(gs0[0])
-    ax_b = fig_c.add_subplot(gs0[1])
-    ax_c = fig_c.add_subplot(gs0[2])
-
-    _panel_heatmap(ax_a, tnbc_eff, tnbc_feats, f"{tnbc_name} participant × feature map",
-                   composite=True, annotations=tnbc_annotations)
-    # Shrink ax_a from the top only, freeing space for the legend above the heatmap
-    _pos = ax_a.get_position()
-    ax_a.set_position([_pos.x0, _pos.y0, _pos.width, _pos.height * _HEAT_SHRINK_A])
-    # Re-issue set_title with explicit y so it lands at the original row top
-    ax_a.set_title(ax_a.get_title(), fontweight="bold", y=1.30, pad=0)
-    # Align colorbar to shrunken heatmap bounds
-    try:
-        _cbar_ax = ax_a.collections[0].colorbar.ax
-        _cp = _cbar_ax.get_position()
-        _np = ax_a.get_position()
-        _cbar_ax.set_position([_cp.x0, _np.y0, _cp.width, _np.height])
-    except (IndexError, AttributeError):
-        pass
-    _panel_variance_decomp(ax_b, tnbc_eff, tnbc_feats,
-                           f"{tnbc_name} variance decomposition", composite=True)
-    _panel_direction_diversity(ax_c, tnbc_eff, tnbc_feats,
-                               f"{tnbc_name} effect direction diversity", composite=True,
-                               legend_loc="upper right")
-
-    # ── Row 2: D | E | F  (Melanoma) ─────────────────────────────────
-    gs1 = outer[2].subgridspec(1, 3, width_ratios=[1.1, 1.0, 1.0], wspace=0.50)
-    ax_d = fig_c.add_subplot(gs1[0])
-    ax_e = fig_c.add_subplot(gs1[1])
-    ax_f = fig_c.add_subplot(gs1[2])
-
-    _panel_heatmap(ax_d, mel_eff, mel_feats, f"{mel_name} participant × feature map",
-                   composite=True, annotations=mel_annotations)
-    # Shrink ax_d from the top only, freeing space for the legend above the heatmap
-    _pos = ax_d.get_position()
-    ax_d.set_position([_pos.x0, _pos.y0, _pos.width, _pos.height * _HEAT_SHRINK_D])
-    ax_d.set_title(ax_d.get_title(), fontweight="bold", y=1.16, pad=0)
-    # Align colorbar to shrunken heatmap bounds
-    try:
-        _cbar_ax = ax_d.collections[0].colorbar.ax
-        _cp = _cbar_ax.get_position()
-        _np = ax_d.get_position()
-        _cbar_ax.set_position([_cp.x0, _np.y0, _cp.width, _np.height])
-    except (IndexError, AttributeError):
-        pass
-    _panel_variance_decomp(ax_e, mel_eff, mel_feats,
-                           f"{mel_name} variance decomposition", composite=True)
-    _panel_direction_diversity(ax_f, mel_eff, mel_feats,
-                               f"{mel_name} effect direction diversity", composite=True)
-
-    # ── Row 4: G | H | I  (cross-dataset + within-arm) ───────────────
-    gs2 = outer[4].subgridspec(1, 3, width_ratios=[1.1, 1.0, 1.1], wspace=0.50)
-    ax_g = fig_c.add_subplot(gs2[0])
-    ax_h = fig_c.add_subplot(gs2[1])
-    ax_i = fig_c.add_subplot(gs2[2])
-
-    _panel_sd_bars(ax_g, data, composite=True)
-    _panel_sd_scatter(ax_h, data, composite=True)
-    _panel_within_arm_profile(ax_i, tnbc_eff, tnbc_feats,
-                              f"{tnbc_name} within-arm change profile", composite=True)
-
-    # ── Row 6: J | K  (single-arm profile + FC concordance) ──────────
-    gs3 = outer[6].subgridspec(1, 2, width_ratios=[1.0, 1.0], wspace=0.45)
-    ax_j = fig_c.add_subplot(gs3[0])
-    ax_k = fig_c.add_subplot(gs3[1])
-
-    _panel_aml_cart_profile(ax_j, data, composite=True)
-    _panel_treated_fc_concordance(ax_k, data)
-
-    # ── Post-processing ───────────────────────────────────────────────
-    for ax_pp in fig_c.get_axes():
-        leg = ax_pp.get_legend()
-        if leg:
-            leg.get_frame().set_alpha(0.85)
-            leg.get_frame().set_edgecolor("#CCCCCC")
-
-    _cap_fontsize(fig_c, _MAX_FONT)
-
-    # Bold panel labels — consistent offset
-    _lbl_fs = 9
-    _lbl_x = -0.10
-    _lbl_y = 1.12
-    _lbl_y_heat_a = _lbl_y / _HEAT_SHRINK_A
-    _lbl_y_heat_d = _lbl_y / _HEAT_SHRINK_D
-
-    for ax_lbl, lbl in [
-        (ax_a, "A"), (ax_b, "B"), (ax_c, "C"),
-        (ax_d, "D"), (ax_e, "E"), (ax_f, "F"),
-        (ax_g, "G"), (ax_h, "H"), (ax_i, "I"),
-        (ax_j, "J"), (ax_k, "K"),
-    ]:
-        if ax_lbl is ax_a:
-            _y = _lbl_y_heat_a
-        elif ax_lbl is ax_d:
-            _y = _lbl_y_heat_d
-        else:
-            _y = _lbl_y
-        ax_lbl.text(
-            _lbl_x, _y, lbl,
-            transform=ax_lbl.transAxes,
-            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
-        )
-
-    plt.rcParams.update(_prev_rc)
-
-    save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
-    pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
-    fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",
-                  facecolor="white")
-    plt.close(fig_c)
-    print("    Saved combined artboard (PNG + PDF)")
-
-    # ── Cleanup ───────────────────────────────────────────────────────
     for ds in data.values():
         if "adata" in ds:
             del ds["adata"]

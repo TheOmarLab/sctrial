@@ -1,4 +1,4 @@
-"""Gene-set scoring: z-mean, Seurat-style, and AUCell methods."""
+"""Gene-set scoring: z-mean, mean, and AUCell methods."""
 
 from __future__ import annotations
 

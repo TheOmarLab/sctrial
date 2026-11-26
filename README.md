@@ -45,9 +45,9 @@
 | Feature | Description |
 |---------|-------------|
 | **Trial-Aware Design** | Define participant, visit, arm, and cell type columns once |
-| **Robust Statistics** | Wild cluster bootstrap, participant-level aggregation |
+| **Robust Statistics** | Participant-level aggregation, cluster-robust inference, optional wild cluster bootstrap |
 | **Multiple Comparisons** | Built-in FDR correction across features and cell types |
-| **Power Analysis** | Two-arm DiD and single-arm paired power/sample size calculations |
+| **Power Analysis** | Power and sample size for two-arm DiD, single-arm paired and two-group designs |
 | **Single-Arm Support** | `arm_col=None` for studies without a control arm |
 | **Publication-Ready Plots** | Forest plots, interaction plots, GSEA heatmaps |
 | **Scalable** | Efficient processing of large single-cell datasets |
@@ -74,8 +74,10 @@ pip install "sctrial[plots]"   # includes dataset loaders and visualization
 ```python
 import sctrial as st
 
-# 1. Load a real immunotherapy trial dataset (auto-downloads on first use)
-adata = st.load_sade_feldman()
+# 1. Load a real immunotherapy trial dataset
+#    (allow_download=True fetches the GEO files on first use; the default raises
+#    FileNotFoundError with the download link when they are missing)
+adata = st.load_sade_feldman(allow_download=True)
 adata = st.harmonize_response(adata)  # majority-vote response labels
 
 # 2. Define trial design
@@ -117,7 +119,7 @@ results = st.quick_did(
 
 ## Supported Study Designs & Datasets
 
-sctrial ships with five real clinical trial datasets, accessible via built-in loaders (`st.load_*()`). Each demonstrates a different study design:
+sctrial includes loaders (`st.load_*()`) for six real clinical trial datasets. They cover the supported study designs:
 
 | Design | Description | Dataset | Source | Tutorial |
 |--------|-------------|---------|--------|----------|

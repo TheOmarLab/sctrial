@@ -31,6 +31,7 @@ For studies with >2 timepoints, several approaches are available:
 
 Model Selection Guidance
 ------------------------
+
 - 3-4 timepoints: Linear trend interaction is usually sufficient
 - 5+ timepoints: Consider polynomial or spline models
 - Irregular intervals: Use actual time values, not ordinal indices
@@ -54,8 +55,9 @@ import numpy as np
 import pandas as pd
 from anndata import AnnData
 
+from ..adata_tools import subset_arms
 from ..design import TrialDesign
-from ._utils import apply_fdr
+from ._utils import apply_fdr, drop_unused_levels, fit_identified, fits_exactly, unidentified_terms
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE, AggregateMode
 
 __all__ = [
@@ -77,7 +79,7 @@ def _prepare_longitudinal_data(
     layer: str | None = None,
     exclude_crossovers: bool = True,
 ) -> pd.DataFrame:
-    """Prepare data for longitudinal analysis."""
+    """Prepare data for a two-arm longitudinal analysis: the visits and the two named arms."""
     from ._extract import extract_gene_matrix
 
     # Filter to specified visits
@@ -85,7 +87,7 @@ def _prepare_longitudinal_data(
     if exclude_crossovers and design.crossover_col:
         mask &= ~adata.obs[design.crossover_col].astype(bool)
 
-    ad = adata[mask].copy()
+    ad = subset_arms(adata[mask].copy(), design, stacklevel=4)
 
     # Build dataframe
     df = ad.obs[[design.participant_col, design.visit_col, design.arm_col]].copy()
@@ -160,14 +162,25 @@ def trend_interaction(
     -------
     pd.DataFrame
         Results with columns:
+
         - feature: Feature name
         - beta_trend: Main time effect (in control)
         - beta_treat_trend: Treatment × time interaction (linear)
+        - se_treat_trend: Standard error of the linear interaction (cluster-robust by
+          participant)
         - p_treat_trend: P-value for linear interaction
-        - beta_treat_trend2: Treatment × time² interaction (if quadratic)
-        - p_treat_trend2: P-value for quadratic interaction
         - n_units: Number of participants
         - n_timepoints: Number of visits
+        - beta_treat_trend2: Treatment × time² interaction (quadratic and cubic models)
+        - p_treat_trend2: P-value for quadratic interaction (quadratic and cubic models)
+        - beta_treat_trend3: Treatment × time³ interaction (cubic model)
+        - p_treat_trend3: P-value for cubic interaction (cubic model)
+        - FDR_treat_trend: Benjamini-Hochberg FDR of the linear interaction across features
+        - error: Message of a fit that raised (present only when a fit raised)
+
+        A feature has no estimate (missing values in its row) when both arms are not
+        among its participants, or when the design does not identify the interaction,
+        for example a cubic model on three visits.
 
     Examples
     --------
@@ -195,7 +208,7 @@ def trend_interaction(
 
     # Add numeric time
     df["time_num"] = df[design.visit_col].map(time_map).astype(float)
-    df["arm_bin"] = (df[design.arm_col] == design.arm_treated).astype(int)
+    df["arm_bin"] = design.arm_bin(df)
 
     # Aggregate to participant-visit level
     if aggregate == "participant_visit":
@@ -205,20 +218,44 @@ def trend_interaction(
     # Enforce balanced panel: keep only participants observed at all visits
     visit_counts = df.groupby(design.participant_col, observed=True)[design.visit_col].nunique()
     balanced_pids = visit_counts[visit_counts == len(visits)].index
-    df = df[df[design.participant_col].isin(balanced_pids)].copy()
+    df = drop_unused_levels(df[df[design.participant_col].isin(balanced_pids)].copy())
 
-    n_units = df[design.participant_col].nunique()
     n_timepoints = len(visits)
+    no_estimate = {
+        "beta_trend": np.nan,
+        "beta_treat_trend": np.nan,
+        "se_treat_trend": np.nan,
+        "p_treat_trend": np.nan,
+    }
+    higher_terms = {"linear": [], "quadratic": ["2"], "cubic": ["2", "3"]}.get(model, [])
+    for power in higher_terms:
+        no_estimate[f"beta_treat_trend{power}"] = np.nan
+        no_estimate[f"p_treat_trend{power}"] = np.nan
+    interaction = "arm_bin:time_num"
 
+    model_cols = [design.participant_col, design.visit_col, "time_num", "arm_bin"]
     rows = []
     for feat in features:
-        df_feat = df.copy()
+        # Only the columns of this feature's model: a frame with a column for every feature,
+        # copied once per feature, makes the cost per feature grow with the number of features.
+        df_feat = df[list(dict.fromkeys([*model_cols, feat]))]
+        # The panel is balanced for each feature: a participant without a value at one visit
+        # is not in the model of that feature.
+        df_feat = df_feat.dropna(subset=[feat])
+        visits_seen = df_feat.groupby(design.participant_col, observed=True)[
+            design.visit_col
+        ].nunique()
+        balanced = visits_seen.index[visits_seen == n_timepoints]
+        df_feat = drop_unused_levels(df_feat[df_feat[design.participant_col].isin(balanced)].copy())
+        n_units = int(df_feat[design.participant_col].nunique())
         df_feat["outcome_std"] = df_feat[feat].astype(float)
 
         # Standardize
         y_std = df_feat["outcome_std"].std(ddof=1)
-        if y_std < 1e-12:
-            rows.append({"feature": feat, "n_units": n_units, "n_timepoints": n_timepoints})
+        if not np.isfinite(y_std) or y_std < 1e-12:
+            rows.append(
+                {"feature": feat, **no_estimate, "n_units": n_units, "n_timepoints": n_timepoints}
+            )
             continue
         df_feat["outcome_std"] = (df_feat["outcome_std"] - df_feat["outcome_std"].mean()) / y_std
 
@@ -244,27 +281,51 @@ def trend_interaction(
                     UserWarning,
                     stacklevel=2,
                 )
-            fit = smf.ols(formula, data=df_feat).fit(
-                cov_type="cluster", cov_kwds={"groups": df_feat[design.participant_col]}
+            trend_model = smf.ols(formula, data=df_feat)
+            fit = fit_identified(
+                trend_model,
+                interaction,
+                cov_type="cluster",
+                cov_kwds={"groups": df_feat[design.participant_col]},
             )
+            if fit is None:
+                # One arm among the participants of this feature (the interaction column
+                # then equals the time column or is zero), more terms than the visits
+                # allow, or a time coding that repeats a value.
+                rows.append(
+                    {
+                        "feature": feat,
+                        **no_estimate,
+                        "n_units": n_units,
+                        "n_timepoints": n_timepoints,
+                    }
+                )
+                continue
 
+            # An exact fit gives the estimates and no test; so does a term that the other
+            # regressors determine.
+            exact = fits_exactly(fit)
+            blank = unidentified_terms(trend_model, [f"{interaction}{p}" for p in higher_terms])
+            errors = fit.bse * np.nan if exact else fit.bse.drop(blank, errors="ignore")
+            tested = fit.pvalues * np.nan if exact else fit.pvalues.drop(blank, errors="ignore")
+            estimates = fit.params.drop(blank, errors="ignore")
             result = {
                 "feature": feat,
                 "beta_trend": float(fit.params.get("time_num", np.nan)),
                 "beta_treat_trend": float(fit.params.get("arm_bin:time_num", np.nan)),
-                "se_treat_trend": float(fit.bse.get("arm_bin:time_num", np.nan)),
-                "p_treat_trend": float(fit.pvalues.get("arm_bin:time_num", np.nan)),
+                "se_treat_trend": float(errors.get("arm_bin:time_num", np.nan)),
+                "p_treat_trend": float(tested.get("arm_bin:time_num", np.nan)),
                 "n_units": n_units,
                 "n_timepoints": n_timepoints,
             }
 
             if model in ["quadratic", "cubic"]:
-                result["beta_treat_trend2"] = float(fit.params.get("arm_bin:time_num2", np.nan))
-                result["p_treat_trend2"] = float(fit.pvalues.get("arm_bin:time_num2", np.nan))
+                result["beta_treat_trend2"] = float(estimates.get("arm_bin:time_num2", np.nan))
+                result["p_treat_trend2"] = float(tested.get("arm_bin:time_num2", np.nan))
 
             if model == "cubic":
-                result["beta_treat_trend3"] = float(fit.params.get("arm_bin:time_num3", np.nan))
-                result["p_treat_trend3"] = float(fit.pvalues.get("arm_bin:time_num3", np.nan))
+                result["beta_treat_trend3"] = float(estimates.get("arm_bin:time_num3", np.nan))
+                result["p_treat_trend3"] = float(tested.get("arm_bin:time_num3", np.nan))
 
             rows.append(result)
 
@@ -272,6 +333,7 @@ def trend_interaction(
             rows.append(
                 {
                     "feature": feat,
+                    **no_estimate,
                     "n_units": n_units,
                     "n_timepoints": n_timepoints,
                     "error": str(e),
@@ -279,6 +341,16 @@ def trend_interaction(
             )
 
     res = pd.DataFrame(rows)
+    if rows:
+        # one column order, whichever feature comes first and whether or not it has an estimate
+        order = [
+            "feature",
+            *list(no_estimate)[:4],
+            "n_units",
+            "n_timepoints",
+            *list(no_estimate)[4:],
+        ]
+        res = res[[*order, *(c for c in res.columns if c not in order)]]
 
     # FDR correction for linear trend
     if "p_treat_trend" in res.columns:
@@ -326,13 +398,19 @@ def event_study_did(
     Returns
     -------
     pd.DataFrame
-        Long-format results with columns:
+        Long-format results, one row per feature and post-baseline visit, with the
+        columns of :func:`did_table` and:
+
         - feature: Feature name
         - visit: Post-baseline visit
+        - reference: Reference visit
         - beta_DiD: DiD effect vs reference
         - se_DiD: Standard error
         - p_DiD: P-value
+        - FDR_DiD: Benjamini-Hochberg FDR across all visit-feature tests (recomputed over
+          the combined table, not within each visit)
         - n_units: Sample size
+        - error: Message of a visit whose table raised (present only in that case)
 
     Examples
     --------
@@ -354,6 +432,12 @@ def event_study_did(
 
     if reference_visit not in visits:
         raise ValueError(f"Reference visit '{reference_visit}' not in visits list")
+
+    # Restrict once, so that rows outside the two arms are reported once and a design
+    # without two arms in the data is an error here, not an error row per visit.
+    adata = subset_arms(
+        adata[adata.obs[design.visit_col].isin(list(visits)).to_numpy()], design, stacklevel=3
+    )
 
     # Run DiD for each post-baseline visit
     all_results = []
@@ -429,11 +513,22 @@ def polynomial_trend(
     Returns
     -------
     dict
-        Model results including:
+        Model results:
+
         - coefficients: All model coefficients
+        - pvalues: P-value of each coefficient
         - predictions: Predicted values per arm×time
         - aic, bic: Model fit statistics
+        - rsquared: R-squared of the model
         - residuals: Model residuals
+
+    Raises
+    ------
+    ValueError
+        If the data do not identify a time term or an arm-by-time term: fewer distinct
+        time points than the degree plus one, or one arm only with a value of the feature.
+        Least squares would still return coefficients, p-values and a curve between the
+        time points, each split arbitrarily among the terms that determine each other.
     """
     import statsmodels.formula.api as smf
 
@@ -447,10 +542,10 @@ def polynomial_trend(
 
     # Aggregate
     grp_cols = [design.participant_col, design.visit_col, design.arm_col]
-    df = df.groupby(grp_cols, observed=True)[[feature]].mean().reset_index()
+    df = drop_unused_levels(df.groupby(grp_cols, observed=True)[[feature]].mean().reset_index())
 
     df["time_num"] = df[design.visit_col].map(time_map).astype(float)
-    df["arm_bin"] = (df[design.arm_col] == design.arm_treated).astype(int)
+    df["arm_bin"] = design.arm_bin(df)
     df["outcome_std"] = df[feature].astype(float)
 
     # Build polynomial terms
@@ -464,7 +559,15 @@ def polynomial_trend(
     interact = " + ".join([f"arm_bin:{t}" for t in terms])
     formula = f"outcome_std ~ {fixed} + {interact} + C({design.participant_col})"
 
-    fit = smf.ols(formula, data=df).fit()
+    polynomial = smf.ols(formula, data=df)
+    undetermined = unidentified_terms(polynomial, [*terms, *(f"arm_bin:{t}" for t in terms)])
+    if undetermined:
+        raise ValueError(
+            f"polynomial_trend: {', '.join(undetermined)} not identified for '{feature}'. A "
+            f"polynomial of degree {degree} needs {degree + 1} distinct time points, and "
+            "participants of both arms with a value of the feature."
+        )
+    fit = polynomial.fit()
 
     # Generate population-average predictions by averaging across all
     # participant fixed effects.
@@ -538,10 +641,14 @@ def test_parallel_trends(
     -------
     pd.DataFrame
         Results with:
+
         - feature: Feature name
         - beta_pretrend: Pre-treatment trend difference
         - p_pretrend: P-value for non-parallel trends
-        - warning: "Violation" if p < 0.10
+        - FDR_pretrend: Benjamini-Hochberg FDR of ``p_pretrend`` across features
+        - warning: "Potential violation" if p < 0.10, "OK" otherwise, and
+          "Not estimable" when the feature has no test (see trend_interaction)
+        - n_units: Number of participants
 
     Examples
     --------
@@ -550,7 +657,7 @@ def test_parallel_trends(
     ...     adata, features=genes, design=design,
     ...     pre_visits=["Screen1", "Screen2", "Baseline"]
     ... )
-    >>> violations = pre_test[pre_test["warning"] == "Violation"]
+    >>> violations = pre_test[pre_test["warning"] == "Potential violation"]
     >>> print(f"Features with potential violations: {len(violations)}")
     """
     if len(pre_visits) < 2:
@@ -577,6 +684,11 @@ def test_parallel_trends(
     )
 
     # Flag potential violations
-    res["warning"] = np.where(res["p_pretrend"] < 0.10, "Potential violation", "OK")
+    # A feature without a test is neither a pass nor a violation.
+    res["warning"] = np.select(
+        [res["p_pretrend"].isna(), res["p_pretrend"] < 0.10],
+        ["Not estimable", "Potential violation"],
+        default="OK",
+    )
 
     return res[["feature", "beta_pretrend", "p_pretrend", "FDR_pretrend", "warning", "n_units"]]

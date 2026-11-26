@@ -1,6 +1,7 @@
 """limma-voom runner for pseudobulk benchmarking.
 
 Uses limma-voom with design-appropriate models:
+
 - Two-arm: interaction term (arm × visit) for DiD effect
 - Single-arm: paired visit effect with participant blocking
 """

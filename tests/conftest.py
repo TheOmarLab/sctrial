@@ -1,3 +1,7 @@
+import importlib.util
+import sys
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -53,3 +57,38 @@ def sample_adata():
 @pytest.fixture
 def trial_design():
     return TrialDesign(arm_treated="Treated", arm_control="Control")
+
+
+@pytest.fixture
+def load_figure_module(tmp_path, monkeypatch):
+    """Import a manuscript figure module (``"main/figure2_tnbc_analysis"``) in isolation.
+
+    Figure output goes to a temporary directory, and every ``manuscript_figures``
+    module loaded here is removed from ``sys.modules`` afterwards.
+    """
+    root = Path(__file__).resolve().parent.parent
+    monkeypatch.setenv("SCTRIAL_MANUSCRIPT_DIR", str(tmp_path))
+    saved = {k: v for k, v in sys.modules.items() if k.startswith("manuscript_figures")}
+    for k in saved:
+        del sys.modules[k]
+
+    def _exec(name, path, search=None):
+        kw = {"submodule_search_locations": [str(root / search)]} if search else {}
+        spec = importlib.util.spec_from_file_location(name, root / path, **kw)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        spec.loader.exec_module(module)
+        return module
+
+    def load(relpath):
+        package = relpath.split("/")[0]
+        _exec("manuscript_figures", "manuscript_figures/__init__.py", "manuscript_figures")
+        _exec(f"manuscript_figures.{package}", f"manuscript_figures/{package}/__init__.py",
+              f"manuscript_figures/{package}")
+        name = "manuscript_figures." + relpath.replace("/", ".")
+        return _exec(name, f"manuscript_figures/{relpath}.py")
+
+    yield load
+    for k in [k for k in sys.modules if k.startswith("manuscript_figures")]:
+        del sys.modules[k]
+    sys.modules.update(saved)

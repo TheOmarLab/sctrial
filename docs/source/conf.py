@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath("../../src"))
 project = "sctrial"
 copyright = f"{datetime.now().year}, Omar Lab, Cedars-Sinai Medical Center"
 author = "Omar Lab, Cedars-Sinai Medical Center"
-release = "0.3.3"
+release = "1.1.0"
 
 # -- Extensions ---------------------------------------------------------------
 
@@ -36,6 +36,7 @@ exclude_patterns = []
 # -- HTML output ---------------------------------------------------------------
 
 html_theme = "pydata_sphinx_theme"
+html_baseurl = "https://www.omar-lab.com/sctrial/"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_favicon = "_static/logo_icon.svg"
@@ -86,5 +87,5 @@ html_context = {
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
-    "anndata": ("https://anndata.readthedocs.io/en/latest/", None),
+    "anndata": ("https://anndata.scverse.org/en/stable/", None),
 }

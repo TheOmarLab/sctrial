@@ -19,7 +19,11 @@ Usage examples::
     # Phase 4: Ablation (runs on simulation + real data)
     python scripts/run_benchmark.py --phase ablation --n-jobs 4
 
-    # All phases sequentially
+    # Phase 5: Signal-fraction sensitivity grid
+    python scripts/run_benchmark.py --phase sensitivity --n-jobs 25
+
+    # The four benchmark phases in sequence (simulate, sensitivity, realdata, ablation);
+    # calibration is not one of them
     python scripts/run_benchmark.py --phase all --n-jobs 25
 """
 import argparse
@@ -242,7 +246,7 @@ def phase_simulate(n_jobs: int, n_iterations: int, designs=None):
     comp_dir.mkdir(parents=True, exist_ok=True)
     print("=" * 60)
     print("PHASE 2: Simulation Benchmark")
-    print(f"  {n_iterations} iterations × 2 designs × ~30 scenarios × 6 methods")
+    print(f"  {n_iterations} iterations per scenario, designs: {designs}")
     print(f"  Workers: {n_jobs}")
     print(f"  Output: {out_dir}")
     print("=" * 60)
@@ -278,15 +282,33 @@ def phase_realdata(n_jobs: int):
     )
     # Use a subset of genes for tractability
     gene_cols = sf.var_names[:50].tolist()
+
+    # The cohort in its own vocabulary. The melanoma data (Smart-seq2) are TPM and
+    # hold no raw counts, so the count models (dreamlet, limma-voom, NEBULA) are not
+    # run on them; the methods that take participant-level log(1 + CPM) are.
+    from sctrial.benchmark.contracts import METHOD_ESTIMAND
+    from sctrial.benchmark.orchestrator import CORE_METHODS
+
+    methods = [m for m in CORE_METHODS if METHOD_ESTIMAND[m] == "log1p_cpm"]
+    cohort = dict(
+        participant_col="participant_id",
+        visit_col="visit",
+        visits=("Pre", "Post"),
+        arm_col="response",
+        arm_treated="Responder",
+        arm_control="Non-responder",
+        counts_layer="tpm",
+    )
+    print(f"  Methods: {methods} (TPM cohort: count models not run)")
+
     run_permutation_test(
         sf, gene_cols,
         design_type="two_arm",
+        methods=methods,
         n_permutations=1000,
         n_jobs=n_jobs,
-        participant_col="participant_id",
-        arm_col="response",
-        visit_col="visit",
         output_path=out_dir / "permutation_melanoma.csv",
+        **cohort,
     )
 
     # Subsampling
@@ -295,11 +317,11 @@ def phase_realdata(n_jobs: int):
     print("\n--- Melanoma subsampling (100×) ---")
     run_subsampling(
         sf, gene_cols,
+        methods=methods,
         n_resamples=100,
-        participant_col="participant_id",
-        arm_col="response",
-        visit_col="visit",
+        design_type="two_arm",
         output_path=out_dir / "subsampling_melanoma.csv",
+        **cohort,
     )
 
 
@@ -307,11 +329,10 @@ def phase_sensitivity(n_jobs: int, n_iterations: int, designs=None, panels=None)
     """Phase 5: Signal-fraction sensitivity benchmark.
 
     Tests how null-gene FPR depends on gene-panel size (50-2000) and
-    signal fraction (1-20%). Answers the key reviewer question: does
-    dreamlet inflation attenuate with larger, more realistic panels?
+    signal fraction (1-20%).
 
     Grid: 4 panel sizes × (4 signal fractions + 1 null) = 20 scenarios
-    per design, × 200 iterations × 4 methods.
+    per design, each run for ``n_iterations`` iterations with the core methods.
     """
     from sctrial.benchmark.orchestrator import run_sensitivity_benchmark
 
@@ -441,7 +462,8 @@ def main():
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    if args.phase in ("validate", "all"):
+    # Calibration is a separate entry point, so "all" does not include it.
+    if args.phase == "validate":
         phase_validate(args.n_jobs)
 
     if args.phase in ("simulate", "all"):

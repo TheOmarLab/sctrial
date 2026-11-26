@@ -15,32 +15,37 @@ Table 8  Dataset metadata summary.
 from __future__ import annotations
 
 import gc
+import warnings
+from collections.abc import Collection
+from contextlib import contextmanager
 
 import numpy as np
 import pandas as pd
-import pickle as pkl
-import warnings
-
-from joblib import Parallel, delayed
 from statsmodels.stats.multitest import multipletests
 
-
+from .._relabeling import (
+    between_arm_nulls,
+    did_permutation_nulls,
+    did_relabeling_cached,
+    permutation_summary,
+    within_arm_nulls,
+)
 from .._shared import (
     CLINICAL_SIGNATURES,
     GENE_SIGNATURES,
+    MELANOMA_GENE_LEVEL_COV_TYPE,
     SCTRIAL_AVAILABLE,
     SIGNATURE_DISPLAY_NAMES,
     SUPP_OUTPUT,
     TrialDesign,
     add_log1p_cpm_layer,
     apply_style,
-    between_arm_comparison,
+    between_arm_fit_beta,
     clear_cache,
-    did_fit,
     did_table,
     get_aml,
+    get_between_arm_aggregated_df,
     get_cart,
-    get_did_aggregated_df,
     get_sade_feldman,
     get_stephenson,
     get_tnbc_zhang,
@@ -55,12 +60,29 @@ from .._shared import (
     score_signatures,
     sig_display,
     within_arm_comparison,
-    within_arm_fit_beta,
 )
+
+
+@contextmanager
+def _quiet():
+    """Silence warnings in a block; ``catch_warnings(action=...)`` needs Python 3.11."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        yield
+
 
 # ======================================================================
 # Table 1 — Gene signature definitions
 # ======================================================================
+
+
+def _selected(name: str, datasets: Collection[str] | None) -> bool:
+    """True when *name* is among the requested datasets (every dataset when None).
+
+    Table builders raise when a selected dataset fails, so a table is never
+    written with a dataset silently missing.
+    """
+    return datasets is None or name in datasets
 
 
 def table1_gene_signatures() -> pd.DataFrame:
@@ -100,27 +122,83 @@ def table1_gene_signatures() -> pd.DataFrame:
 # ======================================================================
 
 _KEEP_COLS = [
-    "dataset", "estimand", "label", "feature",
-    "effect", "se", "pvalue", "FDR", "ci_lower", "ci_upper",
-    "n_units", "cov_type_used",
+    "dataset", "estimand", "label", "feature", "signature_set",
+    "effect", "se", "se_bootstrap", "pvalue", "FDR", "ci_lower", "ci_upper", "inference",
+    "n_units", "n_focal", "n_reference", "cov_type_used",
 ]
+
+# Carried from the model fits to Supplementary Table 5 and not written to Supplementary Table 2.
+_MODEL_ONLY_COLS = ["resid_sd"]
+_TABLE2_MODEL_FRAME: pd.DataFrame | None = None
+
+_SET_IMMUNE = "immune"
+_SET_CLINICAL = "clinical"
+
+
+def _by_signature_set(run, immune: list[str], clinical: list[str]) -> pd.DataFrame:
+    """Run ``run(features)`` once per signature set and stack the results.
+
+    The package functions correct for multiple testing over the features of one call,
+    so each set forms its own FDR family: the immune signatures, which are the family
+    of every figure, and the clinical signatures.
+    """
+    parts = []
+    for name, feats in ((_SET_IMMUNE, list(immune)),
+                        (_SET_CLINICAL, [f for f in clinical if f not in set(immune)])):
+        if not feats:
+            continue
+        res = run(feats)
+        res["signature_set"] = name
+        parts.append(res)
+    return pd.concat(parts, ignore_index=True)
+
+
+def _paired_group_sizes(adata, design: TrialDesign, visits: tuple[str, str]) -> tuple[int, int]:
+    """Participants with both visits in the focal and in the reference group.
+
+    ``did_table`` excludes a participant that carries neither group label, with a
+    warning. The table reports the group sizes of the cohort, so an unexpected label
+    among the paired participants raises here.
+    """
+    obs = adata.obs[adata.obs[design.visit_col].isin(visits)]
+    pid = design.participant_col
+    n_visits = obs.groupby(pid, observed=True)[design.visit_col].nunique()
+    paired = obs[obs[pid].isin(n_visits[n_visits == 2].index)]
+    arm = paired.groupby(pid, observed=True)[design.arm_col].first().astype(str)
+    other = sorted(set(arm) - {design.arm_treated, design.arm_control})
+    if other:
+        raise ValueError(
+            f"paired participants with {design.arm_col} in {other}, neither "
+            f"{design.arm_treated!r} nor {design.arm_control!r}")
+    return int((arm == design.arm_treated).sum()), int((arm == design.arm_control).sum())
 
 _COL_MAP = {
     "beta_time": "effect",
     "se_time": "se",
+    "se_time_boot": "se_bootstrap",
     "p_time": "pvalue",
     "FDR_time": "FDR",
     "ci_lo_time": "ci_lower",
     "ci_hi_time": "ci_upper",
     "beta_DiD": "effect",
     "se_DiD": "se",
+    "se_DiD_boot": "se_bootstrap",
     "p_DiD": "pvalue",
     "FDR_DiD": "FDR",
 }
 
+_INFERENCE_BOOTSTRAP = "wild cluster bootstrap"
+_INFERENCE_ANALYTICAL = "analytical"
+
 
 def _harmonise(df: pd.DataFrame, dataset: str, estimand: str) -> pd.DataFrame:
-    """Rename columns to a common schema and tag with dataset/estimand."""
+    """Rename columns to a common schema and tag with dataset/estimand.
+
+    A row's p-value and interval come from one procedure, named in ``inference``: the wild
+    cluster bootstrap where it was run (the interval inverts the bootstrap test), otherwise
+    the model's analytical interval, or effect ± 1.96 SE where the model reports none.
+    ``se`` is always the analytical standard error and ``se_bootstrap`` the bootstrap one.
+    """
     out = df.rename(columns=_COL_MAP).copy()
     # Drop any duplicate columns created by rename
     out = out.loc[:, ~out.columns.duplicated()]
@@ -128,20 +206,22 @@ def _harmonise(df: pd.DataFrame, dataset: str, estimand: str) -> pd.DataFrame:
     out["estimand"] = estimand
     if "label" not in out.columns:
         out["label"] = out["feature"].apply(sig_display)
-    avail = [c for c in _KEEP_COLS if c in out.columns]
-    result = out[avail].reset_index(drop=True)
 
-    # Fill missing CIs from effect ± 1.96 × SE (normal approximation)
-    if "ci_lower" in result.columns and "ci_upper" in result.columns:
-        mask = result["ci_lower"].isna() & result["effect"].notna() & result["se"].notna()
-        if mask.any():
-            result.loc[mask, "ci_lower"] = result.loc[mask, "effect"] - 1.96 * result.loc[mask, "se"]
-            result.loc[mask, "ci_upper"] = result.loc[mask, "effect"] + 1.96 * result.loc[mask, "se"]
-    elif "effect" in result.columns and "se" in result.columns:
-        result["ci_lower"] = result["effect"] - 1.96 * result["se"]
-        result["ci_upper"] = result["effect"] + 1.96 * result["se"]
+    for col in ("ci_lower", "ci_upper"):
+        if col not in out.columns:
+            out[col] = np.nan
+    no_interval = out["ci_lower"].isna() | out["ci_upper"].isna()
+    out.loc[no_interval, "ci_lower"] = out["effect"] - 1.96 * out["se"]
+    out.loc[no_interval, "ci_upper"] = out["effect"] + 1.96 * out["se"]
+    out["inference"] = _INFERENCE_ANALYTICAL
+    if {"ci_lo_boot", "ci_hi_boot"} <= set(out.columns):
+        boot = out["ci_lo_boot"].notna() & out["ci_hi_boot"].notna()
+        out.loc[boot, "ci_lower"] = out["ci_lo_boot"]
+        out.loc[boot, "ci_upper"] = out["ci_hi_boot"]
+        out.loc[boot, "inference"] = _INFERENCE_BOOTSTRAP
 
-    return result
+    avail = [c for c in _KEEP_COLS + _MODEL_ONLY_COLS if c in out.columns]
+    return out[avail].reset_index(drop=True)
 
 
 def _single_arm_design(pid_col: str = "participant_id") -> TrialDesign:
@@ -164,7 +244,7 @@ def _detect_visits(adata) -> tuple[str, str]:
     return (visits_avail[0], visits_avail[-1])
 
 
-def table2_all_results() -> pd.DataFrame:
+def table2_all_results(datasets: Collection[str] | None = None) -> pd.DataFrame:
     """Complete results across all 5 datasets (immune + clinical sigs)."""
     print("  Table 2: Complete results across datasets")
 
@@ -175,148 +255,136 @@ def table2_all_results() -> pd.DataFrame:
     all_results: list[pd.DataFrame] = []
 
     # ── Sade-Feldman (two-arm DiD) ────────────────────────────────────
-    try:
-        adata_sf = get_sade_feldman()
-        if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
-            adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
-        adata_sf, sig_cols = score_signatures(adata_sf, layer="log1p_tpm")
-        adata_sf = harmonize_response(adata_sf)
+    if _selected("Melanoma", datasets):
+        try:
+            adata_sf = get_sade_feldman()
+            if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
+                adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
+            adata_sf, sig_cols = score_signatures(adata_sf, layer="log1p_tpm")
+            adata_sf = harmonize_response(adata_sf)
 
-        design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="visit",
-            arm_col="response_harmonized",
-            arm_treated="Responder",
-            arm_control="Non-responder",
-        )
-        res = did_table(
-            adata_sf, features=sig_cols, design=design,
-            visits=("Pre", "Post"), layer="log1p_tpm",
-            standardize=True, aggregate="participant_visit",
-            use_bootstrap=True, n_boot=999, seed=42,
-        )
-        res["label"] = res["feature"].apply(sig_display)
-        all_results.append(_harmonise(res, "Melanoma", "DiD"))
-        print(f"    Melanoma: {len(res)} features (DiD)")
-        del adata_sf
-        gc.collect()
-    except Exception as exc:
-        print(f"    Melanoma failed: {exc}")
+            design = TrialDesign(
+                participant_col="participant_id",
+                visit_col="visit",
+                arm_col="response_harmonized",
+                arm_treated="Responder",
+                arm_control="Non-responder",
+            )
+            res = did_table(
+                adata_sf, features=sig_cols, design=design,
+                visits=("Pre", "Post"), layer="log1p_tpm",
+                standardize=True, aggregate="participant_visit",
+                use_bootstrap=True, n_boot=999, seed=42,
+            )
+            res["signature_set"] = _SET_IMMUNE
+            res["n_focal"], res["n_reference"] = _paired_group_sizes(adata_sf, design, ("Pre", "Post"))
+            res["label"] = res["feature"].apply(sig_display)
+            all_results.append(_harmonise(res, "Melanoma", "DiD"))
+            print(f"    Melanoma: {len(res)} features (DiD)")
+            del adata_sf
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 2: Melanoma failed") from exc
 
     # ── TNBC / Zhang (two-arm DiD: anti-PDL1+Chemo vs Chemo) ─────────
-    try:
-        adata_tnbc = get_tnbc_zhang()
-        adata_tnbc, sig_cols_tnbc = score_signatures(adata_tnbc, layer="log1p_norm")
+    if _selected("TNBC", datasets):
         try:
-            adata_tnbc, sig_cols_clin = score_clinical_signatures(adata_tnbc, layer="log1p_norm")
-            all_sig_cols_tnbc = list(dict.fromkeys(sig_cols_tnbc + sig_cols_clin))
-        except Exception:
-            all_sig_cols_tnbc = sig_cols_tnbc
-        tnbc_design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="visit",
-            arm_col="arm",
-            arm_treated="anti-PDL1+Chemo",
-            arm_control="Chemo",
-        )
-        res = did_table(
-            adata_tnbc, features=all_sig_cols_tnbc, design=tnbc_design,
-            visits=("Pre", "Post"), layer="log1p_norm",
-            standardize=True, aggregate="participant_visit",
-            use_bootstrap=True, n_boot=999, seed=42,
-        )
-        res["label"] = res["feature"].apply(sig_display)
-        all_results.append(_harmonise(res, "TNBC", "DiD"))
-        print(f"    TNBC: {len(res)} features (DiD)")
-        del adata_tnbc
-        gc.collect()
-    except Exception as exc:
-        print(f"    TNBC failed: {exc}")
+            adata_tnbc = get_tnbc_zhang()
+            adata_tnbc, sig_cols_tnbc = score_signatures(adata_tnbc, layer="log1p_norm")
+            try:
+                adata_tnbc, sig_cols_clin = score_clinical_signatures(adata_tnbc, layer="log1p_norm")
+            except Exception:
+                sig_cols_clin = []
+            tnbc_design = TrialDesign(
+                participant_col="participant_id",
+                visit_col="visit",
+                arm_col="arm",
+                arm_treated="anti-PDL1+Chemo",
+                arm_control="Chemo",
+            )
+            res = _by_signature_set(
+                lambda feats: did_table(
+                    adata_tnbc, features=feats, design=tnbc_design,
+                    visits=("Pre", "Post"), layer="log1p_norm",
+                    standardize=True, aggregate="participant_visit",
+                    use_bootstrap=True, n_boot=999, seed=42,
+                ),
+                sig_cols_tnbc, sig_cols_clin,
+            )
+            res["n_focal"], res["n_reference"] = _paired_group_sizes(
+                adata_tnbc, tnbc_design, ("Pre", "Post"))
+            res["label"] = res["feature"].apply(sig_display)
+            all_results.append(_harmonise(res, "TNBC", "DiD"))
+            print(f"    TNBC: {len(res)} features (DiD)")
+            del adata_tnbc
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 2: TNBC failed") from exc
 
     # ── Stephenson / COVID-19 (cross-sectional Hedges' g at DFO_8-14)
-    # Must match Figure 5 exactly: DFO_8-14 bin, log1p_cpm layer,
+    # Must match Figure 4 panel G exactly: DFO_8-14 bin, log1p_cpm layer,
     # between_arm_comparison + hedges_g on participant-level means.
-    try:
-        from scipy import stats as sp_stats
+    if _selected("COVID-19", datasets):
+        try:
+            from scipy import stats as sp_stats
 
-        adata_st = get_stephenson()
-        # Add log1p_cpm layer (matching Figure 5 and Supp Table 3)
-        if "log1p_cpm" not in adata_st.layers:
-            adata_st = add_log1p_cpm_layer(
-                adata_st, counts_layer="counts", out_layer="log1p_cpm",
+            adata_st = get_stephenson()
+            # Add log1p_cpm layer (matching Figure 4 and Supp Table 3)
+            if "log1p_cpm" not in adata_st.layers:
+                adata_st = add_log1p_cpm_layer(
+                    adata_st, counts_layer="counts", out_layer="log1p_cpm",
+                )
+            adata_st, sig_cols = score_signatures(adata_st, layer="log1p_cpm")
+
+            # Filter to DFO_8-14 bin (matching Figure 4)
+            target_visit = _covid_target_visit(adata_st)
+            ad_visit = adata_st[adata_st.obs["dfo_bin"] == target_visit].copy()
+
+            # Compute Hedges' g on participant-level means (matching Figure 4)
+            df_agg = (
+                ad_visit.obs
+                .groupby(["participant_id", "severity"], observed=True)[sig_cols]
+                .mean()
+                .reset_index()
             )
-        adata_st, sig_cols = score_signatures(adata_st, layer="log1p_cpm")
-
-        # Filter to DFO_8-14 bin (matching Figure 5)
-        target_visit = "DFO_8-14"
-        if "dfo_bin" in adata_st.obs.columns:
-            available_bins = sorted(adata_st.obs["dfo_bin"].dropna().unique())
-            if target_visit not in available_bins:
-                for _bin in available_bins:
-                    _sub = adata_st[adata_st.obs["dfo_bin"] == _bin]
-                    if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
-                        target_visit = _bin
-                        break
-        ad_visit = adata_st[adata_st.obs["dfo_bin"] == target_visit].copy()
-
-        covid_design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="dfo_bin",
-            arm_col="severity",
-            arm_treated="Severe",
-            arm_control="Mild",
-        )
-        res_st = between_arm_comparison(
-            ad_visit,
-            visit=target_visit,
-            features=sig_cols,
-            design=covid_design,
-            layer="log1p_cpm",
-            standardize=True,
-        )
-
-        # Compute Hedges' g on participant-level means (matching Figure 5)
-        df_agg = (
-            ad_visit.obs
-            .groupby(["participant_id", "severity"], observed=True)[sig_cols]
-            .mean()
-            .reset_index()
-        )
-        g_rows: list[dict] = []
-        for feat in sig_cols:
-            x_mild = df_agg.loc[df_agg["severity"] == "Mild", feat].dropna().values
-            x_sev = df_agg.loc[df_agg["severity"] == "Severe", feat].dropna().values
-            if len(x_mild) < 3 or len(x_sev) < 3:
-                continue
-            g = hedges_g(x_sev, x_mild)
-            n1, n2 = len(x_sev), len(x_mild)
-            se_g = np.sqrt((n1 + n2) / (n1 * n2) + g**2 / (2 * (n1 + n2)))
-            _, p = sp_stats.ttest_ind(x_sev, x_mild, equal_var=False)
-            g_rows.append({
-                "feature": feat, "effect": g, "se": se_g, "pvalue": p,
-                "ci_lower": g - 1.96 * se_g, "ci_upper": g + 1.96 * se_g,
-                "n_units": n1 + n2, "cov_type_used": "hedges_g",
-            })
-        if g_rows:
-            res_covid = pd.DataFrame(g_rows)
-            # Drop NaN p-values before BH correction (degenerate signatures
-            # with zero variance cause NaN from ttest_ind; a single NaN
-            # propagates to all FDR values in multipletests).
-            valid_p = res_covid["pvalue"].dropna()
-            res_covid["FDR"] = np.nan
-            if len(valid_p) > 0:
-                _, fdr, _, _ = multipletests(valid_p, method="fdr_bh")
-                res_covid.loc[valid_p.index, "FDR"] = fdr
-            res_covid["label"] = res_covid["feature"].apply(sig_display)
-            all_results.append(
-                _harmonise(res_covid, "COVID-19", f"Hedges' g ({target_visit})")
-            )
-            print(f"    COVID-19: {len(res_covid)} features "
-                  f"(Hedges' g, {target_visit})")
-        del adata_st, ad_visit
-        gc.collect()
-    except Exception as exc:
-        print(f"    COVID-19 failed: {exc}")
+            g_rows: list[dict] = []
+            for feat in sig_cols:
+                x_mild = df_agg.loc[df_agg["severity"] == "Mild", feat].dropna().values
+                x_sev = df_agg.loc[df_agg["severity"] == "Severe", feat].dropna().values
+                if len(x_mild) < 3 or len(x_sev) < 3:
+                    continue
+                g = hedges_g(x_sev, x_mild)
+                n1, n2 = len(x_sev), len(x_mild)
+                # the normal-approximation interval of Figure 4 (_hedges_g_normal_ci)
+                se_g = np.sqrt((n1 + n2) / (n1 * n2) + g**2 / (2 * (n1 + n2)))
+                _, p = sp_stats.ttest_ind(x_sev, x_mild, equal_var=False)
+                g_rows.append({
+                    "feature": feat, "signature_set": _SET_IMMUNE,
+                    "effect": g, "se": se_g, "pvalue": p,
+                    "ci_lower": g - 1.96 * se_g, "ci_upper": g + 1.96 * se_g,
+                    "n_units": n1 + n2, "n_focal": n1, "n_reference": n2,
+                    "cov_type_used": "hedges_g",
+                })
+            if g_rows:
+                res_covid = pd.DataFrame(g_rows)
+                # Drop NaN p-values before BH correction (degenerate signatures
+                # with zero variance cause NaN from ttest_ind; a single NaN
+                # propagates to all FDR values in multipletests).
+                valid_p = res_covid["pvalue"].dropna()
+                res_covid["FDR"] = np.nan
+                if len(valid_p) > 0:
+                    _, fdr, _, _ = multipletests(valid_p, method="fdr_bh")
+                    res_covid.loc[valid_p.index, "FDR"] = fdr
+                res_covid["label"] = res_covid["feature"].apply(sig_display)
+                all_results.append(
+                    _harmonise(res_covid, "COVID-19", f"Hedges' g ({target_visit})")
+                )
+                print(f"    COVID-19: {len(res_covid)} features "
+                      f"(Hedges' g, {target_visit})")
+            del adata_st, ad_visit
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 2: COVID-19 failed") from exc
 
     # ── Single-arm datasets: Vaccine, AML, CAR-T ─────────────────────
     single_arm = [
@@ -325,22 +393,27 @@ def table2_all_results() -> pd.DataFrame:
         ("CAR-T", get_cart, None),
     ]
     for ds_name, loader, visits_override in single_arm:
+        if not _selected(ds_name, datasets):
+            continue
         try:
             adata = loader()
             # Score both immune and clinical signatures
             adata, sig_cols_imm = score_signatures(adata)
             try:
                 adata, sig_cols_clin = score_clinical_signatures(adata)
-                all_sig_cols = list(dict.fromkeys(sig_cols_imm + sig_cols_clin))
             except Exception:
-                all_sig_cols = sig_cols_imm
+                sig_cols_clin = []
 
             visits = visits_override or _detect_visits(adata)
             design = _single_arm_design()
 
-            res = within_arm_comparison(
-                adata, arm="All", features=all_sig_cols,
-                design=design, visits=visits, standardize=True,
+            res = _by_signature_set(
+                lambda feats, adata=adata, design=design, visits=visits: within_arm_comparison(
+                    adata, arm="All", features=feats,
+                    design=design, visits=visits, standardize=True,
+                    use_bootstrap=True, n_boot=999, seed=42,
+                ),
+                sig_cols_imm, sig_cols_clin,
             )
             res["label"] = res["feature"].apply(sig_display)
             all_results.append(_harmonise(res, ds_name, "within-arm Δ"))
@@ -348,13 +421,17 @@ def table2_all_results() -> pd.DataFrame:
             del adata
             gc.collect()
         except Exception as exc:
-            print(f"    {ds_name} failed: {exc}")
+            raise RuntimeError(f"Supplementary Table 2: {ds_name} failed") from exc
 
     if not all_results:
         print("    No results generated")
         return pd.DataFrame()
 
-    df = pd.concat(all_results, ignore_index=True)
+    model_frame = pd.concat(all_results, ignore_index=True)
+    if datasets is None:
+        global _TABLE2_MODEL_FRAME
+        _TABLE2_MODEL_FRAME = model_frame.copy()
+    df = model_frame.drop(columns=[c for c in _MODEL_ONLY_COLS if c in model_frame.columns])
     path = SUPP_OUTPUT / "Supp_Table2_all_results.csv"
     df.to_csv(path, index=False)
     print(f"    Saved {path.name} ({len(df)} rows)")
@@ -366,7 +443,7 @@ def table2_all_results() -> pd.DataFrame:
 # ======================================================================
 
 
-def _stephenson_ranking() -> "pd.Series":
+def _stephenson_ranking() -> pd.Series:
     """Compute per-gene Welch t-stat ranking (severe vs mild) for Stephenson."""
     from scipy import stats as sp_stats
 
@@ -406,7 +483,7 @@ def _stephenson_ranking() -> "pd.Series":
     return pd.Series(ranking).sort_values(ascending=False)
 
 
-def table3_gsea_results() -> dict[str, pd.DataFrame]:
+def table3_gsea_results(datasets: Collection[str] | None = None) -> dict[str, pd.DataFrame]:
     """Run GSEA pre-ranked analysis for all 5 datasets, save as multi-sheet Excel.
 
     Uses shared ``load_or_run_gsea_did`` / ``load_or_run_gsea_within_arm``
@@ -419,84 +496,79 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
     sheets: dict[str, pd.DataFrame] = {}
 
     # ── Sade-Feldman (two-arm DiD) ────────────────────────────────────
-    try:
-        adata_sf = get_sade_feldman()
-        if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
-            adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
-        adata_sf = harmonize_response(adata_sf)
-        design_sf = TrialDesign(
-            participant_col="participant_id", visit_col="visit",
-            arm_col="response_harmonized",
-            arm_treated="Responder", arm_control="Non-responder",
-        )
-        res = load_or_run_gsea_did(
-            adata_sf, design_sf, ("Pre", "Post"), "log1p_tpm", "Melanoma",
-        )
-        if res is not None:
-            sheets["Melanoma"] = res
-        del adata_sf
-        gc.collect()
-    except Exception as exc:
-        print(f"    Melanoma GSEA failed: {exc}")
+    if _selected("Melanoma", datasets):
+        try:
+            adata_sf = get_sade_feldman()
+            if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
+                adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
+            adata_sf = harmonize_response(adata_sf)
+            design_sf = TrialDesign(
+                participant_col="participant_id", visit_col="visit",
+                arm_col="response_harmonized",
+                arm_treated="Responder", arm_control="Non-responder",
+            )
+            res = load_or_run_gsea_did(
+                adata_sf, design_sf, ("Pre", "Post"), "log1p_tpm", "Melanoma",
+                cov_type=MELANOMA_GENE_LEVEL_COV_TYPE,
+            )
+            if res is not None:
+                sheets["Melanoma"] = res
+            del adata_sf
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 3: Melanoma GSEA failed") from exc
 
     # ── TNBC / Zhang (two-arm DiD: anti-PDL1+Chemo vs Chemo) ─────────
-    try:
-        adata_tnbc = get_tnbc_zhang()
-        tnbc_design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="visit",
-            arm_col="arm",
-            arm_treated="anti-PDL1+Chemo",
-            arm_control="Chemo",
-        )
-        res = load_or_run_gsea_did(
-            adata_tnbc, tnbc_design, ("Pre", "Post"), "log1p_norm", "TNBC",
-        )
-        if res is not None:
-            sheets["TNBC"] = res
-        del adata_tnbc
-        gc.collect()
-    except Exception as exc:
-        print(f"    TNBC GSEA failed: {exc}")
+    if _selected("TNBC", datasets):
+        try:
+            adata_tnbc = get_tnbc_zhang()
+            tnbc_design = TrialDesign(
+                participant_col="participant_id",
+                visit_col="visit",
+                arm_col="arm",
+                arm_treated="anti-PDL1+Chemo",
+                arm_control="Chemo",
+            )
+            res = load_or_run_gsea_did(
+                adata_tnbc, tnbc_design, ("Pre", "Post"), "log1p_norm", "TNBC",
+            )
+            if res is not None:
+                sheets["TNBC"] = res
+            del adata_tnbc
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 3: TNBC GSEA failed") from exc
 
     # ── COVID-19 (cross-sectional: severe vs mild) ───────────────────
-    # Must match Figure 5: DFO_8-14 bin, log1p_cpm layer
-    try:
-        adata_st = get_stephenson()
-        if "log1p_cpm" not in adata_st.layers:
-            from .._shared import add_log1p_cpm_layer
-            adata_st = add_log1p_cpm_layer(
-                adata_st, counts_layer="counts", out_layer="log1p_cpm",
+    # Must match Figure 4: DFO_8-14 bin, log1p_cpm layer
+    if _selected("COVID-19", datasets):
+        try:
+            adata_st = get_stephenson()
+            if "log1p_cpm" not in adata_st.layers:
+                from .._shared import add_log1p_cpm_layer
+                adata_st = add_log1p_cpm_layer(
+                    adata_st, counts_layer="counts", out_layer="log1p_cpm",
+                )
+            adata_st, _ = score_signatures(adata_st, layer="log1p_cpm")
+            # Fixed DFO bin to match the Figure 4 COVID analysis
+            target_visit = _covid_target_visit(adata_st)
+            covid_design = TrialDesign(
+                participant_col="participant_id",
+                visit_col="dfo_bin",
+                arm_col="severity",
+                arm_treated="Severe",
+                arm_control="Mild",
             )
-        adata_st, _ = score_signatures(adata_st, layer="log1p_cpm")
-        # Fixed DFO bin to match Figure 5 COVID analysis
-        target_visit = "DFO_8-14"
-        if "dfo_bin" in adata_st.obs.columns:
-            available_bins = sorted(adata_st.obs["dfo_bin"].dropna().unique())
-            if target_visit not in available_bins:
-                # Fallback: pick first bin (sorted) with both severity groups
-                for _bin in available_bins:
-                    _sub = adata_st[adata_st.obs["dfo_bin"] == _bin]
-                    if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
-                        target_visit = _bin
-                        break
-        covid_design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="dfo_bin",
-            arm_col="severity",
-            arm_treated="Severe",
-            arm_control="Mild",
-        )
-        res = load_or_run_gsea_cross_sectional(
-            adata_st, covid_design, visit=target_visit,
-            layer="log1p_cpm", dataset_name="COVID-19",
-        )
-        if res is not None:
-            sheets["COVID-19"] = res
-        del adata_st
-        gc.collect()
-    except Exception as exc:
-        print(f"    COVID-19 GSEA failed: {exc}")
+            res = load_or_run_gsea_cross_sectional(
+                adata_st, covid_design, visit=target_visit,
+                layer="log1p_cpm", dataset_name="COVID-19",
+            )
+            if res is not None:
+                sheets["COVID-19"] = res
+            del adata_st
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 3: COVID-19 GSEA failed") from exc
 
     # ── Single-arm datasets (within-arm Pre→Post) ──────────────────
     single_arm_gsea = [
@@ -505,6 +577,8 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
         ("CAR-T", get_cart, None, None, "CAR-T"),
     ]
     for ds_name, loader, visits_override, _layer_hint, arm_label in single_arm_gsea:
+        if not _selected(ds_name, datasets):
+            continue
         try:
             adata = loader()
             # Pick best available normalized layer
@@ -536,7 +610,7 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
             del adata
             gc.collect()
         except Exception as exc:
-            print(f"    {ds_name} GSEA failed: {exc}")
+            raise RuntimeError(f"Supplementary Table 3: {ds_name} GSEA failed") from exc
 
     # Save as multi-sheet Excel
     if sheets:
@@ -556,62 +630,51 @@ def table3_gsea_results() -> dict[str, pd.DataFrame]:
 # ======================================================================
 
 
-def _run_one_did_permutation(args: tuple) -> float | None:
-    """Worker for parallel DiD permutation: returns beta_DiD or None."""
-    perm_idx, df_bytes, feat, unit, time, arm_bin, pid_arm_bytes, rng_seed = args
+def _covid_target_visit(adata_st) -> str:
+    """Days-from-onset bin of the cross-sectional COVID-19 analyses (Figure 4, Supp Tables 2-4).
 
-    df = pkl.loads(df_bytes)
-    pid_arm = pkl.loads(pid_arm_bytes)
-    rng = np.random.default_rng(rng_seed + perm_idx)
-    shuffled = pid_arm.copy()
-    shuffled["response_harmonized"] = rng.permutation(shuffled["response_harmonized"].values)
-    pid_to_arm = dict(zip(shuffled["participant_id"], shuffled["response_harmonized"]))
-    df_perm = df.copy()
-    df_perm["arm_bin"] = df_perm["participant_id"].map(
-        lambda x: 1 if pid_to_arm.get(x) == "Responder" else 0
-    )
-    try:
-        out = did_fit(df_perm, y=feat, unit=unit, time=time, arm_bin=arm_bin, standardize=True)
-        b = out.get("beta_DiD", np.nan)
-        return float(b) if np.isfinite(b) else None
-    except Exception:
-        return None
+    DFO_8-14 when present; otherwise the first bin, in sorted order, holding both
+    severity groups.
+    """
+    target_visit = "DFO_8-14"
+    if "dfo_bin" in adata_st.obs.columns:
+        available_bins = sorted(adata_st.obs["dfo_bin"].dropna().unique())
+        if target_visit not in available_bins:
+            for _bin in available_bins:
+                _sub = adata_st[adata_st.obs["dfo_bin"] == _bin]
+                if set(_sub.obs["severity"].unique()) >= {"Mild", "Severe"}:
+                    return _bin
+    return target_visit
 
 
-def _run_one_within_arm_permutation(args: tuple) -> float | None:
-    """Worker for parallel within-arm permutation: returns beta_time or None."""
-    perm_idx, df_bytes, feat, unit, rng_seed = args
-
-    df = pkl.loads(df_bytes)
-    rng = np.random.default_rng(rng_seed + perm_idx)
-    df_perm = df.copy()
-    for pid in df_perm[unit].unique():
-        mask = df_perm[unit] == pid
-        visit_num = df_perm.loc[mask, "visit_num"].values
-        df_perm.loc[mask, "visit_num"] = rng.permutation(visit_num)
-    try:
-        b = within_arm_fit_beta(df_perm, feat, unit, standardize=True)
-        return float(b) if np.isfinite(b) else None
-    except Exception:
-        return None
+def _permutation_rows(dataset: str, nulls: dict, observed: dict, exact: bool) -> list[dict]:
+    """One Supplementary Table 4 row per feature with a finite observed statistic."""
+    rows = []
+    for feat, null in nulls.items():
+        obs_beta = observed.get(feat, np.nan)
+        if not np.isfinite(obs_beta):
+            continue
+        rows.append({"dataset": dataset, "feature": feat, "label": sig_display(feat),
+                     "observed_beta": obs_beta,
+                     **permutation_summary(null, obs_beta, exact=exact)})
+    return rows
 
 
-def table4_permutation_results(
-    n_permutations: int = 1000,
-    n_jobs: int = -1,
-) -> pd.DataFrame:
+def table4_permutation_results(datasets: Collection[str] | None = None) -> pd.DataFrame:
     """Permutation test results for all signatures across all datasets.
 
-    Uses pre-aggregated data and parallelization for efficiency with 1000+
-    permutations. For each dataset × signature, shuffles labels and re-runs
-    DiD/within-arm on the small aggregated df (no full AnnData copies).
+    Each dataset uses the routine of ``manuscript_figures._relabeling``, the one behind
+    Figure 5: group labels are reassigned across participants (melanoma, TNBC,
+    COVID-19) or the two visits are swapped within participants (vaccine, AML,
+    CAR-T). All assignments are enumerated when there are at most ``MAX_EXACT`` of
+    them, and the p-value is then exact; otherwise ``N_DRAWS`` seeded draws are used.
+    The column ``exact`` records which. The statistic is the standardized coefficient
+    of the participant-level model of each design.
 
     Parameters
     ----------
-    n_permutations : int
-        Number of label shuffles (default 1000).
-    n_jobs : int
-        Parallel jobs for permutation loop (-1 = all cores).
+    datasets : collection of str, optional
+        Datasets to include (default all). A selected dataset that fails raises.
     """
     print("  Table 4: Permutation test results")
 
@@ -619,262 +682,95 @@ def table4_permutation_results(
         print("    Skipped: sctrial not available")
         return pd.DataFrame()
 
-    rng = np.random.default_rng(42)
-    rng_seed = rng.integers(0, 2**31)
     rows: list[dict] = []
 
-    # ── Sade-Feldman (two-arm DiD: shuffle response labels) ──────────
-    try:
-        adata_sf = get_sade_feldman()
-        if "log1p_tpm" not in adata_sf.layers and "tpm" in adata_sf.layers:
-            adata_sf.layers["log1p_tpm"] = np.log1p(adata_sf.layers["tpm"])
-        adata_sf, sig_cols = score_signatures(adata_sf, layer="log1p_tpm")
-        adata_sf = harmonize_response(adata_sf)
+    def _report(name: str, exact: bool, extra: str = "") -> None:
+        mine = [r for r in rows if r["dataset"] == name]
+        n_assign = mine[0]["n_permutations"] if mine else 0
+        print(f"    {name}{extra}: {len(mine)} features, {n_assign:,} assignments "
+              f"({'all enumerated' if exact else 'random draws'})")
 
-        design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="visit",
-            arm_col="response_harmonized",
-            arm_treated="Responder",
-            arm_control="Non-responder",
-        )
-        obs_res = did_table(
-            adata_sf, features=sig_cols, design=design,
-            visits=("Pre", "Post"), layer="log1p_tpm",
-            standardize=True, aggregate="participant_visit",
-        )
-        obs_betas = dict(zip(obs_res["feature"], obs_res["beta_DiD"]))
+    # ── Two-group DiD: reassign the group labels across participants ──
+    two_group = [
+        ("Melanoma", "melanoma", "log1p_tpm", TrialDesign(
+            participant_col="participant_id", visit_col="visit",
+            arm_col="response_harmonized", arm_treated="Responder",
+            arm_control="Non-responder")),
+        ("TNBC", "tnbc", "log1p_norm", TrialDesign(
+            participant_col="participant_id", visit_col="visit", arm_col="arm",
+            arm_treated="anti-PDL1+Chemo", arm_control="Chemo")),
+    ]
+    for ds_name, tag, layer, design in two_group:
+        if not _selected(ds_name, datasets):
+            continue
+        try:
+            if ds_name == "Melanoma":
+                adata = get_sade_feldman()
+                if "log1p_tpm" not in adata.layers and "tpm" in adata.layers:
+                    adata.layers["log1p_tpm"] = np.log1p(adata.layers["tpm"])
+                adata, sig_cols = score_signatures(adata, layer=layer)
+                adata = harmonize_response(adata)
+            else:
+                adata = get_tnbc_zhang()
+                adata, sig_cols = score_signatures(adata, layer=layer)
+            with _quiet():
+                relabel = did_relabeling_cached(adata, sig_cols, design, ("Pre", "Post"),
+                                                layer=layer, tag=tag)
+            pairs = did_permutation_nulls(relabel)
+            rows.extend(_permutation_rows(
+                ds_name, {f: null for f, (null, _obs) in pairs.items()},
+                {f: obs for f, (_null, obs) in pairs.items()}, bool(relabel.attrs["exact"])))
+            _report(ds_name, bool(relabel.attrs["exact"]))
+            del adata
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError(f"Supplementary Table 4: {ds_name} permutation failed") from exc
 
-        with warnings.catch_warnings(action="ignore"):
-            df_use, unit, time, arm_bin = get_did_aggregated_df(
-                adata_sf, sig_cols, design, ("Pre", "Post"),
-                layer="log1p_tpm", aggregate="participant_visit",
-            )
-        pid_arm = (
-            adata_sf.obs[["participant_id", "response_harmonized"]]
-            .drop_duplicates("participant_id")
-        )
-        df_bytes = pkl.dumps(df_use)
-        pid_arm_bytes = pkl.dumps(pid_arm)
-
-        for feat in sig_cols:
-            obs_beta = obs_betas.get(feat, np.nan)
-            if not np.isfinite(obs_beta):
-                continue
-            tasks = [
-                (i, df_bytes, feat, unit, time, arm_bin, pid_arm_bytes, rng_seed)
-                for i in range(n_permutations)
-            ]
-            with warnings.catch_warnings(action="ignore"):
-                null_betas = Parallel(n_jobs=n_jobs, backend="loky")(
-                    delayed(_run_one_did_permutation)(t) for t in tasks
+    # ── Stephenson (cross-sectional: reassign Severe/Mild across participants) ────
+    # The observed statistic and every null replicate are the same estimand: the
+    # standardised between-arm OLS beta on participant-level means in the DFO_8-14
+    # bin of the log1p_cpm layer (the bin and layer of Supp Tables 2-3). This beta is
+    # not the Hedges' g that Supp Table 2 reports for COVID-19, so the two tables differ
+    # slightly for this dataset.
+    if _selected("COVID-19", datasets):
+        try:
+            adata_st = get_stephenson()
+            if "log1p_cpm" not in adata_st.layers:
+                adata_st = add_log1p_cpm_layer(
+                    adata_st, counts_layer="counts", out_layer="log1p_cpm",
                 )
-            null_arr = np.array([b for b in null_betas if b is not None], dtype=float)
-            if len(null_arr) > 0:
-                perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
-                rows.append({
-                    "dataset": "Melanoma",
-                    "feature": feat,
-                    "label": sig_display(feat),
-                    "observed_beta": obs_beta,
-                    "permutation_p": perm_p,
-                    "n_permutations": len(null_arr),
-                    "null_mean": float(np.mean(null_arr)),
-                    "null_sd": float(np.std(null_arr)),
-                    "null_95_lo": float(np.percentile(null_arr, 2.5)),
-                    "null_95_hi": float(np.percentile(null_arr, 97.5)),
-                })
-        print(f"    Melanoma: {len([r for r in rows if r['dataset'] == 'Melanoma'])} features")
-        del adata_sf, df_use, df_bytes, pid_arm_bytes
-        gc.collect()
-    except Exception as exc:
-        print(f"    Melanoma permutation failed: {exc}")
+            adata_st, sig_cols_st = score_signatures(adata_st, layer="log1p_cpm")
+            target_visit = _covid_target_visit(adata_st)
 
-    # ── TNBC (two-arm DiD: permute arm labels) ───────────────────────
-    try:
-        adata_tnbc = get_tnbc_zhang()
-        adata_tnbc, sig_cols_tnbc = score_signatures(adata_tnbc, layer="log1p_norm")
-
-        tnbc_design = TrialDesign(
-            participant_col="participant_id",
-            visit_col="visit",
-            arm_col="arm",
-            arm_treated="anti-PDL1+Chemo",
-            arm_control="Chemo",
-        )
-        obs_res_tnbc = did_table(
-            adata_tnbc, features=sig_cols_tnbc, design=tnbc_design,
-            visits=("Pre", "Post"), layer="log1p_norm",
-            standardize=True, aggregate="participant_visit",
-        )
-        obs_betas_tnbc = dict(zip(obs_res_tnbc["feature"], obs_res_tnbc["beta_DiD"]))
-
-        with warnings.catch_warnings(action="ignore"):
-            df_use_tnbc, unit_tnbc, time_tnbc, arm_bin_tnbc = get_did_aggregated_df(
-                adata_tnbc, sig_cols_tnbc, tnbc_design, ("Pre", "Post"),
-                layer="log1p_norm", aggregate="participant_visit",
+            design_st = TrialDesign(
+                participant_col="participant_id",
+                visit_col="dfo_bin",
+                arm_col="severity",
+                arm_treated="Severe",
+                arm_control="Mild",
             )
-        pid_arm_tnbc = (
-            adata_tnbc.obs[["participant_id", "arm"]]
-            .drop_duplicates("participant_id")
-        )
-        df_bytes_tnbc = pkl.dumps(df_use_tnbc)
-        pid_arm_tnbc_bytes = pkl.dumps(pid_arm_tnbc)
-
-        def _run_tnbc_perm(args: tuple) -> float | None:
-            perm_idx, db, ft, un, tm, ab, pa_bytes, rs = args
-            df = pkl.loads(db)
-            pa = pkl.loads(pa_bytes)
-            r = np.random.default_rng(rs + perm_idx)
-            shuf = pa.copy()
-            shuf["arm"] = r.permutation(shuf["arm"].values)
-            pid_to_arm = dict(zip(shuf["participant_id"], shuf["arm"]))
-            df_p = df.copy()
-            df_p["arm_bin"] = df_p["participant_id"].map(
-                lambda x, m=pid_to_arm: 1 if m.get(x) == "anti-PDL1+Chemo" else 0
+            df_cs = get_between_arm_aggregated_df(
+                adata_st, sig_cols_st, design_st, target_visit, layer="log1p_cpm",
             )
-            try:
-                out = did_fit(df_p, y=ft, unit=un, time=tm, arm_bin=ab, standardize=True)
-                b = out.get("beta_DiD", np.nan)
-                return float(b) if np.isfinite(b) else None
-            except Exception:
-                return None
+            observed = {feat: between_arm_fit_beta(df_cs, feat, design_st) for feat in sig_cols_st}
+            with _quiet():
+                nulls, exact = between_arm_nulls(df_cs, sig_cols_st, design_st)
+            rows.extend(_permutation_rows("COVID-19", nulls, observed, exact))
+            _report("COVID-19", exact, f" ({target_visit}, n={df_cs['participant_id'].nunique()})")
+            del adata_st, df_cs
+            gc.collect()
+        except Exception as exc:
+            raise RuntimeError("Supplementary Table 4: COVID-19 permutation failed") from exc
 
-        for feat in sig_cols_tnbc:
-            obs_beta = obs_betas_tnbc.get(feat, np.nan)
-            if not np.isfinite(obs_beta):
-                continue
-            tasks = [
-                (i, df_bytes_tnbc, feat, unit_tnbc, time_tnbc, arm_bin_tnbc,
-                 pid_arm_tnbc_bytes, rng_seed)
-                for i in range(n_permutations)
-            ]
-            with warnings.catch_warnings(action="ignore"):
-                null_betas_tnbc = Parallel(n_jobs=n_jobs, backend="loky")(
-                    delayed(_run_tnbc_perm)(t) for t in tasks
-                )
-            null_arr = np.array([b for b in null_betas_tnbc if b is not None], dtype=float)
-            if len(null_arr) > 0:
-                perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
-                rows.append({
-                    "dataset": "TNBC",
-                    "feature": feat,
-                    "label": sig_display(feat),
-                    "observed_beta": obs_beta,
-                    "permutation_p": perm_p,
-                    "n_permutations": len(null_arr),
-                    "null_mean": float(np.mean(null_arr)),
-                    "null_sd": float(np.std(null_arr)),
-                    "null_95_lo": float(np.percentile(null_arr, 2.5)),
-                    "null_95_hi": float(np.percentile(null_arr, 97.5)),
-                })
-        print(f"    TNBC: {len([r for r in rows if r['dataset'] == 'TNBC'])} features")
-        del adata_tnbc, df_use_tnbc, df_bytes_tnbc, pid_arm_tnbc_bytes
-        gc.collect()
-    except Exception as exc:
-        print(f"    TNBC permutation failed: {exc}")
-
-    # ── Stephenson (cross-sectional: permute Severe/Mild labels) ────
-    try:
-        from sctrial import between_arm_comparison as _bac
-        adata_st = get_stephenson()
-        if "log1p_cpm" not in adata_st.layers:
-            from manuscript_figures._shared import add_log1p_cpm_layer
-            adata_st = add_log1p_cpm_layer(
-                adata_st, counts_layer="counts", out_layer="log1p_cpm",
-            )
-        adata_st, sig_cols_st = score_signatures(adata_st, layer="log1p_cpm")
-
-        design_st = TrialDesign(
-            participant_col="participant_id",
-            visit_col="Collection_Day",
-            arm_col="severity",
-            arm_treated="Severe",
-            arm_control="Mild",
-        )
-        obs_res_st = _bac(
-            adata_st, visit="D0", features=sig_cols_st,
-            design=design_st, aggregate="participant_visit",
-            standardize=True,
-        )
-        beta_col_st = "beta_arm" if "beta_arm" in obs_res_st.columns else "beta_DiD"
-        obs_betas_st = dict(zip(obs_res_st["feature"], obs_res_st[beta_col_st]))
-
-        # Build participant-arm map for permutation
-        pid_sev = (
-            adata_st.obs[["participant_id", "severity"]]
-            .drop_duplicates("participant_id")
-        )
-
-        with warnings.catch_warnings(action="ignore"):
-            df_use_st, unit_st, time_st, arm_bin_st = get_did_aggregated_df(
-                adata_st, sig_cols_st, design_st, ("D0", "D28"),
-                layer="log1p_cpm", aggregate="participant_visit",
-            )
-        df_bytes_st = pkl.dumps(df_use_st)
-        pid_sev_bytes = pkl.dumps(pid_sev)
-
-        for feat in sig_cols_st:
-            obs_beta = obs_betas_st.get(feat, np.nan)
-            if not np.isfinite(obs_beta):
-                continue
-            tasks = [
-                (i, df_bytes_st, feat, unit_st, time_st, arm_bin_st, pid_sev_bytes, rng_seed)
-                for i in range(n_permutations)
-            ]
-
-            # Reuse DiD permutation worker — it permutes the arm column
-            def _run_stephenson_perm(args: tuple) -> float | None:
-                perm_idx, db, ft, un, tm, ab, pa_bytes, rs = args
-                df = pkl.loads(db)
-                pa = pkl.loads(pa_bytes)
-                r = np.random.default_rng(rs + perm_idx)
-                shuf = pa.copy()
-                shuf["severity"] = r.permutation(shuf["severity"].values)
-                pid_to_arm = dict(zip(shuf["participant_id"], shuf["severity"]))
-                df_p = df.copy()
-                df_p["arm_bin"] = df_p["participant_id"].map(
-                    lambda x, m=pid_to_arm: 1 if m.get(x) == "Severe" else 0
-                )
-                try:
-                    out = did_fit(df_p, y=ft, unit=un, time=tm, arm_bin=ab, standardize=True)
-                    b = out.get("beta_DiD", np.nan)
-                    return float(b) if np.isfinite(b) else None
-                except Exception:
-                    return None
-
-            with warnings.catch_warnings(action="ignore"):
-                null_betas_st = Parallel(n_jobs=n_jobs, backend="loky")(
-                    delayed(_run_stephenson_perm)(t) for t in tasks
-                )
-            null_arr = np.array([b for b in null_betas_st if b is not None], dtype=float)
-            if len(null_arr) > 0:
-                perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
-                rows.append({
-                    "dataset": "COVID-19",
-                    "feature": feat,
-                    "label": sig_display(feat),
-                    "observed_beta": obs_beta,
-                    "permutation_p": perm_p,
-                    "n_permutations": len(null_arr),
-                    "null_mean": float(np.mean(null_arr)),
-                    "null_sd": float(np.std(null_arr)),
-                    "null_95_lo": float(np.percentile(null_arr, 2.5)),
-                    "null_95_hi": float(np.percentile(null_arr, 97.5)),
-                })
-        print(f"    COVID-19: {len([r for r in rows if r['dataset'] == 'COVID-19'])} features")
-        del adata_st, df_use_st, df_bytes_st, pid_sev_bytes
-        gc.collect()
-    except Exception as exc:
-        print(f"    COVID-19 permutation failed: {exc}")
-
-    # ── Single-arm datasets: permute visit labels ────────────────────
+    # ── Single-arm datasets: swap the two visits within participants ──
     single_arm = [
         ("Vaccine", get_vaccine, ("Pre", "Post")),
         ("AML", get_aml, None),
         ("CAR-T", get_cart, None),
     ]
     for ds_name, loader, visits_override in single_arm:
+        if not _selected(ds_name, datasets):
+            continue
         try:
             adata = loader()
             adata, sig_cols_imm = score_signatures(adata)
@@ -885,55 +781,32 @@ def table4_permutation_results(
                 adata, arm="All", features=sig_cols_imm,
                 design=design, visits=visits, standardize=True,
             )
-            obs_betas = dict(zip(obs_res["feature"], obs_res["beta_time"]))
+            observed = dict(zip(obs_res["feature"], obs_res["beta_time"]))
 
-            with warnings.catch_warnings(action="ignore"):
+            with _quiet():
                 df_use, unit = get_within_arm_aggregated_df(
                     adata, "All", sig_cols_imm, design, visits,
                     layer=None, aggregate="participant_visit",
                 )
-            df_bytes = pkl.dumps(df_use)
-
-            for feat in sig_cols_imm:
-                obs_beta = obs_betas.get(feat, np.nan)
-                if not np.isfinite(obs_beta):
-                    continue
-                tasks = [(i, df_bytes, feat, unit, rng_seed) for i in range(n_permutations)]
-                with warnings.catch_warnings(action="ignore"):
-                    null_betas = Parallel(n_jobs=n_jobs, backend="loky")(
-                        delayed(_run_one_within_arm_permutation)(t) for t in tasks
-                    )
-                null_arr = np.array([b for b in null_betas if b is not None], dtype=float)
-                if len(null_arr) > 0:
-                    perm_p = (np.sum(np.abs(null_arr) >= np.abs(obs_beta)) + 1) / (len(null_arr) + 1)
-                    rows.append({
-                        "dataset": ds_name,
-                        "feature": feat,
-                        "label": sig_display(feat),
-                        "observed_beta": obs_beta,
-                        "permutation_p": perm_p,
-                        "n_permutations": len(null_arr),
-                        "null_mean": float(np.mean(null_arr)),
-                        "null_sd": float(np.std(null_arr)),
-                        "null_95_lo": float(np.percentile(null_arr, 2.5)),
-                        "null_95_hi": float(np.percentile(null_arr, 97.5)),
-                    })
-            print(f"    {ds_name}: {len([r for r in rows if r['dataset'] == ds_name])} features")
-            del adata, df_use, df_bytes
+                nulls, exact = within_arm_nulls(df_use, sig_cols_imm, unit)
+            rows.extend(_permutation_rows(ds_name, nulls, observed, exact))
+            _report(ds_name, exact)
+            del adata, df_use
             gc.collect()
         except Exception as exc:
-            print(f"    {ds_name} permutation failed: {exc}")
+            raise RuntimeError(f"Supplementary Table 4: {ds_name} permutation failed") from exc
 
     if not rows:
         print("    No permutation results generated")
         return pd.DataFrame()
 
     df = pd.DataFrame(rows)
-    # Add FDR per dataset
+    # FDR within each dataset, over its signatures
+    df["permutation_FDR"] = np.nan
     for ds in df["dataset"].unique():
-        mask = df["dataset"] == ds
-        _, fdr, _, _ = multipletests(df.loc[mask, "permutation_p"], method="fdr_bh")
-        df.loc[mask, "permutation_FDR"] = fdr
+        valid = df.loc[df["dataset"] == ds, "permutation_p"].dropna()
+        if len(valid):
+            df.loc[valid.index, "permutation_FDR"] = multipletests(valid, method="fdr_bh")[1]
 
     path = SUPP_OUTPUT / "Supp_Table4_permutation_results.csv"
     df.to_csv(path, index=False)
@@ -946,103 +819,113 @@ def table4_permutation_results(
 # ======================================================================
 
 
-def table5_power_analysis() -> pd.DataFrame:
-    """Power analysis for each dataset: observed power at current N,
-    minimum N for 80% power, minimum detectable effect at current N."""
-    print("  Table 5: Power analysis results")
+def _power_table(table2: pd.DataFrame) -> pd.DataFrame:
+    """Power, required sample size and minimum detectable effect for each row of Table 2.
 
-    if not SCTRIAL_AVAILABLE:
-        print("    Skipped: sctrial not available")
-        return pd.DataFrame()
+    ``table2`` holds the Table 2 rows with the residual standard deviation of each
+    participant-level fit (``resid_sd``). All quantities come from the noncentral t
+    distribution of the two-sample or paired t-test.
 
+    ``sigma_estimated`` is the standard deviation of the analyzed quantity. In the
+    longitudinal cohorts that quantity is the participant change, whose standard
+    deviation is ``sqrt(2) * resid_sd`` (pooled over the two groups in the two-group
+    cohorts). The paired functions are parameterized by the standard deviation of one
+    visit and receive ``resid_sd``. The cross-sectional comparison has no fitted model:
+    its effect is Hedges' g, a difference in units of the pooled within-group standard
+    deviation, so the standard deviation is 1.
+    """
     from sctrial.stats.power import (
-        power_did, sample_size_did, sensitivity_analysis,
-        power_paired, sample_size_paired, sensitivity_paired,
+        power_paired,
+        power_two_group,
+        sample_size_paired,
+        sample_size_two_group,
+        sensitivity_paired,
+        sensitivity_two_group,
     )
 
-    # Read observed results from Table 2
-    table2_path = SUPP_OUTPUT / "Supp_Table2_all_results.csv"
-    if not table2_path.exists():
-        print("    Table 2 not found, generating first...")
-        table2_all_results()
-    t2 = pd.read_csv(table2_path)
-
     rows: list[dict] = []
-    for _, row in t2.iterrows():
+    for _, row in table2.iterrows():
         effect = row.get("effect", np.nan)
         se = row.get("se", np.nan)
         n_units = row.get("n_units", np.nan)
         if not np.isfinite(effect) or not np.isfinite(se) or not np.isfinite(n_units):
             continue
 
-        dataset = row["dataset"]
         feature = row["feature"]
-        label = row.get("label", sig_display(feature))
-        estimand = row.get("estimand", "")
-        is_did = estimand == "DiD"
-
-        # Estimate sigma from SE.
-        # DiD:    SE ≈ σ√(4/n)  → σ ≈ SE√(n/4), n = 2×n_per_group
-        # Paired: SE ≈ σ√(2/n)  → σ ≈ SE√(n/2)
+        where = f"{row['dataset']} {feature}"
         n = int(n_units)
-        if is_did:
-            n_per_group = max(n // 2, 2)
-            sigma_est = max(se * np.sqrt(n / 4), 0.01)
-        else:
-            n_per_group = max(n, 2)
-            sigma_est = max(se * np.sqrt(n / 2), 0.01)
-
-        # Power at observed N and effect
+        n_focal, n_reference = row.get("n_focal", np.nan), row.get("n_reference", np.nan)
+        two_group = bool(np.isfinite(n_focal) and np.isfinite(n_reference))
+        resid_sd = row.get("resid_sd", np.nan)
+        fitted = str(row.get("estimand", "")) in ("DiD", "within-arm Δ")
+        if fitted and not (np.isfinite(resid_sd) and resid_sd > 0):
+            raise ValueError(f"{where}: no residual standard deviation for the power calculation")
         abs_effect = abs(effect)
-        if abs_effect < 1e-10:
-            pwr = 0.05  # no effect → power = α
-            min_n_val: float = np.inf
-        else:
-            try:
-                if is_did:
-                    pwr = power_did(n_per_group=n_per_group,
-                                    effect_size=abs_effect, sigma=sigma_est)
-                else:
-                    pwr = power_paired(n_participants=n_per_group,
-                                       effect_size=abs_effect, sigma=sigma_est)
-            except Exception:
-                pwr = np.nan
-            try:
-                if is_did:
-                    min_n_val = float(sample_size_did(
-                        effect_size=abs_effect, sigma=sigma_est, power=0.80))
-                else:
-                    min_n_val = float(sample_size_paired(
-                        effect_size=abs_effect, sigma=sigma_est, power=0.80))
-            except Exception:
-                min_n_val = np.nan
 
-        # Minimum detectable effect at current N
-        try:
-            if is_did:
-                mde = sensitivity_analysis(n_per_group=n_per_group,
-                                           sigma=sigma_est, power=0.80)
-            else:
-                mde = sensitivity_paired(n_participants=n_per_group,
-                                         sigma=sigma_est, power=0.80)
-        except Exception:
-            mde = np.nan
+        if two_group:
+            n1, n2 = int(n_focal), int(n_reference)
+            if n1 + n2 != n:
+                raise ValueError(f"{where}: group sizes {n1} + {n2} != n_units {n}")
+            sigma_est = np.sqrt(2.0) * resid_sd if fitted else 1.0
+            pwr = power_two_group(n1, n2, abs_effect, sigma=sigma_est, reference="t")
+            mde = sensitivity_two_group(n1, n2, sigma=sigma_est, power=0.80, reference="t")
+            min_n = (sum(sample_size_two_group(abs_effect, sigma=sigma_est, power=0.80,
+                                               allocation_ratio=n1 / n2, reference="t"))
+                     if abs_effect >= 1e-10 else None)
+        else:
+            if not fitted:
+                raise ValueError(f"{where}: a row without group sizes must be a within-arm fit")
+            n1 = n2 = None
+            sigma_est = np.sqrt(2.0) * resid_sd
+            pwr = power_paired(n_participants=n, effect_size=abs_effect, sigma=resid_sd, reference="t")
+            mde = sensitivity_paired(n_participants=n, sigma=resid_sd, power=0.80, reference="t")
+            min_n = (sample_size_paired(effect_size=abs_effect, sigma=resid_sd, power=0.80,
+                                        reference="t")
+                     if abs_effect >= 1e-10 else None)
 
         rows.append({
-            "dataset": dataset,
+            "dataset": row["dataset"],
             "feature": feature,
-            "label": label,
-            "estimand": estimand,
+            "label": row.get("label", sig_display(feature)),
+            "estimand": row.get("estimand", ""),
             "observed_effect": effect,
             "observed_se": se,
             "n_participants": n,
+            "n_focal": n1,
+            "n_reference": n2,
             "sigma_estimated": sigma_est,
             "power_at_observed_N": pwr,
-            "min_N_for_80pct_power": int(min_n_val) if np.isfinite(min_n_val) else None,
+            "min_N_for_80pct_power": min_n,
             "min_detectable_effect_80pct": mde,
         })
 
     df = pd.DataFrame(rows)
+    for col in ("n_focal", "n_reference"):
+        df[col] = df[col].astype("Int64")
+    return df
+
+
+def table5_power_analysis() -> pd.DataFrame:
+    """Power analysis for each dataset and signature, from the fits of Table 2.
+
+    Each row uses the formula of its design, see ``_power_table``. Two-group rows use
+    the group sizes of the cohort, so an unequal allocation is not treated as balanced;
+    single-arm rows use the paired formula. The minimum N is the total number of
+    participants at the observed allocation.
+    """
+    print("  Table 5: Power analysis results")
+
+    if not SCTRIAL_AVAILABLE:
+        print("    Skipped: sctrial not available")
+        return pd.DataFrame()
+
+    if _TABLE2_MODEL_FRAME is None:
+        print("    Table 2 fits not in memory, generating Table 2 first...")
+        table2_all_results()
+    if _TABLE2_MODEL_FRAME is None:
+        raise RuntimeError("Supplementary Table 5: Table 2 produced no results")
+
+    df = _power_table(_TABLE2_MODEL_FRAME)
     path = SUPP_OUTPUT / "Supp_Table5_power_analysis.csv"
     df.to_csv(path, index=False)
     print(f"    Saved {path.name} ({len(df)} rows)")
@@ -1052,6 +935,35 @@ def table5_power_analysis() -> pd.DataFrame:
 # ======================================================================
 # Table 7 — Gene-level DiD results (Sade-Feldman)
 # ======================================================================
+
+
+def _with_analytical_interval(res: pd.DataFrame) -> pd.DataFrame:
+    """Add the 95% interval that belongs to the analytical p-value of each DiD coefficient.
+
+    The cluster-robust fit refers the statistic to the normal distribution, so its interval is
+    the effect ± 1.96 SE. The pooled-variance fit refers it to the t distribution on the
+    residual degrees of freedom, ``n_units - 2`` for two visits per participant (one fixed
+    effect per participant, the visit and the interaction), and its interval uses that
+    quantile. The degrees of freedom are checked against the reported p-values.
+    """
+    from scipy import stats
+
+    res = res.copy()
+    pooled = (res["cov_type_used"] == "nonrobust").to_numpy()
+    df = np.where(pooled, res["n_units"].to_numpy(dtype=float) - 2.0, np.nan)
+    quantile = np.full(len(res), 1.96)
+    quantile[pooled] = stats.t.ppf(0.975, df[pooled])
+
+    statistic = np.abs(res["beta_DiD"].to_numpy(dtype=float) / res["se_DiD"].to_numpy(dtype=float))
+    expected = np.where(pooled, 2.0 * stats.t.sf(statistic, df), 2.0 * stats.norm.sf(statistic))
+    reported = res["p_DiD"].to_numpy(dtype=float)
+    known = np.isfinite(expected) & np.isfinite(reported)
+    if not np.allclose(reported[known], expected[known], rtol=1e-6, atol=1e-12):
+        raise ValueError("the analytical p-values do not follow the assumed reference distribution")
+
+    res["ci_lower"] = res["beta_DiD"] - quantile * res["se_DiD"]
+    res["ci_upper"] = res["beta_DiD"] + quantile * res["se_DiD"]
+    return res
 
 
 def table7_gene_level_results() -> pd.DataFrame:
@@ -1088,11 +1000,9 @@ def table7_gene_level_results() -> pd.DataFrame:
             adata_sf, features=all_genes, design=design,
             visits=("Pre", "Post"), layer="log1p_tpm",
             standardize=True, aggregate="participant_visit",
+            cov_type=MELANOMA_GENE_LEVEL_COV_TYPE,
         )
-        # Add CIs from effect ± 1.96 × SE
-        if "beta_DiD" in res.columns and "se_DiD" in res.columns:
-            res["ci_lower"] = res["beta_DiD"] - 1.96 * res["se_DiD"]
-            res["ci_upper"] = res["beta_DiD"] + 1.96 * res["se_DiD"]
+        res = _with_analytical_interval(res)
 
         # Sort by p-value
         if "p_DiD" in res.columns:
@@ -1113,8 +1023,7 @@ def table7_gene_level_results() -> pd.DataFrame:
         gc.collect()
         return res
     except Exception as exc:
-        print(f"    Gene-level DiD failed: {exc}")
-        return pd.DataFrame()
+        raise RuntimeError("Supplementary Table 7: melanoma gene-level DiD failed") from exc
 
 
 # ======================================================================
@@ -1122,7 +1031,7 @@ def table7_gene_level_results() -> pd.DataFrame:
 # ======================================================================
 
 
-def table8_dataset_metadata() -> pd.DataFrame:
+def table8_dataset_metadata(datasets: Collection[str] | None = None) -> pd.DataFrame:
     """Per-participant metadata across all datasets.
 
     Columns: dataset, participant_id, arm/condition, visit, n_cells,
@@ -1142,6 +1051,8 @@ def table8_dataset_metadata() -> pd.DataFrame:
     ]
 
     for ds_name, loader, pid_col, visit_col, condition_col in datasets_info:
+        if not _selected(ds_name, datasets):
+            continue
         try:
             adata = loader()
 
@@ -1156,12 +1067,15 @@ def table8_dataset_metadata() -> pd.DataFrame:
             if visit_col and visit_col in obs.columns:
                 group_cols.append(visit_col)
 
-            grouped = obs.groupby(group_cols).size().reset_index(name="n_cells")
+            # observed=True: participant and visit are Categorical, and without it the
+            # groupby emits every participant x visit combination, including ones with
+            # no cells (n_cells=0 rows for samples that do not exist).
+            grouped = obs.groupby(group_cols, observed=True).size().reset_index(name="n_cells")
             grouped["dataset"] = ds_name
 
             # Add condition/response
             if condition_col and condition_col in obs.columns:
-                cond_map = obs.groupby(pid_col)[condition_col].first()
+                cond_map = obs.groupby(pid_col, observed=True)[condition_col].first()
                 grouped["condition"] = grouped[pid_col].map(cond_map)
             else:
                 grouped["condition"] = None
@@ -1183,7 +1097,10 @@ def table8_dataset_metadata() -> pd.DataFrame:
                 ct_col = None
 
             if ct_col:
-                n_celltypes = obs.groupby(group_cols)[ct_col].nunique().reset_index(name="n_cell_types")
+                n_celltypes = (
+                    obs.groupby(group_cols, observed=True)[ct_col]
+                    .nunique().reset_index(name="n_cell_types")
+                )
                 if visit_col and visit_col in n_celltypes.columns:
                     grouped = grouped.merge(n_celltypes, on=[pid_col if pid_col in n_celltypes.columns else "participant_id",
                                                               visit_col if visit_col in n_celltypes.columns else "visit"],
@@ -1204,7 +1121,7 @@ def table8_dataset_metadata() -> pd.DataFrame:
             del adata
             gc.collect()
         except Exception as exc:
-            print(f"    {ds_name} metadata failed: {exc}")
+            raise RuntimeError(f"Supplementary Table 8: {ds_name} metadata failed") from exc
 
     if not rows:
         print("    No metadata generated")
@@ -1253,9 +1170,7 @@ def table6_gene_level_tnbc() -> pd.DataFrame:
             visits=("Pre", "Post"), layer="log1p_norm",
             standardize=True, aggregate="participant_visit",
         )
-        if "beta_DiD" in res.columns and "se_DiD" in res.columns:
-            res["ci_lower"] = res["beta_DiD"] - 1.96 * res["se_DiD"]
-            res["ci_upper"] = res["beta_DiD"] + 1.96 * res["se_DiD"]
+        res = _with_analytical_interval(res)
 
         if "p_DiD" in res.columns:
             res = res.sort_values("p_DiD").reset_index(drop=True)
@@ -1274,8 +1189,7 @@ def table6_gene_level_tnbc() -> pd.DataFrame:
         gc.collect()
         return res
     except Exception as exc:
-        print(f"    Gene-level DiD (TNBC) failed: {exc}")
-        return pd.DataFrame()
+        raise RuntimeError("Supplementary Table 6: TNBC gene-level DiD failed") from exc
 
 
 # ======================================================================
@@ -1283,7 +1197,7 @@ def table6_gene_level_tnbc() -> pd.DataFrame:
 # ======================================================================
 
 
-def patch_table1_genes_present() -> pd.DataFrame:
+def patch_table1_genes_present(datasets: Collection[str] | None = None) -> pd.DataFrame:
     """Add a 'Genes Present' column to Supp Table 1 showing how many
     genes from each signature are actually found in each dataset."""
     print("  Patching Table 1: Adding Genes Present per dataset")
@@ -1304,6 +1218,8 @@ def patch_table1_genes_present() -> pd.DataFrame:
     ]
 
     for ds_name, loader in datasets_loaders:
+        if not _selected(ds_name, datasets):
+            continue
         try:
             adata = loader()
             var_names_set = set(adata.var_names)
@@ -1318,7 +1234,7 @@ def patch_table1_genes_present() -> pd.DataFrame:
             del adata
             gc.collect()
         except Exception as exc:
-            print(f"    {ds_name} genes present failed: {exc}")
+            raise RuntimeError(f"Supplementary Table 1: {ds_name} genes present failed") from exc
 
     t1.to_csv(t1_path, index=False)
 

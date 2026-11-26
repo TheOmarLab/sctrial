@@ -8,7 +8,7 @@ The benchmark uses two separate environments:
 
 | Layer | Tool | What it manages |
 |-------|------|----------------|
-| Python | conda (`sctrial`) | Python packages, sctrial source install |
+| Python | conda (`sctrial` from `setup_hpc_env.sh`; the launchers call `sctrial_benchmark`, see Step 4) | Python packages, sctrial source install |
 | R | HPC module (`R/4.4.2`) | R and Bioconductor packages in `~/R/library` |
 
 These are kept separate to avoid conda/R library conflicts. R packages are installed once to `~/R/library` and are not part of the conda environment.
@@ -34,7 +34,7 @@ cmake-3.23.1-gcc-11.2.0-idhlovt
 
 ## One-time Setup
 
-### Step 1 — Clone the repo and check out the correct branch
+### Step 1: Clone the repo and check out the correct branch
 
 ```bash
 git clone <repo-url>
@@ -42,7 +42,7 @@ cd sctrial
 git checkout <your-branch>
 ```
 
-### Step 2 — Set up the Python conda environment
+### Step 2: Set up the Python conda environment
 
 Run interactively on the login node (~5–10 min):
 
@@ -50,9 +50,9 @@ Run interactively on the login node (~5–10 min):
 bash scripts/setup_hpc_env.sh
 ```
 
-This creates the conda environment `sctrial` and installs sctrial from source as an editable install. You only need to re-run this if `src/sctrial/benchmark/sctrial_bench_environment.yml` changes.
+This creates the conda environment named by `ENV_NAME` in the script (`sctrial`) and installs sctrial from source as an editable install. You only need to re-run this if `src/sctrial/benchmark/sctrial_bench_environment.yml` changes.
 
-### Step 3 — Install R packages
+### Step 3: Install R packages
 
 Submit as a SLURM job (~1–2h):
 
@@ -77,34 +77,49 @@ All R packages installed and verified.
 
 Steps 2 and 3 are independent and can run at the same time.
 
-### Step 4 — Update the working directory path
+### Step 4: Point the launchers at your account
 
-Both benchmark SLURM scripts contain a placeholder `cd` path. Update it to your repo location:
+The SLURM launchers (`slurm_benchmark.sh`, `slurm_calibrate.sh`, `slurm_smoke.sh`,
+`slurm_timing_probe.sh`, `slurm_aggregate.sh`, `slurm_finalize_benchmark.sh`) are set up for
+one cluster account. Before submitting from another account, change in each of them:
+
+- `PROJECT=/common/vasanthakup/projects/sctrial`: the checkout the job changes into;
+- the `#SBATCH --output` and `#SBATCH --error` paths, which write under `$PROJECT/logs/`;
+- the environment name in `conda run -n sctrial_benchmark`. Either replace it with the
+  environment of Step 2 (`sctrial`), or create that environment under the name
+  `sctrial_benchmark` by setting `ENV_NAME` in `setup_hpc_env.sh`.
+
+### Step 5: Calibrate and freeze the simulator
+
+`run_benchmark.py` refuses to run without
+`manuscript/benchmark/validation/frozen_simulator_config.json`. It is produced once by:
 
 ```bash
-# In scripts/slurm_benchmark.sh and scripts/slurm_calibrate.sh, change:
-cd /PATH/TO/sctrial   # ← update to your HPC project path
-# to:
-cd /your/actual/path/to/sctrial
+sbatch scripts/slurm_calibrate.sh targets
+sbatch scripts/slurm_calibrate.sh gates 200
+sbatch scripts/slurm_calibrate.sh ablate
+sbatch scripts/slurm_calibrate.sh freeze
 ```
 
 ---
 
 ## Running the Benchmarks
 
-Both jobs can be submitted at the same time.
+Both jobs can be submitted at the same time. The launcher takes the grid, the number of
+iterations, an optional design (`two_arm` or `single_arm`), optional sensitivity panel sizes
+and an optional number of workers.
 
-### Sensitivity benchmark 
+### Sensitivity benchmark
 
 ```bash
 sbatch scripts/slurm_benchmark.sh sensitivity 200 two_arm
 ```
 
 - **Time limit**: 72h
-- **Resources**: 1 node, 32 CPUs, 256 GB RAM
-- **Scenarios**: 20 parameter combinations × 200 iterations × 4 methods
-- **Output**: `manuscript/benchmark/sensitivity/`
-- **SLURM logs**: `sensitivity_<jobid>.out` / `sensitivity_<jobid>.err`
+- **Resources**: 1 node, 32 CPUs, 400 GB RAM
+- **Scenarios**: 20 parameter combinations per design × 200 iterations × 5 methods
+- **Output**: `manuscript/benchmark/<manifest_sha>/scenarios/sensitivity/`
+- **SLURM logs**: `logs/bench_<jobname>_<jobid>.out` / `.err` under `$PROJECT`
 
 ### Main simulation benchmark
 
@@ -112,10 +127,10 @@ sbatch scripts/slurm_benchmark.sh sensitivity 200 two_arm
 sbatch scripts/slurm_benchmark.sh
 ```
 
-- **Time limit**: 48h
-- **Resources**: 1 node, 32 CPUs, 256 GB RAM
-- **Output**: `manuscript/benchmark/simulation/`
-- **SLURM logs**: `benchmark_<jobid>.out` / `benchmark_<jobid>.err`
+- **Time limit**: 72h
+- **Resources**: 1 node, 32 CPUs, 400 GB RAM
+- **Output**: `manuscript/benchmark/<manifest_sha>/scenarios/core/`
+- **SLURM logs**: `logs/bench_<jobname>_<jobid>.out` / `.err` under `$PROJECT`
 
 ---
 
@@ -123,13 +138,14 @@ sbatch scripts/slurm_benchmark.sh
 
 | Path | Contents |
 |------|----------|
-| `manuscript/benchmark/simulation/` | Per-scenario CSV results from the main benchmark |
-| `manuscript/benchmark/sensitivity/` | Per-scenario CSV results from the sensitivity benchmark |
-| `benchmark_<jobid>.out` / `.err` | SLURM stdout/stderr for the main benchmark job |
-| `sensitivity_<jobid>.out` / `.err` | SLURM stdout/stderr for the sensitivity benchmark job |
+| `manuscript/benchmark/<manifest_sha>/scenarios/core/` | Per-scenario CSV results from the main benchmark |
+| `manuscript/benchmark/<manifest_sha>/scenarios/sensitivity/` | Per-scenario CSV results from the sensitivity benchmark |
+| `logs/bench_<jobname>_<jobid>.out` / `.err` | SLURM stdout/stderr of a benchmark job, under `$PROJECT` |
 | `r_install_<jobid>.out` / `.err` | SLURM logs for the R install job |
 
-Output CSVs are written incrementally — completed scenarios are saved as they finish, so partial results are preserved if the job times out.
+`<manifest_sha>` is the hash of the frozen configuration, so results are stored by the
+configuration that produced them. Output CSVs are written incrementally: completed scenarios
+are saved as they finish, so partial results are preserved if the job times out.
 
 ---
 

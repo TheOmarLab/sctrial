@@ -19,8 +19,8 @@ Panels:
      inference comparison across all datasets (β scatter, −log10(p),
      SE bars).
 
-Non-overlap guardrail: no sensitivity analysis (→ SF4), no cross-dataset
-biological concordance (→ SF5), no heterogeneity (→ SF6).
+Non-overlap guardrail: no sensitivity analysis (→ SF5), no cross-dataset
+biological concordance (→ SF7), no heterogeneity (→ SF8).
 """
 
 from __future__ import annotations
@@ -36,6 +36,7 @@ from scipy import stats
 
 from sctrial import TrialDesign, did_table
 
+from .._runtime import load_recorded as load_recorded_runtime
 from .._shared import (
     SUPP_OUTPUT,
     add_log1p_cpm_layer,
@@ -49,6 +50,11 @@ from .._shared import (
     get_tnbc_zhang,
     get_vaccine,
     harmonize_response,
+    key_below_axes,
+    key_below_row,
+    label_points,
+    letter_at_panel_corner,
+    report_layout_problems,
     save_panel,
 )
 
@@ -542,10 +548,13 @@ def _panel_influence(ax, results: dict[str, dict]):
         data=df, x="Dataset", y="Cook's D",
         ax=ax, palette=_DS_PALETTE, fliersize=1.5,
     )
-    sns.stripplot(
-        data=df, x="Dataset", y="Cook's D",
-        ax=ax, color="black", size=2.0, alpha=0.25, jitter=0.2,
-    )
+    # Points with a seeded horizontal jitter, so the panel is the same on every render
+    # (a seaborn strip plot draws its jitter from the global, unseeded generator).
+    rng = np.random.default_rng(42)
+    for i, name in enumerate(df["Dataset"].unique()):
+        vals = df.loc[df["Dataset"] == name, "Cook's D"].to_numpy()
+        ax.scatter(i + rng.uniform(-0.2, 0.2, len(vals)), vals, s=4.0, color="black",
+                   alpha=0.25, linewidths=0, zorder=3)
     for i, name in enumerate(df["Dataset"].unique()):
         n = results[name]["effects"]["n_obs"].median()
         n_features = len(results[name]["features"])
@@ -588,8 +597,19 @@ def _panel_influence(ax, results: dict[str, dict]):
 
 def _panel_baseline_comparability(
     fig, axes, results: dict[str, dict], *, composite: bool = False,
-):
-    """D: Baseline mean comparability."""
+) -> list[tuple]:
+    """D: Baseline mean comparability.
+
+    Draws the points, the identity line and the axis text, and returns one
+    ``(ax, features, x, y, marker_area)`` tuple per dataset for
+    ``_label_baseline_points``, which must run once the axes positions are final.
+    The groups compared are named by the axis labels; the title carries the
+    dataset and the Pearson correlation.
+    """
+    marker_s = 5 if composite else 40
+    axis_fs = 4.5 if composite else 9
+    title_fs = 4.0 if composite else 11
+    to_label: list[tuple] = []
     names = list(results)
     for i, ax in enumerate(np.ravel(axes)):
         if i >= len(names):
@@ -622,11 +642,6 @@ def _panel_baseline_comparability(
             )
             x_label = f"{cfg['arm_control']} mean"
             y_label = f"{cfg['arm_treated']} mean"
-            subtitle = {
-                "TNBC": "TNBC — anti-PDL1+Chemo vs Chemo",
-                "Melanoma": "Melanoma — responder vs non-responder",
-                "COVID-19": "COVID-19 — severe vs mild",
-            }.get(name, f"{name} — baseline comparability")
         else:
             pre_data = pv[pv[visit_col] == pre_v]
             post_data = pv[pv[visit_col] == post_v]
@@ -640,20 +655,16 @@ def _panel_baseline_comparability(
             y_vals = post_data[features].mean()
             x_label = "Pre-treatment mean"
             y_label = "Post-treatment mean"
-            subtitle = f"{name}: pre vs post"
 
         ax.scatter(
             x_vals.values, y_vals.values,
-            s=40, alpha=0.8,
+            s=marker_s, alpha=0.8,
             color=_DS_PALETTE.get(name, "grey"),
-            edgecolors="white", linewidth=0.5, zorder=3,
+            edgecolors="white", linewidth=0.2 if composite else 0.5, zorder=3,
         )
 
-        # Fix the axes frame (with a margin) and draw the identity line BEFORE
-        # labelling. adjustText needs the final coordinate frame plus some empty
-        # margin to spread the dense near-origin cluster (several signatures share
-        # the (0, 0) point); doing this afterwards via set_aspect(adjustable=
-        # "datalim") re-cramped the labels it had just placed.
+        # A square frame with a margin, so that labels have room around the
+        # cluster near the origin.
         lo = float(min(x_vals.min(), y_vals.min()))
         hi = float(max(x_vals.max(), y_vals.max()))
         pad = (hi - lo) * 0.15 if hi > lo else 0.1
@@ -664,40 +675,30 @@ def _panel_baseline_comparability(
         ax.plot([lo, hi], [lo, hi], ls="--", color="black",
                 lw=0.3 if composite else 0.9, zorder=1)
 
-        # adjustText 1.3.0: point repulsion is `force_static` (the old
-        # `force_points` is silently dropped, so labels never cleared the dense
-        # near-origin cluster). Explode overlaps apart first, then repel from both
-        # text and points, keep inside the axes, draw a leader for moved labels.
-        _lbl_bbox = dict(boxstyle="round,pad=0.05", fc="white",
-                         ec="none", alpha=0.6)
-        _fs = 3.0 if composite else 9
-        texts = [
-            ax.text(cx, ty, feat, fontsize=_fs, fontweight="bold", bbox=_lbl_bbox)
-            for feat, cx, ty in zip(features, x_vals.values, y_vals.values)
-        ]
-        adjust_text(
-            texts, ax=ax,
-            force_text=(1.8, 2.0), force_static=(1.6, 1.8),
-            force_explode=(1.8, 2.0), expand=(1.7, 2.0),
-            max_move=(40 if composite else 70),
-            ensure_inside_axes=True, min_arrow_len=(1 if composite else 2),
-            time_lim=10,
-            arrowprops=dict(arrowstyle="-",
-                            color="#bbbbbb" if composite else "gray",
-                            lw=0.25 if composite else 0.5),
-        )
-
         r, _ = stats.pearsonr(x_vals.values, y_vals.values)
-        ax.text(
-            0.05, 0.92, f"r = {r:.3f}",
-            transform=ax.transAxes, fontsize=9 if not composite else 8,
-            bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8),
-        )
-
-        ax.set_xlabel(x_label, fontsize=9 if not composite else 8)
-        ax.set_ylabel(y_label, fontsize=9 if not composite else 8)
-        ax.set_title(subtitle, fontsize=4.0 if composite else 11, fontweight="bold")
+        ax.set_xlabel(x_label, fontsize=axis_fs, labelpad=1 if composite else None)
+        ax.set_ylabel(y_label, fontsize=axis_fs, labelpad=1 if composite else None)
+        ax.set_title(f"{name} (r = {r:.3f})", fontsize=title_fs, fontweight="bold")
         despine(ax)
+        to_label.append((ax, list(features), x_vals.values, y_vals.values, marker_s))
+    return to_label
+
+
+def _label_baseline_points(to_label: list[tuple], *, composite: bool = False) -> None:
+    """Name the features of panel D clear of each other and of the markers.
+
+    Features are prioritised by their distance from the identity line, the ones
+    a comparability panel needs to name. A standalone panel names every feature;
+    a composite cell names as many as fit without a layout defect.
+    """
+    for ax, features, xs, ys, marker_s in to_label:
+        xs, ys = np.asarray(xs, dtype=float), np.asarray(ys, dtype=float)
+        priority = np.argsort(-np.abs(ys - xs), kind="stable")
+        n = len(features)
+        counts = [n] + [k for k in (12, 9, 8, 7, 6) if k < n] if composite else None
+        label_points(ax, features, xs, ys, marker_s,
+                     fontsize=3.0 if composite else 9,
+                     priority=priority, counts=counts)
 
 
 def _panel_signal_enrichment(ax, results: dict[str, dict]):
@@ -1193,8 +1194,8 @@ def _panel_pseudoreplication_single(ds_name, res, design_type="two_arm"):
 
 
 def generate():
-    """Create and save all Supplementary Figure 3 panels."""
-    print("Supplementary Figure 3: Model Diagnostics and Assumption Checks")
+    """Create and save all Supplementary Figure 4 panels."""
+    print("Supplementary Figure 4: Model Diagnostics and Assumption Checks")
     results = _load_results()
     if not results:
         print("  No valid datasets found; skipping.")
@@ -1245,12 +1246,13 @@ def generate():
     )
     if n_ds == 1:
         axes = np.array([axes])
-    _panel_baseline_comparability(fig, axes, results)
+    _to_label = _panel_baseline_comparability(fig, axes, results)
     fig.suptitle(
         "Baseline Mean Comparability",
         fontweight="bold", y=1.02, fontsize=11,
     )
     fig.tight_layout()
+    _label_baseline_points(_to_label)
     save_panel(fig, "panel_D", FIGURE_NAME, SUPP_OUTPUT)
 
     # E: Signal enrichment vs permutation null
@@ -1295,6 +1297,8 @@ def generate():
         fig_pr = _panel_pseudoreplication_single(ds_name, pr, ds_design)
         if fig_pr is not None:
             pseudo_idx += 1
+            # Panel J of the composite. The files keep the letter I under which they
+            # were first saved, so the installed folder does not change.
             panel_label = f"panel_I{pseudo_idx}_{ds_name.replace('-', '_')}"
             save_panel(fig_pr, panel_label, FIGURE_NAME, SUPP_OUTPUT)
         else:
@@ -1302,21 +1306,16 @@ def generate():
     if pseudo_idx == 0:
         print("  Pseudoreplication: no datasets had valid cell+participant stats.")
 
-    # I: Runtime scaling (Cleveland dot plot, from figure4_robustness_benchmarking)
-    try:
-        from ..main.figure3_robustness_benchmarking import (
-            _panel_c as _fig4_panel_c,
-        )
-        from ..main.figure3_robustness_benchmarking import (
-            _prepare_scalability_data,
-        )
-        scale_data = _prepare_scalability_data()
-        fig_rt, ax_rt = plt.subplots(figsize=(8, 5.5))
-        _fig4_panel_c(ax_rt, {"scale_data": scale_data})
-        fig_rt.tight_layout()
-        save_panel(fig_rt, "panel_I_runtime_scaling", FIGURE_NAME, SUPP_OUTPUT)
-    except Exception as exc:
-        print(f"  Warning: Could not generate runtime panel I: {exc}")
+    # I: Runtime per dataset (Cleveland dot plot of the recorded measurements)
+    from ..main.figure3_robustness_benchmarking import (
+        _panel_runtime_per_dataset as _runtime_panel,
+    )
+
+    scale_data = {"timing_df": load_recorded_runtime()}
+    fig_rt, ax_rt = plt.subplots(figsize=(8, 5.5))
+    _runtime_panel(ax_rt, {"scale_data": scale_data})
+    fig_rt.tight_layout()
+    save_panel(fig_rt, "panel_I_runtime_scaling", FIGURE_NAME, SUPP_OUTPUT)
 
     # ==================================================================
     # Composite artboard  (180 mm × 215 mm)
@@ -1456,21 +1455,21 @@ def generate():
             0.34,   # row  0: A (Q-Q)
             0.34,   # spacer
             0.40,   # row  2: B | C
-            0.34,   # spacer
+            0.58,   # spacer (key of B, then the titles of D)
             0.58,   # row  4: D (baseline, 1×n_ds, taller)
             0.36,   # spacer
             0.50,   # row  6: E | F1 | F2
-            0.36,   # spacer
+            0.58,   # spacer (key of E)
             0.42,   # row  8: G | H | I
-            0.40,   # spacer
+            0.68,   # spacer (keys of G, H, I, then the title of J)
             0.52,   # row 10: J row 1
-            0.36,   # spacer
+            0.44,   # spacer (keys of J)
             0.52,   # row 12: J row 2
-            0.36,   # spacer
+            0.44,   # spacer (keys of J)
             0.52,   # row 14: J row 3
         ],
         hspace=0.0,
-        left=0.06, right=0.98, top=0.97, bottom=0.03,
+        left=0.06, right=0.98, top=0.97, bottom=0.045,
     )
 
     import re as _re
@@ -1486,7 +1485,7 @@ def generate():
         if lines_aq:
             lines_aq[0].set_markersize(1.5)
         _aq.set_xlabel(_aq.get_xlabel(), labelpad=1)
-        _aq.set_ylabel(_aq.get_ylabel(), labelpad=1)
+        _aq.set_ylabel(_aq.get_ylabel() if _aq is axes_a[0] else "", labelpad=1)
 
     # ── Row 2: B | C ─────────────────────────────────────────────────
     gs_bc = outer[2].subgridspec(1, 2, width_ratios=[0.5, 0.5], wspace=0.35)
@@ -1515,6 +1514,10 @@ def generate():
         if _m:
             _txt.set_text(f"{_m.group(1)}\n({_m.group(2)})")
             _txt.set_fontsize(3.5)
+    _c_top = ax_c.get_ylim()[1]
+    ax_c.set_ylim(top=_c_top * 1.6)
+    for _txt in ax_c.texts:
+        _txt.set_y(_c_top * 1.57)
     for _line in ax_c.lines:
         _line.set_linewidth(max(0.15, _line.get_linewidth() * 0.25))
     for _patch in ax_c.patches:
@@ -1530,124 +1533,10 @@ def generate():
     axes_d = np.array(
         [fig_c.add_subplot(gs_d[0, i]) for i in range(n_ds)]
     )
-    _panel_baseline_comparability(fig_c, axes_d, results, composite=True)
-    for _axd_i in axes_d:
-        for _coll in _axd_i.collections:
-            if hasattr(_coll, 'set_sizes'):
-                _coll.set_sizes([5])
-        for _ann in list(_axd_i.texts):
-            if "r =" in _ann.get_text() or "r=" in _ann.get_text():
-                _ann.set_fontsize(3.5)
-        _axd_i.set_xlabel(_axd_i.get_xlabel(), labelpad=1, fontsize=4.5)
-        _axd_i.set_ylabel(_axd_i.get_ylabel(), labelpad=1, fontsize=4.5)
-
-    # Dataset order: TNBC[0], Melanoma[1], AML[2], CAR-T[3], COVID-19[4], Vaccine[5]
-    # TNBC (axes_d[0]): nudge specific gene labels
-    _tnbc_nudge = {
-        "CD8A": (0.0, 0.05),
-        "HAVCR2": (0.08, 0.0),
-        "LAG3": (0.0, -0.05),
-        "PDCD1": (-0.10, 0.0),
-        "IL2": (0.0, 0.06),
-        "IFNG": (0.0, -0.14),
-    }
-    for _ann in list(axes_d[0].texts):
-        _gene = _ann.get_text()
-        if _gene in _tnbc_nudge:
-            _cx, _cy = _ann.get_position()
-            _dx, _dy = _tnbc_nudge[_gene]
-            _ann.set_position((_cx + _dx, _cy + _dy))
-
-    # Melanoma (axes_d[1])
-    _mel_nudge = {
-        "IL2": (-0.10, 0.0),
-        "CD4": (0.0, 0.05),
-        "CD8A": (0.0, 0.05),
-        "NKG7": (0.08, 0.0),
-        "FOXP3": (0.08, 0.0),
-        "CD19": (0.08, 0.0),
-        "IFNG": (0.0, -0.14),
-    }
-    _mel_ha = {"IL2": "right"}
-    for _ann in list(axes_d[1].texts):
-        _gene = _ann.get_text()
-        if _gene in _mel_nudge:
-            _cx, _cy = _ann.get_position()
-            _dx, _dy = _mel_nudge[_gene]
-            _ann.set_position((_cx + _dx, _cy + _dy))
-        if _gene in _mel_ha:
-            _ann.set_ha(_mel_ha[_gene])
-
-    # AML (axes_d[2])
-    _aml_nudge = {
-        "LAG3": (0.06, 0.05),
-        "CD14": (-0.18, 0.05),
-        "CD8A": (0.06, -0.06),
-        "GZMB": (0.0, -0.06),
-        "CTLA4": (0.0, -0.02),
-        "IL7R": (0.08, 0.0),
-    }
-    _aml_ha = {"CD14": "right"}
-    for _ann in list(axes_d[2].texts):
-        _gene = _ann.get_text()
-        if _gene in _aml_nudge:
-            _cx, _cy = _ann.get_position()
-            _dx, _dy = _aml_nudge[_gene]
-            _ann.set_position((_cx + _dx, _cy + _dy))
-        if _gene in _aml_ha:
-            _ann.set_ha(_aml_ha[_gene])
-
-    # CAR-T (axes_d[3])
-    _cart_nudge = {
-        "IL7R": (-0.08, 0.05),
-        "CD8A": (0.08, 0.0),
-        "CD3D": (0.0, -0.06),
-        "LAG3": (0.0, 0.06),
-        "CTLA4": (-0.05, 0.0),
-        "CD19": (0.06, 0.0),
-        "IL2": (0.0, 0.08),
-        "CD4": (0.0, -0.06),
-        "TNF": (0.0, -0.14),
-    }
-    for _ann in list(axes_d[3].texts):
-        _gene = _ann.get_text()
-        if _gene in _cart_nudge:
-            _cx, _cy = _ann.get_position()
-            _dx, _dy = _cart_nudge[_gene]
-            _ann.set_position((_cx + _dx, _cy + _dy))
-
-    # COVID-19 (axes_d[4])
-    _covid_nudge = {
-        "FOXP3": (-0.15, 0.0),
-        "LAG3": (0.10, 0.0),
-        "IFNG": (0.10, 0.0),
-        "HAVCR2": (0.10, 0.06),
-        "CD4": (0.0, -0.05),
-        "GZMB": (0.18, 0.0),
-    }
-    for _ann in list(axes_d[4].texts):
-        _gene = _ann.get_text()
-        if _gene in _covid_nudge:
-            _cx, _cy = _ann.get_position()
-            _dx, _dy = _covid_nudge[_gene]
-            _ann.set_position((_cx + _dx, _cy + _dy))
-
-    # Vaccine (axes_d[5])
-    _vacc_nudge = {
-        "CD14": (0.10, 0.0),
-        "CTLA4": (-0.10, 0.0),
-        "HAVCR2": (0.0, 0.06),
-        "IFNG": (0.08, 0.0),
-        "CD8A": (0.0, 0.06),
-        "FOXP3": (0.0, 0.02),
-        "PDCD1": (0.06, 0.0),
-    }
-    for _ann in list(axes_d[5].texts):
-        _gene = _ann.get_text()
-        if _gene in _vacc_nudge:
-            _cx, _cy = _ann.get_position()
-            _dx, _dy = _vacc_nudge[_gene]
-            _ann.set_position((_cx + _dx, _cy + _dy))
+    _label_baseline_points(
+        _panel_baseline_comparability(fig_c, axes_d, results, composite=True),
+        composite=True,
+    )
 
     # ── Row 6: E | F1 | F2 ───────────────────────────────────────────
     gs_row6 = outer[6].subgridspec(
@@ -1670,8 +1559,6 @@ def generate():
         markerscale=0.4, handlelength=1.0,
         columnspacing=0.6, handletextpad=0.3,
     )
-    _yl_e = ax_e.get_ylim()
-    ax_e.set_ylim(_yl_e[0], _yl_e[1] * 0.85)
 
     ax_f1 = fig_c.add_subplot(gs_row6[1])
     ax_f2 = fig_c.add_subplot(gs_row6[2])
@@ -1728,7 +1615,8 @@ def generate():
     ax_h = fig_c.add_subplot(gs_row8[1])
     _panel_rejection_vs_alpha(ax_h, results)
     ax_h.set_ylabel("Fraction of features\nexceeding threshold")
-    ax_h.set_ylim(0, 0.65)
+    _h_top = max(float(np.nanmax(_l.get_ydata())) for _l in ax_h.get_lines() if len(_l.get_ydata()))
+    ax_h.set_ylim(0, _h_top * 1.1)
     ax_h.set_xlim(-0.05, ax_h.get_xlim()[1])
     for _line_h in ax_h.get_lines():
         _line_h.set_linewidth(max(0.3, _line_h.get_linewidth() * 0.5))
@@ -1744,20 +1632,8 @@ def generate():
     )
 
     ax_i = fig_c.add_subplot(gs_row8[2])
-    try:
-        from ..main.figure3_robustness_benchmarking import (
-            _panel_c as _fig4_panel_c,
-        )
-        from ..main.figure3_robustness_benchmarking import (
-            _prepare_scalability_data,
-        )
-        _scale_data = _prepare_scalability_data()
-        _fig4_panel_c(ax_i, {"scale_data": _scale_data})
-    except Exception:
-        ax_i.text(
-            0.5, 0.5, "Runtime data unavailable",
-            ha="center", va="center", transform=ax_i.transAxes,
-        )
+    _runtime_panel(ax_i, {"scale_data": scale_data})
+    ax_i.set_title(ax_i.get_title(), fontweight="bold")
     for _coll in ax_i.collections:
         if hasattr(_coll, 'set_sizes'):
             _coll.set_sizes(_coll.get_sizes() * 0.2)
@@ -1795,6 +1671,7 @@ def generate():
     n_pseudo = len(pseudo_names)
     _ax_j_first = None
     _all_j_axes: list[plt.Axes] = []
+    _j_groups: list[list[plt.Axes]] = []
     _j_group_mid_axes: list[tuple] = []
 
     _j_study_titles = {
@@ -1820,6 +1697,7 @@ def generate():
             _DATASET_CFG[_dn].get("design", "two_arm"),
         )
         _all_j_axes.extend(_axes_j)
+        _j_groups.append(_axes_j)
         _j_group_mid_axes.append((_axes_j[1], _dn))
         if _ax_j_first is None:
             _ax_j_first = _axes_j[0]
@@ -1856,6 +1734,7 @@ def generate():
             _DATASET_CFG[_dn].get("design", "two_arm"),
         )
         _all_j_axes.extend(_axes_j)
+        _j_groups.append(_axes_j)
         _j_group_mid_axes.append((_axes_j[1], _dn))
         if _ax_j_first is None:
             _ax_j_first = _axes_j[0]
@@ -1894,36 +1773,25 @@ def generate():
 
     _cap_fontsize(fig_c, _MAX_FONT)
 
-    _lbl_fs = 8
-    _lbl_x = -0.10
-    _lbl_y = 1.10
-    _lbl_y_hi = 1.30
-    _lbl_x_far = -0.20
-    _lbl_x_xfar = -0.25
+    # Every key sits below its axes, clear of the data. The two bar panels of a
+    # dataset in J show the same two series and share one key.
+    for _ax_key, _ncol in ((ax_b, 6), (ax_e, 4), (ax_g, 3), (ax_h, 4), (ax_i, 3)):
+        key_below_axes(_ax_key, ncol=_ncol, fontsize=3.0, gap_pt=1.0)
+    for _axes_j in _j_groups:
+        key_below_row(_axes_j[1:], ncol=2, fontsize=3.0, gap_pt=1.0)
 
-    _label_pairs: list[tuple] = [
-        (axes_a[0], "A", _lbl_x_far, _lbl_y_hi),
-        (ax_b, "B", _lbl_x, _lbl_y),
-        (ax_c, "C", _lbl_x, _lbl_y),
-        (axes_d[0], "D", _lbl_x_xfar, _lbl_y),
-        (ax_e, "E", _lbl_x_far + 0.06, _lbl_y_hi),
-        (ax_f1, "F", _lbl_x_far + 0.06, _lbl_y_hi),
-        (ax_g, "G", _lbl_x_far + 0.06, _lbl_y_hi),
-        (ax_h, "H", _lbl_x_far, _lbl_y_hi),
-        (ax_i, "I", _lbl_x_far, _lbl_y_hi),
+    _panel_letters: list[tuple] = [
+        (axes_a[0], "A"), (ax_b, "B"), (ax_c, "C"), (axes_d[0], "D"), (ax_e, "E"),
+        (ax_f1, "F"), (ax_g, "G"), (ax_h, "H"), (ax_i, "I"),
     ]
     if _ax_j_first is not None:
-        _label_pairs.append((_ax_j_first, "J", _lbl_x_xfar, _lbl_y))
-
-    for ax_lbl, lbl, lx, ly in _label_pairs:
-        ax_lbl.text(
-            lx, ly, lbl,
-            transform=ax_lbl.transAxes,
-            fontsize=_lbl_fs, fontweight="bold", va="top", ha="left",
-        )
+        _panel_letters.append((_ax_j_first, "J"))
+    for _ax_letter, _letter in _panel_letters:
+        letter_at_panel_corner(_ax_letter, _letter, fontsize=8, keep_clear=True)
 
     plt.rcParams.update(_prev_rc)
 
+    report_layout_problems(fig_c, FIGURE_NAME)
     save_panel(fig_c, FIGURE_NAME, FIGURE_NAME, SUPP_OUTPUT, close=False)
     pdf_path = SUPP_OUTPUT / f"{FIGURE_NAME}_panels" / f"{FIGURE_NAME}.pdf"
     fig_c.savefig(str(pdf_path), format="pdf", bbox_inches="tight",

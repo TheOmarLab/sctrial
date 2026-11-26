@@ -108,3 +108,7 @@ Monte Carlo Simulation
 .. automodule:: sctrial.stats.simulation
    :members:
    :show-inheritance:
+
+Gene Expression Vectors
+-----------------------
+.. autofunction:: sctrial.extract_gene_vector

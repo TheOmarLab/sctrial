@@ -25,6 +25,7 @@ For each participant i:
     3. Compare to full-sample beta_DiD
 
 Metrics:
+
 - Influence: ``|beta_DiD - beta_DiD^(-i)| / SE(beta_DiD)``
 - Cook's D analog for DiD
 
@@ -38,6 +39,7 @@ K-Fold Cross-Validation
 
 Interpretation Guidelines
 -------------------------
+
 - High LOO variance: Effect driven by few participants
 - Consistently signed CV estimates: Robust effect
 - Estimate changes sign across folds: Unreliable effect
@@ -52,7 +54,7 @@ import numpy as np
 import pandas as pd
 from anndata import AnnData
 
-from ..adata_tools import subset_primary
+from ..adata_tools import subset_arms, subset_primary
 from ..design import TrialDesign
 from .did import AggregateMode, did_table
 
@@ -103,11 +105,14 @@ def loo_cv_did(
     -------
     pd.DataFrame
         Long-format results with columns:
+
         - feature: Feature name
         - excluded: ID of excluded participant
         - beta_DiD: DiD estimate without this participant
-        - se_DiD: Standard error
-        - influence: ``|beta_full - beta_loo| / SE``
+        - se_DiD: Standard error of the estimate without this participant
+        - beta_full: DiD estimate on all participants
+        - influence: ``|beta_full - beta_loo| / se_full``, with the standard error of the
+          fit on all participants
 
     Examples
     --------
@@ -116,9 +121,15 @@ def loo_cv_did(
     >>> influential = loo[loo["influence"] > 1.0]
     >>> print(f"Influential participants: {influential['excluded'].unique()}")
     """
-    # Get paired participants
-    ad = subset_primary(adata, design, visits, exclude_crossovers=exclude_crossovers)
-    participants = ad.obs[design.participant_col].unique().tolist()
+    # The two visits and the two named arms. Restricting here reports excluded rows
+    # once. A design that does not match the labels of the data raises here; raised by
+    # did_table inside the loop it would be caught and recorded as a failed fit.
+    adata = subset_arms(
+        subset_primary(adata, design, visits, exclude_crossovers=exclude_crossovers),
+        design,
+        stacklevel=3,
+    )
+    participants = adata.obs[design.participant_col].dropna().unique().tolist()
 
     # Full-sample estimates for comparison
     full_res = did_table(
@@ -239,6 +250,7 @@ def kfold_cv_did(
     -------
     pd.DataFrame
         Results with one row per feature:
+
         - feature: Feature name
         - beta_full: Full-sample estimate
         - beta_cv_mean: Mean CV estimate
@@ -246,6 +258,8 @@ def kfold_cv_did(
         - beta_cv_lower, beta_cv_upper: 2.5-97.5 percentiles
         - cv_stability: beta_cv_mean / beta_cv_sd (higher = more stable)
         - sign_consistency: Proportion of CV estimates with same sign as full
+        - n_cv_samples: Number of CV estimates that are not missing; the summaries are
+          missing when there are fewer than three
 
     Examples
     --------
@@ -256,9 +270,16 @@ def kfold_cv_did(
     """
     rng = np.random.default_rng(seed)
 
-    # Get paired participants
-    ad = subset_primary(adata, design, visits, exclude_crossovers=exclude_crossovers)
-    participants = ad.obs[design.participant_col].unique().tolist()
+    # The two visits and the two named arms. Restricting here reports excluded rows once
+    # and keeps other arms out of the fold assignment. A design that does not match the
+    # labels of the data raises here; raised by did_table inside the loop it would be
+    # caught and counted as a failed fold.
+    adata = subset_arms(
+        subset_primary(adata, design, visits, exclude_crossovers=exclude_crossovers),
+        design,
+        stacklevel=3,
+    )
+    participants = adata.obs[design.participant_col].unique().tolist()
     n_participants = len(participants)
 
     if n_participants < k:
@@ -276,7 +297,7 @@ def kfold_cv_did(
 
     # Build a mapping from participant to arm for stratified assignment
     _arm_map = (
-        ad.obs[[design.participant_col, design.arm_col]]
+        adata.obs[[design.participant_col, design.arm_col]]
         .drop_duplicates(subset=[design.participant_col])
         .set_index(design.participant_col)[design.arm_col]
     )
@@ -394,18 +415,22 @@ def influence_diagnostics(
     -------
     pd.DataFrame
         Per-participant influence with columns:
+
         - feature: Feature name
         - excluded: ID of excluded participant
         - influence: Influence score for this participant
         - beta_DiD: DiD estimate without this participant
-        - is_influential: Whether influence > threshold
+        - beta_full: DiD estimate on all participants
+        - is_influential: Whether influence > threshold. Missing (``pd.NA``) when the
+          influence is missing: the fit without this participant or the fit on everyone
+          gave no estimate, or the fit on everyone has no standard error.
     """
     if loo_results.empty:
         return pd.DataFrame()
 
-    # Return per-participant results with influence flag
     result = loo_results.copy()
-    result["is_influential"] = result["influence"].abs() > threshold
+    influence = result["influence"].abs()
+    result["is_influential"] = (influence > threshold).astype("boolean").mask(influence.isna())
     return result[["feature", "excluded", "influence", "beta_DiD", "beta_full", "is_influential"]]
 
 
@@ -420,17 +445,21 @@ def cv_summary(
     cv_results
         Output from loo_cv_did or kfold_cv_did.
     alpha
-        Significance level for classification.
+        Not used; kept so that existing calls keep working.
 
     Returns
     -------
     pd.DataFrame
         Summary per feature with:
+
         - feature: Feature name
-        - mean_estimate: Full-sample estimate (or mean LOO estimate)
-        - mean_loo: Mean of LOO estimates
-        - std_loo: Standard deviation of LOO estimates
-        - cv: Coefficient of variation (std/mean)
+        - mean_estimate: Full-sample estimate
+        - mean_loo: Mean of the leave-one-out estimates (of the fold estimates for
+          k-fold input)
+        - std_loo: Standard deviation of those estimates
+        - cv: Coefficient of variation, ``|std_loo / mean_loo|``
+        - n_loo: Number of leave-one-out estimates that are not missing (leave-one-out
+          input only)
     """
     df = cv_results.copy()
 

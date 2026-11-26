@@ -1,15 +1,16 @@
 """Effect size calculations for trial-aware inference.
 
-This module provides standardized effect size measures (Cohen's d, Hedge's g)
+This module provides standardized effect size measures (Cohen's d, Hedges' g)
 and confidence intervals for DiD analyses.
 
 Statistical Background
 ----------------------
-**Cohen's d** and **Hedge's g** are standardized effect size measures that express
+**Cohen's d** and **Hedges' g** are standardized effect size measures that express
 the difference between groups in standard deviation units, enabling comparison
 across studies with different scales.
 
 **Cohen's d vs Bootstrap CI**: These serve complementary purposes:
+
 - Cohen's d: Standardized effect size for meta-analysis and interpretation
 - Bootstrap CI: Uncertainty quantification on any estimator
 
@@ -17,8 +18,9 @@ across studies with different scales.
 AND confidence intervals (for statistical inference). Bootstrap CI on Cohen's d
 provides the best of both worlds.
 
-**Hedge's g vs Cohen's d**: Hedge's g applies a small-sample correction factor
-(J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)) that reduces upward bias in small samples. Use Hedge's g when
+**Hedges' g vs Cohen's d**: Hedges' g applies a small-sample correction factor J
+(computed exactly from the gamma function; J ≈ 1 - 3/(4*df - 1) with df = n₁+n₂-2 is
+the common approximation) that reduces upward bias in small samples. Use Hedges' g when
 n < 20 per group; for larger samples they are nearly identical.
 
 Mathematical Definitions
@@ -28,12 +30,13 @@ Cohen's d for DiD:
 
     where s_pooled = sqrt(((n₁-1)s₁² + (n₂-1)s₂²) / (n₁+n₂-2))
 
-Hedge's g:
+Hedges' g:
     g = d × J
 
-    where J = 1 - 3/(4(n₁+n₂-2)-1) = 1 - 3/(4*df - 1)  (Hedges' correction factor)
+    where J = Γ(df/2) / (√(df/2) × Γ((df-1)/2)) ≈ 1 - 3/(4*df - 1), df = n₁+n₂-2
+    (Hedges' correction factor; the functions use the exact form)
 
-95% CI via noncentral t-distribution:
+95% CI (Wald type, t critical values at df = n₁+n₂-2):
     SE(d) ≈ sqrt((n₁+n₂)/(n₁×n₂) + d²/(2(n₁+n₂-2)))
 """
 
@@ -56,6 +59,7 @@ __all__ = [
     "cohens_d_from_did",
     "cohens_d_from_did_approx",
     "effect_size_ci",
+    "bootstrap_effect_size_ci",
     "add_effect_sizes_to_did",
     "EffectSizeMethod",
 ]
@@ -93,6 +97,7 @@ def cohens_d(
     Notes
     -----
     Interpretation guidelines (Cohen, 1988):
+
     - ``|d|`` ≈ 0.2: small effect
     - ``|d|`` ≈ 0.5: medium effect
     - ``|d|`` ≈ 0.8: large effect
@@ -131,13 +136,13 @@ def hedges_g(
     group1: np.ndarray,
     group2: np.ndarray,
 ) -> float:
-    """Calculate Hedge's g effect size (bias-corrected Cohen's d).
+    """Calculate Hedges' g effect size (bias-corrected Cohen's d).
 
-    Hedge's g applies a correction factor J to Cohen's d that reduces
+    Hedges' g applies a correction factor J to Cohen's d that reduces
     upward bias in small samples:
 
         g = d × J
-        J = 1 - 3/(4(n₁+n₂-2) - 1)  (equivalently 1 - 3/(4*df - 1))
+        J ≈ 1 - 3/(4*df - 1), df = n₁+n₂-2  (the exact form is in the Notes)
 
     Parameters
     ----------
@@ -149,7 +154,7 @@ def hedges_g(
     Returns
     -------
     float
-        Hedge's g effect size.
+        Hedges' g effect size.
 
     Notes
     -----
@@ -158,8 +163,8 @@ def hedges_g(
         J = Γ(df/2) / (√(df/2) × Γ((df-1)/2))
 
     which is more accurate than the common approximation for small df.
-    Use Hedge's g when sample sizes are small (n < 20 per group).
-    For larger samples, Cohen's d and Hedge's g are nearly identical.
+    Use Hedges' g when sample sizes are small (n < 20 per group).
+    For larger samples, Cohen's d and Hedges' g are nearly identical.
     """
     g1 = np.asarray(group1, dtype=float)
     g2 = np.asarray(group2, dtype=float)
@@ -197,7 +202,7 @@ def effect_size_ci(
     Parameters
     ----------
     d
-        Effect size (Cohen's d or Hedge's g).
+        Effect size (Cohen's d or Hedges' g).
     n1
         Sample size of group 1.
     n2
@@ -346,7 +351,7 @@ def _compute_effect_size_from_fit(
 
     d = beta / resid_std if resid_std > 1e-12 else np.nan
 
-    # Apply Hedge's correction if requested (exact gamma correction)
+    # Apply Hedges' correction if requested (exact gamma correction)
     if method == "hedges_g" and not np.isnan(d):
         df = fit.df_resid
         if df > 0:
@@ -381,7 +386,7 @@ def add_effect_sizes_to_did(
 ) -> pd.DataFrame:
     """Add standardized effect sizes to a DiD results DataFrame.
 
-    This function computes Cohen's d or Hedge's g from the DiD coefficients
+    This function computes Cohen's d or Hedges' g from the DiD coefficients
     and adds columns for the effect size and its confidence interval.
 
     When the ``resid_sd`` column is present (populated by ``did_table``),
@@ -407,7 +412,8 @@ def add_effect_sizes_to_did(
     -------
     pd.DataFrame
         Input DataFrame with added columns:
-        - 'effect_size': Cohen's d or Hedge's g
+
+        - 'effect_size': Cohen's d or Hedges' g
         - 'effect_size_lower': Lower 95% CI bound
         - 'effect_size_upper': Upper 95% CI bound
         - 'effect_size_interpretation': "small", "medium", "large"
@@ -452,7 +458,7 @@ def add_effect_sizes_to_did(
 
         d = beta / denom if denom > 1e-12 else np.nan
 
-        # Apply Hedge's correction (exact gamma correction)
+        # Apply Hedges' correction (exact gamma correction)
         if method == "hedges_g" and not np.isnan(d) and n > 2:
             df_hedges = n - 2  # Renamed to avoid shadowing DataFrame parameter
             if df_hedges > 0:
@@ -571,6 +577,15 @@ def bootstrap_effect_size_ci(
             boot_d[b] = hedges_g(b1, b2)
         else:
             boot_d[b] = cohens_d(b1, b2)
+
+    undefined = int(np.count_nonzero(~np.isfinite(boot_d)))
+    if undefined:
+        warnings.warn(
+            f"{undefined} of {n_boot} bootstrap samples have no within-group variation and no "
+            "effect size; the interval is computed from the others.",
+            UserWarning,
+            stacklevel=2,
+        )
 
     # Percentile CI
     lower = np.nanpercentile(boot_d, 100 * alpha / 2)

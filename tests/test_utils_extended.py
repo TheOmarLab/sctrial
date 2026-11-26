@@ -250,3 +250,37 @@ class TestResolveFeature:
         )
         # Should return exact match
         assert resolve_feature(adata, "Score") == "Score"
+
+
+def test_permutation_pvalue_counts_reorderings_of_the_observed_split():
+    # Three against three: 2 of the 20 splits are the observed one or its mirror, and 2 more
+    # are as extreme. A draw of the observed split sums the same values in another order.
+    group1, group2 = np.array([1.9000000000000001, -0.4, 0.2]), np.array([1.8, 2.3, 2.7])
+    p = permutation_pvalue(group1, group2, n_perm=6000, seed=1)
+    assert p == pytest.approx(0.2, abs=0.02)
+
+
+def test_permutation_pvalue_paired_counts_unchanged_pairs_as_ties():
+    x, y = np.zeros(4), np.array([0.0, 0.7, 1.1, 0.3])
+    p = permutation_pvalue_paired(x, y, n_perm=6000, seed=1)
+    assert p == pytest.approx(4 / 16, abs=0.02)
+
+
+@pytest.mark.parametrize("shift", [0.0, 2.0**32, -2.0**32, 1e6])
+@pytest.mark.parametrize("scale", [1.0, 1e-6, 1e6])
+def test_permutation_pvalue_does_not_depend_on_origin_or_units(shift, scale):
+    # Exact p-value 2/70. A tolerance scaled by the largest raw value made every contrast a
+    # tie once the origin was far from the data.
+    group1, group2 = np.array([0.0, 1, 2, 3]), np.array([4.0, 5, 6, 7])
+    reference = permutation_pvalue(group1, group2, n_perm=3000, seed=42)
+    moved = permutation_pvalue(scale * group1 + shift, scale * group2 + shift, n_perm=3000, seed=42)
+    assert reference == pytest.approx(2 / 70, abs=0.01)
+    assert moved == reference
+
+
+def test_permutation_pvalue_keeps_contrasts_apart_beside_an_outlier():
+    # One value of 1e10 among values of order one: contrasts that differ by 0.25 are distinct.
+    group1, group2 = np.array([0.0, 1, 2, 3]), np.array([4.0, 5, 6, 1e10])
+    p = permutation_pvalue(group1, group2, n_perm=3000, seed=42)
+    with_small_outlier = permutation_pvalue(group1, np.array([4.0, 5, 6, 1e3]), n_perm=3000, seed=42)
+    assert p == with_small_outlier < 1.0

@@ -7,6 +7,12 @@ Gene-Set Scoring
    :members:
    :show-inheritance:
 
+.. py:data:: ScoreMethod
+   :module: sctrial.scoring
+
+   The values accepted by the ``method`` argument of
+   :func:`~sctrial.scoring.score_gene_sets`: ``"zmean"`` or ``"mean"``.
+
 Preprocessing
 -------------
 .. automodule:: sctrial.preprocessing

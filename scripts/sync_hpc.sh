@@ -4,6 +4,7 @@
 #   scripts/sync_hpc.sh push      # local code -> HPC   (deletes removed files)
 #   scripts/sync_hpc.sh pull      # HPC results -> local
 #   scripts/sync_hpc.sh check     # report any drift without changing anything
+#   scripts/sync_hpc.sh deploy [sha]   # check out an exact commit on HPC (default: local HEAD)
 #
 # `push` uses --delete so a file deleted locally is deleted on the cluster. That
 # is the point: a superseded module left behind on HPC is still importable there,
@@ -105,5 +106,5 @@ print('HPC package OK:', b.CORE_METHODS)\""
     done
     ;;
   *)
-    echo "usage: $0 {push|pull|check}" >&2; exit 2 ;;
+    echo "usage: $0 {push|pull|check|deploy [sha]}" >&2; exit 2 ;;
 esac

@@ -205,10 +205,10 @@ def _verdict(
     sim_med = float(np.median(sims))
 
     if boot is not None:
-        boot = boot[np.isfinite(boot)]
-        if boot.size >= 20:
+        finite_boot = boot[np.isfinite(boot)]
+        if finite_boot.size >= 20:
             # Discrepancies of bootstrap realisations from the observed value.
-            ref = np.abs(boot - observed)
+            ref = np.abs(finite_boot - observed)
             d = abs(observed - sim_med)
             t95, t99 = np.percentile(ref, [95, 99])
             v = "PASS" if d <= t95 else ("INCONCLUSIVE" if d <= t99 else "FAIL")

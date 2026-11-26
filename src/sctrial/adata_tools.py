@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import warnings
 from collections.abc import Sequence
 
 import numpy as np
@@ -10,11 +12,10 @@ from anndata import AnnData
 
 from .design import TrialDesign
 
-__all__ = ["subset_primary", "subset_cells", "profile_features"]
-
-import logging
+__all__ = ["subset_primary", "subset_arms", "subset_cells", "profile_features"]
 
 logger = logging.getLogger(__name__)
+
 
 def _require_cols(obs: pd.DataFrame, cols: list[str]) -> None:
     """Require specific columns in the DataFrame."""
@@ -82,9 +83,124 @@ def subset_primary(
     if exclude_crossovers and design.crossover_col:
         _require_cols(obs, [design.crossover_col])
         cross = _to_bool_series(obs[design.crossover_col]).to_numpy(dtype=bool)
-        mask &= ~cross
+        # a new array: the mask can be a read-only view of the obs column (pandas 3)
+        mask = mask & ~cross
 
     return adata[mask].copy()
+
+
+_MAX_LABELS_IN_MESSAGE = 10
+
+
+def subset_arms(
+    data: AnnData | pd.DataFrame, design: TrialDesign, *, stacklevel: int = 2
+) -> AnnData | pd.DataFrame:
+    """Keep the rows of the two arms named by the design.
+
+    A two-arm analysis compares ``design.arm_treated`` with ``design.arm_control``.
+    A row whose arm is any other label, or is missing, belongs to neither group and
+    is removed. One ``UserWarning`` names the labels removed and counts the
+    participants that carry them. The two-arm functions of the package build their
+    model frame through this function.
+
+    Data that hold rows of other labels but no row of one named arm do not match the
+    design (for example ``arm_control="Control"`` on data labeled ``"Placebo"``), and
+    raise. Data that hold only one of the two named arms and nothing else are returned
+    unchanged; the estimators report a missing estimate for them.
+
+    Parameters
+    ----------
+    data
+        AnnData, or a DataFrame that holds ``design.arm_col`` (``adata.obs`` or a
+        table with one row per participant and visit).
+    design
+        Trial design with ``arm_col``, ``arm_treated`` and ``arm_control``.
+    stacklevel
+        Passed to ``warnings.warn``.
+
+    Returns
+    -------
+    AnnData or pd.DataFrame
+        ``data`` itself when every row belongs to a named arm, otherwise a copy
+        restricted to the rows of the two named arms.
+
+    Raises
+    ------
+    ValueError
+        If the design has no arm column, if ``arm_treated`` equals ``arm_control``,
+        or if the data hold rows of other labels and no row of one named arm.
+    KeyError
+        If ``design.arm_col`` is not a column of the data.
+
+    Examples
+    --------
+    >>> two_arms = subset_arms(adata, design)
+    >>> res = did_table(two_arms, features=features, design=design, visits=("V1", "V2"))
+    """
+    if design.arm_col is None:
+        raise ValueError(
+            "A two-arm analysis requires design.arm_col. For a single-arm design "
+            "(arm_col=None) use the within-arm functions."
+        )
+    if design.arm_treated == design.arm_control:
+        raise ValueError(
+            "A two-arm analysis requires two distinct arm labels, but "
+            f"arm_treated == arm_control == {design.arm_treated!r}. For one arm use "
+            "within_arm_comparison or a design with arm_col=None."
+        )
+    obs = data.obs if isinstance(data, AnnData) else data
+    _require_cols(obs, [design.arm_col])
+    if len(obs) == 0:
+        return data
+
+    arm = obs[design.arm_col]
+    is_treated = arm.isin([design.arm_treated]).to_numpy(dtype=bool)
+    is_control = arm.isin([design.arm_control]).to_numpy(dtype=bool)
+    keep = is_treated | is_control
+    if keep.all():
+        return data
+
+    absent = [
+        label
+        for label, rows in ((design.arm_treated, is_treated), (design.arm_control, is_control))
+        if not rows.any()
+    ]
+    if absent:
+        present = sorted(str(v) for v in pd.unique(arm.dropna()))
+        raise ValueError(
+            f"No rows of arm {' or '.join(repr(a) for a in absent)} in obs[{design.arm_col!r}] "
+            f"(labels present: {present}). The design names arm_treated="
+            f"{design.arm_treated!r} and arm_control={design.arm_control!r}; a two-arm "
+            f"analysis uses rows with these two labels only."
+        )
+
+    outside = obs.loc[~keep]
+    by_participant = design.participant_col in outside.columns
+
+    def _count(rows: pd.DataFrame) -> int:
+        return int(rows[design.participant_col].nunique()) if by_participant else len(rows)
+
+    labels = outside[design.arm_col]
+    named = sorted(pd.unique(labels.dropna()), key=str)
+    parts = [
+        f"{label!r} ({_count(outside[labels.isin([label]).to_numpy()])})"
+        for label in named[:_MAX_LABELS_IN_MESSAGE]
+    ]
+    if len(named) > _MAX_LABELS_IN_MESSAGE:
+        parts.append(f"{len(named) - _MAX_LABELS_IN_MESSAGE} more labels")
+    if labels.isna().any():
+        parts.append(f"missing label ({_count(outside[labels.isna().to_numpy()])})")
+    warnings.warn(
+        f"obs[{design.arm_col!r}] holds rows outside the two arms of the design "
+        f"({design.arm_treated!r} and {design.arm_control!r}). They are excluded from the "
+        f"two-arm analysis. {'Participants' if by_participant else 'Rows'} per excluded "
+        f"label: {', '.join(parts)}.",
+        UserWarning,
+        stacklevel=stacklevel,
+    )
+    if isinstance(data, AnnData):
+        return data[keep].copy()
+    return data.loc[keep].copy()
 
 
 def subset_cells(

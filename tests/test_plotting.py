@@ -177,3 +177,85 @@ def test_did_forest_static(trial_design):
     ax = st.plot_did_forest(df_ct)
     assert isinstance(ax, plt.Axes)
     plt.close()
+
+
+def _cohort_for_error_bars():
+    """Two arms, ten participants each, two visits, four cells per participant and visit."""
+    import anndata as ad
+
+    rng = np.random.default_rng(7)
+    rows = []
+    for arm in ("Treated", "Control"):
+        for i in range(10):
+            for visit in ("V1", "V2"):
+                for cell in range(4):
+                    rows.append(
+                        {
+                            "participant_id": f"{arm}_{i}",
+                            "visit": visit,
+                            "arm": arm,
+                            "celltype": "TypeA" if cell < int(rng.integers(1, 4)) else "TypeB",
+                            "score": float(rng.normal()),
+                        }
+                    )
+    obs = pd.DataFrame(rows)
+    obs.index = obs.index.astype(str)
+    adata = ad.AnnData(X=np.zeros((len(obs), 1)), obs=obs)
+    design = st.TrialDesign(
+        participant_col="participant_id",
+        visit_col="visit",
+        arm_col="arm",
+        arm_treated="Treated",
+        arm_control="Control",
+        celltype_col="celltype",
+    )
+    return adata, design
+
+
+def _point_plot(name, adata, design, **kwargs):
+    if name == "trial_interaction":
+        return st.plot_trial_interaction(adata, "score", design, visits=("V1", "V2"), **kwargs)
+    if name == "parallel_trends":
+        return st.plot_parallel_trends(adata, "score", design, visits=("V1", "V2"), **kwargs)
+    return st.plot_abundance_interaction(adata, "TypeA", design, visits=("V1", "V2"), **kwargs)
+
+
+POINT_PLOTS = ["trial_interaction", "parallel_trends", "abundance_interaction"]
+
+
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason="matplotlib not installed")
+@pytest.mark.parametrize("name", POINT_PLOTS)
+def test_point_plots_draw_the_same_error_bars_on_every_call(name):
+    """The error bars are bootstrap intervals; the default seed makes them repeatable."""
+    adata, design = _cohort_for_error_bars()
+
+    def line_ends(**kwargs):
+        ax = _point_plot(name, adata, design, **kwargs)
+        ends = np.concatenate([np.asarray(line.get_ydata(), dtype=float) for line in ax.lines])
+        plt.close(ax.figure)
+        return ends
+
+    first = line_ends()
+    np.testing.assert_array_equal(first, line_ends())
+    np.testing.assert_array_equal(first, line_ends(seed=0))
+    assert not np.array_equal(first, line_ends(seed=1)), "the seed does not select the draw"
+
+
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason="matplotlib not installed")
+@pytest.mark.parametrize("name", POINT_PLOTS)
+@pytest.mark.parametrize("seed", [0, 5, None])
+def test_point_plots_pass_the_seed_to_seaborn(monkeypatch, name, seed):
+    import seaborn as sns
+
+    adata, design = _cohort_for_error_bars()
+    received = {}
+    original = sns.pointplot
+
+    def spy(*args, **kwargs):
+        received.update(kwargs)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(sns, "pointplot", spy)
+    ax = _point_plot(name, adata, design, **({} if seed == 0 else {"seed": seed}))
+    plt.close(ax.figure)
+    assert "seed" in received and received["seed"] == seed

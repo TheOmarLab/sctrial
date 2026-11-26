@@ -162,13 +162,17 @@ safeguard when:
        seed=42      # For reproducibility
    )
 
-**Mathematical note**: Bootstrap resamples at the participant level:
+**Mathematical note**: the bootstrap is the restricted wild cluster bootstrap. To test
+:math:`\beta = \beta_0`, the model is refitted without the tested term on
+:math:`y - \beta_0 x`, the restricted residuals of each participant are multiplied by one
+random sign, the full model is fitted to the resulting outcome, and
 
 .. math::
 
-   \hat{t}_b^* = \frac{\hat{\beta}^* - \hat{\beta}}{\text{SE}(\hat{\beta}^*)}
+   \hat{t}_b^* = \frac{\hat{\beta}_b^* - \beta_0}{\text{SE}(\hat{\beta}_b^*)}
 
-where :math:`\hat{\beta}^*` is the bootstrap estimate.
+is compared with the observed :math:`(\hat{\beta} - \beta_0) / \text{SE}(\hat{\beta})`.
+The p-value tests :math:`\beta_0 = 0`.
 
 .. _faq-sample-size:
 
@@ -226,6 +230,11 @@ variance structure, and the degree of within-participant correlation.
 
    mde = st.sensitivity_paired(n_participants=6, power=0.80)
    print(f"Min detectable effect: {mde:.2f} SD")
+
+   # For two groups of unequal size (e.g. 3 responders and 8 non-responders):
+   power = st.power_two_group(n_treated=3, n_control=8, effect_size=1.0)
+   n_resp, n_nonresp = st.sample_size_two_group(effect_size=1.0, allocation_ratio=3 / 8)
+   print(f"Need {n_resp} responders and {n_nonresp} non-responders")
 
 **Practical considerations**:
 
@@ -319,9 +328,14 @@ Should I use cell-level or participant-level aggregation?
 
 Why? Cells from the same participant are not independent, violating regression assumptions. Participant-level aggregation (pseudobulk) respects the experimental design.
 
-When aggregated, if an ``n_cells`` column is present, Weighted Least Squares (WLS) is
-used with inverse-variance weights proportional to the number of cells per group.
-This gives more weight to participant-visit groups with more cells (lower variance means).
+The participant-level model is fitted by ordinary least squares, so every participant
+contributes equally. With two visits this is exactly the difference of mean
+within-participant changes between arms. Weighting by the number of cells per group
+would assume that all variance in a participant-visit mean is cell-sampling noise; in
+clinical cohorts between-participant biological variation dominates, and cell counts can
+span two orders of magnitude, so a few participants would determine the estimate. To fit
+Weighted Least Squares (WLS) deliberately, pass ``weight_col="n_cells"`` (or any column of
+finite, positive weights) to ``did_table`` or ``DiDConfig``.
 
 What are Wild Cluster Bootstrap p-values?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -335,10 +349,19 @@ When enabled, the output DataFrame includes additional columns:
 
 - ``p_DiD_boot``: bootstrap p-value
 - ``se_DiD_boot``: bootstrap standard error
-- ``ci_lo_boot`` / ``ci_hi_boot``: bootstrap-t confidence interval
+- ``ci_lo_boot`` / ``ci_hi_boot``: confidence interval from inverting the bootstrap test
 
-The CI uses the bootstrap-t method (Hall, 1992), which applies quantiles of the
-bootstrap *t*-distribution to the observed point estimate and standard error.
+The interval runs from the smallest to the largest value :math:`\beta_0` that the bootstrap
+test does not reject, so it contains zero whenever the bootstrap p-value is at least 0.05. In
+small or unbalanced cohorts the values that are not rejected can form more than one interval;
+the reported interval spans them and can then contain zero although the p-value is below
+0.05. The standard error is
+the standard deviation of the unrestricted bootstrap estimates, which equals the
+cluster-robust standard error without small-sample correction. With nine or fewer
+participants (at the default 999 draws) every sign assignment is enumerated, so the result
+is exact and does not depend on the seed. An enumerated p-value cannot fall below
+:math:`2^{1-G}` for :math:`G` participants; with five or fewer the test therefore cannot
+reject at the 5% level, and the interval is reported as unbounded.
 
 How do I interpret beta_DiD?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -351,7 +374,7 @@ If ``standardize=True`` (default), ``beta_DiD`` is in standard deviation units (
 
 Positive beta_DiD = feature increased more (or decreased less) in treated vs. control.
 
-For standardized effect sizes (Cohen's d or Hedge's g), use ``add_effect_sizes_to_did()``:
+For standardized effect sizes (Cohen's d or Hedges' g), use ``add_effect_sizes_to_did()``:
 
 .. code-block:: python
 
@@ -560,6 +583,27 @@ Not directly with DiD. Options:
 2. **Treat dose as numeric covariate**: Include in ``covariates`` parameter
 3. **Post-hoc trend test**: Use external tools on DiD estimates
 
+What if my study has more than two arms?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A two-arm analysis compares ``arm_treated`` with ``arm_control``. Rows whose arm is
+any other label, or is missing, are excluded, and one warning names the excluded
+labels and counts their participants. They are not counted as control. When one of
+the two named arms then has no rows, the design does not match the labels of the
+data and a ``ValueError`` is raised.
+
+Run one analysis per comparison:
+
+.. code-block:: python
+
+   for dose in ("LowDose", "HighDose"):
+       design = st.TrialDesign(arm_col="arm", arm_treated=dose, arm_control="Placebo")
+       res = st.did_table(adata, features=features, design=design, visits=("V1", "V2"))
+
+``st.subset_arms(adata, design)`` returns the data restricted to the two arms of a
+design. To pool arms into one group, write the pooled label into a new ``obs``
+column and name that column in ``arm_col``.
+
 What if I have crossover design?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -707,6 +751,8 @@ Common causes:
 2. **Zero variance** in feature
 3. **Missing data** in required columns
 4. **Wrong visit labels**
+5. **One arm without participants in the model** (for example a cell type found in
+   one arm only)
 
 Run diagnostics:
 

@@ -32,18 +32,22 @@ def summarize_did_results(
     if df.empty:
         return "No results to summarize."
 
-    n_total = len(df)
-    n_sig_p = (df[p_col] < alpha).sum()
-    n_sig_fdr = (df[fdr_col] < alpha).sum() if fdr_col in df.columns else 0
+    # A feature without a p-value (no estimate, or an estimate without a test) was not tested.
+    tested = df[df[p_col].notna()]
+    n_untested = len(df) - len(tested)
+    n_sig_p = (tested[p_col] < alpha).sum()
+    n_sig_fdr = (tested[fdr_col] < alpha).sum() if fdr_col in df.columns else 0
 
-    top_up = df[df[effect_col] > 0].sort_values(p_col).head(3)
-    top_down = df[df[effect_col] < 0].sort_values(p_col).head(3)
+    top_up = tested[tested[effect_col] > 0].sort_values(p_col).head(3)
+    top_down = tested[tested[effect_col] < 0].sort_values(p_col).head(3)
 
     summary = [
         "## Trial-Aware DiD Summary",
-        f"Total features tested: {n_total}",
-        f"Significant (p < {alpha}): {n_sig_p}",
+        f"Total features tested: {len(tested)}",
     ]
+    if n_untested:
+        summary.append(f"Features without a test: {n_untested}")
+    summary.append(f"Significant (p < {alpha}): {n_sig_p}")
     if fdr_col in df.columns:
         summary.append(f"Significant (FDR < {alpha}): {n_sig_fdr}")
 

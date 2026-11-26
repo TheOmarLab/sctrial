@@ -17,10 +17,20 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import NotRequired
 
-from ..adata_tools import subset_primary
+from ..adata_tools import subset_arms, subset_primary
 from ..design import TrialDesign
-from ..utils import wild_cluster_bootstrap_t
-from ._utils import apply_fdr, encode_visit, standardize_series
+from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
+from ._utils import (
+    apply_fdr,
+    covariate_aggregator,
+    drop_unused_levels,
+    encode_visit,
+    feature_aggregator,
+    fit_identified,
+    fits_exactly,
+    standardize_series,
+    unidentified_terms,
+)
 
 # Minimum number of clusters for reliable cluster-robust standard errors
 # Cameron & Miller (2015) recommend 42+, with 10 as absolute minimum
@@ -53,6 +63,12 @@ class DiDConfig:
     """Random seed for bootstrap reproducibility."""
     exclude_crossovers: bool = True
     """Whether to drop crossover cells if crossover_col is set."""
+    weight_col: str | None = None
+    """Column to use as WLS weights. None (default) fits OLS, weighting every
+    participant-visit aggregate equally. See ``did_fit`` for why."""
+    cov_type: str = "cluster"
+    """Covariance of the analytical test: ``"cluster"`` (by participant) or
+    ``"nonrobust"`` (homoskedastic). See ``did_fit``."""
 
 
 def _validate_did_fit_inputs(df: pd.DataFrame, cols: list[str]) -> None:
@@ -100,12 +116,13 @@ def _prepare_did_obs(
     celltype: str | None,
     exclude_crossovers: bool,
 ) -> tuple[AnnData, pd.DataFrame]:
-    """Prepare the data for DiD analysis."""
+    """Prepare the data for DiD analysis: the two visits and the two named arms."""
     ad = subset_primary(adata, design, visits=visits, exclude_crossovers=exclude_crossovers)
+    ad = subset_arms(ad, design, stacklevel=4)
     if celltype is not None and design.celltype_col:
         ad = ad[ad.obs[design.celltype_col] == celltype].copy()
     obs = encode_visit(ad.obs.copy(), design.visit_col, visits)
-    obs["arm_bin"] = (obs[design.arm_col] == design.arm_treated).astype(int)
+    obs["arm_bin"] = design.arm_bin(obs)
     return ad, obs
 
 
@@ -156,6 +173,40 @@ def _add_feature_columns(
     return df, final_features
 
 
+def _obs_weight_columns(
+    obs: pd.DataFrame,
+    weight_col: str | None,
+    aggregate: str,
+    features: Sequence[str],
+    covariates: list[str] | None,
+) -> list[str]:
+    """The ``obs`` column that holds the weights, if they are not the aggregation's cell counts."""
+    if weight_col is None or (weight_col == "n_cells" and aggregate != "cell"):
+        return []
+    if weight_col in features or weight_col in (covariates or []):
+        raise ValueError(
+            f"weight_col '{weight_col}' is also a feature or a covariate; "
+            "give the weights their own column."
+        )
+    if weight_col not in obs.columns:
+        raise KeyError(f"weight_col '{weight_col}' not found in adata.obs")
+    return [weight_col]
+
+
+def _weight_aggregation(
+    df: pd.DataFrame, grp_cols: Sequence[str | None], weight_col: str | None, level: str
+) -> dict[str, str]:
+    """How a weight column other than ``n_cells`` is aggregated: its value within the group."""
+    if weight_col is None or weight_col == "n_cells":
+        return {}
+    if df.groupby(list(grp_cols), observed=True)[weight_col].nunique(dropna=False).max() > 1:
+        raise ValueError(
+            f"weight_col '{weight_col}' varies within {level}; a weight must be constant "
+            "within each aggregated unit. Use aggregate='cell' for cell-level weights."
+        )
+    return {weight_col: "first"}
+
+
 def _aggregate_for_did(
     df: pd.DataFrame,
     final_features: list[str],
@@ -164,6 +215,7 @@ def _aggregate_for_did(
     aggregate: AggregateMode,
     agg: AggregateFunc,
     covariates: list[str] | None,
+    weight_col: str | None = None,
 ) -> tuple[pd.DataFrame, str, str, str]:
     """Aggregate the data for DiD analysis."""
     if aggregate == "participant_visit":
@@ -173,7 +225,7 @@ def _aggregate_for_did(
         if covariates:
             for c in covariates:
                 if pd.api.types.is_numeric_dtype(df[c]):
-                    cov_agg[c] = str(agg)
+                    cov_agg[c] = covariate_aggregator(agg)
                 else:
                     nunique = df.groupby(grp_cols, observed=True)[c].nunique()
                     if nunique.max() > 1:
@@ -187,8 +239,9 @@ def _aggregate_for_did(
             df.groupby(grp_cols, observed=True)
             .agg(
                 {
-                    **{f: agg for f in final_features},
+                    **{f: feature_aggregator(agg) for f in final_features},
                     **cov_agg,
+                    **_weight_aggregation(df, grp_cols, weight_col, "participant-visit"),
                     "n_cells": "sum",
                     "arm_bin": "first",
                 }
@@ -211,7 +264,7 @@ def _aggregate_for_did(
         if covariates:
             for c in covariates:
                 if pd.api.types.is_numeric_dtype(df[c]):
-                    cov_agg_ct[c] = str(agg)
+                    cov_agg_ct[c] = covariate_aggregator(agg)
                 else:
                     nunique = df.groupby(grp_cols, observed=True)[c].nunique()
                     if nunique.max() > 1:
@@ -225,8 +278,9 @@ def _aggregate_for_did(
             df.groupby(grp_cols, observed=True)
             .agg(
                 {
-                    **{f: agg for f in final_features},
+                    **{f: feature_aggregator(agg) for f in final_features},
                     **cov_agg_ct,
+                    **_weight_aggregation(df, grp_cols, weight_col, "participant-visit-celltype"),
                     "n_cells": "sum",
                     "arm_bin": "first",
                 }
@@ -281,6 +335,18 @@ def _ensure_paired(df: pd.DataFrame, unit: str, time: str, visits: tuple[str, st
     return df[df[unit].isin(keep)].copy()
 
 
+def _missing_did_fit(n_units: int) -> DidFitResult:
+    """Result of ``did_fit`` when the interaction cannot be estimated."""
+    return {
+        "beta_DiD": np.nan,
+        "se_DiD": np.nan,
+        "p_DiD": np.nan,
+        "beta_time": np.nan,
+        "p_time": np.nan,
+        "n_units": n_units,
+    }
+
+
 def did_fit(
     df: pd.DataFrame,
     y: str,
@@ -293,6 +359,7 @@ def did_fit(
     use_bootstrap: bool = False,
     n_boot: int = 999,
     seed: int = 42,
+    weight_col: str | None = None,
 ) -> DidFitResult:
     """Fit fixed-effects Difference-in-Differences (DiD) model.
 
@@ -330,12 +397,22 @@ def did_fit(
     - **No anticipation**: Treatment effect only after treatment starts.
     - **SUTVA**: No spillover between participants.
     - Requires at least 4 unique units (participants) to estimate fixed effects.
-      Returns NaN for all estimates if n_units < 4.
+      Returns NaN for all estimates if n_units < 4, if only one arm has participants
+      with both visits, or if the data do not identify the interaction.
     - Features with near-zero variance (std < 1e-8) return NaN.
     - Cluster-robust standard errors account for within-participant correlation.
-    - If ``n_cells`` column is present, Weighted Least Squares (WLS) is used.
-      Weights are proportional to n_cells (inverse-variance weighting for
-      participant-level means, since Var(mean) = σ²/n).
+
+    **Weighting**
+
+    The model is fit by ordinary least squares, so every participant-visit
+    aggregate carries equal weight. This is deliberate. Weighting by cell count
+    (``Var(mean) = σ²/n``) assumes that all variance between aggregates is
+    cell-sampling noise, which is the assumption participant-level inference
+    rejects: once a few hundred cells are averaged, between-participant
+    biological variation dominates, and cell-count weights would hand a handful
+    of high-yield participants control of the estimate. Equal weighting also makes
+    the two-visit estimate identical to the participant first-difference
+    estimator. Pass ``weight_col`` to opt into WLS explicitly.
 
     Parameters
     ----------
@@ -352,7 +429,15 @@ def did_fit(
     covariates : list of str, optional
         Additional covariate columns to include as fixed effects.
     cov_type : str
-        Covariance type for standard errors ('cluster' recommended).
+        Covariance of the analytical standard error and p-value, and of the
+        statistic the wild cluster bootstrap studentizes. ``"cluster"`` (default)
+        is cluster-robust by participant. ``"nonrobust"`` is the homoskedastic
+        estimate; with two visits and participant fixed effects it is the pooled
+        two-sample t-test on the within-participant changes. The cluster-robust
+        variance of the interaction is estimated separately within each arm, so
+        it is unstable when an arm holds very few participants; the pooled
+        variance uses the participants of both arms and assumes that the changes
+        vary equally in the two arms.
     standardize : bool
         If True, z-score the outcome before fitting (recommended for
         interpretable effect sizes).
@@ -363,14 +448,23 @@ def did_fit(
         Number of bootstrap iterations (999 or 1999 for publication).
     seed : int
         Random seed for reproducibility.
+    weight_col : str, optional
+        Column holding WLS weights. ``None`` (default) fits OLS. Every value must
+        be finite and positive, otherwise a ``ValueError`` is raised rather than
+        silently falling back to OLS.
 
     Returns
     -------
     DidFitResult
         Dictionary with keys ``beta_DiD``, ``se_DiD``, ``p_DiD``,
-        ``beta_time``, ``p_time``, ``n_units``, ``cov_type_used``.
+        ``beta_time``, ``p_time``, ``n_units``, ``resid_sd``, ``cov_type_used``.
+        A result without an estimate (see Assumptions) holds the first six keys only,
+        with NaN for the estimates.
         When ``use_bootstrap=True``, also includes ``p_DiD_boot``,
         ``se_DiD_boot``, ``ci_lo_boot``, ``ci_hi_boot``.
+        When the model fits the outcome exactly (for example when no participant
+        changes), the estimates are returned and the standard error and the
+        p-values are NaN: they would be computed from rounding error.
     """
     if df is None or df.empty:
         raise ValueError("df must be a non-empty DataFrame.")
@@ -379,51 +473,40 @@ def did_fit(
     cols = [unit, time, arm_bin, y]
     if covariates:
         cols.extend(covariates)
-    # Include n_cells for WLS weighting if available
-    if "n_cells" in df.columns:
-        cols.append("n_cells")
+    if weight_col is not None:
+        cols.append(weight_col)
 
     _validate_did_fit_inputs(df, cols)
 
-    tmp = df[cols].dropna().copy().reset_index(drop=True)
+    # A row leaves the model for a missing outcome, visit, arm or covariate, never for a
+    # missing weight: the weights are checked below, on the rows that are fitted.
+    tmp = df[cols].dropna(subset=[c for c in cols if c != weight_col])
+    # With participant fixed effects only a participant observed at both visits informs the
+    # change over time; one left with a single visit for this outcome is not in the model.
+    visits_seen = tmp.groupby(unit, observed=True)[time].nunique()
+    tmp = tmp[tmp[unit].isin(visits_seen.index[visits_seen >= 2])]
+    tmp = drop_unused_levels(tmp.copy().reset_index(drop=True))
     n_units = tmp[unit].nunique()
-    if n_units < 4:
-        return {
-            "beta_DiD": np.nan,
-            "se_DiD": np.nan,
-            "p_DiD": np.nan,
-            "beta_time": np.nan,
-            "p_time": np.nan,
-            "n_units": n_units,
-        }
+    # Fewer than four participants, or one arm without any participant in the model:
+    # the interaction is not estimable.
+    if n_units < 4 or tmp[arm_bin].nunique() < 2:
+        return _missing_did_fit(n_units)
 
     # time is assumed numeric 0/1 already
     tmp_opt = _standardize_outcome(tmp, y, standardize, outcome_col="outcome_std")
     if tmp_opt is None:
-        return {
-            "beta_DiD": np.nan,
-            "se_DiD": np.nan,
-            "p_DiD": np.nan,
-            "beta_time": np.nan,
-            "p_time": np.nan,
-            "n_units": n_units,
-        }
+        return _missing_did_fit(n_units)
     tmp = tmp_opt
     if tmp is None:
         raise ValueError("Outcome standardization failed unexpectedly.")
 
     formula = _build_did_formula(time, arm_bin, unit, covariates, outcome_col="outcome_std")
 
-    # Inverse-variance weighting for pre-aggregated means:
-    # Var(mean_i) = sigma^2 / n_i, so weight_i = n_i (proportional to 1/Var)
-    weights = None
-    if "n_cells" in tmp.columns:
-        w = tmp["n_cells"].values.astype(float)
-        if np.all(np.isfinite(w)) and np.all(w > 0):
-            weights = w
-
-    if weights is not None:
-        model = smf.wls(formula, data=tmp, weights=weights)
+    if weight_col is not None:
+        w = pd.to_numeric(tmp[weight_col], errors="coerce").to_numpy(dtype=float)
+        if not (np.all(np.isfinite(w)) and np.all(w > 0)):
+            raise ValueError(f"weight_col '{weight_col}' must be finite and positive.")
+        model = smf.wls(formula, data=tmp, weights=w)
     else:
         model = smf.ols(formula, data=tmp)
 
@@ -437,41 +520,46 @@ def did_fit(
             stacklevel=2,
         )
 
-    fit = model.fit(
-        cov_type=cov_type, cov_kwds={"groups": tmp[unit]} if cov_type == "cluster" else None
-    )
     term = f"{time}:{arm_bin}"
+    fit = fit_identified(
+        model,
+        term,
+        cov_type=cov_type,
+        cov_kwds={"groups": tmp[unit]} if cov_type == "cluster" else None,
+    )
+    if fit is None or term not in fit.params:
+        return _missing_did_fit(n_units)
 
-    se_did = float(fit.bse.get(term, np.nan))
-    p_did = float(fit.pvalues.get(term, np.nan))
+    # A model that fits the outcome exactly gives the estimate and no test: its standard error
+    # and p-values would be made of rounding error.
+    exact = fits_exactly(fit)
+    se_did = np.nan if exact else float(fit.bse.get(term, np.nan))
+    p_did = np.nan if exact else float(fit.pvalues.get(term, np.nan))
 
-    # Fallback: if cluster-robust SE is NaN (degenerate, e.g. only 2 obs per
-    # cluster after participant_visit aggregation), re-fit with nonrobust SE.
-    # The participant FE already absorbs within-participant correlation, so
-    # homoskedastic SE is a valid (though conservative) alternative.
-    #
-    # Justification for nonrobust bootstrap in fallback mode:
-    # When cluster-robust SE is degenerate (typically because each cluster has
-    # only 2 observations after participant_visit aggregation), the wild cluster
-    # bootstrap with nonrobust covariance is methodologically valid because:
-    # (a) participant fixed effects already absorb within-cluster correlation,
-    # (b) with only 2 obs per cluster, heteroskedasticity cannot be estimated
-    #     within clusters anyway, and
-    # (c) the Rademacher sign-flip at the cluster level still provides valid
-    #     finite-sample inference (Webb 2023, J. Econometrics).
+    # Fallback: if the cluster-robust SE is not finite, re-fit with the nonrobust
+    # (homoskedastic) SE. A paired design with participant fixed effects has
+    # residual degrees of freedom and a finite cluster-robust SE, so this is a
+    # guard for models with no residual degrees of freedom, not the usual path.
+    # The bootstrap statistic is then studentized with the same nonrobust
+    # estimator as the observed one, so its sign-flip reference distribution is
+    # that of the statistic reported.
     effective_cov_type = cov_type
-    if cov_type == "cluster" and (not np.isfinite(se_did) or not np.isfinite(p_did)):
+    if (
+        not exact
+        and cov_type == "cluster"
+        and (not np.isfinite(se_did) or not np.isfinite(p_did))
+    ):
         warnings.warn(
-            f"Cluster-robust SE is degenerate (NaN) for feature '{y}' with "
+            f"Cluster-robust SE is not finite for feature '{y}' with "
             f"{int(tmp[unit].nunique())} clusters. Falling back to nonrobust "
-            f"(homoskedastic) SE. This typically occurs when each cluster has "
-            f"very few observations (e.g. participant_visit aggregation with "
-            f"2 visits). Participant fixed effects still absorb within-cluster "
-            f"correlation. Set use_bootstrap=True for more reliable p-values.",
+            f"(homoskedastic) SE. This occurs when the model leaves no residual "
+            f"degrees of freedom. Participant fixed effects still absorb "
+            f"within-cluster correlation. Set use_bootstrap=True for more "
+            f"reliable p-values.",
             UserWarning,
             stacklevel=2,
         )
-        fit = model.fit()  # nonrobust
+        fit = fit.model.fit()  # nonrobust
         se_did = float(fit.bse.get(term, np.nan))
         p_did = float(fit.pvalues.get(term, np.nan))
         effective_cov_type = "nonrobust"
@@ -481,12 +569,15 @@ def did_fit(
     model_row_idx = fit.model.data.row_labels
     n_units_eff = int(tmp[unit].loc[model_row_idx].nunique())
 
+    # A covariate that changes by the same amount for everyone between the visits is the
+    # time regressor: the interaction is identified, the time effect is not.
+    aliased = unidentified_terms(model, [time]) if covariates else []
     res = {
         "beta_DiD": float(fit.params.get(term, np.nan)),
         "se_DiD": se_did,
         "p_DiD": p_did,
-        "beta_time": float(fit.params.get(time, np.nan)),
-        "p_time": float(fit.pvalues.get(time, np.nan)),
+        "beta_time": float(fit.params.drop(aliased, errors="ignore").get(time, np.nan)),
+        "p_time": np.nan if exact else float(fit.pvalues.drop(aliased, errors="ignore").get(time, np.nan)),
         "n_units": n_units_eff,
         "resid_sd": float(np.sqrt(fit.scale)),
         "cov_type_used": effective_cov_type,
@@ -529,6 +620,8 @@ def did_table(
     n_boot: int = 999,
     seed: int = 42,
     config: DiDConfig | None = None,
+    weight_col: str | None = None,
+    cov_type: str = "cluster",
 ) -> pd.DataFrame:
     """Run Difference-in-Differences (DiD) for a list of features.
 
@@ -557,7 +650,7 @@ def did_table(
     config
         Optional DiDConfig object. If provided, its values override the corresponding
         keyword arguments (aggregate, layer, standardize, agg, covariates, bootstrap,
-        seed, and exclude_crossovers).
+        seed, weight_col, cov_type and exclude_crossovers).
     celltype
         If provided, subsets the analysis to a specific cell type.
     aggregate
@@ -588,6 +681,21 @@ def did_table(
         Number of bootstrap permutations.
     seed
         Random seed for bootstrap.
+    weight_col
+        Column to use as WLS weights. ``"n_cells"`` is the cell count of each
+        aggregate (created by ``aggregate="participant_visit"`` or
+        ``"participant_visit_celltype"``). Any other name is a column of
+        ``adata.obs`` with finite, positive values; when the data are aggregated it
+        must be constant within each aggregated unit, and that value is the weight
+        of the unit. ``None`` (default) fits OLS, so each participant-visit
+        aggregate counts equally regardless of how many cells it averages. See
+        ``did_fit`` for the rationale.
+    cov_type
+        Covariance of the analytical test: ``"cluster"`` (default, cluster-robust by
+        participant) or ``"nonrobust"`` (homoskedastic; with two visits, the pooled
+        two-sample t-test on the within-participant changes). The column
+        ``cov_type_used`` of the result records the estimate each row reports. See
+        ``did_fit`` for when each applies.
 
     Returns
     -------
@@ -610,6 +718,8 @@ def did_table(
         use_bootstrap = config.use_bootstrap
         n_boot = config.n_boot
         seed = config.seed
+        weight_col = config.weight_col
+        cov_type = config.cov_type
         exclude_crossovers = config.exclude_crossovers
 
     ad, obs = _prepare_did_obs(adata, design, visits, celltype, exclude_crossovers)
@@ -624,6 +734,7 @@ def did_table(
             if c not in obs.columns:
                 raise KeyError(f"Covariate '{c}' not found in adata.obs")
             cols.append(c)
+    cols += _obs_weight_columns(obs, weight_col, aggregate, features, covariates)
 
     df = obs[cols].copy()
     df, final_features = _add_feature_columns(df, ad, features, layer)
@@ -636,6 +747,7 @@ def did_table(
         aggregate,
         agg,
         covariates,
+        weight_col,
     )
 
     rows = []
@@ -647,16 +759,19 @@ def did_table(
             time=time,
             arm_bin=arm_bin,
             covariates=covariates,
+            cov_type=cov_type,
             standardize=standardize,
             use_bootstrap=use_bootstrap,
             n_boot=n_boot,
             seed=seed,
+            weight_col=weight_col,
         )
         row = dict(out)
         row["feature"] = feat
         rows.append(row)
     res = pd.DataFrame(rows).sort_values("p_DiD")
     res = apply_fdr(res, p_col="p_DiD", fdr_col="FDR_DiD")
+    warn_unbounded_bootstrap_intervals(res)
     return res.reset_index(drop=True)
 
 
@@ -672,6 +787,7 @@ def get_did_aggregated_df(
     aggregate: AggregateMode = "participant_visit",
     agg: AggregateFunc = "mean",
     covariates: list[str] | None = None,
+    weight_col: str | None = None,
 ) -> tuple[pd.DataFrame, str, str, str]:
     """Build aggregated DataFrame for DiD, for use in permutation tests.
 
@@ -702,6 +818,10 @@ def get_did_aggregated_df(
     covariates
         Optional covariate columns to include as fixed effects. Non-numeric
         covariates must be constant within participant-visit.
+    weight_col
+        Column of ``adata.obs`` to carry into the frame as weights for ``did_fit``,
+        as in `did_table`. The cell count ``n_cells`` of an aggregated frame is
+        always present.
 
     Returns
     -------
@@ -712,10 +832,11 @@ def get_did_aggregated_df(
     cols = [design.participant_col, design.visit_col, design.arm_col, "visit_num", "arm_bin"]
     if covariates:
         cols.extend(covariates)
+    cols += _obs_weight_columns(obs, weight_col, aggregate, features, covariates)
     df = obs[cols].copy()
     df, final_features = _add_feature_columns(df, ad, features, layer)
     df_use, unit, time, arm_bin = _aggregate_for_did(
-        df, final_features, design, visits, aggregate, agg, covariates
+        df, final_features, design, visits, aggregate, agg, covariates, weight_col
     )
     return df_use, unit, time, arm_bin
 
@@ -739,6 +860,8 @@ def did_table_parallel(
     backend: str = "loky",
     batch_size: int | None = None,
     config: DiDConfig | None = None,
+    weight_col: str | None = None,
+    cov_type: str = "cluster",
 ) -> pd.DataFrame:
     """Parallelized DiD across features using joblib.
 
@@ -753,6 +876,10 @@ def did_table_parallel(
         Joblib backend ("loky", "multiprocessing", or "threading").
     batch_size
         Optional joblib batch size. If None, joblib chooses.
+    weight_col
+        Column of weights for weighted least squares, as in `did_table`.
+    cov_type
+        Covariance of the analytical test, as in `did_table`.
     """
     if n_jobs == 1:
         return did_table(
@@ -771,6 +898,8 @@ def did_table_parallel(
             n_boot=n_boot,
             seed=seed,
             config=config,
+            weight_col=weight_col,
+            cov_type=cov_type,
         )
 
     try:
@@ -787,6 +916,8 @@ def did_table_parallel(
         use_bootstrap = config.use_bootstrap
         n_boot = config.n_boot
         seed = config.seed
+        weight_col = config.weight_col
+        cov_type = config.cov_type
         exclude_crossovers = config.exclude_crossovers
 
     ad, obs = _prepare_did_obs(adata, design, visits, celltype, exclude_crossovers)
@@ -800,6 +931,7 @@ def did_table_parallel(
             if c not in obs.columns:
                 raise KeyError(f"Covariate '{c}' not found in adata.obs")
             cols.append(c)
+    cols += _obs_weight_columns(obs, weight_col, aggregate, features, covariates)
 
     df = obs[cols].copy()
     df, final_features = _add_feature_columns(df, ad, features, layer)
@@ -812,6 +944,7 @@ def did_table_parallel(
         aggregate,
         agg,
         covariates,
+        weight_col,
     )
 
     # Generate independent seeds for each parallel feature using SeedSequence
@@ -827,10 +960,12 @@ def did_table_parallel(
             time=time,
             arm_bin=arm_bin,
             covariates=covariates,
+            cov_type=cov_type,
             standardize=standardize,
             use_bootstrap=use_bootstrap,
             n_boot=n_boot,
             seed=feature_seeds[idx],
+            weight_col=weight_col,
         )
         row = dict(out)
         row["feature"] = feat
@@ -843,6 +978,7 @@ def did_table_parallel(
 
     res = pd.DataFrame(rows).sort_values("p_DiD")
     res = apply_fdr(res, p_col="p_DiD", fdr_col="FDR_DiD")
+    warn_unbounded_bootstrap_intervals(res)
     return res.reset_index(drop=True)
 
 
@@ -905,6 +1041,14 @@ def did_table_by_celltype(
 
     if celltypes is None:
         celltypes = sorted(adata.obs[design.celltype_col].dropna().unique())
+
+    # Restrict once, so that rows outside the two arms are reported once and a design
+    # without two arms in the data is an error here, not one warning per cell type.
+    adata = subset_arms(
+        subset_primary(adata, design, visits=visits, exclude_crossovers=exclude_crossovers),
+        design,
+        stacklevel=3,
+    )
 
     all_res = []
     for ct in celltypes:

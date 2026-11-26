@@ -29,7 +29,10 @@ Sample Size Recommendations
 
 Use ``st.power_did()`` and ``st.sample_size_did()`` (two-arm) or
 ``st.power_paired()`` and ``st.sample_size_paired()`` (single-arm) to
-determine whether your study is adequately powered. For fewer than 15
+determine whether your study is adequately powered. When the two groups
+differ in size, as response groups or severity groups usually do, use
+``st.power_two_group()`` and ``st.sample_size_two_group()`` with the
+group sizes or the expected allocation ratio. For fewer than 15
 participants, always use bootstrap inference (``use_bootstrap=True``).
 
 See :ref:`faq-sample-size` for detailed tables and code examples.
@@ -109,11 +112,11 @@ Normalization
    ``add_log1p_cpm_layer()`` performs input validation before normalizing:
 
    - **Negative counts** raise a ``ValueError`` — fix upstream QC before calling.
-   - **NaN or inf values** emit a warning and may produce unexpected results.
+   - **NaN or inf values** raise a ``ValueError``.
    - **All-zero cells** emit a warning (library size = 0 yields ``log1p(0) = 0`` for every gene).
 
-   The function also records provenance metadata in ``adata.uns["log1p_cpm_info"]``
-   (source layer, target layer, timestamp) for reproducibility tracking.
+   The function also records the scale it used in
+   ``adata.uns["sctrial"]["log1p_cpm_scale"]``.
 
 **Alternative for batch correction**:
 
@@ -169,6 +172,7 @@ Aggregation Strategies
        adata,
        features=features,
        design=design,
+       visits=("V1", "V2"),
        aggregate="cell"  # Violates independence assumption
    )
 
@@ -190,10 +194,10 @@ For **n < 15 paired participants**, use Wild Cluster Bootstrap:
    )
 
    # Bootstrap adds extra columns to the result DataFrame:
-   #   p_DiD_boot   — bootstrap p-value
-   #   se_DiD_boot  — bootstrap standard error
-   #   ci_lo_boot   — lower bound of bootstrap-t 95% CI
-   #   ci_hi_boot   — upper bound of bootstrap-t 95% CI
+   #   p_DiD_boot   : bootstrap p-value
+   #   se_DiD_boot  : bootstrap standard error
+   #   ci_lo_boot   : lower bound of the 95% CI (inverted bootstrap test)
+   #   ci_hi_boot   : upper bound of the 95% CI (inverted bootstrap test)
 
 Multiple Testing Correction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -489,7 +493,7 @@ Create publication-quality figures:
    # Interaction plot for top feature
    top_feature = res.sort_values("p_DiD").iloc[0]["feature"]
 
-   fig = st.plot_trial_interaction(
+   ax = st.plot_trial_interaction(
        adata,
        feature=top_feature,
        design=design,
@@ -499,7 +503,7 @@ Create publication-quality figures:
 
    # Forest plot for all significant features
    sig_res = res[res["FDR_DiD"] < 0.05]
-   fig = st.plot_did_forest(sig_res)
+   ax = st.plot_did_forest(sig_res)
    plt.savefig("forest_plot.pdf", dpi=300, bbox_inches="tight")
 
 Common Pitfalls to Avoid

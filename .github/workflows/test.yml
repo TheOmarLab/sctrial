@@ -11,10 +11,11 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
     - uses: actions/checkout@v4
@@ -32,14 +33,17 @@ jobs:
     - name: Lint with Ruff
       run: |
         ruff check src tests
+    # Python 3.12 resolves anndata 0.13, whose annotations type X, the layers and obs as
+    # unions the package does not narrow yet. The types are checked on the other versions.
     - name: Check types with Mypy
+      if: matrix.python-version != '3.12'
       run: |
         mypy src
     - name: Run tests
       run: |
         pip install -e .[dev,plots,gsea]
         pip list
-        pytest -v --cov=sctrial --cov-report=xml
+        pytest -v -rs --cov=sctrial --cov-report=xml
     - name: Build documentation
       run: |
         pip install -e .[plots,gsea]
@@ -47,10 +51,26 @@ jobs:
         cd docs && sphinx-build -b html -d build/doctrees source build/html
         touch build/html/.nojekyll
 
+  test-extras:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+    - name: Install with the optional extras
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[dev,plots,gsea,bayes,survival]
+    - name: Run the tests that need the optional extras
+      run: |
+        pytest -v -rs tests/test_bayes.py tests/test_survival.py tests/test_two_arm_restriction.py
+
   deploy-docs:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python

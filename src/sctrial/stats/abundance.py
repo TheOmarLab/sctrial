@@ -7,10 +7,17 @@ import pandas as pd
 import statsmodels.formula.api as smf
 from anndata import AnnData
 
-from ..adata_tools import subset_primary
+from ..adata_tools import subset_arms, subset_primary
 from ..design import TrialDesign
-from ..utils import wild_cluster_bootstrap_t
-from ._utils import apply_fdr, encode_visit
+from ..utils import warn_unbounded_bootstrap_intervals, wild_cluster_bootstrap_t
+from ._utils import (
+    apply_fdr,
+    drop_unused_levels,
+    encode_visit,
+    fit_identified,
+    fits_exactly,
+    unidentified_terms,
+)
 from .did import MIN_CLUSTERS_FOR_ROBUST_SE
 
 
@@ -33,6 +40,7 @@ def abundance_did(
 
     Statistical Assumptions
     -----------------------
+
     - Requires `min_units` paired participants (default 5) per cell type.
     - Requires both treatment arms to be represented among paired participants.
     - Cell types with no variation in the transformed outcome are skipped.
@@ -82,6 +90,12 @@ def abundance_did(
         - se_DiD: Cluster-robust standard error
         - p_DiD: P-value for the treatment effect
         - FDR_DiD: Benjamini-Hochberg FDR-corrected p-value
+        - beta_time: Coefficient of the visit (missing when the model is fitted on the
+          within-participant changes)
+        - p_time: P-value of the visit coefficient
+
+        With ``use_bootstrap=True`` the table also holds ``p_DiD_boot`` (wild cluster
+        bootstrap p-value), ``se_DiD_boot``, ``ci_lo_boot`` and ``ci_hi_boot``.
 
     Interpretation notes
     --------------------
@@ -99,6 +113,7 @@ def abundance_did(
         raise ValueError("celltype_col is required for abundance_did")
 
     ad = subset_primary(adata, design, visits=visits, exclude_crossovers=exclude_crossovers)
+    ad = subset_arms(ad, design, stacklevel=3)
     obs = ad.obs.copy()
 
     # counts per unit×visit×arm×celltype
@@ -167,6 +182,15 @@ def abundance_did(
         tmp = counts[counts[design.celltype_col] == ct].copy()
         # keep paired units only
         tmp = tmp[tmp[design.participant_col].isin(paired_units)].copy()
+        if covariates:
+            # A visit without a covariate value is not in the model, and neither is the other
+            # visit of that participant. The formula would drop the row from the model matrices
+            # only, not from the cluster labels passed beside it.
+            tmp = tmp.dropna(subset=list(covariates))
+            visits_seen = tmp.groupby(design.participant_col, observed=True)[
+                design.visit_col
+            ].nunique()
+            tmp = tmp[tmp[design.participant_col].isin(visits_seen.index[visits_seen >= 2])].copy()
 
         n_units = tmp[design.participant_col].nunique()
         if n_units < min_units:
@@ -220,13 +244,13 @@ def abundance_did(
                 continue
             # Preserve participant IDs before resetting index for safe .loc
             diff_pids = df_delta.index.to_numpy()
-            df_delta = df_delta.reset_index(drop=True)
+            df_delta = drop_unused_levels(df_delta.reset_index(drop=True))
             formula = "delta ~ arm_bin"
             if covariates:
                 formula += " + " + " + ".join(covariates)
             model = smf.ols(formula, data=df_delta)
         else:
-            tmp = tmp.reset_index(drop=True)  # unique int index for .loc
+            tmp = drop_unused_levels(tmp.reset_index(drop=True))  # unique int index for .loc
             formula = f"y ~ visit_num + visit_num:arm_bin + C({design.participant_col})"
             if covariates:
                 formula += " + " + " + ".join(covariates)
@@ -245,16 +269,19 @@ def abundance_did(
                 )
             # Use cluster-robust standard errors for consistency with did_fit
             if use_diff:
-                fit = model.fit()
                 term = "arm_bin"
+                fit = fit_identified(model, term)
             else:
-                fit = model.fit(
-                    cov_type="cluster", cov_kwds={"groups": tmp[design.participant_col]}
-                )
                 term = "visit_num:arm_bin"
+                fit = fit_identified(
+                    model,
+                    term,
+                    cov_type="cluster",
+                    cov_kwds={"groups": tmp[design.participant_col]},
+                )
 
             # Check if interaction term was estimable
-            if term not in fit.params or np.isnan(fit.params[term]):
+            if fit is None or term not in fit.params or np.isnan(fit.params[term]):
                 raise ValueError("DiD term not estimable")
 
             # Align clusters with actual model rows (statsmodels may drop rows).
@@ -266,7 +293,9 @@ def abundance_did(
                 clusters_aligned = tmp[design.participant_col].loc[model_row_idx].to_numpy()
             n_units_eff = int(len(np.unique(clusters_aligned)))
 
-            p_val = float(fit.pvalues[term])
+            # An exact fit (no proportion changes) gives the estimate and no test.
+            exact = fits_exactly(fit)
+            p_val = np.nan if exact else float(fit.pvalues[term])
             se_boot = np.nan
             ci_lo_boot = np.nan
             ci_hi_boot = np.nan
@@ -284,14 +313,19 @@ def abundance_did(
                 ci_lo_boot = boot_res.ci_lo
                 ci_hi_boot = boot_res.ci_hi
 
+            # A covariate that changes by the same amount for everyone between the visits is
+            # the visit regressor: the interaction is identified, the time effect is not.
+            aliased = unidentified_terms(model, ["visit_num"]) if covariates else []
+            time_effect = fit.params.drop(aliased, errors="ignore")
+            time_test = fit.pvalues.drop(aliased, errors="ignore")
             row_dict: dict = {
                 "celltype": ct,
                 "n_participants": n_units_eff,
                 "beta_DiD": float(fit.params[term]),
-                "se_DiD": float(fit.bse[term]),
+                "se_DiD": np.nan if exact else float(fit.bse[term]),
                 "p_DiD": p_val,
-                "beta_time": float(fit.params.get("visit_num", np.nan)),
-                "p_time": float(fit.pvalues.get("visit_num", np.nan)),
+                "beta_time": float(time_effect.get("visit_num", np.nan)),
+                "p_time": np.nan if exact else float(time_test.get("visit_num", np.nan)),
             }
             if use_bootstrap:
                 row_dict["p_DiD_boot"] = p_val
@@ -337,16 +371,17 @@ def abundance_did(
                 if covariates:
                     fallback_formula += " + " + " + ".join(covariates)
                 model = smf.ols(fallback_formula, data=df_delta)
-                fit = model.fit()
                 term = "arm_bin"
-                if term not in fit.params or np.isnan(fit.params[term]):
+                # no estimate when a covariate holds the arm
+                fit = fit_identified(model, term)
+                if fit is None or term not in fit.params or np.isnan(fit.params[term]):
                     continue
                 fallback_row: dict = {
                     "celltype": ct,
                     "n_participants": int(df_delta.shape[0]),
                     "beta_DiD": float(fit.params[term]),
-                    "se_DiD": float(fit.bse[term]),
-                    "p_DiD": float(fit.pvalues[term]),
+                    "se_DiD": np.nan if fits_exactly(fit) else float(fit.bse[term]),
+                    "p_DiD": np.nan if fits_exactly(fit) else float(fit.pvalues[term]),
                     "beta_time": np.nan,
                     "p_time": np.nan,
                 }
@@ -375,4 +410,5 @@ def abundance_did(
 
     res = pd.DataFrame(rows).sort_values("p_DiD")
     res = apply_fdr(res, p_col="p_DiD", fdr_col="FDR_DiD")
+    warn_unbounded_bootstrap_intervals(res)
     return res.reset_index(drop=True)

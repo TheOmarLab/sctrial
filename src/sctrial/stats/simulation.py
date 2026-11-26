@@ -292,11 +292,17 @@ def run_method_comparison(
 
     Parameters
     ----------
+    n_participants, n_genes, effect_sizes, noise_sd, n_cells_per_participant
+        Passed to :func:`simulate_did_data` for every iteration.
     methods : list of str
         Methods to compare. Options: ``"sctrial_did"``, ``"mixed_did"``,
         ``"pseudobulk_ols"``, ``"wilcoxon"``.  Default: all four.
     n_iterations : int
         Number of simulation repetitions.
+    seed : int
+        Seed from which the seed of each iteration is drawn.
+    **sim_kwargs
+        Further arguments of :func:`simulate_did_data`.
     n_jobs : int, optional
         Number of parallel workers.  Defaults to ``min(cpu_count, 8)``.
         Set to 1 to disable parallelisation.
@@ -480,6 +486,8 @@ def _run_pseudobulk_ols(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
     """
     import statsmodels.formula.api as smf
 
+    from ._utils import fit_identified
+
     pb = pb.copy()
     pb["arm_bin"] = (pb["arm"] == "Treated").astype(float)
     pb["visit_bin"] = (pb["visit"] == "Post").astype(float)
@@ -490,7 +498,12 @@ def _run_pseudobulk_ols(pb: pd.DataFrame, gene_cols: list[str]) -> dict:
     for g in gene_cols:
         try:
             # Backtick-quote gene names for formula safety
-            fit = smf.ols(f"Q('{g}') ~ arm_bin + visit_bin + interaction", data=pb).fit()
+            fit = fit_identified(
+                smf.ols(f"Q('{g}') ~ arm_bin + visit_bin + interaction", data=pb), "interaction"
+            )
+            if fit is None:
+                # an arm seen at one visit only: the interaction is the arm or the visit column
+                raise ValueError("interaction not identified")
             beta = fit.params["interaction"]
             pval = fit.pvalues["interaction"]
             ci = fit.conf_int().loc["interaction"]

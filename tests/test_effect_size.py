@@ -215,3 +215,12 @@ class TestAddEffectSizesToDiD:
         res_g = add_effect_sizes_to_did(df, method="hedges_g")
         res_d = add_effect_sizes_to_did(df, method="cohens_d")
         assert abs(res_g.iloc[0]["effect_size"]) <= abs(res_d.iloc[0]["effect_size"]) + 1e-10
+
+
+def test_bootstrap_interval_reports_samples_without_an_effect_size():
+    from sctrial.stats.effect_size import bootstrap_effect_size_ci
+
+    # Many resamples of these groups are constant within both groups: no pooled SD, no effect size.
+    g1, g2 = np.array([1.0, 1.0, 1.0, 2.0]), np.array([1.0, 1.0, 2.0, 2.0])
+    with pytest.warns(UserWarning, match=r"\d+ of 999 bootstrap samples have no within-group variation"):
+        bootstrap_effect_size_ci(g1, g2, n_boot=999, seed=42)

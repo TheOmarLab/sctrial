@@ -9,7 +9,7 @@ Endpoints: pure-null Type I error, mixed-signal null-gene FPR (balanced +
 one-directional), % null p outside 95% CI, realized FDR after BH, marginal power,
 FDR-controlled discovery sensitivity (end-to-end BH TPR), bias/RMSE, robustness
 families (null FPR / signal TPR / evaluability / convergence), end-to-end vs
-tested-only detection, and runtime.
+tested-only detection, and runtime (balanced architecture, the rows Figure 3G draws).
 
 Run on HPC via sbatch (loads the multi-GB combined CSVs).
 """
@@ -206,13 +206,11 @@ def main():
         _grid(q, "family", fmt="{:.3f}")
 
     # ============ E. RUNTIME ============
-    section("E. RUNTIME (wall-clock seconds per simulated dataset)")
-    per_iter = (bench.groupby(["method", "scenario", "n_genes", "iteration"])["runtime_seconds"].first().reset_index())
-    scen_med = per_iter.groupby(["method", "scenario", "n_genes"])["runtime_seconds"].median().reset_index()
-    rt = scen_med.groupby(["method", "n_genes"])["runtime_seconds"].median().reset_index()
+    section("E. RUNTIME (wall-clock seconds per simulated dataset; balanced architecture, as Figure 3G)")
+    _, rt = b._runtime_summary(bench[bench["architecture"] == "balanced"])
     emit("\n    E1. Median runtime (s) by tested-panel size:")
-    _grid(rt, "n_genes", valuecol="runtime_seconds", fmt="{:.2f}")
-    big = rt[rt["n_genes"] == rt["n_genes"].max()].set_index("method")["runtime_seconds"]
+    _grid(rt, "n_genes", valuecol="med", fmt="{:.2f}")
+    big = rt[rt["n_genes"] == rt["n_genes"].max()].set_index("method")["med"]
     if "sctrial_did" in big.index:
         base = big["sctrial_did"]
         emit(f"\n    E2. Speed vs sctrial at {int(rt['n_genes'].max()):,} genes:")

@@ -248,14 +248,15 @@ def auto_detect_design(
 
     Looks for common patterns in column names:
 
-    - participant: ``participant_id``, ``patient_id``, ``donor_id``,
-      ``subject_id``, ``sample_id``
-    - visit: ``visit``, ``timepoint``, ``time``, ``day``, ``week``,
-      ``time_point``
+    - participant: ``participant_id``, ``participant``, ``patient_id``,
+      ``patient``, ``donor_id``, ``donor``, ``subject_id``, ``subject``,
+      ``sample_id``
+    - visit: ``visit``, ``timepoint``, ``time_point``, ``time``, ``day``,
+      ``week``, ``collection_day``
     - arm: ``arm``, ``treatment_arm``, ``arm_id``, ``treatment``,
       ``group``, ``condition``
     - celltype: ``celltype``, ``cell_type``, ``cluster``,
-      ``annotation``, ``cell_annotation``
+      ``annotation``, ``cell_annotation``, ``celltype_major``
 
     Column matching uses exact (case-insensitive) match first, then
     word-boundary partial match (pattern must appear at a word boundary
