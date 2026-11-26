@@ -1,44 +1,36 @@
-# sctrial Interactive
+# sctrial Contrast Studio
 
-The workspace connects a single-cell study’s participant and visit structure to its statistical results. An investigator can select a comparison, inspect the observations behind an estimate, and export the result with its study design.
+Explore how individual participants contribute to a longitudinal comparison. Choose the study design, group order, cell population, and visits. The trajectories, participant inspector, and outcome estimates follow the same selection.
 
-[Open the interactive preview](sctrial-interactive-preview.html). The offline preview includes a synthetic longitudinal study with precomputed model results. Select a feature in the forest plot to inspect its trajectories. Researchers can also import a local CSV with one row per participant, arm, visit, and cell population, including cell counts and numeric scores, to explore and export descriptive summaries. H5AD input and model fitting on imported data are planned for the local Python interface.
+## Open a study
 
-## Workspace
+From a checkout of this branch, install the package and start the local workspace.
 
-| View | What the investigator can inspect |
-|---|---|
-| Overview | Cohort size, visit coverage, group trajectories, and feature estimates. The forest plot and trajectory view share the selected feature. |
-| Participants | Specimen availability by visit, coverage in the selected cell population, and reasons for exclusion. |
-| Results | Effect estimates, interval bounds, fitted participant counts, raw and FDR-adjusted p-values, and the selected contrast. |
-| Analysis settings | Study design, group order, visits, and cell population. These selections apply across the workspace. |
+```bash
+python -m pip install -e .
+python -m sctrial.interactive study.h5ad
+```
 
-Keep group colors consistent across views. Label trajectories with their measurement units and the number of contributing participants at each visit. Show the fitted contrast on its own axis. Each plot needs a numerical equivalent, keyboard access, and a usable narrow-screen layout.
+The browser opens on the local machine. Map the participant ID and one to twelve numeric score columns from `adata.obs`. Map the group, visit, and cell population when available. The workspace supports one or two fixed groups. It reads the selected observation columns and leaves the source file unchanged. Close the local server with Ctrl+C.
 
-## Comparison definitions
+To try the interface without installing Python, download the [self-contained workspace](sctrial-interactive-preview.html) and open it in a browser. It includes a synthetic study with precomputed sctrial results. **Open study** also accepts a participant-summary CSV and provides a downloadable template.
 
-| Design | Quantity estimated | Package function |
-|---|---|---|
-| Two-group longitudinal | Change from baseline to follow-up in the first group minus change in the reference group | `did_table()` |
-| Single-arm paired | Mean within-participant change from baseline to follow-up in the selected arm | `within_arm_comparison()` |
-| Cross-sectional | Difference between the first and reference groups at one visit | `between_arm_comparison()` |
+## Work through a comparison
 
-Use participant-level aggregation and the study’s own group labels. Describe contrasts between observed response groups as associations. Display the full cohort size, the number with the required specimens and cell population, and the number included in each feature-specific fit. An absent cell type contributes no expression measurement.
+1. **Define the contrast.** Choose a paired change, difference-in-differences, or group difference at one visit. For longitudinal comparisons, the change is follow-up minus baseline. For two groups, the effect is the first group minus the second.
+2. **Inspect the participants.** Select a trace or a roster ID to see its visit measurements and cell counts. Move the visit handle or use its arrow keys to choose a follow-up. Switch to **Changes** to see one point per participant with a complete pair. Selecting a participant highlights their record and preserves the cohort fit.
+3. **Read the estimate.** The inspector reports the selected score, its interval when available, and its contributing participant count. Switch scores in the outcome panel. Open **Results** for the full table, including model p-values and adjusted values for fitted comparisons.
+4. **Compare decisions.** Pin a contrast, change the follow-up or population, and pin again. In **Pins**, compare both sets of estimates and reopen either configuration. Pins from a local study last for the current study session.
+5. **Export.** Save results as CSV and comparison settings as JSON. For a local H5AD fit, the settings include the mapped columns and package version.
 
-Intervals, tests, and fitted counts must agree across plot, table, and export. For a restricted wild cluster bootstrap, use the returned test-inversion bounds, including asymmetric or unbounded intervals. Preserve unavailable results with the reason. Record the tested feature family and retain its FDR adjustment when the investigator filters or sorts the table.
+## What each input supports
 
-## Running a local study
+| Input | Observations | Results |
+| --- | --- | --- |
+| Local H5AD | Cell-level scores in mapped observation columns, averaged within participant and visit for the selected population | sctrial model estimates, intervals, p-values, and FDR when estimable |
+| Participant-summary CSV | One row per participant, group, visit, and cell population, with a cell count and numeric scores | Descriptive changes and group differences |
+| Bundled synthetic study | Twelve participants in two groups measured across three visits | Precomputed reference fits for the available comparisons |
 
-1. **Open and map.** Offer an optional `sctrial interactive` launcher that opens a local browser session. Read H5AD metadata first. Confirm participant ID, ordered visits, arm or group, cell type, and the score or expression layer. Use `TrialDesign` and `diagnose_trial_data()` after confirmation. Support a single-arm study without an arm column and a declared single collection occasion without a visit column.
-2. **Fit.** Send the confirmed settings to the existing Python function. Read only the needed expression features where the file encoding permits. Record the aggregation, outcome scale, test, covariance method, seed, and exclusions. Run the fit outside the interface thread. Publish a completed result only after the worker finishes successfully.
-3. **Export.** Write the result table, figure, settings, and a Python script that accepts the original H5AD path. Include input fingerprint, package versions, mappings, contrast direction, and uncertainty method. Keep participant-level exports separate from aggregate results.
+The local fit uses participant-visit means with equal participant weighting. A longitudinal outcome requires a finite score at both selected visits. Coverage in the roster counts visits with cells, so an outcome-specific model can include fewer participants. A single group measured at one visit yields a descriptive mean.
 
-The example study and its fitted results can be regenerated with [the reference script](https://github.com/TheOmarLab/sctrial/blob/feature/interactive-mode/design/interactive-mode/build_reference_study.py).
-
-## Release checks
-
-- Compare all three designs against direct Python calls and exported reruns on a fixed synthetic study and public tutorial data. Check feature-specific counts, effect direction, intervals, tests, and FDR-adjusted p-values.
-- Exercise missing visits and covariates, empty populations, unidentified contrasts, and estimates with unavailable uncertainty. Verify that reversing group order reverses the sign of an estimable two-group contrast.
-- Test a fresh install offline, dense and sparse H5AD inputs, cancellation, and reopening a completed run. Record load time, peak memory, and fit time on specified hardware. Changing the selected result should reuse the completed fit.
-
-[Statistical methods and study tutorials](https://www.omar-lab.com/sctrial/)
+The browser draws a bounded set of individual traces for larger studies. Group summaries and fits use the full eligible cohort. The interactive mapping supports up to 50,000 participant-visit-population summaries. Large fixed-effects designs can be run through the package's Python workflow.

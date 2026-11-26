@@ -316,6 +316,8 @@ class DidFitResult(TypedDict):
 
     beta_DiD: float
     se_DiD: float
+    ci_lo_DiD: float
+    ci_hi_DiD: float
     p_DiD: float
     beta_time: float
     p_time: float
@@ -340,6 +342,8 @@ def _missing_did_fit(n_units: int) -> DidFitResult:
     return {
         "beta_DiD": np.nan,
         "se_DiD": np.nan,
+        "ci_lo_DiD": np.nan,
+        "ci_hi_DiD": np.nan,
         "p_DiD": np.nan,
         "beta_time": np.nan,
         "p_time": np.nan,
@@ -456,15 +460,16 @@ def did_fit(
     Returns
     -------
     DidFitResult
-        Dictionary with keys ``beta_DiD``, ``se_DiD``, ``p_DiD``,
+        Dictionary with keys ``beta_DiD``, ``se_DiD``, ``ci_lo_DiD``, ``ci_hi_DiD``, ``p_DiD``,
         ``beta_time``, ``p_time``, ``n_units``, ``resid_sd``, ``cov_type_used``.
-        A result without an estimate (see Assumptions) holds the first six keys only,
-        with NaN for the estimates.
+        The nominal 95% confidence limits use the covariance reported in ``cov_type_used``.
+        If the interaction cannot be estimated, its estimate, standard error, interval and
+        p-value are NaN. The participant count is retained.
         When ``use_bootstrap=True``, also includes ``p_DiD_boot``,
         ``se_DiD_boot``, ``ci_lo_boot``, ``ci_hi_boot``.
         When the model fits the outcome exactly (for example when no participant
-        changes), the estimates are returned and the standard error and the
-        p-values are NaN: they would be computed from rounding error.
+        changes), the estimates are returned. The standard error, interval and p-values
+        are NaN because their calculation would depend on rounding error.
     """
     if df is None or df.empty:
         raise ValueError("df must be a non-empty DataFrame.")
@@ -572,8 +577,11 @@ def did_fit(
     # A covariate that changes by the same amount for everyone between the visits is the
     # time regressor: the interaction is identified, the time effect is not.
     aliased = unidentified_terms(model, [time]) if covariates else []
+    bounds = (np.nan, np.nan) if exact else fit.conf_int(alpha=0.05).loc[term].to_numpy()
     res = {
         "beta_DiD": float(fit.params.get(term, np.nan)),
+        "ci_lo_DiD": float(bounds[0]),
+        "ci_hi_DiD": float(bounds[1]),
         "se_DiD": se_did,
         "p_DiD": p_did,
         "beta_time": float(fit.params.drop(aliased, errors="ignore").get(time, np.nan)),
@@ -700,7 +708,8 @@ def did_table(
     Returns
     -------
     pd.DataFrame
-        Table with one row per feature containing beta_DiD, p_DiD, and
+        One row per feature with the interaction estimate (``beta_DiD``), analytical
+        95% confidence interval (``ci_lo_DiD``, ``ci_hi_DiD``), p-value and
         FDR-corrected significance.
 
     Examples

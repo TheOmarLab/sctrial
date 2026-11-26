@@ -117,6 +117,16 @@ results = st.quick_did(
 )
 ```
 
+## Interactive workspace
+
+From a checkout with the interactive workspace installed, open a local H5AD study in the browser.
+
+```bash
+python -m sctrial.interactive study.h5ad
+```
+
+Select the participant, group, visit, and score columns to explore trajectories, fit a contrast, and compare pinned results. [Workspace guide](design/interactive-mode/sctrial-interactive-plan.md)
+
 ## Supported Study Designs & Datasets
 
 sctrial includes loaders (`st.load_*()`) for six real clinical trial datasets. They cover the supported study designs:

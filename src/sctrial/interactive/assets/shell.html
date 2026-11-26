@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    <title>sctrial · Contrast studio</title>
+    <style>
+      /*STYLE*/
+    </style>
+  </head>
+  <body>
+    <a href="#main" class="skip">Skip to workspace</a>
+    <header class="app-head">
+      <div class="identity">
+        <svg aria-hidden="true" width="35" height="30" viewBox="0 0 38 34" fill="none">
+          <path d="M2 23 12 13l9 4L34 4" stroke="#A5F4D5" stroke-width="3.8" />
+          <path d="m3 30 10-10 9 4L35 11" stroke="#6EC7A5" stroke-width="3.8" />
+        </svg>
+        <strong>sctrial</strong>
+      </div>
+      <span class="head-rule"></span>
+      <button class="study-button" data-action="open">
+        <i data-icon="folder"></i>
+        <b id="studyName"></b>
+        <i data-icon="down"></i>
+      </button>
+      <div class="head-actions">
+        <button class="find" data-action="search" aria-label="Find in study">
+          <i data-icon="search"></i>
+          <span>Find in study</span>
+          <kbd>/</kbd>
+        </button>
+        <button class="head-open" data-action="open" aria-label="Open study">
+          <i data-icon="open"></i>
+          <span>Open study</span>
+        </button>
+      </div>
+    </header>
+    <div class="app-layout">
+      <nav class="dock" aria-label="Workspace">
+        <button data-view="overview" aria-label="Contrast studio">
+          <i data-icon="studio"></i>
+          <span>Studio</span>
+        </button>
+        <button data-view="participants">
+          <i data-icon="people"></i>
+          <span>Cohort</span>
+        </button>
+        <button data-view="results">
+          <i data-icon="chart"></i>
+          <span>Results</span>
+        </button>
+        <button data-view="bench">
+          <i data-icon="stack"></i>
+          <span>Pins</span>
+          <b id="pinCount" hidden>0</b>
+        </button>
+        <div class="dock-end">
+          <button data-action="info" aria-label="Study info">
+            <i data-icon="info"></i>
+            <span>Info</span>
+          </button>
+        </div>
+      </nav>
+      <main id="main" tabindex="-1">
+        <div class="work-head">
+          <div>
+            <div class="study-meta">
+              <span class="study-light"></span>
+              <span id="sourceBadge"></span>
+              <span class="middot">·</span>
+              <span id="studyCount"></span>
+            </div>
+            <h1 id="pageTitle">Contrast studio</h1>
+          </div>
+          <div class="main-actions">
+            <div class="history">
+              <button
+                id="undo"
+                data-action="undo"
+                aria-label="Undo contrast change"
+                title="Undo contrast change"
+              >
+                <i data-icon="undo"></i>
+              </button>
+              <button
+                id="redo"
+                data-action="redo"
+                aria-label="Redo contrast change"
+                title="Redo contrast change"
+              >
+                <i data-icon="redo"></i>
+              </button>
+            </div>
+            <button class="btn" data-action="export">
+              <i data-icon="download"></i>
+              Export
+            </button>
+            <button class="btn accent" data-action="pin" id="pinButton">
+              <i data-icon="pin"></i>
+              Pin contrast
+            </button>
+          </div>
+        </div>
+        <div id="page"></div>
+      </main>
+    </div>
+    <dialog class="modal" id="dialog" aria-labelledby="dialogTitle">
+      <header class="modal-head">
+        <h2 id="dialogTitle"></h2>
+        <button id="dismiss" class="icon-btn" aria-label="Close dialog">
+          <i data-icon="close"></i>
+        </button>
+      </header>
+      <div id="dialogBody"></div>
+    </dialog>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <script id="dataset" type="application/json">
+      /*FIXTURE*/
+    </script>
+    <script>
+      /*SCRIPT*/
+    </script>
+  </body>
+</html>

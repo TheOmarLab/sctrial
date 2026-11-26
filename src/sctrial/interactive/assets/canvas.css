@@ -1,0 +1,214 @@
+.cc-surface {
+  --cc-base: #111c31;
+  --cc-ink: #eff4ff;
+  --cc-secondary: #b3c2d7;
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--cc-ink);
+  background:
+    radial-gradient(ellipse at 77% -20%, #24344f 0%, transparent 60%),
+    linear-gradient(155deg, #152238, #111b2e 75%);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.cc-surface svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+.cc-surface svg text {
+  font-family: inherit;
+}
+.cc-surface svg .cc-number {
+  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+}
+.cc-surface .cc-interactive {
+  outline: none;
+}
+.cc-person,
+.cc-visit {
+  cursor: pointer;
+}
+.cc-person .cc-ink {
+  transition:
+    opacity 110ms ease,
+    stroke-width 110ms ease;
+}
+.cc-person.cc-active .cc-ink {
+  opacity: 1;
+  stroke-width: 2.6px;
+}
+.cc-person.cc-muted .cc-ink {
+  opacity: 0.17;
+}
+.cc-person.cc-active .cc-dot {
+  opacity: 1;
+}
+.cc-person[aria-pressed='true'] .cc-focus {
+  opacity: 1;
+}
+.cc-person.cc-muted .cc-dot {
+  opacity: 0.25;
+}
+.cc-person:focus-visible .cc-focus,
+.cc-visit:focus-visible .cc-focus,
+.cc-handle:focus-visible .cc-focus,
+.cc-mean:focus-visible .cc-focus {
+  opacity: 1;
+}
+.cc-visit:hover .cc-chip,
+.cc-visit:focus-visible .cc-chip {
+  fill: #374962;
+  stroke: #8cabc8;
+}
+.cc-visit-head {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.cc-visit-head:hover .cc-destination,
+.cc-visit-head.cc-aim .cc-destination {
+  fill: #a0b9d4;
+  stroke: #e2edfc;
+}
+.cc-handle:hover .cc-grip,
+.cc-handle:focus-visible .cc-grip,
+.cc-handle.cc-dragging .cc-grip {
+  fill: #f3f8ff;
+  stroke: #9cc5f2;
+}
+.cc-handle.cc-dragging {
+  cursor: grabbing;
+}
+.cc-visit {
+  touch-action: manipulation;
+}
+.cc-visit:not(:hover) .cc-chip {
+  transition: fill 140ms ease;
+}
+.cc-handle {
+  cursor: ew-resize;
+  touch-action: none;
+}
+.cc-readout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  min-height: 39px;
+  padding: 7px 16px 8px;
+  border-top: 1px solid #304056;
+  color: #c1cee1;
+  background: #101a2e;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.cc-readout-main {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  align-items: center;
+  min-width: 0;
+}
+.cc-readout-main strong {
+  color: #f0f4ff;
+  font-weight: 650;
+}
+.cc-readout-main span,
+.cc-legend {
+  overflow-wrap: anywhere;
+}
+.cc-readout-arm {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mark-color);
+  flex: 0 0 auto;
+}
+.cc-legend {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: #c1cee1;
+}
+.cc-legend span {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  white-space: nowrap;
+}
+.cc-key {
+  display: inline-block;
+  width: 16px;
+  height: 0;
+  border-top: 1.5px solid #a3b2c8;
+}
+.cc-key.cc-key-mean {
+  border-top: 3px solid #dde7f4;
+  position: relative;
+}
+.cc-key.cc-key-mean:before {
+  content: '';
+  position: absolute;
+  border: 1.5px solid #dde7f4;
+  background: #172239;
+  border-radius: 50%;
+  width: 4px;
+  height: 4px;
+  left: 5px;
+  top: -4.5px;
+}
+.cc-key.cc-key-dot {
+  border: none;
+  width: 7px;
+  height: 7px;
+  background: #c4d2e7;
+  border-radius: 50%;
+}
+.cc-key.cc-key-diamond {
+  border: none;
+  width: 7px;
+  height: 7px;
+  background: #e7edf9;
+  transform: rotate(45deg);
+}
+.cc-tip {
+  position: absolute;
+  z-index: 2;
+  max-width: min(245px, 85%);
+  pointer-events: none;
+  padding: 6px 9px;
+  border: 1px solid #536880;
+  border-radius: 5px;
+  color: #f2f7ff;
+  background: #0e192bf2;
+  box-shadow: 0 5px 18px #060a1640;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.cc-tip[hidden] {
+  display: none;
+}
+.cc-surface .cc-empty {
+  fill: #d7e3f2;
+  font-size: 14px;
+}
+@media (max-width: 540px) {
+  .cc-readout {
+    padding: 7px 9px;
+    gap: 5px 8px;
+    font-size: 10px;
+  }
+  .cc-legend {
+    gap: 7px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-surface *,
+  .cc-surface *::before {
+    transition: none !important;
+    animation: none !important;
+  }
+}
