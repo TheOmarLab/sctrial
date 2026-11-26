@@ -222,7 +222,7 @@ def _run_single_iteration_inner(
     methods,
     sim_kwargs,
 ) -> list[dict]:
-    """Inner implementation — called inside a ``catch_warnings`` context."""
+    """Inner implementation, called inside a ``catch_warnings`` context."""
     sim = simulate_did_data(
         n_participants=n_participants,
         n_genes=n_genes,
@@ -431,7 +431,7 @@ def _run_mixed_did(adata, gene_cols: list[str]) -> dict:
         )
     out = {}
     for _, row in res.iterrows():
-        # Skip non-converged fits — their coefficients are unreliable
+        # Skip non-converged fits: their coefficients are unreliable
         if not row.get("converged", True):
             logger.debug("Mixed DiD did not converge for %s", row["feature"])
             continue

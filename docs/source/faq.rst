@@ -24,7 +24,7 @@ Traditional tools (like Scanpy's rank_genes_groups or Seurat's FindMarkers) don'
 Can I use sctrial with Seurat objects?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Yes! Convert Seurat to AnnData:
+Yes. Convert a Seurat object to AnnData:
 
 .. code-block:: r
 
@@ -49,7 +49,7 @@ Yes! Convert Seurat to AnnData:
 Can I automatically download example datasets?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Yes! The built-in data loaders can download directly from GEO or EBI:
+Yes. The built-in data loaders can download directly from GEO or EBI:
 
 .. code-block:: python
 
@@ -96,7 +96,7 @@ An ``AnnData`` object with:
 
   - Participant identifiers (e.g., "participant_id")
   - Visit labels (e.g., "visit")
-  - Treatment arm (e.g., "arm") — set ``arm_col=None`` for single-arm studies
+  - Treatment arm (e.g., "arm"); set ``arm_col=None`` for single-arm studies
   - Cell-type annotations (optional, e.g., "celltype")
 
 How many participants do I need?
@@ -106,14 +106,14 @@ As a rough guide:
 
 - **~4 paired participants per arm** is a practical lower bound for estimation, though inference will be imprecise.
 - **~10–15 paired participants** per arm generally provides more reliable inference.
-- **~20–30 paired participants** per arm is typically needed for adequate power to detect moderate effects (d ≈ 0.5).
+- **~20–30 paired participants** per arm is typically needed for adequate power to detect moderate effects (Cohen's d ≈ 0.5).
 
 For smaller samples, bootstrap inference (``use_bootstrap=True``) is recommended as a safeguard against anti-conservative cluster-robust standard errors.
 
 Do I need the same number of cells per participant?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-No! DiD aggregates to the participant level, so unequal cell counts are fine. The method uses OLS with cluster-robust standard errors to account for within-participant correlation.
+No. DiD aggregates to the participant level, so unequal cell counts are acceptable. The method uses ordinary least squares (OLS) with cluster-robust standard errors to account for within-participant correlation.
 
 Can I use sctrial with cross-sectional data (no longitudinal measurements)?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -239,7 +239,7 @@ variance structure, and the degree of within-participant correlation.
 **Practical considerations**:
 
 - Single-cell data doesn't increase statistical power (participants do)
-- Cell counts help reduce noise, but n_participants drives inference
+- Cell counts reduce measurement noise within a participant, but the number of participants determines the precision of inference
 - Small samples → use bootstrap and report effect sizes with CIs
 - Consider mixed effects models for partial pooling with small n
 
@@ -254,7 +254,7 @@ How should I handle missing data?
 
 **For missing visits (most critical)**:
 
-DiD requires data at BOTH visits. Participants with missing visits are dropped:
+DiD requires data at both visits. Participants with missing visits are dropped:
 
 .. code-block:: python
 
@@ -277,7 +277,7 @@ DiD requires data at BOTH visits. Participants with missing visits are dropped:
    - Not built into sctrial; use external packages
    - Only if missingness mechanism is well-understood
 
-3. **Last observation carried forward** (NOT recommended)
+3. **Last observation carried forward** (not recommended)
 
    - Biases results; avoid in clinical trials
 
@@ -306,7 +306,7 @@ DiD requires data at BOTH visits. Participants with missing visits are dropped:
    print("Participants per arm × visit:")
    print(missing.unstack())
 
-   # Check if dropout differs by arm (potential bias!)
+   # Check whether dropout differs by arm (differential dropout can bias the estimate)
    dropout_by_arm = adata.obs.groupby("arm")["participant_id"].nunique()
 
 What is Difference-in-Differences (DiD)?
@@ -326,7 +326,7 @@ Should I use cell-level or participant-level aggregation?
 
 **Always use participant-level** (``aggregate="participant_visit"``, which is the default) for valid statistical inference.
 
-Why? Cells from the same participant are not independent, violating regression assumptions. Participant-level aggregation (pseudobulk) respects the experimental design.
+Cells from the same participant are not independent, so treating them as independent observations violates the independence assumption of the regression and understates uncertainty. Participant-level aggregation (pseudobulk, that is, averaging each participant's cells to a single value per participant and visit) respects the experimental design.
 
 The participant-level model is fitted by ordinary least squares, so every participant
 contributes equally. With two visits this is exactly the difference of mean
@@ -392,7 +392,7 @@ What FDR threshold should I use?
 - **Standard**: FDR < 0.05
 - **Stringent**: FDR < 0.01
 
-Always report FDR-corrected p-values, not raw p-values, when testing multiple features.
+When testing multiple features, always report p-values corrected for the false discovery rate (FDR) using the Benjamini-Hochberg procedure, not raw p-values.
 
 How do I use Bayesian DiD?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -455,7 +455,7 @@ DiD relies on several key assumptions for causal interpretation:
    points, but can be assessed with pre-treatment data using
    ``test_parallel_trends()`` in multi-timepoint designs.
 
-2. **No anticipation**: Participants do not change behaviour before treatment
+2. **No anticipation**: Participants' outcomes do not change before treatment
    begins. Violated if, e.g., treated participants alter expression profiles
    at the baseline visit in anticipation of therapy.
 
@@ -476,11 +476,11 @@ Are there limitations to abundance analysis?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``abundance_did()`` uses an arcsin-square-root transform on cell-type
-proportions, which is a standard variance-stabilising transformation for
-compositional data (Shao, 1999). This approach:
+proportions, which is a standard variance-stabilizing transformation for
+proportions (Shao, 1999). This approach:
 
 - Is simple, interpretable, and well-suited to the DiD framework
-- Handles zero proportions gracefully (arcsin(0) = 0)
+- Handles zero proportions (arcsin(0) = 0)
 - Has been used in single-cell clinical trial analyses (Squair et al., 2021)
 
 However, proportions are inherently compositional: an increase in one cell type
@@ -665,7 +665,7 @@ Can I test individual genes or do I need gene sets?
 
 Both work:
 
-**Gene sets** (recommended for robustness):
+**Gene sets** (recommended to reduce single-gene noise):
 
 .. code-block:: python
 
@@ -690,7 +690,7 @@ What if some genes in my gene set are missing?
   dropped from the set.
 - A warning is logged when any genes are missing (at ``INFO`` level) or when
   the overlap falls below ``min_genes`` (at ``WARNING`` level).
-- By default, ``min_genes=3`` — at least 3 genes must overlap to compute a
+- By default, ``min_genes=3``: at least 3 genes must overlap to compute a
   score.  If fewer are found, the score is set to ``NaN``.
 - Duplicate gene names within a set are automatically removed.
 
@@ -763,7 +763,7 @@ Run diagnostics:
 Can I run sctrial in parallel?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Yes! Use ``did_table_parallel`` for parallel DiD across many features:
+Yes. Use ``did_table_parallel`` for parallel DiD across many features:
 
 .. code-block:: python
 
@@ -812,7 +812,7 @@ How do I save and reload results?
 Can I use sctrial with other omics (ATAC-seq, proteomics)?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Yes! As long as your data is in ``AnnData`` format with appropriate trial metadata.
+Yes, as long as your data is in ``AnnData`` format with appropriate trial metadata.
 
 For ATAC-seq: Use peak accessibility as features
 For proteomics: Use protein abundance as features
@@ -825,7 +825,7 @@ Integration Questions
 Can I combine sctrial with Scanpy?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Yes! Use Scanpy for QC, normalization, and clustering:
+Yes. Use Scanpy for QC, normalization, and clustering:
 
 .. code-block:: python
 

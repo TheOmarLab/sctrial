@@ -63,3 +63,6 @@ CLAUDE.md
 manuscript/
 .plugin-config/
 uv.lock
+
+# Feature clips: rendered scratch output (published files live under docs/source/_static/clips)
+clips/out/

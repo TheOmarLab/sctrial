@@ -33,7 +33,7 @@ def abundance_did(
     n_boot: int = 999,
     seed: int = 42,
 ) -> pd.DataFrame:
-    """Test treatment-induced cell-type abundance changes via DiD on proportions.
+    """Test treatment-induced cell-type abundance changes via difference-in-differences (DiD) on proportions.
 
     This function calculates cell-type proportions per participant-visit and
     fits a DiD model to test for treatment-induced compositional shifts.
@@ -72,10 +72,10 @@ def abundance_did(
         Additional columns in `adata.obs` to include as fixed effects.
         Must be constant within participant-visit (e.g., age, sex).
     use_bootstrap
-        If True, uses Wild Cluster Bootstrap for p-values. Recommended for
+        If True, uses the wild cluster bootstrap for p-values. Recommended for
         small sample sizes (< 15 participants per arm).
     n_boot
-        Number of bootstrap permutations.
+        Number of bootstrap replicates.
     seed
         Random seed.
 

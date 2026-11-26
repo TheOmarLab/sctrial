@@ -1,7 +1,7 @@
 Best Practices Guide
 ====================
 
-This guide provides recommendations for robust and reproducible trial analysis with ``sctrial``.
+This guide gives recommendations for reproducible analysis of longitudinal single-cell trial data with ``sctrial``, including difference-in-differences (DiD) testing, gene-set scoring, abundance analysis, and power analysis.
 
 .. contents:: Table of Contents
    :local:
@@ -87,7 +87,7 @@ Perform QC **before** using ``sctrial``:
    # 3. Filter outliers
    adata = adata[adata.obs.pct_counts_mt < 20, :]
 
-   # 4. THEN use sctrial for trial-aware analysis
+   # 4. Then run sctrial for trial-aware analysis
    adata = st.add_log1p_cpm_layer(adata, counts_layer="counts")
 
 Normalization
@@ -111,7 +111,7 @@ Normalization
 
    ``add_log1p_cpm_layer()`` performs input validation before normalizing:
 
-   - **Negative counts** raise a ``ValueError`` — fix upstream QC before calling.
+   - **Negative counts** raise a ``ValueError``. Fix upstream QC before calling.
    - **NaN or inf values** raise a ``ValueError``.
    - **All-zero cells** emit a warning (library size = 0 yields ``log1p(0) = 0`` for every gene).
 
@@ -146,7 +146,7 @@ Aggregation Strategies
 
 .. code-block:: python
 
-   # ✓ RECOMMENDED: Pseudobulk aggregation
+   # Recommended: pseudobulk (participant-level) aggregation
    res = st.did_table(
        adata,
        features=features,
@@ -155,7 +155,7 @@ Aggregation Strategies
        aggregate="participant_visit"  # Default
    )
 
-**Why?**
+**Rationale**
 
 - Respects statistical independence (participants, not cells, are sampling units)
 - Matches clinical trial analysis conventions
@@ -166,8 +166,8 @@ Aggregation Strategies
 
 .. code-block:: python
 
-   # ✗ NOT RECOMMENDED for p-values
-   # (cells from same participant are not independent)
+   # Not recommended for inference
+   # (cells from the same participant are not independent)
    res = st.did_table(
        adata,
        features=features,
@@ -179,7 +179,7 @@ Aggregation Strategies
 Bootstrap for Small Samples
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For **n < 15 paired participants**, use Wild Cluster Bootstrap:
+For **fewer than 15 paired participants**, use the wild cluster bootstrap:
 
 .. code-block:: python
 
@@ -188,7 +188,7 @@ For **n < 15 paired participants**, use Wild Cluster Bootstrap:
        features=features,
        design=design,
        visits=("V1", "V2"),
-       use_bootstrap=True,  # More robust for small N
+       use_bootstrap=True,  # wild cluster bootstrap for small samples
        n_boot=999,  # 999 is usually sufficient; use 9999 for final results
        seed=42  # For reproducibility
    )
@@ -202,7 +202,7 @@ For **n < 15 paired participants**, use Wild Cluster Bootstrap:
 Multiple Testing Correction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Always use FDR correction** for multiple features:
+**Always apply false discovery rate (FDR) correction** when testing multiple features:
 
 .. code-block:: python
 
@@ -257,7 +257,7 @@ Covariates
 
 .. code-block:: python
 
-   # ✓ GOOD: Baseline covariates
+   # Recommended: pre-specified baseline covariates
    res = st.did_table(
        adata,
        features=features,
@@ -266,7 +266,7 @@ Covariates
        covariates=["age", "sex_numeric", "batch"]
    )
 
-   # ✗ BAD: Time-varying covariates that differ within participant-visit
+   # Not supported: covariates that vary within a participant-visit
    # Will raise an error if they vary
 
 Bayesian DiD
@@ -311,7 +311,7 @@ Gene Sets vs. Individual Genes
 
 .. code-block:: python
 
-   # ✓ RECOMMENDED: Test gene sets/modules
+   # Recommended: test gene sets or modules
    gene_sets = {
        "OXPHOS": ["COX7A1", "ATP5F1A", "NDUFA1", ...],
        "Glycolysis": ["PKM", "LDHA", "HK2", ...],
@@ -323,7 +323,7 @@ Gene Sets vs. Individual Genes
 
    res = st.did_table(adata, features=features, design=design, visits=("V1", "V2"))
 
-**Why gene sets?**
+**Rationale**
 
 - More robust to technical noise
 - Biologically interpretable
@@ -523,34 +523,34 @@ Before running DiD analysis:
 
 .. code-block:: python
 
-   # ✓ Run diagnostics
+   # Run diagnostics
    diag = st.diagnose_trial_data(adata, design, verbose=True)
 
-   # ✓ Check for warnings
+   # Check for warnings
    if diag["warnings"]:
        print("Address these issues before proceeding:")
        for w in diag["warnings"]:
            print(f"  - {w}")
 
-   # ✓ Verify design
+   # Verify design
    print(design)
    print(f"Treated arm: {design.arm_treated}")
    print(f"Control arm: {design.arm_control}")
 
-   # ✓ Check visits
+   # Check visits
    visits_to_compare = ("baseline", "week_12")
    n_paired = st.count_paired(adata.obs, design.visit_col, visits_to_compare)
    print(f"Paired participants: {n_paired}")
 
-   # ✓ Validate features
+   # Validate features
    valid, missing = st.validate_features(adata, features, allow_missing=False)
    print(f"Valid features: {len(valid)}")
 
-   # ✓ Check normalization
+   # Check normalization
    if "log1p_cpm" not in adata.layers:
        adata = st.add_log1p_cpm_layer(adata)
 
-   # NOW run analysis
+   # Run the analysis
    res = st.did_table(
        adata,
        features=features,

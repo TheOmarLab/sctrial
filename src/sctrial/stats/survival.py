@@ -148,7 +148,7 @@ def hazard_regression_with_features(
             results.append({"feature": feat, "HR": np.nan, "p": np.nan, "n": df_model.shape[0]})
             continue
         except Exception:
-            # Unexpected error — log and propagate so data/config bugs
+            # Unexpected error: log and propagate so data/config bugs
             # are not silently swallowed as NaN results.
             logger.exception("Unexpected error fitting Cox model for feature '%s'", feat)
             raise

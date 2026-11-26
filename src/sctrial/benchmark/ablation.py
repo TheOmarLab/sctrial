@@ -1,4 +1,4 @@
-"""Ablation study — progressive component addition.
+"""Ablation study: progressive component addition.
 
 Tests what each component of sctrial contributes by running increasingly
 complete variants:
@@ -49,7 +49,7 @@ def _cell_level_ols(adata, gene_cols: list[str], cell_lib_size=None) -> dict:
     """Naive OLS on cell-level data (the pseudoreplication baseline).
 
     The outcome is ``log(1 + CPM)`` per cell, with the CPM denominator taken from
-    the FULL transcriptome via ``cell_lib_size`` — the same quantity and the same
+    the FULL transcriptome via ``cell_lib_size``, the same quantity and the same
     scope the pseudobulk rungs use. This rung differs from the next one only in
     treating each cell as an independent observation, which is the entire claim
     being demonstrated.
