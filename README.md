@@ -54,8 +54,8 @@ sctrial matches the analysis to the design of the study. A two-arm longitudinal 
     <td width="50%"><strong>Incomplete and unbalanced data</strong><br><img src="https://raw.githubusercontent.com/TheOmarLab/sctrial/main/docs/source/_static/clips/incomplete.gif" alt="Participants observed at one visit and participants of an arm outside the design do not enter the paired comparison" width="100%"></td>
   </tr>
   <tr>
-    <td width="50%"><strong>Cell-type-specific analysis</strong><br><img src="https://raw.githubusercontent.com/TheOmarLab/sctrial/main/docs/source/_static/clips/cell-types.gif" alt="The cells of a sample are split by cell type, each participant contributes one value per cell type, and one estimate with its confidence interval is obtained per cell type" width="100%"></td>
-    <td width="50%"><strong>Power and sample size</strong><br><img src="https://raw.githubusercontent.com/TheOmarLab/sctrial/main/docs/source/_static/clips/power.gif" alt="Power increases with the number of participants per arm until it reaches the target" width="100%"></td>
+    <td width="50%"><strong>Cell-type-specific analysis</strong><br><img src="https://raw.githubusercontent.com/TheOmarLab/sctrial/main/docs/source/_static/clips/cell-types.gif" alt="Within each cell type, the baseline and follow-up values of every participant are reduced to one change from baseline, and the mean change is shown with its confidence interval" width="100%"></td>
+    <td width="50%"><strong>Power for two independent groups</strong><br><img src="https://raw.githubusercontent.com/TheOmarLab/sctrial/main/docs/source/_static/clips/power.gif" alt="For two independent groups of equal size, power increases with the number of participants per group until it reaches the target" width="100%"></td>
   </tr>
 </table>
 
