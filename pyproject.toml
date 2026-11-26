@@ -10,6 +10,9 @@ readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9"
 license = {  text = "MIT" }
 authors = [
+  { name = "Mohamed Omar" },
+]
+maintainers = [
   { name = "Mohamed Omar", email = "mohamed.omar@csmc.edu" },
 ]
 keywords = ["single-cell", "anndata", "clinical-trial", "longitudinal", "difference-in-differences", "pseudobulk", "scRNA-seq"]
