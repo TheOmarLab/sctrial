@@ -86,11 +86,11 @@ packages = ["src/sctrial"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-  "src/sctrial",
-  "tests",
-  "README.md",
-  "LICENSE",
-  "pyproject.toml",
+  "/src/sctrial",
+  "/tests",
+  "/README.md",
+  "/LICENSE",
+  "/pyproject.toml",
 ]
 
 [tool.pytest.ini_options]
