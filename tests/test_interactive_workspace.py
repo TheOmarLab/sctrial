@@ -16,8 +16,9 @@ import anndata as ad
 import h5py
 import numpy as np
 import pandas as pd
-import sctrial as st
 import statsmodels.formula.api as smf
+
+import sctrial as st
 from sctrial.interactive._document import build_workspace
 from sctrial.interactive._server import create_server
 from sctrial.interactive._study import LocalStudy
