@@ -51,6 +51,23 @@ jobs:
         cd docs && sphinx-build -b html -d build/doctrees source build/html
         touch build/html/.nojekyll
 
+  test-workspace:
+    name: Browser workspace
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+    - name: Install the workspace and browser
+      run: |
+        python -m pip install . pytest playwright
+        python -m playwright install --with-deps chromium
+    - name: Test participant selection, comparisons and private imports
+      run: python -m pytest -q tests/test_interactive_browser.py
+
   test-extras:
     runs-on: ubuntu-24.04
     steps:
