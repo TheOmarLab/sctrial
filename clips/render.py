@@ -116,7 +116,7 @@ def render_clip(page, port: int, name: str, query: str, out: Path, gif: dict | N
             target = out / f"{name}.gif"
             palette = (f"fps={gif['fps']},scale={gif['width']}:-1:flags=lanczos,split[a][b];"
                        f"[a]palettegen=max_colors={gif['colors']}:stats_mode=diff[p];"
-                       "[b][p]paletteuse=dither=bayer:bayer_scale=4")
+                       "[b][p]paletteuse=dither=bayer:bayer_scale=5")
             subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp4), "-filter_complex", palette,
                             str(target)], check=True)
             sizes.append(f"{target.stat().st_size / 1e6:.2f} MB gif")

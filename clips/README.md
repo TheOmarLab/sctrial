@@ -39,9 +39,12 @@ Frames are requested one at a time from the scene, so two renders give the same 
 The animation of the repository README shows all ten clips under their titles and is written by:
 
 ```bash
-python clips/render.py --reel wide --gif-width 800 --gif-fps 12 --gif-colors 128
+python clips/render.py --reel wide --gif-width 640 --gif-fps 12 --gif-colors 128
 cp clips/out/reel_wide.gif docs/source/_static/clips/reel.gif
 ```
+
+Keep this file below 5 MB (5,242,880 bytes): the project description on PyPI shows images through a
+proxy that does not serve larger files.
 
 ## Add a clip
 
