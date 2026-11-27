@@ -90,7 +90,8 @@
     bench: 'Pinned contrasts',
   };
   const sample = JSON.parse($('dataset').textContent);
-  let study = sample,
+  const atlasExample = JSON.parse($('atlasDataset').textContent);
+  let study = atlasExample,
     arms = [],
     obsByPerson,
     byPopulation,
@@ -112,24 +113,24 @@
     fitMessage = '',
     fitCache = new Map(),
     rowCache = new Map();
-  const synthetic = () => study === sample,
+  const synthetic = () => study === sample || study === atlasExample,
     native = () => study.source === 'h5ad',
     isLong = () => ['did', 'paired'].includes(state.design);
   const fitted = () => synthetic() || (native() && state.design !== 'observe');
-  const name = () => (synthetic() ? sample.study.name : study.title);
+  const name = () => (synthetic() ? study.study.name : study.title);
   const source = () => (synthetic() ? 'Synthetic study' : native() ? 'Local H5AD' : 'Local CSV');
   const feature = () => study.features.find((f) => f.id === state.feature) || study.features[0];
   const unitOf = (f) =>
     f?.unit || study.unit || (synthetic() ? 'Mean module score' : 'Recorded score');
   const unit = () => unitOf(feature());
-  const fdrFamily = (f) =>
-    synthetic()
-      ? ['gene', 'pathway'].includes(f?.kind)
+  function fdrFamily(f) {
+    if (study === atlasExample) return study.study.fdrFamily;
+    if (study === sample)
+      return ['gene', 'pathway'].includes(f?.kind)
         ? 'Eight illustrative gene and pathway outcomes'
-        : 'Four original module scores'
-      : fitted()
-        ? 'Tested features in this comparison'
-        : null;
+        : 'Four original module scores';
+    return fitted() ? 'Tested features in this comparison' : null;
+  }
   function fitProvenance(f) {
     if (!synthetic()) return native() && fitted() ? { package: 'sctrial ' + study.version } : {};
     const original = study.study,
@@ -164,14 +165,16 @@
     ['paired', 'observe'].includes(state.design)
       ? [state.arm]
       : [state.arm, second()].filter(Boolean);
-  const datesIn = () => (isLong() ? [state.baseline, state.visit] : [state.visit]);
+  const datesIn = (visit = state.visit) => (isLong() ? [state.baseline, visit] : [visit]);
   const designs = () => [
     ...(arms.length > 1 && study.visits.length > 1 ? ['did'] : []),
     ...(study.visits.length > 1 ? ['paired'] : []),
     ...(arms.length > 1 ? ['cross'] : []),
     ...(arms.length === 1 && study.visits.length === 1 ? ['observe'] : []),
   ];
-  const contrast = () => armsIn().join(' − ') + ' · ' + datesIn().join(' → ');
+  const contrast = (visit = state.visit) =>
+    armsIn().join(' − ') + ' · ' + datesIn(visit).join(' → ');
+  const analyticVisit = (visit) => (isLong() && visit === state.baseline ? state.visit : visit);
   const key = () =>
     JSON.stringify([state.design, state.arm, state.baseline, state.visit, state.population]);
   const color = (a) => (arms.indexOf(a) === 0 ? '#2969d5' : '#b86120');
@@ -238,6 +241,7 @@
       view: 'overview',
       design: designs()[0],
       arm: arms[0],
+      atlasArm: null,
       baseline,
       browseVisit: baseline,
       visit: study.visits.find((v) => v !== baseline) || baseline,
@@ -249,7 +253,8 @@
     };
     peopleContext = {};
     sheets.reset('Primary analysis');
-    bench.setStudy(synthetic() ? 'immune-study-62834-v1' : 'local-' + ++privateCounter, {
+    const studyKey = study === sample ? 'immune-study-62834-v1' : study.studyId;
+    bench.setStudy(synthetic() ? studyKey : 'local-' + ++privateCounter, {
       persist: synthetic(),
       sharedFeatureUnit: new Set(study.features.map(unitOf)).size === 1 && synthetic(),
     });
@@ -349,7 +354,9 @@
       native() &&
       fitted() &&
       fitStatus === 'idle' &&
-      (state.view === 'results' || (state.view === 'overview' && !!state.plotMode))
+      (state.view === 'results' ||
+        state.view === 'bench' ||
+        (state.view === 'overview' && !!state.plotMode))
     ) {
       void requestFit();
     }
@@ -357,6 +364,8 @@
   function refreshFit() {
     updateTop();
     if ($('resFile') && $('dialog').open) $('resFile').disabled = !ready();
+    const benchPin = $('atlasResultMount')?.querySelector('[data-bench-focus="pin"]');
+    if (benchPin) benchPin.disabled = !ready();
     if (state.view === 'overview' && state.plotMode === 'comparison') paintEvidence();
     else if (state.view === 'results') renderResultsView();
   }
@@ -390,6 +399,7 @@
               population: state.population,
               feature: state.feature,
               browseVisit: state.browseVisit,
+              atlasArm: state.atlasArm,
               mode: state.plotMode || state.mode,
               layer: state.mode,
             },
@@ -410,6 +420,7 @@
         design,
         arm,
         baseline: baseline || state.baseline,
+        atlasArm: arms.includes(spec.atlasArm) ? spec.atlasArm : null,
         browseVisit: study.visits.includes(spec.browseVisit) ? spec.browseVisit : visit,
         visit,
         population,
@@ -435,7 +446,7 @@
       features: study.features,
       mapping: study.mapping || null,
       designs: designs(),
-      fixedBaseline: synthetic() ? sample.visits[0] : null,
+      fixedBaseline: synthetic() ? study.visits[0] : null,
     }),
     getSpec: () => ({
       ...snapshotSpec(),
@@ -478,11 +489,12 @@
       view: state.view,
       mode: currentMode,
       longitudinal: isLong(),
-      canPin: ready(),
+      canPin: fitStatus !== 'loading',
     });
     $('pinButton').hidden = state.view === 'bench';
-    $('pinButton').disabled = !ready();
-    $('pinButton').title = ready() ? 'Save this comparison' : 'Waiting for a fitted result';
+    $('pinButton').disabled = fitStatus === 'loading';
+    $('pinButton').title =
+      fitStatus === 'loading' ? 'Fitting this comparison' : 'Pin ' + contrast();
     document.querySelectorAll('[data-view]').forEach((n) => {
       if (n.dataset.view === state.view) n.setAttribute('aria-current', 'page');
       else n.removeAttribute('aria-current');
@@ -896,9 +908,8 @@
       browseVisit: study.visits.includes(visit) ? visit : state.browseVisit,
       mode: mode === 'cells' || molecularModes.includes(mode) ? mode : state.mode,
     };
-    const open = plot || (!playing && state.view === 'overview' && state.plotMode);
     const destination =
-      open && (!isLong() || next.browseVisit !== state.baseline) ? next.browseVisit : state.visit;
+      plot || selection.visitSelected ? analyticVisit(next.browseVisit) : state.visit;
     const fitChanged = next.population !== state.population || destination !== state.visit;
     if (!playing && (fitChanged || Object.entries(next).some(([k, v]) => state[k] !== v)))
       remember();
@@ -921,19 +932,23 @@
       host.id = 'atlasStage';
       $('page').replaceChildren(host);
     }
-    const displayedVisit =
-      isLong() && state.browseVisit === state.baseline ? state.visit : state.browseVisit;
-    const context =
-      armsIn().join(' − ') + ' · ' + (isLong() ? state.baseline + ' → ' : '') + displayedVisit;
     const plotOpen = state.view !== 'overview' || !!state.plotMode;
     atlas = window.SctrialAtlas.render(host, {
       study,
       selectedPopulation: state.population,
+      selectedAtlasArm: state.atlasArm,
       selectedFeature: state.feature,
       selectedVisit: state.browseVisit,
       selectedMode: state.mode,
       plotOpen,
-      analysisContext: context,
+      analysisContext: contrast(analyticVisit(state.browseVisit)),
+      resultContext: contrast(),
+      onArmChange: (arm) => {
+        if (arm === state.atlasArm || (arm !== null && !arms.includes(arm))) return;
+        remember();
+        state.atlasArm = arm;
+        updateTop();
+      },
       resultTitle: state.view === 'overview' ? 'Participant results' : titles[state.view],
       onSelect: (selection) => atlasSelection(selection, false),
       onPlot: (selection) => atlasSelection(selection, true),
@@ -1171,7 +1186,7 @@
         selected: state.feature,
         unit: unit(),
         reference: fitted(),
-        fdrDescription: synthetic()
+        fdrDescription: study === atlasExample ? study.study.multiplicity : study === sample
           ? 'FDR is calculated separately for the four original module scores and the eight additional gene and pathway outcomes.'
           : null,
         isMean: state.design === 'observe',
@@ -1333,11 +1348,12 @@
           'Add saved analysis sheets to the current study',
         ) +
         choice('template', 'file', 'Download example CSV', 'Column names and a small test study') +
+        choice('atlasExample', 'layers', atlasExample.study.name, 'Synthetic atlas with fitted participant contrasts') +
         choice(
           'restore',
           'layers',
-          'Open example study',
-          'Synthetic cohort with fitted reference results',
+          sample.study.name,
+          'Original synthetic cohort and saved reference analyses',
         ),
     );
     $('openWorkbook').onclick = () => {
@@ -1414,6 +1430,11 @@
     };
     $('template').onclick = () =>
       download('participant-summaries.csv', studyCSVTemplate(), 'text/csv');
+    $('atlasExample').onclick = () => {
+      finish();
+      init(atlasExample);
+      toast(atlasExample.study.name + ' opened');
+    };
     $('restore').onclick = () => {
       finish();
       init(sample);
@@ -1529,12 +1550,15 @@
   function exportMenu() {
     modal(
       'Export study data',
-      choice(
-        'saveWorkbook',
-        'file',
-        'Save analysis workbook',
-        'Reopen all analysis sheets with this study',
-      ) +
+      '<p class="hint">' +
+        esc(state.population + ' · ' + contrast()) +
+        '</p>' +
+        choice(
+          'saveWorkbook',
+          'file',
+          'Save analysis workbook',
+          'Reopen all analysis sheets with this study',
+        ) +
         choice(
           'resFile',
           'chart',
@@ -1579,7 +1603,7 @@
         ? [
             ['Fit package', fitProvenance(feature()).package],
             ['FDR family', fdrFamily(feature())],
-            ['Interpretation', sample.study.smallSample],
+            ['Interpretation', study.study.smallSample],
           ]
         : []),
       ...(fitWarnings().length ? [['Model notes', fitWarnings().join(' ')]] : []),
@@ -1595,10 +1619,16 @@
   }
   function snapshotSpec() {
     return Object.fromEntries(
-      ['design', 'arm', 'baseline', 'visit', 'browseVisit', 'population', 'feature'].map((k) => [
-        k,
-        state[k],
-      ]),
+      [
+        'design',
+        'arm',
+        'atlasArm',
+        'baseline',
+        'visit',
+        'browseVisit',
+        'population',
+        'feature',
+      ].map((k) => [k, state[k]]),
     );
   }
   function travel(back) {
@@ -1640,8 +1670,26 @@
         navigate('participants', { initialId: state.selectedId });
       }
     },
-    pin: () => {
-      if (ready()) bench.pin();
+    pin: async () => {
+      if (!ready()) {
+        if (fitStatus === 'loading') return;
+        const requestedStudy = study;
+        const requestedScope = key();
+        const requestedFeature = state.feature;
+        await requestFit();
+        if (
+          study !== requestedStudy ||
+          key() !== requestedScope ||
+          state.feature !== requestedFeature
+        ) {
+          return;
+        }
+        if (!ready()) {
+          toast(fitMessage || 'No fitted result is available for this comparison.');
+          return;
+        }
+      }
+      bench.pin();
     },
     retry: () => void requestFit(),
     undo: () => travel(true),
@@ -1708,7 +1756,7 @@
       search();
     }
   });
-  init(sample);
+  init(atlasExample);
   if (localStudyClient.available())
     void localStudyClient.openMapping(init).catch((e) => toast(e.message));
 })();

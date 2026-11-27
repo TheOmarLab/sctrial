@@ -394,6 +394,8 @@
       const { design, arm, baseline, visit, population, feature, mode, visitOrder } = settings;
       const browseVisit = settings.browseVisit ?? visit;
       if (!schema.visits.includes(browseVisit)) throw Error('Unknown molecular browsing visit.');
+      const atlasArm = settings.atlasArm ?? null;
+      if (atlasArm !== null && !schema.arms.includes(atlasArm)) throw Error('Unknown atlas arm.');
       if (!study.designs.includes(design)) throw Error('Unsupported study design.');
       if (!schema.arms.includes(arm)) throw Error('Unknown group.');
       if (!schema.populations.includes(population)) throw Error('Unknown cell population.');
@@ -435,6 +437,7 @@
         feature,
         visitOrder: [...visitOrder],
         browseVisit,
+        atlasArm,
         mode,
         ...(['cells', 'genes', 'pathways', 'modules'].includes(settings.layer)
           ? { layer: settings.layer }

@@ -14,6 +14,8 @@
     if (/\bCD8\b|cytotoxic/i.test(name)) return 171;
     if (/\bB[ -]?(?:cell|lymph)/i.test(name)) return 273;
     if (/\bCD4\b/i.test(name)) return 38;
+    if (/\bNK\b|natural killer/i.test(name)) return 213;
+    if (/monocyt|myeloid|macrophag/i.test(name)) return 14;
     return hues[index % hues.length];
   }
 
@@ -34,11 +36,13 @@
     const key = JSON.stringify([name, hue, variant]);
     if (materialCache.has(key)) return materialCache.get(key);
     const texture = document.createElement('canvas');
-    texture.width = texture.height = 192;
-    window.SctrialCellArt.paint(texture.getContext('2d'), {
-      x: 96,
-      y: 96,
-      radius: 87,
+    texture.width = texture.height = 96;
+    const ctx = texture.getContext('2d');
+    ctx.filter = 'saturate(.75)';
+    window.SctrialCellArt.paint(ctx, {
+      x: 48,
+      y: 48,
+      radius: 43,
       kind: name,
       hue,
       seed: hash(name),
@@ -53,7 +57,8 @@
   function tintLayer(name, hue, variant, rgb) {
     const key = JSON.stringify([name, hue, variant, rgb]);
     if (tintCache.has(key)) return tintCache.get(key);
-    const base = layer(name, hue, variant);
+    // Use one optical material for quantitation so identity pigment cannot change a value's brightness.
+    const base = layer(name, 166, variant);
     const texture = document.createElement('canvas');
     texture.width = base.width;
     texture.height = base.height;
@@ -83,134 +88,333 @@
     return texture;
   }
 
-  // Fixed illustrative geometry. A population receives one color for its aggregate measurement.
-  function colony(name, index) {
-    const seed = hash(name);
-    const rnd = random(seed);
-    const turn = rnd() * circle,
-      cells = [];
-    for (let i = 0; i < 20; i++) {
-      const ring = i === 0 ? 0 : i < 7 ? 1 : i < 18 ? 2 : 3;
-      const pos = ring === 1 ? i - 1 : ring === 2 ? i - 7 : i - 18;
-      const n = [1, 6, 11, 2][ring];
-      const a = turn + circle * (pos / n) + 0.19 * ring + rnd() * 0.16;
-      const d = [0, 0.36, 0.71, 1.02][ring] * (0.9 + 0.19 * rnd());
-      const x = Math.cos(a) * d * 1.05 + Math.sin(2 * a) * 0.045;
-      const y = Math.sin(a) * d * 0.76;
-      cells.push({
-        x,
-        y,
-        r: (ring === 3 ? 0.085 : ring === 2 ? 0.147 : 0.198) * (0.83 + rnd() * 0.54),
-        phase: circle * rnd(),
-        rotation: rnd() * 1.9 - 0.95,
-        variant: i % 3,
-        stretch: 0.87 + 0.22 * rnd(),
-        depth: y * 0.7 + rnd() * 0.36,
-      });
-    }
-    return {
-      name,
-      hue: pigment(name, index),
-      seed,
-      cells: cells.sort((a, b) => a.depth - b.depth),
-    };
+  const percent = new Intl.NumberFormat(undefined, {
+    style: 'percent',
+    maximumSignificantDigits: 3,
+  });
+  const maxMarks = 1250;
+
+  // A shear curves the island's centerline without changing its area. Stretch and
+  // rotation also have determinant one, leaving observed fraction as the sole area input.
+  function cloudPoint(model, angle, radial) {
+    const radius = radial * model.outline(angle);
+    const u = radius * Math.cos(angle) * model.stretch;
+    const v = (radius * Math.sin(angle)) / model.stretch + model.bend * (u * u - 0.32);
+    return { x: u * model.cos - v * model.sin, y: u * model.sin + v * model.cos };
   }
 
-  function ratioColor(level) {
-    const f = clamp(Number.isFinite(level) ? level : 0.5, 0, 1);
-    return [50, 107, 114].map((v, i) => Math.round(v + ([255, 203, 119][i] - v) * f)).join(',');
+  function colony(name, index) {
+    const seed = hash(name),
+      rnd = random(seed);
+    const phases = Array.from({ length: 4 }, () => rnd() * circle);
+    const amplitudes = [0.18, 0.13, 0.075, 0.045];
+    const normal = Math.sqrt(1 + amplitudes.reduce((sum, a) => sum + a * a, 0) / 2);
+    const angle = (rnd() - 0.5) * 1.7;
+    const model = {
+      name,
+      hue: pigment(name, index),
+      rnd,
+      phase: phases[0],
+      cells: [],
+      path: new Path2D(),
+      stretch: 1.18 + rnd() * 0.33,
+      bend: (rnd() > 0.5 ? 1 : -1) * (0.14 + rnd() * 0.18),
+      cos: Math.cos(angle),
+      sin: Math.sin(angle),
+      sectors: [],
+      rim: [],
+      bounds: { left: 0, right: 0, top: 0, bottom: 0 },
+      buckets: new Map(),
+      outline: (theta) =>
+        (1 +
+          amplitudes.reduce(
+            (sum, amplitude, i) => sum + amplitude * Math.sin((i + 2) * theta + phases[i]),
+            0,
+          )) /
+        normal,
+    };
+    // Polar sectors have unequal areas in a lobed outline; sample in area coordinates.
+    const area = [0],
+      steps = 192;
+    for (let j = 0; j < steps; j++) {
+      const theta = (circle * j) / steps;
+      const point = cloudPoint(model, theta, 1);
+      model.rim.push(point);
+      const b = model.bounds;
+      b.left = Math.min(b.left, point.x);
+      b.right = Math.max(b.right, point.x);
+      b.top = Math.min(b.top, point.y);
+      b.bottom = Math.max(b.bottom, point.y);
+      if (j) model.path.lineTo(point.x, point.y);
+      else model.path.moveTo(point.x, point.y);
+      area.push(area[j] + model.outline(theta + circle / (steps * 2)) ** 2);
+    }
+    model.path.closePath();
+    let j = 0;
+    for (let i = 0; i <= 512; i++) {
+      const target = (area[steps] * i) / 512;
+      while (j < steps - 1 && area[j + 1] < target) j++;
+      model.sectors.push((circle * (j + (target - area[j]) / (area[j + 1] - area[j]))) / steps);
+    }
+    return model;
+  }
+
+  // Progressive best-candidate sampling keeps stable cells evenly scattered without rows,
+  // spiral spokes or a reset as the visit changes. Only nearby points enter each search.
+  function addMarks(model, needed) {
+    const { cells, buckets, rnd } = model;
+    function bucket(x, y) {
+      return Math.floor(x * 5) * 128 + Math.floor(y * 5);
+    }
+    while (cells.length < needed) {
+      let best,
+        clearance = -1;
+      const stratum = Math.floor(rnd() * 12);
+      for (let j = 0; j < 7; j++) {
+        const sector = rnd() * 512,
+          k = Math.floor(sector);
+        const theta = model.sectors[k] + (model.sectors[k + 1] - model.sectors[k]) * (sector - k);
+        // A diffuse rim leaves the population contour legible at low cell fractions.
+        const radial = Math.sqrt((stratum + rnd()) / 12);
+        const point = cloudPoint(model, theta, radial * (0.66 + 0.34 * radial ** 5));
+        const key = bucket(point.x, point.y);
+        let d = 0.18 ** 2;
+        for (const offset of [-129, -128, -127, -1, 0, 1, 127, 128, 129]) {
+          for (const prior of buckets.get(key + offset) || []) {
+            const dx = prior.x - point.x,
+              dy = prior.y - point.y;
+            d = Math.min(d, dx * dx + dy * dy);
+          }
+        }
+        if (d > clearance) {
+          best = point;
+          clearance = d;
+        }
+      }
+      const cell = {
+        ...best,
+        size: 0.74 + 0.43 * rnd(),
+        phase: circle * rnd(),
+        rotation: circle * rnd(),
+        variant: Math.floor(rnd() * 3),
+      };
+      const key = bucket(cell.x, cell.y);
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(cell);
+      cells.push(cell);
+    }
+  }
+
+  function molecularField(group, cellMode, color, fallbackDomain) {
+    const bins = group.cellBins;
+    // CSV rows carry participant summaries. Individual cell colors there retain
+    // the population identity. Only a measured single-cell histogram drives signal colors.
+    if (!cellMode) return { key: 'type', bands: [{ end: 1, shade: null }], images: new Map() };
+    const missing = color(null, fallbackDomain);
+    if (!bins || !bins.counts || !bins.domain || !group.count)
+      return { key: 'missing', bands: [{ end: 1, shade: missing }], images: new Map() };
+    const { counts, domain } = bins;
+    const [lo, hi] = domain;
+    const size = counts.length;
+    const boundary = (i) => lo * (1 - i / size) + hi * (i / size);
+    // The histogram uses right-open bins, except the final bin. Compare to the
+    // same floating-point edges as the importer, including exact zero on an edge.
+    let zeroBin = 0;
+    if (lo !== hi) while (zeroBin + 1 < size && boundary(zeroBin + 1) <= 0) zeroBin++;
+    let total = 0;
+    const bands = [];
+    function add(n, shade) {
+      if (n <= 0) return;
+      total += n;
+      bands.push({ end: total / group.count, shade });
+    }
+    for (let i = 0; i < size; i++) {
+      if (!counts[i]) continue;
+      const zero = i === zeroBin ? Math.min(counts[i], bins.zero || 0) : 0;
+      const t = (i + 0.5) / size;
+      // A bin crossing the origin cannot identify the sign of every value inside it.
+      const crossesZero = boundary(i) < 0 && boundary(i + 1) > 0;
+      const midpoint = lo * (1 - t) + hi * t;
+      add(zero, color(0, domain));
+      const shade = crossesZero
+        ? color(boundary(i), domain)
+            .split(',')
+            .map((v, j) =>
+              Math.round((Number(v) + Number(color(boundary(i + 1), domain).split(',')[j])) / 2),
+            )
+            .join(',')
+        : color(midpoint, domain);
+      add(counts[i] - zero, shade);
+    }
+    add(group.count - total, missing);
+    const key = JSON.stringify(bands);
+    return { key, bands, images: new Map() };
+  }
+
+  function prepareShades(field, n, phase) {
+    if (field.shades?.length === n) return field.shades;
+    if (field.bands.length === 1) return (field.shades = Array(n).fill(field.bands[0].shade));
+    // Stratified quantiles preserve the observed frequencies. Scrambling their order
+    // avoids inventing a spatial expression gradient in a schematic colony.
+    const order = Array.from({ length: n }, (_, i) => i);
+    // An independent shuffle matters: using a second spiral sequence can align
+    // color with angle and create a wedge of high values without a spatial measurement.
+    const shuffle = random(Math.floor((phase / circle) * 0xffffffff) ^ 0x5c7a390b);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(shuffle() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const shades = Array(n);
+    let band = 0;
+    order.forEach((index, j) => {
+      const quantile = (j + 0.5) / n;
+      while (band + 1 < field.bands.length && quantile >= field.bands[band].end) band++;
+      shades[index] = field.bands[band].shade;
+    });
+    return (field.shades = shades);
+  }
+
+  function material(model, field, shade, variant) {
+    let variants = field.images.get(shade);
+    if (!variants) field.images.set(shade, (variants = []));
+    return (variants[variant] ||= shade
+      ? tintLayer(model.name, model.hue, variant, shade)
+      : layer(model.name, model.hue, variant));
   }
 
   const style = `
-    .sc-atlas-world{position:absolute;inset:0;overflow:hidden;isolation:isolate;background:radial-gradient(ellipse at 38% 40%,#12282b 0%,#0b191e 55%,#091217 100%);color:#e7f4f1;user-select:none}
-    .sc-atlas-world::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle,rgba(128,170,167,.19) .7px,transparent 1px);background-size:22px 22px;pointer-events:none}
+    .sc-atlas-world{position:absolute;inset:0;overflow:hidden;isolation:isolate;background:radial-gradient(ellipse at 48% 47%,#101a20 0%,#0b1217 57%,#0a1014 100%);color:#e7f1f0;user-select:none}
+    .sc-atlas-world::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle,rgba(152,180,195,.20) .65px,transparent .9px);background-size:26px 26px;pointer-events:none}
     .sc-atlas-world canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab;outline-offset:-4px}
     .sc-atlas-world.is-dragging canvas{cursor:grabbing}
     .sc-atlas-tags{position:absolute;inset:0;pointer-events:none}
-    .sc-atlas-world .sc-atlas-tag{position:absolute;left:0;top:0;display:flex;align-items:flex-start;gap:7px;pointer-events:auto;white-space:nowrap;appearance:none;max-width:min(240px,39%);background:rgba(10,24,29,.84);border:1px solid rgba(129,160,159,.27);border-radius:7px;padding:7px 10px;color:#e6efef;box-shadow:0 2px 12px #06101544;line-height:1.18;text-align:left;cursor:pointer;font:inherit}
-    .sc-atlas-world .sc-atlas-tag[aria-pressed="true"]{background:#172d31;border-color:#a6c6bd99}
-    .sc-atlas-world .sc-atlas-tag:hover,.sc-atlas-world button:focus-visible{border-color:#a9dfcf;outline:2px solid #b8e0d6;outline-offset:2px}
-    .sc-atlas-tag i{margin-top:4px;flex:0 0 6px;height:6px;border-radius:50%;background:var(--pop-pigment)}
+    .sc-atlas-world .sc-atlas-tag{position:absolute;left:0;top:0;display:grid;grid-template-columns:4px minmax(0,1fr);align-items:start;gap:6px;pointer-events:auto;white-space:nowrap;appearance:none;background:transparent;border:0;border-radius:3px;padding:4px 5px;color:#c1cfce;text-shadow:0 1px 5px #080c11,0 0 9px #080c11;text-align:left;cursor:pointer;font:inherit;box-sizing:border-box}
+    .sc-atlas-world .sc-atlas-tag:hover,.sc-atlas-world .sc-atlas-tag:focus-visible{background:#17232af5;outline:1px solid #57646e;outline-offset:1px}
+    .sc-atlas-tag i{margin-top:4px;height:8px;border-radius:1px;background:var(--pop-pigment)}
     .sc-atlas-tag>span{min-width:0;display:grid;gap:3px}
     .sc-atlas-tag strong,.sc-atlas-tag small{display:block;overflow:hidden;text-overflow:ellipsis}
-    .sc-atlas-tag strong{font-size:13px;font-weight:620;letter-spacing:-.015em;color:#eff8f7}
-    .sc-atlas-tag small{font:500 10px/1.2 system-ui,sans-serif;color:#b9cece;font-variant-numeric:tabular-nums}
-    .sc-atlas-pages{position:absolute;top:8px;right:10px;display:flex;align-items:center;background:#101c23ec;border:1px solid #52686b;border-radius:8px;font:11px/1.2 system-ui;padding:1px 3px;gap:6px}
-    .sc-atlas-world .sc-atlas-tag[hidden],.sc-atlas-pages[hidden]{display:none}.sc-atlas-pages button{color:#d5e3df;border:0;background:transparent;padding:5px 8px;cursor:pointer;font:16px/1 system-ui}.sc-atlas-pages button:disabled{opacity:.35;cursor:default}
-    @media(max-width:570px){.sc-atlas-world .sc-atlas-tag{padding:5px 7px;gap:5px;max-width:44%}.sc-atlas-tag strong{font-size:11px}.sc-atlas-tag small{font-size:9px}}
+    .sc-atlas-tag strong{font-family:inherit;font-weight:600;font-size:12px;line-height:1.18;letter-spacing:-.008em;color:#e3ecea}
+    .sc-atlas-world .sc-atlas-tag[aria-pressed="true"] strong{color:#ffdeaa}
+    .sc-atlas-tag small{font:500 10px/1.3 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:-.03em;color:#a5b4bc;font-variant-numeric:tabular-nums}
+    .sc-atlas-tag .at-signal-mini[hidden]{display:none}
+    .sc-atlas-pages{position:absolute;top:8px;right:9px;display:flex;align-items:center;background:#131c22ed;border:1px solid #34424a;border-radius:4px;font:11px/1.2 system-ui;padding:2px 4px;gap:6px}
+    .sc-atlas-world .sc-atlas-tag[hidden],.sc-atlas-pages[hidden]{display:none}.sc-atlas-pages button{color:#d5e3df;border:0;background:transparent;padding:3px 8px;cursor:pointer;font:16px/1 system-ui}.sc-atlas-pages button:disabled{opacity:.35;cursor:default}
+    @media(max-width:570px){.sc-atlas-world .sc-atlas-tag{padding:4px 2px;gap:4px}.sc-atlas-tag strong{font-size:11px}.sc-atlas-tag small{font-size:9px}}
   `;
 
-  function placement(n, w, h, index) {
-    const portrait = h > w * 0.88;
-    const cap = portrait ? 4 : 6;
-    const flat = h < 235;
-    let coords;
-    if (n === 1) coords = [[0.5, 0.48]];
-    else if (n === 2)
-      coords = portrait
-        ? [
-            [0.33, 0.27],
-            [0.66, 0.68],
-          ]
-        : [
-            [0.31, 0.46],
-            [0.7, 0.51],
-          ];
-    else if (n === 3)
-      coords = portrait
-        ? [
-            [0.3, 0.2],
-            [0.7, 0.49],
-            [0.32, 0.77],
-          ]
-        : [
-            [0.215, 0.5],
-            [0.52, 0.32],
-            [0.8, 0.62],
-          ];
-    else if (n === 4)
-      coords = [
-        [0.27, 0.24],
-        [0.73, 0.27],
-        [0.26, 0.7],
-        [0.73, 0.72],
-      ];
-    else coords = Array.from({ length: n }, (_, i) => [((i % 3) + 0.5) / 3, i < 3 ? 0.27 : 0.72]);
-    const tp = n > cap || flat ? 9 : 14;
-    const labelSpace = flat ? 29 : 44;
-    const used = Math.max(70, h - tp - labelSpace);
-    const [a, b] = coords[index];
-    const x = w * a,
-      y = tp + used * b;
-    let r = Math.min(
-      w *
-        (n === 1
-          ? 0.39
-          : n === 2
-            ? 0.218
-            : n === 3
-              ? portrait
-                ? 0.255
-                : 0.167
-              : portrait
-                ? 0.21
-                : 0.149),
-      used *
-        (n === 1
-          ? 0.51
-          : n === 2
-            ? portrait
-              ? 0.285
-              : 0.51
-            : n === 3
-              ? portrait
-                ? 0.208
-                : 0.42
-              : 0.254),
-      209,
-    );
-    r = Math.min(r, x / 1.2, (w - x) / 1.2, (h - y - labelSpace) / 0.91);
-    return { x, y, r: Math.max(12, r) };
+  // Anchor families are shared by every visit. Fractions change footprints while the
+  // population keeps its identity and neighborhood. Positions have no biological units.
+  const anchors = [
+    [],
+    [[0.49, 0.5]],
+    [
+      [0.3, 0.57],
+      [0.7, 0.37],
+    ],
+    [
+      [0.27, 0.45],
+      [0.73, 0.3],
+      [0.64, 0.73],
+    ],
+    [
+      [0.26, 0.36],
+      [0.72, 0.25],
+      [0.7, 0.71],
+      [0.28, 0.74],
+    ],
+    [
+      [0.22, 0.43],
+      [0.53, 0.22],
+      [0.78, 0.46],
+      [0.59, 0.75],
+      [0.26, 0.77],
+    ],
+    [
+      [0.18, 0.32],
+      [0.5, 0.24],
+      [0.78, 0.36],
+      [0.75, 0.74],
+      [0.44, 0.72],
+      [0.18, 0.74],
+    ],
+  ];
+
+  function pack(groups, fullPage, width, height, paged, models) {
+    if (!groups.length || width < 1 || height < 1) return [];
+    const margin = width < 500 ? 7 : 14;
+    const top = paged ? 34 : margin;
+    const innerW = Math.max(1, width - 2 * margin),
+      innerH = Math.max(1, height - top - margin);
+    const portrait = innerH > 1.12 * innerW;
+    const wide = innerW / innerH > 2;
+    const minor = Math.min(innerW, innerH),
+      major = Math.max(innerW, innerH);
+    const n = fullPage;
+    const targetUnit =
+      n === 1
+        ? Math.min(innerW * 0.3, innerH * 0.38)
+        : Math.min(minor * (n > 3 ? 0.35 : 0.52), major * (n > 3 ? 0.234 : 0.267));
+    const unit = paged
+      ? Math.min(targetUnit, minor / 4.6)
+      : groups.reduce((available, g) => {
+          const b = models.get(g.name).bounds;
+          return Math.min(available, innerW / (b.right - b.left), innerH / (b.bottom - b.top));
+        }, targetUnit);
+    const budget = Math.min(maxMarks, Math.max(1, Math.round((unit / 4.65) ** 2)));
+    const labelWidth = Math.max(52, Math.min(164, innerW / (innerW < 500 ? 2.8 : 3.3)));
+    const points = groups.map((g, i) => {
+      const model = models.get(g.name);
+      let [a, b] = anchors[groups.length][i];
+      if (portrait) [a, b] = [b, a];
+      if (wide && groups.length === 3) {
+        a = [0.18, 0.52, 0.83][i];
+        b = [0.58, 0.31, 0.62][i];
+      }
+      const r = unit * Math.sqrt(g.fraction),
+        bounds = model.bounds;
+      return {
+        name: g.name,
+        r,
+        marks: Math.min(g.count, budget * g.fraction),
+        labelWidth,
+        x: margin + a * innerW,
+        y: top + b * innerH,
+        bounds,
+      };
+    });
+    // Move only when occupied extents collide. Small populations retain their anchors and
+    // the radius scale stays fixed across the full range from 0% to 100%.
+    function constrain(p) {
+      const b = p.bounds;
+      p.x = clamp(p.x, margin - b.left * p.r, width - margin - b.right * p.r);
+      p.y = clamp(p.y, top - b.top * p.r, height - margin - b.bottom * p.r);
+    }
+    for (let step = 0; step < 14; step++) {
+      points.forEach(constrain);
+      for (let i = 0; i < points.length; i++) {
+        const a = points[i];
+        for (let j = i + 1; j < points.length; j++) {
+          const b = points[j],
+            dx = b.x - a.x,
+            dy = b.y - a.y,
+            distance = Math.hypot(dx, dy) || 1;
+          const vx = dx / distance,
+            vy = dy / distance;
+          // Directional projections are tighter than bounding boxes for tilted populations.
+          const reach = (point, vx, vy) =>
+            Math.max(...models.get(point.name).rim.map((q) => q.x * vx + q.y * vy)) * point.r;
+          const separation = reach(a, vx, vy) + reach(b, -vx, -vy) + minor * 0.025;
+          const move = (separation - distance) * 0.4;
+          if (move <= 0) continue;
+          a.x -= move * vx;
+          a.y -= move * vy;
+          b.x += move * vx;
+          b.y += move * vy;
+        }
+      }
+    }
+    points.forEach(constrain);
+    return points;
   }
 
   function element(tag, cls, value) {
@@ -227,7 +431,7 @@
     const canvas = element('canvas');
     canvas.setAttribute(
       'aria-label',
-      'Schematic population clusters. Use Tab to select a population, or drag to pan. Use plus and minus to zoom.',
+      'Schematic cell populations sized by fraction of observed cells. Tab to select a population, drag to pan, or use plus and minus to zoom.',
     );
     canvas.tabIndex = 0;
     const tags = element('div', 'sc-atlas-tags');
@@ -265,7 +469,8 @@
       destroyed = false,
       dirty = true;
     const fingers = new Map();
-    let pinch = null,
+    let focus = null,
+      pinch = null,
       drag = null;
     const compactMotion = () => opt.reducedMotion ?? media.matches;
 
@@ -277,11 +482,18 @@
 
     function reset() {
       zoom = targetZoom = 1;
+      focus = null;
       px = py = 0;
       wake();
     }
-    function zoomBy(factor) {
+    function focusAt(point) {
+      const sx = point.x - w / 2,
+        sy = point.y - h / 2;
+      return { sx, sy, wx: (sx - px) / zoom, wy: (sy - py) / zoom };
+    }
+    function zoomBy(factor, point = { x: w / 2, y: h / 2 }) {
       if (Number.isFinite(factor) && factor > 0) {
+        focus = focusAt(point);
         targetZoom = clamp(targetZoom * factor, 0.65, 2.8);
         wake();
       }
@@ -303,38 +515,81 @@
           btn = element('button', 'sc-atlas-tag');
           btn.type = 'button';
           const wrap = element('span');
-          wrap.append(element('strong', '', g.name), element('small'));
+          wrap.append(
+            element('strong', '', g.name),
+            element('small'),
+            element('span', 'at-signal-mini'),
+          );
           btn.append(element('i'), wrap);
           btn.addEventListener('click', () => select(g.name));
           tags.append(btn);
           tagNodes.set(g.name, btn);
         }
         const m = models.get(g.name);
-        const amount = Number.isFinite(g.value) ? number.format(g.value) : 'Unmeasured';
-        const detail = opt.measurement ? amount : count.format(g.count || 0) + ' cells';
-        const nMeasured = opt.measurement ? g.n : g.participants;
+        const measured = opt.measurement && Number.isFinite(g.value);
+        const readout = opt.measurement
+          ? measured
+            ? 'Mean ' + number.format(g.value) + ' · n=' + count.format(g.n)
+            : 'Unmeasured · n=0'
+          : percent.format(g.fraction) +
+            ' · ' +
+            count.format(g.count) +
+            (g.count === 1 ? ' cell' : ' cells');
         btn.dataset.population = g.name;
-        btn.dataset.n = String(nMeasured ?? 0);
-        if (Number.isFinite(g.value)) btn.dataset.value = String(g.value);
+        btn.dataset.count = String(g.count);
+        btn.dataset.fraction = String(g.fraction);
+        btn.dataset.n = String(opt.measurement ? g.n : g.participants);
+        if (measured) btn.dataset.value = String(g.value);
         else delete btn.dataset.value;
-        const readout =
-          opt.measurement && Number.isFinite(g.value)
-            ? 'Mean ' +
-              detail +
-              (Number.isFinite(nMeasured) ? ' · n=' + count.format(nMeasured) : '')
-            : detail;
-        btn.querySelector('small').textContent =
-          opt.measurement && !Number.isFinite(g.value) ? readout + ' · n=0' : readout;
-        const full =
-          g.name +
-          ' · ' +
-          readout +
-          (opt.measurement && opt.featureLabel ? ' · ' + opt.featureLabel : '') +
-          (opt.visit ? ' · ' + opt.visit : '');
+        btn.querySelector('small').textContent = readout;
+        const mini = btn.querySelector('.at-signal-mini');
+        mini.hidden = !measured;
+        if (measured) window.SctrialAtlasSignal?.mini(mini, g, opt.domain);
+        const total = count.format(g.totalCells);
+        const full = [
+          g.name,
+          count.format(g.count) +
+            ' of ' +
+            total +
+            ' observed cells (' +
+            percent.format(g.fraction) +
+            ')',
+          opt.featureLabel,
+          m.cellMode && g.count
+            ? count.format(g.cellBins?.measured ?? 0) +
+              ' cells with measured signal. Colors summarize binned values, positions are schematic'
+            : null,
+          measured
+            ? 'Participant mean ' +
+              number.format(g.value) +
+              ' across ' +
+              count.format(g.n) +
+              (g.n === 1 ? ' measured participant' : ' measured participants')
+            : opt.measurement
+              ? 'Unmeasured'
+              : null,
+          measured && Number.isFinite(g.q1) && Number.isFinite(g.q3)
+            ? 'Middle half ' +
+              number.format(g.q1) +
+              ' to ' +
+              number.format(g.q3) +
+              ' on the shared feature scale'
+            : null,
+          opt.visit,
+        ]
+          .filter(Boolean)
+          .join(' · ');
         btn.title = full;
         btn.setAttribute('aria-label', full);
         btn.setAttribute('aria-pressed', String(g.name === opt.selected || Boolean(g.selected)));
-        btn.style.setProperty('--pop-pigment', 'hsl(' + m.hue + ' 62% 68%)');
+        btn.style.setProperty(
+          '--pop-pigment',
+          measured
+            ? 'rgb(' + m.shade + ')'
+            : opt.measurement
+              ? '#829499'
+              : 'hsl(' + m.hue + ' 62% 68%)',
+        );
       }
       pages.hidden = groups.length <= capacity;
       prev.disabled = page === 0;
@@ -347,10 +602,115 @@
         ' / ' +
         groups.length;
     }
+    const fields = ['x', 'y', 'r', 'marks', 'labelX', 'labelY', 'leaderX', 'leaderY'];
+    function position(model, now) {
+      const dest = model.target;
+      if (!model.from || compactMotion()) return dest;
+      const t = clamp((now - model.layoutStart) / 480, 0, 1);
+      if (t === 1) return dest;
+      const eased = t * t * (3 - 2 * t);
+      const blended = {};
+      for (const key of fields)
+        blended[key] = model.from[key] + (dest[key] - model.from[key]) * eased;
+      return blended;
+    }
+    function layout() {
+      const now = performance.now();
+      const fullPage = Math.min(groups.length, capacity);
+      const packed = pack(visible, fullPage, w, h, groups.length > capacity, models);
+      const placed = [];
+      for (const dest of packed) {
+        const model = models.get(dest.name),
+          btn = tagNodes.get(dest.name);
+        btn.style.maxWidth = dest.labelWidth + 'px';
+        btn.dataset.markerCount = String(dest.marks);
+        btn.dataset.areaRadius = String(dest.r);
+        btn.hidden = false;
+        model.tagWidth = btn.offsetWidth;
+        model.tagHeight = btn.offsetHeight;
+      }
+      for (const dest of packed) {
+        const model = models.get(dest.name),
+          tw = model.tagWidth,
+          th = model.tagHeight;
+        // Attach labels to the rim, favoring space outside the colony and keeping
+        // neighboring annotations and plotted populations readable.
+        const origin = Math.atan2((dest.y - h * 0.5) / h, (dest.x - w * 0.5) / w);
+        const lowY = groups.length > capacity ? 31 : 3;
+        const overlap = (a, b) =>
+          Math.max(0, Math.min(a.r, b.r) - Math.max(a.l, b.l)) *
+          Math.max(0, Math.min(a.b, b.b) - Math.max(a.t, b.t));
+        let preferred,
+          cost = Infinity;
+        for (const shift of [0, 0.48, -0.48, 0.96, -0.96, 1.45, -1.45, 2.25, -2.25, Math.PI]) {
+          const angle = origin + shift,
+            vx = Math.cos(angle),
+            vy = Math.sin(angle);
+          const edge = model.rim.reduce((best, q) =>
+            q.x * vx + q.y * vy > best.x * vx + best.y * vy ? q : best,
+          );
+          const leadX = dest.x + edge.x * dest.r,
+            leadY = dest.y + edge.y * dest.r;
+          const gap = w < 560 ? 8 : 16;
+          const tx = leadX + vx * (tw / 2 + gap),
+            ty = leadY + vy * (th / 2 + gap);
+          const cx = clamp(tx, tw / 2 + 3, w - tw / 2 - 3),
+            cy = clamp(ty, lowY + th / 2, h - th / 2 - 3);
+          const box = {
+            l: cx - tw / 2 - 3,
+            r: cx + tw / 2 + 3,
+            t: cy - th / 2 - 2,
+            b: cy + th / 2 + 2,
+          };
+          let score = Math.abs(shift) * 2 + Math.hypot(cx - tx, cy - ty) * 1.2;
+          for (const other of packed) {
+            const b = other.bounds;
+            const area = {
+              l: other.x + b.left * other.r,
+              r: other.x + b.right * other.r,
+              t: other.y + b.top * other.r,
+              b: other.y + b.bottom * other.r,
+            };
+            score += overlap(box, area) * 0.7;
+          }
+          for (const other of placed) score += overlap(box, other) * 12;
+          if (score < cost) {
+            cost = score;
+            preferred = { labelX: cx, labelY: cy, leaderX: leadX, leaderY: leadY, box };
+          }
+        }
+        Object.assign(dest, preferred);
+        placed.push(preferred.box);
+        if (!model.target || fields.some((k) => dest[k] !== model.target[k])) {
+          model.from = model.target ? position(model, now) : null;
+          model.target = dest;
+          model.layoutStart = now;
+        }
+      }
+    }
     function showPage(i) {
       page = clamp(i, 0, Math.max(0, Math.ceil(groups.length / capacity) - 1));
       visible = groups.slice(page * capacity, (page + 1) * capacity);
+      const nextModels = new Map();
+      const color = opt.signalColor || window.SctrialAtlasSignal?.color;
+      const cellMode =
+        opt.measurement && (Boolean(opt.cellDomain) || groups.some((g) => g.cellBins));
+      visible.forEach((g, i) => {
+        const model = models.get(g.name) || colony(g.name, page * capacity + i);
+        model.shade =
+          opt.measurement && Number.isFinite(g.value) ? color(g.value, opt.domain) : null;
+        model.cellMode = cellMode;
+        const field = molecularField(g, cellMode, color, opt.cellDomain);
+        if (model.field?.key !== field.key) {
+          model.priorField = model.field;
+          model.changeStart = performance.now();
+          model.field = field;
+        }
+        nextModels.set(g.name, model);
+      });
+      models = nextModels;
       renderTags();
+      layout();
       wake();
     }
     prev.onclick = () => {
@@ -367,23 +727,13 @@
       opt = options;
       const supplied = options.groups || [];
       const typed = supplied.filter((g) => !g.isPooled);
-      groups = typed.length ? typed : supplied;
-      const nextModels = new Map();
-      groups.forEach((g, i) => {
-        const model = models.get(g.name) || colony(g.name, i);
-        const shade = options.measurement
-          ? Number.isFinite(g.value)
-            ? ratioColor(g.level)
-            : '99,113,118'
-          : null;
-        if (model.shade !== shade) {
-          model.priorShade = model.shade;
-          model.changeStart = performance.now();
-          model.shade = shade;
-        }
-        nextModels.set(g.name, model);
-      });
-      models = nextModels;
+      const eligible = typed.length ? typed : supplied;
+      const total = eligible.reduce((sum, g) => sum + g.count, 0);
+      groups = eligible.map((g) => ({
+        ...g,
+        totalCells: g.totalCells ?? total,
+        fraction: g.count > 0 ? clamp(g.fraction ?? g.count / total, 0, 1) : 0,
+      }));
       const selected = groups.findIndex((g) => g.name === options.selected);
       showPage(
         selected >= 0 && (options.selected !== lastSelected || !visible.length)
@@ -398,13 +748,18 @@
       canvas.width = Math.max(1, Math.round(w * density));
       canvas.height = Math.max(1, Math.round(h * density));
       const old = capacity;
-      capacity = h > w * 0.88 ? 4 : 6;
+      capacity = h > w * 0.88 && (w < 345 || h < 420) ? 4 : 6;
       if (w < 450 && h < 260) capacity = 2;
+      if (w < 310 && w < h * 0.64) capacity = 2;
+      if (h < 176 && w >= 450) capacity = Math.min(capacity, 3);
       if (w < 280 || h < 135) capacity = 1;
       if (old !== capacity) {
         const idx = groups.findIndex((g) => g.name === opt.selected);
         showPage(idx < 0 ? 0 : Math.floor(idx / capacity));
-      } else wake();
+      } else {
+        layout();
+        wake();
+      }
     }
 
     function draw(stamp) {
@@ -424,96 +779,123 @@
         reduce || !animatingZoom
           ? targetZoom
           : zoom + (targetZoom - zoom) * (1 - Math.exp(-13 * Math.max(elapsed, 0.016)));
+      if (focus) {
+        px = focus.sx - focus.wx * zoom;
+        py = focus.sy - focus.wy * zoom;
+        if (!pinch && zoom === targetZoom) focus = null;
+      }
       px = clamp(px, -w * zoom * 0.43, w * zoom * 0.43);
       py = clamp(py, -h * zoom * 0.43, h * zoom * 0.43);
       ctx.setTransform(density, 0, 0, density, 0, 0);
       ctx.clearRect(0, 0, w, h);
       hits = [];
-      visible.forEach((g, i) => {
-        const p = placement(visible.length, w, h, i),
-          model = models.get(g.name);
-        const x = (p.x - w / 2) * zoom + w / 2 + px,
-          y = (p.y - h / 2) * zoom + h / 2 + py,
-          r = p.r * zoom;
+      visible.forEach((g) => {
+        const model = models.get(g.name);
+        if (!model.target) return;
+        const p = position(model, stamp);
+        const x = (p.x - w / 2) * zoom + w / 2 + px;
+        const y = (p.y - h / 2) * zoom + h / 2 + py;
+        const r = p.r * zoom;
         const chosen = g.name === opt.selected || g.selected;
-        hits.push({ x, y, r, name: g.name });
+        if (r > 0) hits.push({ x, y, r, model, name: g.name });
         const btn = tagNodes.get(g.name);
-        const bx = clamp(x, btn.offsetWidth / 2 + 3, w - btn.offsetWidth / 2 - 3);
+        const bx = clamp(
+          (p.labelX - w / 2) * zoom + w / 2 + px,
+          model.tagWidth / 2 + 3,
+          w - model.tagWidth / 2 - 3,
+        );
+        const by = clamp(
+          (p.labelY - h / 2) * zoom + h / 2 + py,
+          model.tagHeight / 2 + 2,
+          h - model.tagHeight / 2 - 2,
+        );
         btn.style.transform =
-          'translate(' +
-          Math.round(bx) +
-          'px,' +
-          Math.round(clamp(y + r * 0.98 + 3, 3, h - btn.offsetHeight - 3)) +
-          'px) translateX(-50%)';
-        btn.hidden = x + r < 0 || x - r > w || y + r < 0 || y - r > h;
-        if (btn.hidden) return;
-        const measured = Number.isFinite(g.value);
-        const ratio = measured ? ratioColor(g.level) : '99,113,118';
-        const aura = ctx.createRadialGradient(x, y, r * 0.04, x, y, r * 1.55);
-        if (opt.measurement) {
-          aura.addColorStop(0, 'rgba(' + ratio + ',.44)');
-          aura.addColorStop(0.48, 'rgba(' + ratio + ',.22)');
-          aura.addColorStop(0.72, 'rgba(' + ratio + ',.09)');
-          aura.addColorStop(1, 'rgba(' + ratio + ',0)');
-        } else {
-          aura.addColorStop(0, 'hsla(' + model.hue + ',63%,58%,.17)');
-          aura.addColorStop(0.64, 'hsla(' + model.hue + ',58%,42%,.075)');
-          aura.addColorStop(1, 'hsla(' + model.hue + ',50%,38%,0)');
+          'translate(' + Math.round(bx) + 'px,' + Math.round(by) + 'px) translate(-50%,-50%)';
+        const bound = model.bounds;
+        btn.hidden =
+          x + r * bound.right < 0 ||
+          x + r * bound.left > w ||
+          y + r * bound.bottom < 0 ||
+          y + r * bound.top > h;
+        if (btn.hidden || !(r > 0) || !(p.marks > 0)) return;
+        const leadX = (p.leaderX - w / 2) * zoom + w / 2 + px,
+          leadY = (p.leaderY - h / 2) * zoom + h / 2 + py;
+        const endX = clamp(leadX, bx - model.tagWidth / 2, bx + model.tagWidth / 2);
+        const endY = clamp(leadY, by - model.tagHeight / 2, by + model.tagHeight / 2);
+        if (Math.hypot(leadX - endX, leadY - endY) > 5 && w > 450 && h > 180) {
+          ctx.beginPath();
+          ctx.moveTo(leadX, leadY);
+          ctx.lineTo(endX, endY);
+          ctx.lineWidth = 0.75;
+          ctx.strokeStyle = chosen ? 'rgba(237,194,135,.65)' : 'rgba(159,179,188,.44)';
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(leadX, leadY, 1.4, 0, circle);
+          ctx.fillStyle = ctx.strokeStyle;
+          ctx.fill();
         }
-        ctx.fillStyle = aura;
-        ctx.fillRect(x - r * 1.55, y - r * 1.55, 3.1 * r, 3.1 * r);
-        const observed = Number(g.count) > 0;
-        if (observed) {
-          for (const c of model.cells) {
-            const phase = c.phase + time * 0.24;
-            const xx = x + r * (c.x + 0.017 * Math.sin(phase)),
-              yy = y + r * (c.y + 0.016 * Math.cos(phase * 1.1));
-            const radius = c.r * r * (1 + 0.014 * Math.sin(phase));
-            ctx.save();
-            ctx.translate(xx, yy);
-            ctx.rotate(c.rotation + 0.09 * Math.sin(phase));
-            ctx.scale(c.stretch, 1 / c.stretch);
-            const imageFor = (shade) =>
-              shade
-                ? tintLayer(model.name, model.hue, c.variant, shade)
-                : layer(model.name, model.hue, c.variant);
-            const mix =
-              reduce || model.priorShade === undefined
-                ? 1
-                : clamp((stamp - model.changeStart) / 300, 0, 1);
-            const extent = radius * 1.09;
-            if (mix < 1)
-              ctx.drawImage(imageFor(model.priorShade), -extent, -extent, 2 * extent, 2 * extent);
-            ctx.globalAlpha = mix;
-            ctx.drawImage(imageFor(model.shade), -extent, -extent, 2 * extent, 2 * extent);
-            ctx.restore();
-          }
-        }
-        const ring = opt.measurement
-          ? measured
-            ? 'rgb(' + ratioColor(g.level) + ')'
-            : '#809094'
-          : 'hsl(' + model.hue + ' 50% 65%)';
+        const tint = 'hsl(' + model.hue + ' 66% 63%)';
+        const mix =
+          reduce || !model.priorField ? 1 : clamp((stamp - model.changeStart) / 340, 0, 1);
+        if (mix === 1) model.priorField = null;
+        const n = Math.ceil(p.marks);
+        const targetCount = Math.max(n, Math.ceil(model.target.marks));
+        const shades = prepareShades(model.field, targetCount, model.phase);
+        const oldShades = model.priorField
+          ? prepareShades(model.priorField, targetCount, model.phase)
+          : null;
         ctx.save();
         ctx.translate(x, y);
-        ctx.beginPath();
-        ctx.ellipse(0, 0, r * 1.15, r * 0.94, 0, 0, circle);
-        ctx.setLineDash((opt.measurement && !measured) || !observed ? [3, 5] : []);
-        ctx.strokeStyle = ring;
-        ctx.lineWidth = opt.measurement ? 2.6 : 1;
-        ctx.globalAlpha = opt.measurement ? 0.94 : chosen ? 0.51 : 0.18;
-        ctx.stroke();
-        if (chosen) {
-          ctx.globalAlpha = 0.91;
-          ctx.setLineDash([]);
-          ctx.strokeStyle = '#d7eeda';
-          ctx.lineWidth = 1.6;
-          for (const start of [0.09, Math.PI + 0.09]) {
-            ctx.beginPath();
-            ctx.ellipse(0, 0, r * 1.19, r * 0.98, 0, start, start + 0.2);
-            ctx.stroke();
-          }
+        // The filled boundary carries the fraction even for subpixel rare populations.
+        ctx.save();
+        ctx.scale(r, r);
+        ctx.fillStyle = tint;
+        ctx.globalAlpha = chosen ? 0.028 : 0.016;
+        ctx.fill(model.path);
+        ctx.strokeStyle = tint;
+        ctx.lineWidth = Math.min(0.11, 0.8 / r);
+        ctx.globalAlpha = chosen ? 0.19 : 0.065;
+        ctx.stroke(model.path);
+        ctx.restore();
+        ctx.save();
+        // Clip the cell and its edge lighting to the same measured-area footprint.
+        ctx.scale(r, r);
+        ctx.clip(model.path);
+        ctx.scale(1 / r, 1 / r);
+        addMarks(model, n);
+        const spacing = r / Math.sqrt(Math.max(1, p.marks));
+        const markR = Math.min(5.3 * zoom, spacing * 0.68);
+        // Leave space for a complete cell membrane along the edge of the colony.
+        const inset = Math.max(0, 1 - (markR / r) * 1.24);
+        for (let i = 0; i < n; i++) {
+          const cell = model.cells[i];
+          const phase = cell.phase + time * 0.32;
+          const xx = cell.x * r * inset + Math.sin(phase) * markR * 0.12;
+          const yy = cell.y * r * inset + Math.cos(phase * 0.9) * markR * 0.12;
+          const partial = Math.min(1, p.marks - i);
+          const extent = markR * cell.size * (n === 1 ? 1 : Math.sqrt(partial)) * 1.12;
+          ctx.save();
+          ctx.translate(xx, yy);
+          ctx.rotate(cell.rotation + Math.sin(phase) * 0.08);
+          if (oldShades)
+            ctx.drawImage(
+              material(model, model.priorField, oldShades[i], cell.variant),
+              -extent,
+              -extent,
+              extent * 2,
+              extent * 2,
+            );
+          ctx.globalAlpha = mix;
+          ctx.drawImage(
+            material(model, model.field, shades[i], cell.variant),
+            -extent,
+            -extent,
+            extent * 2,
+            extent * 2,
+          );
+          ctx.restore();
         }
+        ctx.restore();
         ctx.restore();
       });
       if (!reduce || Math.abs(zoom - targetZoom) > 0.001) frame = requestAnimationFrame(draw);
@@ -524,13 +906,23 @@
       return { x: e.clientX - b.left, y: e.clientY - b.top };
     }
     function pick(p) {
-      return hits
-        .map((s) => ({
-          s,
-          d: Math.hypot((p.x - s.x) / 1.15, (p.y - s.y) / 0.94) / s.r,
-        }))
-        .filter((a) => a.d <= 1.03)
-        .sort((a, b) => a.d - b.d)[0]?.s;
+      let best = null,
+        distance = Infinity;
+      for (const hit of hits) {
+        const m = hit.model,
+          x = (p.x - hit.x) / hit.r,
+          y = (p.y - hit.y) / hit.r;
+        const u = x * m.cos + y * m.sin,
+          v = -x * m.sin + y * m.cos - m.bend * (u * u - 0.32);
+        const dx = u / m.stretch,
+          dy = v * m.stretch;
+        const d = Math.hypot(dx, dy) / m.outline(Math.atan2(dy, dx));
+        if (d < distance && d <= 1.02) {
+          distance = d;
+          best = hit;
+        }
+      }
+      return best;
     }
     function distance() {
       const [a, b] = [...fingers.values()];
@@ -541,8 +933,13 @@
       const p = point(e);
       fingers.set(e.pointerId, p);
       canvas.setPointerCapture(e.pointerId);
-      if (fingers.size === 1) drag = { start: p, px, py, moved: false };
-      else if (fingers.size === 2) {
+      if (fingers.size === 1) {
+        focus = null;
+        targetZoom = zoom;
+        drag = { start: p, px, py, moved: false };
+      } else if (fingers.size === 2) {
+        const [a, b] = fingers.values();
+        focus = focusAt({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
         pinch = { distance: distance(), zoom };
         drag = null;
       }
@@ -555,6 +952,9 @@
       }
       fingers.set(e.pointerId, p);
       if (pinch && fingers.size === 2) {
+        const [a, b] = fingers.values();
+        focus.sx = (a.x + b.x - w) / 2;
+        focus.sy = (a.y + b.y - h) / 2;
         targetZoom = clamp((pinch.zoom * distance()) / pinch.distance, 0.65, 2.8);
         wake();
         return;
@@ -586,7 +986,10 @@
       'wheel',
       (e) => {
         e.preventDefault();
-        zoomBy(Math.exp(clamp(-e.deltaY * (e.deltaMode === 1 ? 0.024 : 0.0017), -0.5, 0.5)));
+        zoomBy(
+          Math.exp(clamp(-e.deltaY * (e.deltaMode === 1 ? 0.024 : 0.0017), -0.5, 0.5)),
+          point(e),
+        );
       },
       { passive: false },
     );
@@ -635,5 +1038,5 @@
       },
     };
   }
-  window.SctrialAtlasScene = Object.freeze({ mount });
+  window.SctrialAtlasScene = Object.freeze({ mount, pigment });
 })();

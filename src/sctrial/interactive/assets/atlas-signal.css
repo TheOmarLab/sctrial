@@ -1,0 +1,249 @@
+.at-signal {
+  flex: none;
+  min-width: 0;
+  container: signal / inline-size;
+  color: #e9efed;
+  border-top: 1px solid var(--at-line, #2d383d);
+  background: #131c20;
+  font-variant-numeric: tabular-nums;
+}
+.at-signal[hidden],
+.at-signal [hidden],
+.at-signal-mini[hidden] {
+  display: none !important;
+}
+.at-signal-body {
+  display: grid;
+  grid-template-columns: minmax(128px, 0.46fr) minmax(100px, 1.33fr) minmax(77px, 0.23fr);
+  grid-template-areas: 'label chart stat' 'options chart stat';
+  align-items: center;
+  column-gap: clamp(12px, 2.2cqw, 30px);
+  row-gap: 5px;
+  padding: 8px clamp(14px, 2.1cqw, 28px);
+}
+.at-signal-label,
+.at-signal-stat {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  align-content: center;
+}
+.at-signal-label {
+  grid-area: label;
+}
+.at-signal-stat {
+  grid-area: stat;
+  justify-items: end;
+  text-align: right;
+}
+.at-signal-population,
+.at-signal-detail,
+.at-signal-number {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.at-signal-population {
+  color: #e9efed;
+  font-size: 13px;
+  line-height: 1.22;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+.at-signal-detail,
+.at-signal-metric,
+.at-signal-empty {
+  color: #b9c4c6;
+  font-size: 10px;
+  line-height: 1.24;
+}
+.at-signal-number {
+  font-size: clamp(16px, 2.2cqw, 23px);
+  font-weight: 550;
+  line-height: 1.13;
+  letter-spacing: -0.04em;
+  color: #f0d9a5;
+}
+.at-signal-chart {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  padding: 0;
+  cursor: crosshair;
+  border-radius: 3px;
+  touch-action: pan-y;
+  grid-area: chart;
+}
+.at-signal-chart:focus-visible,
+.at-workspace .at-signal-option:focus-visible {
+  outline: 1px solid #e8c386;
+  outline-offset: 3px;
+}
+.at-workspace .at-signal-chart > svg,
+.at-workspace .at-plane .at-signal-chart > svg {
+  width: 100%;
+  height: 40px;
+  display: block;
+  overflow: hidden;
+  stroke: none;
+  fill: none;
+}
+.at-signal-ticks {
+  height: 12px;
+  position: relative;
+  margin: 0 5px;
+  font: 10px/1.1 var(--mono, monospace);
+  color: #bac7c8;
+}
+.at-signal-tick {
+  position: absolute;
+  white-space: nowrap;
+}
+.at-signal-tick.middle {
+  transform: translateX(-50%);
+}
+.at-signal-tick.end {
+  transform: translateX(-100%);
+}
+.at-signal-options {
+  grid-area: options;
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 2px;
+}
+.at-workspace .at-signal-option {
+  all: unset;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.005em;
+  font-weight: 540;
+  line-height: 15px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: #b8c4c5;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.at-workspace .at-signal-option:hover {
+  color: #eef4f1;
+  background: #223035;
+}
+.at-workspace .at-signal-option[aria-pressed='true'] {
+  border-color: #5a5b4c;
+  background: #2e312b;
+  color: #f0d6a3;
+}
+.at-signal-body:has(.at-signal-options[hidden]) {
+  grid-template-areas: 'label chart stat';
+  row-gap: 0;
+}
+.at-signal-empty {
+  grid-area: chart;
+  font-size: 11px;
+}
+.at-signal-cursor {
+  opacity: 0.78;
+  pointer-events: none;
+}
+.at-signal-cursor.is-active {
+  opacity: 1;
+}
+.at-signal-mini {
+  display: block;
+  height: 9px;
+  max-width: 100%;
+  min-width: 0;
+}
+.at-workspace .at-signal-mini > svg,
+.at-workspace .at-plane .at-signal-mini > svg {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 88px;
+  height: 9px;
+  stroke: none;
+  fill: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .at-signal-symbols {
+    animation: at-signal-reveal 170ms ease-out both;
+  }
+  @keyframes at-signal-reveal {
+    from {
+      opacity: 0.35;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+@container signal (max-width:460px) {
+  .at-signal-body {
+    grid-template-columns: minmax(76px, 0.76fr) minmax(68px, 1fr) minmax(62px, 0.52fr);
+    grid-template-areas: 'label options options' 'chart chart stat';
+    column-gap: 8px;
+    row-gap: 3px;
+    padding: 6px 12px;
+  }
+  .at-signal-body:has(.at-signal-options[hidden]) {
+    grid-template-areas: 'label chart stat';
+  }
+  .at-signal-population,
+  .at-signal-number {
+    font-size: 12px;
+  }
+  .at-signal-number {
+    font-size: 16px;
+  }
+  .at-signal-detail,
+  .at-signal-metric {
+    font-size: 10px;
+  }
+  .at-signal-options {
+    justify-self: end;
+  }
+  .at-workspace .at-signal-option {
+    padding: 4px 6px;
+  }
+  .at-workspace .at-signal-chart > svg,
+  .at-workspace .at-plane .at-signal-chart > svg {
+    height: 31px;
+  }
+  .at-signal-ticks {
+    font-size: 9px;
+    height: 10px;
+  }
+}
+@container signal (max-width:275px) {
+  .at-signal-body {
+    grid-template-columns: minmax(105px, 1fr) minmax(72px, 0.5fr);
+    grid-template-areas: 'label stat' 'options options' 'chart chart';
+  }
+  .at-signal-body:has(.at-signal-options[hidden]) {
+    grid-template-areas: 'label stat' 'chart chart';
+  }
+  .at-signal-options {
+    justify-self: start;
+  }
+}
+
+.at-workspace .at-signal-chart .at-signal-height-label {
+  fill: #b9c5c6;
+  stroke: #131c20;
+  stroke-width: 3px;
+  paint-order: stroke fill;
+  font: 10px/1 var(--mono, monospace);
+}
+
+.at-signal-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

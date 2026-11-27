@@ -61,6 +61,7 @@
     const noise = noiseField(next);
     const bCell = /(^|[^a-z])b(?:[ -]?(?:lymph|cell)|$)/i.test(kind);
     const myeloid = /monocyt|myeloid|macrophag/i.test(kind);
+    const nk = /\bNK\b|natural killer/i.test(kind);
     const frequency = bCell ? 3.9 : myeloid ? 3.5 : 4.6 + next() * 0.4;
     const count = MAP_W * MAP_H;
     const height = new Float32Array(count);
@@ -77,7 +78,7 @@
     const sin = phi.map(Math.sin),
       cos = phi.map(Math.cos);
     const granules = [];
-    for (let n = 0; n < (myeloid ? 55 : 37); n++) {
+    for (let n = 0; n < (nk ? 18 : myeloid ? 55 : 37); n++) {
       const y = next() * 2 - 1,
         p = next() * TAU,
         r = 0.68 + next() * 0.17;
@@ -86,7 +87,7 @@
         r * xy * Math.sin(p),
         r * y,
         r * xy * Math.cos(p),
-        0.013 + next() ** 2 * 0.029,
+        nk ? 0.032 + next() * 0.039 : 0.013 + next() ** 2 * 0.029,
       ]);
     }
 
@@ -164,7 +165,7 @@
       center,
       granules,
       myeloid,
-      nucleus: bCell ? 0.67 : myeloid ? 0.61 : 0.6,
+      nucleus: bCell ? 0.68 : myeloid ? 0.66 : nk ? 0.54 : 0.63,
     };
   }
 
@@ -336,8 +337,8 @@
         const grit = (a * grain[k] + b * grain[k1] + c * grain[k2] + d * grain[k3]) / 255;
         const dye = (a * pigment[k] + b * pigment[k1] + c * pigment[k2] + d * pigment[k3]) / 255;
         const fresnel = (1 - sz) ** 2;
-        const rim = clamp(0.3 + 0.36 * sy - 0.42 * sx);
-        const soft = 0.105 + 0.18 * largeLight + 0.31 * diffuse + 0.1 * grit + 0.09 * dye;
+        const rim = clamp((0.73 * sy - 0.68 * sx - 0.34) / 0.66);
+        const soft = 0.13 + 0.21 * largeLight + 0.24 * diffuse + 0.085 * grit + 0.09 * dye;
         const spec2 = spec * spec,
           spec4 = spec2 * spec2,
           spec8 = spec4 * spec4,
@@ -346,7 +347,7 @@
         const distanceToEdge = radius - radial;
         const thinRim = clamp(1 - distanceToEdge * 55);
         const brightness =
-          soft + gloss + fresnel * (0.16 + 0.31 * rim) + thinRim * thinRim * (0.1 + 0.09 * dye);
+          soft + gloss + fresnel * (0.065 + 0.41 * rim) + thinRim * thinRim * (0.055 + 0.17 * rim);
         const p = 3 * Math.round(clamp(brightness) * 255);
         let red = ramp[p],
           green = ramp[p + 1],
@@ -355,7 +356,7 @@
         const xx = (x - ncx) / nucleus,
           yy = (y - ncy) / (nucleus * 0.92);
         const notch = tissue.myeloid
-          ? 0.65 * Math.exp(-10 * (xx - 0.65) * (xx - 0.65) - 12 * yy * yy)
+          ? 1.1 * Math.exp(-5 * (xx - 0.72) * (xx - 0.72) - 6 * yy * yy)
           : 0;
         const nd =
           xx * xx * (1 + 0.12 * yy) + yy * yy + 0.22 * (dye - 0.5) + 0.11 * xx * yy + notch;
@@ -371,11 +372,11 @@
           const window = smooth(clamp((1.16 - nd) * 3.5));
           const cortex =
             window *
-            (0.69 + 0.19 * (1 - grit)) *
+            (0.79 + 0.15 * (1 - grit)) *
             (1 - 0.25 * smooth(clamp((diffuse - 0.26) * 1.8))) *
             clamp(1.32 - 0.62 * depth);
           const innerLight = clamp(0.11 - 0.48 * u + 0.47 * v + 0.24 * front);
-          const value = 0.13 + 0.25 * innerLight + 0.18 * (1 - clump) + 0.095 * grit + 0.08 * front;
+          const value = 0.16 + 0.19 * innerLight + 0.115 * (1 - clump) + 0.07 * grit + 0.08 * front;
           const q = 3 * Math.round(clamp(value) * 255);
           const envelope = Math.exp(-120 * (nd - 0.98) * (nd - 0.98)) * (0.08 + 0.15 * largeLight);
           red = red * (1 - cortex) + innerRamp[q] * cortex;

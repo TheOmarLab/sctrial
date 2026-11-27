@@ -101,6 +101,9 @@
       const spec = { ...s.spec };
       delete spec.mode;
       delete spec.feature;
+      delete spec.browseVisit;
+      delete spec.layer;
+      delete spec.atlasArm;
       const rows = s.rows
         .map((row) => ({ ...row, unit: rowUnit(row, s) }))
         .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));

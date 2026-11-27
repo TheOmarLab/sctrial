@@ -7,6 +7,7 @@ downloaded. Generated cell expression exists only while the fixture is built.
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import math
@@ -19,6 +20,7 @@ import numpy as np
 import pandas as pd
 
 from sctrial.interactive._fit import fit_scores
+from sctrial.interactive._study import cell_distributions
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ROOT / "src" / "sctrial" / "interactive" / "assets"
@@ -83,10 +85,10 @@ def features() -> list[dict]:
     return genes + sets
 
 
-def gene_totals(row: dict, time: float) -> np.ndarray:
-    """Simulate each annotated cell once and retain its population gene totals."""
+def gene_values(row: dict, time: float) -> dict[str, np.ndarray]:
+    """Reproduce each gene's seeded cell values in their original sample order."""
     person, arm, visit, population = (row[k] for k in ("id", "arm", "visit", "population"))
-    totals = []
+    values = {}
     for symbol, (family, weight) in GENES.items():
         donor = generator("donor", person, family).normal(0, 0.26)
         slope = SLOPES[family][arm] + generator("slope", person, family).normal(0, 0.16)
@@ -96,8 +98,8 @@ def gene_totals(row: dict, time: float) -> np.ndarray:
         # A two-part distribution on a nonnegative illustrative expression scale.
         detected = rng.random(row["cells"]) >= 0.24
         signal = rng.gamma(shape=2.2, scale=mean / (2.2 * 0.76), size=row["cells"])
-        totals.append(float(np.sum(signal[detected])))
-    return np.array(totals)
+        values["gene_" + symbol] = np.where(detected, signal, 0.0)
+    return values
 
 
 def summarize(study: dict) -> tuple[list[dict], pd.DataFrame]:
@@ -109,7 +111,8 @@ def summarize(study: dict) -> tuple[list[dict], pd.DataFrame]:
         if row["population"] == POOLED:
             continue
         sample = (row["id"], row["visit"])
-        totals = gene_totals(row, times[row["visit"]])
+        signals = gene_values(row, times[row["visit"]])
+        totals = np.array([v[v != 0].sum() for v in signals.values()])
         per_type[sample + (row["population"],)] = totals
         pooled_totals[sample] += totals
         pooled_counts[sample] += row["cells"]
@@ -279,6 +282,47 @@ def build() -> dict:
     }
 
 
+def build_cell_distributions() -> dict:
+    """Bin the original synthetic cells after matching every bundled participant mean."""
+    from build_reference_study import study as reference_study
+
+    reference = json.loads((ASSETS / "example.json").read_text())
+    molecular = json.loads((ASSETS / "molecular-demo.json").read_text())
+    original, _ = reference_study()
+    cells = original.obs.rename(columns={"cell_type": "population", "participant_id": "id"})
+    samples = cells.groupby(["id", "visit", "population"], sort=False, observed=True).indices
+    measurements = {
+        (r["id"], r["visit"], r["population"]): r["scores"] for r in molecular["observations"]
+    }
+    molecular_ids = [f["id"] for f in molecular["features"]]
+    module_ids = [f["id"] for f in reference["features"]]
+    times = {"Baseline": 0, "Week 4": 1 / 3, "Week 12": 1}
+    for feature in molecular_ids:
+        cells[feature] = np.nan
+    for row in reference["observations"]:
+        if row["population"] == POOLED:
+            continue
+        key = (row["id"], row["visit"], row["population"])
+        idx = samples[key]
+        if len(idx) != row["cells"]:
+            raise ValueError(f"Cell counts differ from the bundled study for {key!r}.")
+        observed = gene_values(row, times[row["visit"]])
+        for family, (_, symbols) in SETS.items():
+            observed["set_" + family] = np.mean([observed["gene_" + s] for s in symbols], axis=0)
+        for feature, values in observed.items():
+            cells.iloc[idx, cells.columns.get_loc(feature)] = values
+        expected = {**row["scores"], **measurements[key]}
+        np.testing.assert_allclose(cells.iloc[idx][list(expected)].mean(), list(expected.values()),
+                                   rtol=1e-12, atol=1e-12)
+    return cell_distributions(cells, [*module_ids, *molecular_ids])
+
+
 if __name__ == "__main__":
-    output = json.dumps(build(), ensure_ascii=False, allow_nan=False, separators=(",", ":"))
-    (ASSETS / "molecular-demo.json").write_text(output + "\n", encoding="utf-8")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--cell-distributions-only", action="store_true")
+    args = parser.parse_args()
+    if not args.cell_distributions_only:
+        output = json.dumps(build(), ensure_ascii=False, allow_nan=False, separators=(",", ":"))
+        (ASSETS / "molecular-demo.json").write_text(output + "\n", encoding="utf-8")
+    output = json.dumps(build_cell_distributions(), allow_nan=False, separators=(",", ":"))
+    (ASSETS / "cell-distributions.json").write_text(output + "\n", encoding="utf-8")

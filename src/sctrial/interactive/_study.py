@@ -38,6 +38,7 @@ ALIASES = {
 }
 MAX_SCORES = 12
 MAX_SUMMARIES = 50000
+CELL_BINS = 64
 
 
 def _text(value: Any) -> str:
@@ -241,6 +242,38 @@ def _summarize(
     return pd.concat([total, by_population], ignore_index=True)
 
 
+def cell_distributions(frame: pd.DataFrame, scores: list[str]) -> dict:
+    """Count measured cells on a shared scale without retaining cell records or coordinates."""
+    keys = ["arm", "visit", "population"]
+    grouped = frame.groupby(keys, sort=False, observed=True)
+    group_ids = grouped.ngroup().to_numpy(dtype=np.intp)
+    groups = [
+        {**dict(zip(keys, labels)), "bins": {}, "zeros": {}}
+        for labels in grouped.size().index
+    ]
+    features = {}
+    cuts = np.arange(1, CELL_BINS) / CELL_BINS
+    for score in scores:
+        raw = frame[score].to_numpy(dtype=float)
+        measured = np.isfinite(raw)
+        if not measured.any():
+            continue
+        values = raw[measured]
+        low, high = float(values.min()), float(values.max())
+        features[score] = [low, high]
+        # Interpolation avoids overflowing the span for large opposite-sign values.
+        edges = low * (1 - cuts) + high * cuts
+        index = np.searchsorted(edges, values, side="right") if low != high else 0
+        members = group_ids[measured]
+        counts = np.bincount(members * CELL_BINS + index, minlength=len(groups) * CELL_BINS)
+        zeros = np.bincount(members[values == 0], minlength=len(groups))
+        for i, histogram in enumerate(counts.reshape(-1, CELL_BINS)):
+            if histogram.any():
+                groups[i]["bins"][score] = histogram.tolist()
+                groups[i]["zeros"][score] = int(zeros[i])
+    return {"features": features, "groups": groups}
+
+
 class LocalStudy:
     """Keep source data read-only and serve the last explicitly confirmed mapping."""
 
@@ -410,6 +443,7 @@ class LocalStudy:
                 "populations": [pooled, *types],
                 "features": features,
                 "observations": rows,
+                "cellDistributions": cell_distributions(frame, score_ids),
                 "results": {},
             }
             if self._file_stamp() != self._stamp:

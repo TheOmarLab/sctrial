@@ -181,25 +181,14 @@
     rule(layer, box.left, box.bottom, box.right, box.bottom, 'sce-axis-line');
   }
 
-  function geometry(width, model) {
-    const stacked = width < 660;
-    const allotted = Math.min(735, Math.max(385, (window.innerHeight || 800) - 255));
-    const bottom = stacked ? 267 : allotted - 52;
-    const margin = (scale) => Math.max(44, 14 + Math.max(0, ...(scale?.ticks || [])
-      .map((value) => scale.tickText(value).length * 7.1)));
-    const rawRight = stacked ? width - 13 : Math.round(width * 0.673);
-    const raw = { left: margin(model.rawScale), right: rawRight, top: 88, bottom };
-    let split, effect, effectHead, height;
-    if (stacked) {
-      split = bottom + 43; effectHead = split + 26;
-      effect = { left: margin(model.effectScale), right: width - 13, top: effectHead + 37, bottom: effectHead + 152 };
-      height = effect.bottom + 55;
-    } else {
-      split = Math.round(width * 0.708); effectHead = 20;
-      effect = { left: split + margin(model.effectScale), right: width - 13, top: 88, bottom };
-      height = bottom + 52;
-    }
-    return { raw, effect, split, effectHead, height, stacked };
+  function readingBox(width, scale) {
+    const labelWidth = Math.max(0, ...(scale?.ticks || []).map((v) => scale.tickText(v).length));
+    return {
+      left: Math.max(42, 11 + labelWidth * 7),
+      right: width - 12,
+      top: 86,
+      bottom: Math.max(224, Math.min(350, window.innerHeight * 0.32)),
+    };
   }
 
   function drawRaw(chart, config, model, box, items) {
@@ -289,51 +278,58 @@
     });
   }
 
-  function drawEffect(chart, config, model, layout) {
-    const box = layout.effect;
-    const x = layout.stacked ? 5 : layout.split + 13;
-    const room = box.right - x + 5;
-    const head = layout.effectHead;
-    fitWord(chart, x, head, model.estimand, 'sce-heading', room, 'start');
-    fitWord(chart, x, head + 19, config.contrast || '', 'sce-subtitle', room, 'start');
-    if (layout.stacked) rule(chart, 5, layout.split, box.right, layout.split, 'sce-divider');
-    else rule(chart, layout.split, 4, layout.split, box.bottom + 36, 'sce-divider');
-    if (!model.effectScale) {
-      word(chart, (box.left + box.right) / 2, (box.top + box.bottom) / 2,
-        config.status?.includes('…') ? 'Fitting comparison…' : 'Estimate unavailable', 'sce-empty', 'middle');
-      if (config.status) add(chart, 'title', {}, config.status);
-      return;
-    }
-    drawAxis(chart, model.effectScale, box, true);
-    const y = (v) => model.effectScale.y(v, box.top, box.bottom);
-    const center = box.left + (box.right - box.left) * 0.54;
-    const ey = y(config.estimate);
-    if (model.interval) {
-      const low = y(model.interval[0]), high = y(model.interval[1]);
-      const ci = add(chart, 'g', { class: 'sce-ci', role: 'img', 'aria-label':
-        '95% confidence interval ' + exact(model.interval[0]) + ' to ' + exact(model.interval[1]) });
-      rule(ci, center, low, center, high, 'sce-whisker');
-      for (const end of [low, high]) rule(ci, center - 8, end, center + 8, end, 'sce-whisker');
-    }
-    const path = 'M' + center + ' ' + (ey - 6.5) + 'l6.5 6.5-6.5 6.5-6.5-6.5z';
-    add(chart, 'path', { d: path, class: 'sce-estimate', role: 'img',
-      'aria-label': 'Estimate ' + exact(config.estimate) });
+  function effectHeader(config, model) {
+    const summary = document.createElement('div');
+    summary.className = 'sce-summary';
+    const title = document.createElement('h3');
+    title.textContent = model.estimand;
+    const value = document.createElement('strong');
+    value.className = 'sce-summary-value';
+    const detail = document.createElement('span');
+    detail.className = 'sce-summary-detail';
     const signed = config.longitudinal || model.groups.length > 1;
-    const footerX = (box.right + box.left) / 2;
     let precision = 4;
-    if (model.interval && model.interval[0] !== model.interval[1]) {
-      while (precision < 15 && number(model.interval[0], signed, precision) === number(model.interval[1], signed, precision)) precision++;
-    }
-    const effectText = number(config.estimate, signed, precision);
-    const labelFits = box.right - center - 13 > effectText.length * 10.5;
-    if (labelFits) {
-      word(chart, center + 12, ey + 5, effectText, 'sce-direct-effect');
+    if (model.interval) {
+      const [low, high] = model.interval;
+      while (precision < 15 && low !== high && number(low, signed, precision) === number(high, signed, precision)) precision++;
+      detail.textContent = '95% CI  ' + number(low, signed, precision) + ' to ' + number(high, signed, precision);
+    } else if (finite(config.estimate)) {
+      detail.textContent = config.descriptive ? 'Descriptive estimate' : '95% CI unavailable';
     } else {
-      word(chart, footerX, box.bottom + 25, effectText, 'sce-effect-value', 'middle');
+      detail.textContent = config.status || 'Estimate unavailable';
     }
-    const ciText = model.interval ? '95% CI  ' + number(model.interval[0], signed, precision) + ' to ' +
-      number(model.interval[1], signed, precision) : config.descriptive ? 'Descriptive estimate' : '95% CI unavailable';
-    fitWord(chart, footerX, box.bottom + (labelFits ? 22 : 45), ciText, 'sce-ci-label', room);
+    value.textContent = number(config.estimate, signed, precision);
+    const output = document.createElement('div');
+    output.className = 'sce-summary-reading';
+    output.append(value, detail);
+    summary.append(title, output);
+    return summary;
+  }
+
+  function drawInterval(chart, width, config, model) {
+    const scale = model.effectScale;
+    if (!scale) return;
+    const axisMargin = Math.max(20, 5 + Math.max(...scale.ticks.map(v => scale.tickText(v).length)) * 3.5);
+    // The scale's first argument after the value is the high-end coordinate.
+    const x = v => scale.y(v, width - axisMargin, axisMargin);
+    const y = 16;
+    rule(chart, axisMargin, y, width - axisMargin, y, 'sce-summary-track');
+    for (const v of scale.ticks) {
+      const xx = x(v);
+      rule(chart, xx, v === 0 ? 3 : y - 2, xx, v === 0 ? 29 : y + 4,
+        v === 0 ? 'sce-zero' : 'sce-summary-tick');
+      word(chart, xx, 43, scale.tickText(v), 'sce-tick', 'middle');
+    }
+    if (model.interval) {
+      const [low, high] = model.interval;
+      const ci = add(chart, 'g', { class: 'sce-ci', role: 'img',
+        'aria-label': '95% confidence interval ' + exact(low) + ' to ' + exact(high) });
+      rule(ci, x(low), y, x(high), y, 'sce-whisker');
+      for (const v of [low, high]) rule(ci, x(v), y - 5, x(v), y + 5, 'sce-whisker');
+    }
+    const center = x(config.estimate);
+    add(chart, 'path', { d: 'M' + center + ' ' + (y - 6) + 'l6 6-6 6-6-6z',
+      class: 'sce-estimate', role: 'img', 'aria-label': 'Estimate ' + exact(config.estimate) });
   }
 
   function wire(chart, figure, tooltip, items, config) {
@@ -419,7 +415,12 @@
     if (model.drawn < model.total) notes.push('Trace sample includes observed extremes. The estimate uses all contributing participants.');
     if (!finite(config.estimate) && config.status) notes.push(config.status);
     caption.textContent = notes.join(' ');
-    figure.append(chart, tooltip, caption);
+    const summary = effectHeader(config, model);
+    const intervalPlot = svg('svg', { class: 'sce-interval-strip', role: 'group',
+      'aria-label': model.estimand + ' on the recorded measurement scale' });
+    intervalPlot.hidden = !model.effectScale;
+    if (model.effectScale) summary.append(intervalPlot);
+    figure.append(summary, chart, tooltip, caption);
     container.replaceChildren(figure);
     let previousLayout = '';
     function draw() {
@@ -429,14 +430,16 @@
       const prior = document.activeElement?.closest?.('[data-item]');
       const label = chart.contains(prior) ? prior?.getAttribute('aria-label') : null;
       previousLayout = sizeKey;
-      const layout = geometry(width, model);
+      const box = readingBox(width, model.rawScale);
+      intervalPlot.setAttribute('viewBox', [0, 0, width, 48].join(' '));
+      intervalPlot.replaceChildren();
+      drawInterval(intervalPlot, width, config, model);
       const items = [];
-      chart.setAttribute('viewBox', [0, 0, width, layout.height].join(' '));
-      chart.setAttribute('height', layout.height);
+      chart.setAttribute('viewBox', [0, 0, width, box.bottom + 33].join(' '));
+      chart.setAttribute('height', box.bottom + 33);
       chart.replaceChildren();
       tooltip.hidden = true;
-      drawRaw(chart, config, model, layout.raw, items);
-      drawEffect(chart, config, model, layout);
+      drawRaw(chart, config, model, box, items);
       wire(chart, figure, tooltip, items, config);
       if (label) items.find((item) => item.node.getAttribute('aria-label') === label)?.node.focus({ preventScroll: true });
     }

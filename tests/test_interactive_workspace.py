@@ -183,6 +183,29 @@ class InteractiveWorkspaceTest(unittest.TestCase):
                 )
                 self.assertEqual(features[2]["unit"], "Expression (X scale)")
                 self.assertEqual(study["mapping"], mapping)
+                distributions = study["cellDistributions"]
+                g2 = features[2]["id"]
+                low, high = float(np.nanmin(matrix[:, 2])), float(np.nanmax(matrix[:, 2]))
+                self.assertEqual(distributions["features"][g2], [low, high])
+                seen = set()
+                for group in distributions["groups"]:
+                    key = group["arm"], group["visit"], group["population"]
+                    self.assertNotIn(key, seen)
+                    seen.add(key)
+                    mask = (
+                        (data.obs.group == key[0])
+                        & (data.obs.visit == key[1])
+                        & (data.obs.cell_type == key[2])
+                    )
+                    raw = matrix[mask, 2]
+                    finite = raw[np.isfinite(raw)]
+                    counts = group["bins"][g2]
+                    expected_counts, _ = np.histogram(finite, bins=len(counts), range=(low, high))
+                    self.assertEqual(counts, expected_counts.tolist())
+                    self.assertEqual(group["zeros"][g2], np.count_nonzero(finite == 0))
+                self.assertEqual(
+                    seen, set(data.obs[["group", "visit", "cell_type"]].itertuples(index=False, name=None))
+                )
                 for r in study["observations"]:
                     if r["population"] == study["populations"][0]:
                         continue

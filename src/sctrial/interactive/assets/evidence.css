@@ -35,3 +35,26 @@
 @media (prefers-reduced-motion: no-preference) {
   .sce .sce-person-line, .sce .sce-arm-mark { transition: stroke-opacity 90ms ease, stroke-width 90ms ease; }
 }
+
+.sce .sce-summary {
+  margin: 2px 0 14px;
+  padding: 12px 8px 8px;
+  border-block: 1px solid #ccd1ca;
+  background: #eeefe8;
+}
+.sce .sce-summary h3 {
+  margin: 0 0 3px;
+  color: #36443e;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.sce-summary-reading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 1px 12px; }
+.sce-summary-value { color: #19372e; font-size: clamp(25px, 2.2vw, 35px); line-height: 1.2; font-weight: 650; letter-spacing: -.045em; }
+.sce-summary-detail { color: #3c4c43; font-size: 12px; font-weight: 550; }
+.sce .sce-interval-strip { display: block; width: 100%; height: 48px; margin-top: 3px; }
+.sce-interval-strip .sce-summary-track { stroke: #bbc3b9; stroke-width: 1.2; }
+.sce-interval-strip .sce-summary-tick { stroke: #85948a; }
+.sce-interval-strip .sce-whisker { stroke: #285747; stroke-width: 2.5; }
+.sce-interval-strip .sce-estimate { fill: #285747; stroke: #eeefe8; }

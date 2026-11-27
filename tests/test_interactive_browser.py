@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 import os
 import re
@@ -89,6 +90,13 @@ def select_population(page, name="CD8 T cells"):
     select(page, "Cell population", name)
 
 
+def open_reference_example(page):
+    menu_action(page, "File", "Open study")
+    page.get_by_role("dialog", name="Open study").get_by_role(
+        "button", name=re.compile("^Longitudinal immune profiling")
+    ).click()
+
+
 def test_cluster_workspace_persists_across_layers_and_plot(page):
     from playwright.sync_api import expect
 
@@ -173,6 +181,7 @@ def test_private_measurements_use_participants_at_selected_visit(page, tmp_path)
 def test_gene_contrast_matches_selected_population_and_visit(page):
     from playwright.sync_api import expect
 
+    open_reference_example(page)
     select_population(page)
     layer(page, "Expression")
     select(page, "Gene", "IFIT1")
@@ -255,6 +264,7 @@ def test_single_arm_and_cross_sectional_inputs(page, tmp_path):
 def test_analysis_workbook_restores_layer_population_and_feature(page, tmp_path):
     from playwright.sync_api import expect
 
+    open_reference_example(page)
     select_population(page)
     layer(page, "Expression")
     select(page, "Gene", "IFIT1")
@@ -347,3 +357,129 @@ def test_playback_closes_open_contrast_before_browsing_other_visits(page):
     settings.get_by_role("button", name="Cancel").click()
     open_plot(page)
     expect(plot).to_contain_text("Week 12")
+
+
+def test_cluster_area_and_participant_marks_follow_observed_data(page, tmp_path):
+    from playwright.sync_api import expect
+
+    csv_path = tmp_path / "Unequal populations.csv"
+    csv_path.write_text(
+        "participant,arm,visit,population,cells,gene:Marker,pathway:Set,module:Signature\n"
+        "P1,A,Pre,T,87,1,-4,3\nP2,A,Pre,T,1,1,4,5\nP3,B,Pre,T,2,,,-2\n"
+        "P3,B,Pre,B,10,1,0,1\n"
+        "P1,A,Post,T,1,5,9,3\nP3,B,Post,B,98,2,2,-1\nP3,B,Post,NK,1,1,2,1\n",
+        encoding="utf-8",
+    )
+    open_csv(page, csv_path)
+    select(page, "Visit", "Pre")
+    tags = atlas(page).locator(".sc-atlas-tag")
+    t, b, nk = [tags.and_(page.locator(f'[data-population="{p}"]')) for p in ("T", "B", "NK")]
+    expect(t).to_have_attribute("data-fraction", "0.9")
+    expect(b).to_have_attribute("data-fraction", "0.1")
+    expect(nk).to_have_attribute("data-marker-count", "0")
+    expect(nk).to_have_attribute("data-area-radius", "0")
+    assert float(t.get_attribute("data-area-radius")) ** 2 == pytest.approx(
+        9 * float(b.get_attribute("data-area-radius")) ** 2
+    )
+    assert float(t.get_attribute("data-marker-count")) == pytest.approx(
+        9 * float(b.get_attribute("data-marker-count"))
+    )
+
+    layer(page, "Pathways")
+    select_population(page, "T")
+    signal = atlas(page).locator(".at-signal")
+    expect(signal.locator(".at-signal-detail")).to_contain_text("2/3")
+    expect(signal.locator(".at-signal-number")).to_have_text("0")
+    expect(signal.locator(".at-signal-symbols circle")).to_have_count(2)
+    ticks = signal.locator(".at-signal-tick")
+    assert ticks.all_text_contents() == ["-4", "0", "9"]
+    chart = signal.locator(".at-signal-chart")
+    chart.press("Home")
+    expect(signal.locator(".at-signal-number")).to_have_text("-4")
+    chart.press("End")
+    expect(signal.locator(".at-signal-number")).to_have_text("4")
+    # The zero for B is measured; NK has no participants at this visit.
+    b.click()
+    expect(signal.locator(".at-signal-symbols circle")).to_have_count(1)
+    expect(signal.locator(".at-signal-number")).to_have_text("0")
+    select_population(page, "NK")
+    expect(signal.locator(".at-signal-empty")).to_be_visible()
+    select(page, "Visit", "Post")
+    expect(signal.locator(".at-signal-empty")).not_to_be_visible()
+    expect(nk).to_have_attribute("data-fraction", "0.01")
+    expect(signal.locator(".at-signal-number")).to_have_text("2")
+    assert ticks.all_text_contents() == ["-4", "0", "9"]
+    select(page, "Atlas arm", "A")
+    expect(t).to_have_attribute("data-fraction", "1")
+    expect(b).to_have_attribute("data-marker-count", "0")
+    expect(signal.locator(".at-signal-empty")).to_be_visible()
+
+
+def test_deliberate_visit_reaches_file_view_and_pin_without_opening_plot(page, tmp_path):
+    from playwright.sync_api import expect
+
+    open_reference_example(page)
+    select_population(page)
+    layer(page, "Scores")
+    label = "Interferon response"
+    select(page, "Module score", label)
+    select(page, "Visit", "Week 12")
+    data = json.loads(page.locator("#dataset").text_content())
+    feature = next(f["id"] for f in data["features"] if f["label"] == label)
+    reference = next(
+        row for row in data["results"]["did|Arm A|Week 12|CD8 T cells"] if row["feature"] == feature
+    )
+    menu_action(page, "File", "Export results…")
+    with page.expect_download() as downloaded:
+        page.locator("#resFile").click()
+    dest = tmp_path / "results.csv"
+    downloaded.value.save_as(dest)
+    with dest.open(encoding="utf-8-sig", newline="") as file:
+        row = next(row for row in csv.DictReader(file) if row["feature"] == label)
+    assert row["visits"] == "Baseline to Week 12"
+    assert int(row["n"]) == reference["n"]
+    assert float(row["estimate"]) == pytest.approx(reference["estimate"])
+    menu_action(page, "Analysis", "Pin contrast")
+    menu_action(page, "View", "Results table")
+    result = page.get_by_role("row").filter(has=page.get_by_role("rowheader", name=label))
+    expect(result.get_by_role("cell").last).to_have_text(str(reference["n"]))
+    menu_action(page, "View", "Analysis plot")
+    plot = page.locator("#atlasResultMount #effectPlot")
+    expect(plot).to_contain_text("Week 12")
+    expect(plot.locator(".sce-link")).to_have_count(reference["n"])
+    select(page, "Visit", "Week 4")
+    menu_action(page, "Analysis", "Pinned contrasts")
+    page.get_by_role("button", name=re.compile(r"^Reopen ")).click()
+    expect(plot).to_contain_text("Week 12")
+    expect(plot.locator(".sce-link")).to_have_count(reference["n"])
+
+
+def test_switching_observation_unit_uses_cells_or_participants_from_current_subset(page):
+    from playwright.sync_api import expect
+
+    select_population(page, "CD8 T cells")
+    layer(page, "Expression")
+    select(page, "Gene", "GZMB")
+    select(page, "Atlas arm", "Arm A")
+    study = json.loads(page.locator("#atlasDataset").text_content())
+    feature = next(f["id"] for f in study["features"] if f["label"] == "GZMB")
+    signal = atlas(page).locator(".at-signal")
+    for visit in ("Week 4", "Week 12"):
+        select(page, "Visit", visit)
+        subset = [
+            row
+            for row in study["observations"]
+            if (row["arm"], row["population"], row["visit"]) == ("Arm A", "CD8 T cells", visit)
+        ]
+        measured = [r["scores"][feature] for r in subset if r["scores"][feature] is not None]
+        signal.get_by_role("button", name="Cell distribution").click()
+        expect(signal).to_have_attribute("data-unit", "cells")
+        bins = signal.locator(".at-signal-symbols [data-count]")
+        counts = bins.evaluate_all("(marks) => marks.map(mark => Number(mark.dataset.count))")
+        assert sum(counts) == sum(r["cells"] for r in subset)
+        signal.get_by_role("button", name="Participant distribution").click()
+        expect(signal.locator(".at-signal-symbols circle")).to_have_count(len(measured))
+        chart = signal.locator(".at-signal-chart")
+        chart.press("Home")
+        observed_min = float(signal.locator(".at-signal-number").inner_text().replace("−", "-"))
+        assert observed_min == pytest.approx(min(measured), rel=0.006)

@@ -20,6 +20,7 @@ _STYLES = (
     "matrix",
     "app-menu",
     "atlas",
+    "atlas-signal",
 )
 _SCRIPTS = (
     "csv",
@@ -36,6 +37,7 @@ _SCRIPTS = (
     "cell-art",
     "gene-sets",
     "atlas-data",
+    "atlas-signal",
     "atlas-scene",
     "atlas",
     "studio",
@@ -51,6 +53,7 @@ def build_workspace() -> bytes:
 
     sample = json.loads(read("example.json"))
     molecular = json.loads(read("molecular-demo.json"))
+    sample["cellDistributions"] = json.loads(read("cell-distributions.json"))
     for feature in sample["features"]:
         feature.update(kind="module", unit="Mean module score")
     sample["features"].extend(molecular["features"])
@@ -78,5 +81,6 @@ def build_workspace() -> bytes:
         .replace("/*STYLE*/", style)
         .replace("/*SCRIPT*/", scripts)
         .replace("/*FIXTURE*/", fixture)
+        .replace("/*ATLAS_FIXTURE*/", read("atlas-example.json").replace("<", r"\u003c"))
         .encode("utf-8")
     )
