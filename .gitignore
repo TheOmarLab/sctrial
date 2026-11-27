@@ -66,3 +66,10 @@ uv.lock
 
 # Feature clips: rendered scratch output (published files live under docs/source/_static/clips)
 clips/out/
+
+# Distributable public atlas example and curated gene membership.
+!/src/sctrial/interactive/atlas/data/
+/src/sctrial/interactive/atlas/data/*
+!/src/sctrial/interactive/atlas/data/study.json
+!/src/sctrial/interactive/atlas/data/map.bin
+!/src/sctrial/interactive/atlas/data/reactome-2022.gmt

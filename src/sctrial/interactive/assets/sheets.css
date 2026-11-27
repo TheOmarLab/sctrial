@@ -1,0 +1,228 @@
+#sheetList {
+  display: flex;
+  align-items: stretch;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  gap: 1px;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+#sheetList::-webkit-scrollbar {
+  display: none;
+}
+.sheet-item {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  width: max-content;
+  min-width: 92px;
+  max-width: 196px;
+  height: 36px;
+  padding-inline-end: 4px;
+  color: #bec0c7;
+  border-radius: 4px 4px 0 0;
+  transition:
+    color 110ms ease,
+    background-color 140ms ease;
+}
+.sheet-item::before {
+  position: absolute;
+  right: 0;
+  top: 10px;
+  bottom: 9px;
+  width: 1px;
+  background: #48494e;
+  content: '';
+}
+.sheet-item:has(.sheet-link[aria-selected='true']),
+.sheet-item:has(.sheet-name) {
+  color: #fffefa;
+  background: #3c3c42;
+}
+.sheet-item::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: #f5ad45;
+  pointer-events: none;
+  transform: scaleX(0.88);
+  opacity: 0;
+  transition:
+    transform 150ms ease-out,
+    opacity 130ms ease;
+  content: '';
+}
+.sheet-item:has(.sheet-link[aria-selected='true'])::after {
+  transform: scaleX(1);
+  opacity: 1;
+}
+.sheet-item:has(.sheet-link[aria-selected='true'])::before {
+  display: none;
+}
+.sheet-link,
+.sheet-more,
+.sheet-undo {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.sheet-link {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  padding: 0 2px 0 11px;
+  border-radius: 4px;
+  text-align: left;
+  font-size: 12.5px;
+  font-weight: 550;
+}
+.sheet-link[aria-selected='true'] {
+  font-weight: 650;
+}
+.sheet-icon {
+  display: block;
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+}
+.sheet-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sheet-more {
+  display: grid;
+  width: 23px;
+  height: 26px;
+  min-height: 0;
+  padding: 0;
+  place-items: center;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 110ms ease;
+}
+.sheet-item:hover,
+.sheet-item:focus-within {
+  color: #fffefa;
+  background: #37373e;
+}
+.sheet-item:hover .sheet-more,
+.sheet-item:focus-within .sheet-more,
+.sheet-more[aria-expanded='true'] {
+  opacity: 1;
+}
+.sheet-more:hover,
+.sheet-more[aria-expanded='true'] {
+  background: #56565e;
+}
+.sheet-undo {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 4px 8px;
+  color: #ffe0a6;
+  font-size: 11px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.sheet-name-form {
+  grid-column: 1 / -1;
+  width: clamp(120px, 22vw, 176px);
+  margin: 0;
+  padding-left: 4px;
+}
+.sheet-name {
+  width: 100%;
+  height: 28px;
+  min-height: 0;
+  padding: 3px 6px;
+  color: #24242a;
+  background: #fffdf8;
+  border: 1px solid #d7983e;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 550;
+}
+@media (hover: none), (pointer: coarse) {
+  .sheet-more {
+    width: 26px;
+    opacity: 0.9;
+  }
+  .sheet-item {
+    grid-template-columns: minmax(0, 1fr) 27px;
+    max-width: min(184px, 60vw);
+    height: 40px;
+  }
+}
+.sheet-menu {
+  display: grid;
+  position: fixed;
+  z-index: 400;
+  box-sizing: border-box;
+  width: 162px;
+  padding: 4px;
+  border: 1px solid #d5d6e3;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow:
+    0 5px 22px #22254420,
+    0 1px 3px #2225440d;
+  color: #282c42;
+}
+.sheet-menu-item {
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  text-align: left;
+}
+.sheet-menu-item:enabled:hover,
+.sheet-menu-item:focus {
+  background: #f2f0ec;
+  color: #24262f;
+}
+.sheet-menu-item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.sheet-item button:focus-visible,
+.sheet-undo:focus-visible {
+  outline: 2px solid #f5b75b;
+  outline-offset: -3px;
+}
+.sheet-menu-item:focus-visible {
+  outline: 2px solid #82623b;
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-item,
+  .sheet-item::after,
+  .sheet-more {
+    transition: none;
+  }
+}

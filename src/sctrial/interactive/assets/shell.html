@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    <title>sctrial · Study workspace</title>
+    <style>
+      /*STYLE*/
+    </style>
+  </head>
+  <body data-mode="atlas">
+    <a href="#main" class="skip">Skip to study</a>
+    <div class="application">
+      <header class="app-menubar">
+        <div class="app-brand" aria-label="sctrial">
+          <svg aria-hidden="true" width="28" height="29" viewBox="0 0 35 35" fill="none">
+            <path
+              d="M3 23h6l6-14h4l-6 14h5l6-14h7"
+              stroke="currentColor"
+              stroke-width="2.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <strong>sctrial</strong>
+        </div>
+        <nav id="appMenus" aria-label="Application menu"></nav>
+        <button
+          type="button"
+          data-action="info"
+          class="file-title"
+          aria-label="Current study information"
+        >
+          <i data-icon="layers"></i><b id="studyName">Study</b>
+        </button>
+        <div class="app-file-actions">
+          <button
+            type="button"
+            class="app-find"
+            data-action="search"
+            aria-label="Find in study"
+            title="Find in study (/)"
+          >
+            <i data-icon="search"></i>
+          </button>
+          <button type="button" class="app-open" data-action="open">
+            <i data-icon="open"></i><span>Open study</span>
+          </button>
+        </div>
+      </header>
+      <div class="workspace-tools">
+        <div class="document-tabs">
+          <div id="sheetList" aria-label="Analysis documents"></div>
+          <button type="button" id="newSheet" aria-label="New analysis" title="New analysis">
+            <svg
+              viewBox="0 0 20 20"
+              width="15"
+              height="15"
+              stroke="currentColor"
+              stroke-width="1.6"
+              aria-hidden="true"
+            >
+              <path d="M10 4v12M4 10h12" />
+            </svg>
+          </button>
+        </div>
+        <div class="document-tools">
+          <button
+            id="undo"
+            class="tool-icon"
+            data-action="undo"
+            aria-label="Undo contrast change"
+            title="Undo contrast change"
+          >
+            <i data-icon="undo"></i></button
+          ><button
+            id="redo"
+            class="tool-icon"
+            data-action="redo"
+            aria-label="Redo contrast change"
+            title="Redo contrast change"
+          >
+            <i data-icon="redo"></i>
+          </button>
+          <button
+            id="pinButton"
+            class="tool-icon"
+            data-action="pin"
+            aria-label="Pin contrast"
+            title="Pin contrast"
+          >
+            <i data-icon="pin"></i>
+          </button>
+          <button class="tool-icon" data-action="export" aria-label="Export" title="Export">
+            <i data-icon="download"></i>
+          </button>
+        </div>
+      </div>
+      <main id="main" tabindex="-1">
+        <h1 class="sr" id="pageTitle">Study atlas</h1>
+        <div id="page"></div>
+      </main>
+      <footer class="app-status">
+        <button type="button" data-action="info">
+          <i class="source-led" aria-hidden="true"></i><span id="sourceBadge"></span>
+        </button>
+        <span class="status-dot" aria-hidden="true">·</span><span id="studyCount"></span>
+        <span class="status-spacer"></span><span class="sr" id="sectionCrumb"></span
+        ><span class="sr" id="pinCount" hidden>0</span>
+        <button id="screenToggle" type="button" aria-label="Enter fullscreen" title="Fullscreen">
+          <i data-icon="expand"></i>
+        </button>
+      </footer>
+    </div>
+    <dialog class="modal" id="dialog" aria-labelledby="dialogTitle">
+      <header class="modal-head">
+        <h2 id="dialogTitle"></h2>
+        <button id="dismiss" class="icon-btn" aria-label="Close dialog">
+          <i data-icon="close"></i>
+        </button>
+      </header>
+      <div id="dialogBody"></div>
+    </dialog>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <script id="dataset" type="application/json">
+      /*FIXTURE*/
+    </script>
+    <script id="atlasDataset" type="application/json">
+      /*ATLAS_FIXTURE*/
+    </script>
+    <script>
+      /*SCRIPT*/
+    </script>
+  </body>
+</html>

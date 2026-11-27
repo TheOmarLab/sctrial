@@ -1,0 +1,13 @@
+hdf5_hl.js and hdf5_util.js are the unmodified browser ES modules from
+dist/esm/ in h5wasm 0.10.3, developed by the National Institute of Standards
+and Technology. The HDF5 WebAssembly binary is embedded in hdf5_util.js.
+Upstream: https://github.com/usnistgov/h5wasm
+Distribution: https://registry.npmjs.org/h5wasm/-/h5wasm-0.10.3.tgz
+Distribution SHA-256: 2a9f35ab25c000c164e9dec5e61a0909d0884163ed5dc793e775603805d9570b
+The complete upstream notice is in H5WASM-LICENSE.txt.
+
+libH5Zlzf.wasm is the unmodified libH5Zlzf.so WebAssembly side module from
+h5wasm-plugins 0.3.0. Its extension here permits ordinary static WASM serving.
+Upstream: https://github.com/h5wasm/h5wasm-plugins
+Distribution: https://registry.npmjs.org/h5wasm-plugins/-/h5wasm-plugins-0.3.0.tgz
+See H5WASM-PLUGINS-LICENSE.txt, HDF5-PLUGINS-NOTICE.txt, and LZF-NOTICES.txt.

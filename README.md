@@ -125,6 +125,18 @@ results = st.quick_did(
 )
 ```
 
+## Interactive workspace
+
+Open an H5AD in the cell atlas to compare two observed visits. Map your visit and population columns, select an embedding or two measured genes, and choose genes and pathway gene sets. The visit lens displays the other visit at the same coordinates. Map participant IDs to inspect paired cell fractions and an arm column to explore treatment groups.
+
+With this branch installed, open a file directly or launch without a filename to choose one in the browser.
+
+```bash
+python -m sctrial.interactive study.h5ad
+```
+
+The [downloadable atlas](design/interactive-mode/sctrial-interactive-preview.html?raw=true) also reads H5AD files locally. The analysis worksheet supports participant-summary CSVs and the launcher's fitted contrasts. [Workspace guide](design/interactive-mode/sctrial-interactive-plan.md)
+
 ## Supported Study Designs & Datasets
 
 sctrial includes loaders (`st.load_*()`) for six real datasets from clinical trials and translational studies. They cover the supported study designs:
