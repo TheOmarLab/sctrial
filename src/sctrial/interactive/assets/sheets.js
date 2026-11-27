@@ -162,7 +162,8 @@
       const width = menu.offsetWidth;
       const height = menu.offsetHeight;
       const left = Math.max(6, Math.min(box.right - width, window.innerWidth - width - 6));
-      const top = box.bottom + height + 6 <= window.innerHeight ? box.bottom + 3 : box.top - height - 3;
+      const top =
+        box.bottom + height + 6 <= window.innerHeight ? box.bottom + 3 : box.top - height - 3;
       menu.style.left = left + 'px';
       menu.style.top = Math.max(4, top) + 'px';
     }
@@ -377,7 +378,12 @@
         visits: sorted(study.visits),
         populations: sorted(study.populations),
         features: study.features
-          .map(({ id, label, kind, unit }) => ({ id, label, kind: kind || 'score', unit: unit || null }))
+          .map(({ id, label, kind, unit }) => ({
+            id,
+            label,
+            kind: kind || 'score',
+            unit: unit || null,
+          }))
           .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
         mapping,
       };
@@ -430,6 +436,9 @@
         visitOrder: [...visitOrder],
         browseVisit,
         mode,
+        ...(['cells', 'genes', 'pathways', 'modules'].includes(settings.layer)
+          ? { layer: settings.layer }
+          : {}),
       };
     }
 
@@ -499,7 +508,9 @@
           ),
         )
       )
-        throw Error('The outcome columns differ from the saved study. Check their names and mapping.');
+        throw Error(
+          'The outcome columns differ from the saved study. Check their names and mapping.',
+        );
       if (
         schema.mapping === null
           ? saved.mapping !== null

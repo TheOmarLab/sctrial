@@ -19,8 +19,7 @@ _STYLES = (
     "evidence",
     "matrix",
     "app-menu",
-    "cells",
-    "molecular",
+    "atlas",
 )
 _SCRIPTS = (
     "csv",
@@ -35,9 +34,10 @@ _SCRIPTS = (
     "evidence",
     "app-menu",
     "cell-art",
-    "cells",
-    "molecular",
     "gene-sets",
+    "atlas-data",
+    "atlas-scene",
+    "atlas",
     "studio",
 )
 

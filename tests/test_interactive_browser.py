@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import os
 import re
-from statistics import median
 
 import pytest
 
@@ -55,8 +54,25 @@ def menu_action(page, menu, item):
     command.or_(selection).click()
 
 
+def atlas(page):
+    return page.locator("[data-atlas]")
+
+
+def layer(page, name):
+    atlas(page).get_by_role("button", name=name, exact=True).click()
+
+
+def select(page, control, label):
+    atlas(page).get_by_role("combobox", name=control, exact=True).select_option(label=label)
+
+
+def open_plot(page):
+    atlas(page).get_by_role("button", name="Plot results", exact=True).click()
+    return page.locator("#atlasResultMount #effectPlot")
+
+
 def comparison_settings(page):
-    page.get_by_role("button", name="Configure", exact=True).click()
+    menu_action(page, "Analysis", "Configure comparison…")
     return page.get_by_role("dialog", name="Configure comparison")
 
 
@@ -65,287 +81,142 @@ def open_csv(page, path):
 
     menu_action(page, "File", "Open study")
     dialog = page.get_by_role("dialog", name="Open study")
-    dialog.locator('input[type="file"]').set_input_files(path)
+    dialog.locator('input[type="file"]').first.set_input_files(path)
     expect(dialog).not_to_be_visible()
 
 
-def show_comparison(page):
-    page.locator("#chartMode").select_option("comparison")
+def select_population(page, name="CD8 T cells"):
+    select(page, "Cell population", name)
 
 
-def test_cell_population_scene_and_analysis_handoff(page, tmp_path):
+def test_cluster_workspace_persists_across_layers_and_plot(page):
     from playwright.sync_api import expect
 
-    scene = page.locator("#cellStage")
-    expect(page.locator("#chartMode")).to_have_value("cells")
-    expect(scene).to_be_visible()
-    expect(
-        page.locator("#participantMatrix, #effectPlot, #pairMap, #projectSidebar")
-    ).to_have_count(0)
-    expect(scene).to_contain_text("Illustrative cell models")
-    for mode in ("genes", "pathways", "modules", "trajectory"):
-        button = page.locator(f'#scienceModes [data-mode="{mode}"]')
-        expect(button).to_be_visible()
-    groups = scene.get_by_role("combobox", name="Cell population")
-    groups.select_option(label="CD8 T cells")
-    expect(scene).to_contain_text("1,402 cells")
-    expect(scene).to_contain_text("12 participants")
-    scene.get_by_role("button", name="Analyze population").click()
-    expect(page.locator("#chartMode")).to_have_value("comparison")
-    expect(page.locator("#effectPlot")).to_be_visible()
-    settings = comparison_settings(page)
-    expect(settings.get_by_role("combobox", name="Cell population")).to_have_value("CD8 T cells")
-    settings.get_by_role("button", name="Cancel").click()
-
-    foreign = tmp_path / "Distinct types.csv"
-    foreign.write_text(
-        "participant,arm,visit,population,cells,Score\n"
-        "P1,A,Baseline,Cluster X17,4,1\nP1,A,Post,Cluster X17,9,2\n"
-        "P2,B,Baseline,Cluster X17,7,3\nP2,B,Post,Cluster X17,1,\n"
-        "P1,A,Baseline,Other cluster,200,1\n",
-        encoding="utf-8",
-    )
-    open_csv(page, foreign)
-    expect(page.locator("#chartMode")).to_have_value("cells")
-    groups.select_option(label="Cluster X17")
-    expect(scene).to_contain_text("21 cells")
-    expect(scene).to_contain_text("2 participants")
-    page.set_viewport_size({"width": 390, "height": 844})
-    expect(scene.get_by_role("button", name="Analyze population")).to_be_visible()
-    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-    scene.get_by_role("button", name="Analyze population").click()
-    expect(page.locator("#effectPlot .sce-link")).to_have_count(1)
-
-
-def test_plot_controls_and_participant_inspection(page):
-    from playwright.sync_api import expect
-
-    show_comparison(page)
-
-    plot = page.locator("#effectPlot")
+    stage = atlas(page).locator(".at-scene")
+    expect(stage).to_be_visible()
+    scene = stage.locator("canvas").first.element_handle()
+    select_population(page)
+    for name, control in (
+        ("Expression", "Gene"),
+        ("Pathways", "Pathway"),
+        ("Scores", "Module score"),
+    ):
+        layer(page, name)
+        expect(atlas(page).get_by_role("button", name=name, exact=True)).to_have_attribute(
+            "aria-pressed", "true"
+        )
+        expect(atlas(page).get_by_role("combobox", name=control, exact=True)).to_be_visible()
+        assert stage.locator("canvas").first.evaluate("(canvas, first) => canvas === first", scene)
+    plot = open_plot(page)
     expect(plot).to_be_visible()
-    expect(page.locator("#chartMode")).to_have_value("comparison")
-    expect(page.locator("#participantMatrix, #pairMap, #projectSidebar")).to_have_count(0)
-    expect(plot).to_contain_text("+0.314")
+    expect(stage).to_be_visible()
     expect(plot).to_contain_text("95% CI")
-    expect(plot.locator(".sce-link")).to_have_count(10)
-    mark = plot.locator(".sce-observation").first
-    mark.click()
-    dialog = page.get_by_role("dialog", name=re.compile("^Participant "))
-    expect(dialog).to_contain_text("Baseline")
-    dialog.get_by_role("button", name="Close record").click()
-    mark.press("Enter")
-    expect(dialog).to_be_visible()
-    dialog.get_by_role("button", name="Close record").click()
-
-    file_button = page.get_by_role("menubar").get_by_role("menuitem", name="File", exact=True)
-    file_button.press("Enter")
-    menu = page.get_by_role("menu", name="File", exact=True)
-    expect(menu).to_be_visible()
-    menu.get_by_role("menuitem").first.press("Escape")
-    expect(menu).not_to_be_visible()
-    expect(file_button).to_be_focused()
+    atlas(page).get_by_role("button", name="Close results").click()
+    expect(plot).not_to_be_visible()
+    assert stage.locator("canvas").first.evaluate("(canvas, first) => canvas === first", scene)
 
 
-def test_reversed_contrast_and_frozen_pin(page):
-    from playwright.sync_api import expect
-
-    show_comparison(page)
-
-    plot = page.locator("#effectPlot")
-    settings = comparison_settings(page)
-    settings.get_by_role("combobox", name="Follow-up visit").select_option("Week 12")
-    settings.get_by_role("button", name="Apply changes").press("Enter")
-    page.get_by_role("button", name="Undo contrast change").click()
-    expect(plot).to_contain_text("+0.314")
-    arm_a = plot.get_by_role("group", name="Arm A participant observations")
-    original_color = arm_a.locator(".sce-arm-label").evaluate(
-        "(label) => getComputedStyle(label).fill"
-    )
-    menu_action(page, "Analysis", "Pin contrast")
-    settings = comparison_settings(page)
-    settings.get_by_role("combobox", name="Group order").select_option("Arm B")
-    settings.get_by_role("button", name="Apply changes").click()
-    expect(plot).to_contain_text("−0.314")
-    assert (
-        arm_a.locator(".sce-arm-label").evaluate("(label) => getComputedStyle(label).fill")
-        == original_color
-    )
-    menu_action(page, "Analysis", "Pinned contrasts")
-    page.get_by_role("button", name=re.compile(r"^Reopen ")).click()
-    expect(plot).to_contain_text("+0.314")
-    expect(page.locator("#chartMode")).to_have_value("comparison")
-
-
-def test_private_csv_feature_specific_participants(page, tmp_path):
+def test_private_measurements_use_participants_at_selected_visit(page, tmp_path):
     from playwright.sync_api import expect
 
     study = tmp_path / "Independent.csv"
     study.write_text(
-        "participant,arm,visit,population,cells,Response,Marker\n"
-        "P1,A,Baseline,T,2,0,2\nP1,A,Post,T,80,2,4\n"
-        "P2,A,Baseline,T,60,1,2\nP2,A,Post,T,3,5,7\n"
-        "P3,B,Baseline,T,12,1,0\nP3,B,Post,T,5,2,1\nP4,B,Baseline,T,90,0,1\n"
-        "P5,B,Baseline,T,22,2,0\nP5,B,Post,T,19,,2\n",
+        "participant,arm,visit,population,cells,gene:ACTB,pathway:My pathway,module:Score\n"
+        "P1,A,Baseline,T,1,0,1,0\nP1,A,Post,T,80,2,3,2\n"
+        "P2,A,Baseline,T,101,10,1,1\nP2,A,Post,T,3,4,5,5\n"
+        "P3,B,Baseline,T,12,2,1,1\nP3,B,Post,T,5,,2,2\n"
+        "P4,B,Baseline,B,1,,1,1\nP4,B,Post,B,1,0,3,2\n",
         encoding="utf-8",
     )
     open_csv(page, study)
-    show_comparison(page)
-
-    plot = page.locator("#effectPlot")
+    layer(page, "Expression")
+    select(page, "Gene", "ACTB")
+    select_population(page, "T")
+    select(page, "Visit", "Baseline")
+    group = atlas(page).locator('[data-population="T"][data-value]')
+    expect(group).to_have_attribute("data-n", "3")
+    assert float(group.get_attribute("data-value")) == pytest.approx(4)
+    other = atlas(page).locator('[data-population="B"][data-n]')
+    expect(other).to_have_attribute("data-n", "0")
+    select(page, "Visit", "Post")
+    expect(group).to_have_attribute("data-n", "2")
+    assert float(group.get_attribute("data-value")) == pytest.approx(3)
+    expect(other).to_have_attribute("data-value", "0")
+    layer(page, "Pathways")
+    select(page, "Pathway", "My pathway")
+    expect(atlas(page).get_by_role("combobox", name="Visit", exact=True)).to_have_value("Post")
+    plot = open_plot(page)
     expect(plot).to_contain_text("Descriptive")
     expect(plot.locator(".sce-link")).to_have_count(3)
     expect(plot.locator(".sce-ci")).to_have_count(0)
-    view = page.locator("#chartMode")
+    # (mean of +2 and +4 in A) minus (+1 in B).
+    expect(plot.locator(".sce-estimate")).to_have_attribute("aria-label", "Estimate 2")
+    view = page.locator("#atlasPlotType")
     view.select_option("measurements")
     matrix = page.get_by_role("region", name="Participant measurements")
     expect(matrix.get_by_role("button", name=re.compile(r"^Included"))).to_contain_text("3")
-    matrix.get_by_role("button", name=re.compile(r"^Excluded")).click()
-    row = matrix.get_by_role("row").filter(
-        has=page.get_by_role("button", name="Inspect participant P5")
-    )
-    expect(row.get_by_role("cell").nth(1)).to_have_attribute("aria-label", "Missing measurement")
-    expect(matrix.get_by_role("button", name="Inspect participant P1")).to_have_count(0)
     view.select_option("trajectory")
-    visit_counts = page.get_by_role("table", name="Participants measured at each visit")
-    group_b = visit_counts.get_by_role("row").filter(
-        has=page.get_by_role("rowheader", name="B", exact=True)
-    )
-    expect(group_b.get_by_role("cell")).to_have_text(["3", "1"])
-    expect(page.get_by_text("Mean at each visit", exact=True)).to_be_visible()
-    view.select_option("comparison")
-    page.get_by_role("combobox", name="Outcome", exact=True).select_option(label="Marker")
-    expect(plot.locator(".sce-link")).to_have_count(4)
-
-    menu_action(page, "View", "Results table")
-    table = page.get_by_role("table", name="Descriptive participant-level contrasts")
-    row = table.get_by_role("row").filter(has_text="Response")
-    expect(row.get_by_role("cell").first).to_have_text("+2.00")
-    expect(row.get_by_role("cell").last).to_have_text("3")
-    marker = table.get_by_role("row").filter(has_text="Marker")
-    expect(marker.get_by_role("cell").last).to_have_text("4")
-    expect(table.get_by_role("columnheader", name="95% CI")).to_have_count(0)
-
+    counts = page.get_by_role("table", name="Participants measured at each visit")
+    expect(
+        counts.get_by_role("row")
+        .filter(has=page.get_by_role("rowheader", name="A", exact=True))
+        .get_by_role("cell")
+    ).to_have_text(["2", "2"])
+    expect(
+        counts.get_by_role("row")
+        .filter(has=page.get_by_role("rowheader", name="B", exact=True))
+        .get_by_role("cell")
+    ).to_have_text(["1", "1"])
     assert page.evaluate("localStorage.length + sessionStorage.length") == 0
 
 
-def test_molecular_views_use_measured_data_and_time_cursor(page):
+def test_gene_contrast_matches_selected_population_and_visit(page):
     from playwright.sync_api import expect
 
-    page.locator('#scienceModes [data-mode="genes"]').click()
-    gene = page.get_by_role("combobox", name="Gene", exact=True)
-    gene.select_option(label="IFIT1")
-    stage = page.locator("#molecularStage")
+    select_population(page)
+    layer(page, "Expression")
+    select(page, "Gene", "IFIT1")
+    select(page, "Visit", "Week 12")
     study = json.loads(page.locator("#dataset").text_content())
-    gene_id = next(f["id"] for f in study["features"] if f["label"] == "IFIT1")
-    observed = next(
-        r["scores"][gene_id]
-        for r in study["observations"]
-        if (r["id"], r["population"], r["visit"]) == ("A01", "All annotated cells", "Baseline")
-    )
-    tile = stage.locator(f'[data-gene-cell][data-id="A01"][data-feature="{gene_id}"]')
-    assert float(tile.get_attribute("data-value")) == pytest.approx(observed)
-    page.locator('#scienceModes [data-mode="pathways"]').click()
-    expect(stage.locator("[data-membership]")).to_have_count(3)
-    expect(stage.locator("figcaption")).to_contain_text("membership")
-    pathway = stage.get_by_role("combobox", name="Pathway", exact=True).input_value()
-    baseline_rows = [
+    feature = next(f for f in study["features"] if f["label"] == "IFIT1")
+    reference = next(
         r
-        for r in study["observations"]
-        if (r["population"], r["visit"]) == ("All annotated cells", "Baseline")
-    ]
-    pathway_values = [
-        r["scores"][pathway] for r in baseline_rows if r["scores"].get(pathway) is not None
-    ]
-    hub = stage.locator("[data-hub-mean]")
-    assert int(hub.get_attribute("data-n")) == len(pathway_values)
-    assert float(hub.get_attribute("data-hub-mean")) == pytest.approx(
-        sum(pathway_values) / len(pathway_values)
+        for r in study["results"]["did|Arm A|Week 12|CD8 T cells"]
+        if r["feature"] == feature["id"]
     )
-    page.locator('#scienceModes [data-mode="modules"]').click()
-    score_id = stage.get_by_role("combobox", name="Score", exact=True).input_value()
-    reading = stage.locator(
-        f'[data-reading][data-id="A01"][data-feature="{score_id}"][data-visit="Baseline"]'
-    )
-    expect(reading).to_have_count(1)
-    arm_values = [
-        r["scores"][score_id]
-        for r in baseline_rows
-        if r["arm"] == "Arm A" and r["scores"].get(score_id) is not None
-    ]
-    mark = stage.locator(f'[data-median="{score_id}"][data-arm="Arm A"]')
-    assert float(mark.get_attribute("data-value")) == pytest.approx(median(arm_values))
-
-    page.locator('#scienceModes [data-mode="trajectory"]').click()
-    visits = page.get_by_role("slider", name="Browse observed visits")
-    visits.press("End")
-    expect(page.locator("#trajectoryFrame")).to_contain_text("Week 12")
-    expect(page.get_by_role("combobox", name="Follow-up visit")).to_have_value("Week 4")
-    visits.press("Home")
-    page.get_by_role("button", name="Play visits").click()
-    expect(page.locator("#trajectoryFrame")).to_contain_text("Week 12", timeout=7000)
-    expect(page.get_by_role("button", name="Play visits")).to_be_visible()
-    show_comparison(page)
-    selected = page.get_by_role("combobox", name="Outcome", exact=True).input_value()
-    result = next(
-        r
-        for r in study["results"]["did|Arm A|Week 4|All annotated cells"]
-        if r["feature"] == selected
-    )
-    estimate = page.locator("#effectPlot .sce-estimate").get_attribute("aria-label")
-    assert float(estimate.split()[-1].replace("−", "-")) == pytest.approx(result["estimate"])
+    plot = open_plot(page)
+    expect(plot).to_contain_text("Week 12")
+    estimate = plot.locator(".sce-estimate").get_attribute("aria-label")
+    assert float(estimate.split()[-1].replace("−", "-")) == pytest.approx(reference["estimate"])
+    expect(plot.locator(".sce-link")).to_have_count(reference["n"])
+    mark = plot.locator(".sce-observation").first
+    mark.press("Enter")
+    dialog = page.get_by_role("dialog", name=re.compile("^Participant "))
+    expect(dialog).to_contain_text("Week 12")
+    dialog.get_by_role("button", name="Close dialog").click()
+    expect(atlas(page).locator(".at-scene")).to_be_visible()
 
 
-def test_typed_molecular_data_and_unmapped_views(page, tmp_path):
+def test_reverse_arm_direction_and_reopen_frozen_pin(page):
     from playwright.sync_api import expect
 
-    study = tmp_path / "Measured features.csv"
-    study.write_text(
-        "participant,arm,visit,population,cells,gene:ACTB,pathway:My pathway,module:My score\n"
-        "P1,A,Baseline,T,2,0,3,2\nP1,A,Post,T,80,4,4,5\n"
-        "P2,A,Baseline,T,60,1,4,2\nP2,A,Post,T,3,,6,8\n"
-        "P3,B,Baseline,T,12,3,7,5\nP3,B,Post,T,5,2,6,6\n",
-        encoding="utf-8",
-    )
-    open_csv(page, study)
-
-    def science(mode):
-        page.locator(f'#scienceModes [data-mode="{mode}"]').click()
-        return page.locator("#molecularStage")
-
-    surface = science("genes")
-    expect(surface.get_by_role("combobox", name="Gene", exact=True)).to_contain_text("ACTB")
-    surface.get_by_role("combobox", name="Visit", exact=True).select_option(label="Baseline")
-    exact_zero = surface.locator('[data-gene-cell][data-id="P1"][data-value="0"]')
-    expect(exact_zero).to_have_count(1)
-    surface.get_by_role("combobox", name="Visit", exact=True).select_option(label="Post")
-    expect(surface.locator('[data-gene-cell][data-id="P1"][data-value="4"]')).to_have_count(1)
-    expect(surface.locator('[data-gene-cell][data-id="P2"][data-value="0"]')).to_have_count(0)
-    surface = science("pathways")
-    expect(surface).to_contain_text("My pathway")
-    expect(surface.locator("[data-membership]")).to_have_count(0)
-    gene_sets = tmp_path / "membership.gmt"
-    gene_sets.write_text("My pathway\tStudy definition\tACTB\tUNMEASURED\n", encoding="utf-8")
-    surface.get_by_role("button", name="Link gene set…").click()
-    mapping = page.get_by_role("dialog", name="Link gene set")
-    mapping.locator('input[type="file"]').set_input_files(gene_sets)
-    mapping.get_by_role("button", name="Link membership").click()
-    expect(surface.locator("[data-membership]")).to_have_count(2)
-    expect(surface).to_contain_text("UNMEASURED")
-    surface = science("modules")
-    expect(surface).to_contain_text("My score")
-    expect(surface.locator('[data-reading][data-id="P1"][data-value="5"]')).to_have_count(1)
-
-    untyped = tmp_path / "No gene metadata.csv"
-    untyped.write_text(
-        "participant,arm,visit,population,cells,Unknown score\nP1,A,Post,T,5,0\nP2,A,Post,T,7,10\n",
-        encoding="utf-8",
-    )
-    open_csv(page, untyped)
-    for mode in ("genes", "pathways"):
-        empty = science(mode)
-        expect(empty.get_by_role("button", name="Open study", exact=True)).to_be_visible()
-        expect(empty.locator("[data-gene-cell], [data-membership]")).to_have_count(0)
+    select_population(page)
+    layer(page, "Scores")
+    select(page, "Module score", "Cytotoxicity")
+    select(page, "Visit", "Week 4")
+    plot = open_plot(page)
+    estimate = plot.locator(".sce-estimate")
+    initial = estimate.get_attribute("aria-label")
+    menu_action(page, "Analysis", "Pin contrast")
+    settings = comparison_settings(page)
+    settings.get_by_role("combobox", name="Group order").select_option("Arm B")
+    settings.get_by_role("button", name="Apply changes").click()
+    expect(estimate).not_to_have_attribute("aria-label", initial)
+    reversed_value = float(estimate.get_attribute("aria-label").split()[-1].replace("−", "-"))
+    assert reversed_value == pytest.approx(-float(initial.split()[-1].replace("−", "-")))
+    menu_action(page, "Analysis", "Pinned contrasts")
+    page.get_by_role("button", name=re.compile(r"^Reopen ")).click()
+    expect(estimate).to_have_attribute("aria-label", initial)
 
 
 def test_single_arm_and_cross_sectional_inputs(page, tmp_path):
@@ -359,8 +230,7 @@ def test_single_arm_and_cross_sectional_inputs(page, tmp_path):
         encoding="utf-8",
     )
     open_csv(page, paired)
-    show_comparison(page)
-    plot = page.locator("#effectPlot")
+    plot = open_plot(page)
     expect(plot.locator(".sce-link")).to_have_count(2)
     expect(plot).to_contain_text("+3.5")
     settings = comparison_settings(page)
@@ -375,73 +245,105 @@ def test_single_arm_and_cross_sectional_inputs(page, tmp_path):
         encoding="utf-8",
     )
     open_csv(page, cross)
-    show_comparison(page)
+    open_plot(page)
     expect(plot.locator(".sce-link")).to_have_count(0)
     expect(plot).to_contain_text("+1.5")
     settings = comparison_settings(page)
     expect(settings.get_by_role("combobox", name="Study design")).to_have_value("cross")
-    expect(settings.get_by_role("combobox", name="Selected visit")).to_have_value("Day 1")
 
 
-def test_sheet_reopens_its_analysis_and_mobile_navigation(page):
+def test_analysis_workbook_restores_layer_population_and_feature(page, tmp_path):
     from playwright.sync_api import expect
 
-    show_comparison(page)
-
-    outcome = page.get_by_role("combobox", name="Outcome", exact=True)
-    outcome.select_option(label="Cytotoxicity")
-    page.get_by_role("button", name="New analysis").click()
-    show_comparison(page)
-    expect(page.get_by_role("tab", name="Analysis 2", exact=True)).to_have_attribute(
-        "aria-selected", "true"
-    )
-    expect(outcome).to_have_value("interferon")
-
-    page.get_by_role("button", name="Actions for Analysis 2").click()
-    page.get_by_role("menuitem", name="Rename").click()
-    title = page.get_by_role("textbox", name="Analysis name")
-    title.fill("Sensitivity analysis")
-    title.press("Enter")
-    expect(page.get_by_role("tab", name="Sensitivity analysis", exact=True)).to_have_attribute(
-        "aria-selected", "true"
-    )
-    page.get_by_role("tab", name="Primary analysis", exact=True).click()
-    expect(outcome).to_have_value("cytotoxicity")
-
-    page.set_viewport_size({"width": 390, "height": 844})
-    page.get_by_role("tab", name="Sensitivity analysis", exact=True).click()
-    expect(outcome).to_have_value("interferon")
-    menu = app_menu(page, "Menu")
-    expect(menu).to_be_visible()
-    menu.get_by_role("menuitem").first.press("Escape")
-    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-
-
-def test_workbook_download_and_reopen(page, tmp_path):
-    from playwright.sync_api import expect
-
-    show_comparison(page)
-
-    page.get_by_role("button", name="New analysis").click()
-    show_comparison(page)
-    page.get_by_role("combobox", name="Outcome", exact=True).select_option(label="Proliferation")
+    select_population(page)
+    layer(page, "Expression")
+    select(page, "Gene", "IFIT1")
+    select(page, "Visit", "Week 12")
     with page.expect_download() as downloaded:
         menu_action(page, "File", "Save workbook")
     archive = tmp_path / downloaded.value.suggested_filename
     downloaded.value.save_as(archive)
     content = json.loads(archive.read_text(encoding="utf-8"))
-    assert [sheet["title"] for sheet in content["sheets"]] == ["Primary analysis", "Analysis 2"]
     assert "participants" not in content["study"]
     assert "observations" not in content["study"]
-
-    page.get_by_role("tab", name="Primary analysis", exact=True).click()
+    layer(page, "Scores")
     menu_action(page, "File", "Open study")
     with page.expect_file_chooser() as picker:
         page.get_by_role("button", name=re.compile(r"^Open analysis workbook")).click()
     picker.value.set_files(archive)
-    expect(page.get_by_role("tab", name="Analysis 2 (2)", exact=True)).to_have_attribute(
-        "aria-selected", "true"
+    expect(atlas(page).get_by_role("button", name="Expression", exact=True)).to_have_attribute(
+        "aria-pressed", "true"
     )
-    expect(page.get_by_role("combobox", name="Outcome", exact=True)).to_have_value("proliferation")
-    page.get_by_role("tab", name="Primary analysis", exact=True).click()
-    expect(page.get_by_role("combobox", name="Outcome", exact=True)).to_have_value("interferon")
+    expect(atlas(page).get_by_role("combobox", name="Cell population", exact=True)).to_have_value(
+        "CD8 T cells"
+    )
+    expect(atlas(page).get_by_role("combobox", name="Visit", exact=True)).to_have_value("Week 12")
+    expect(
+        atlas(page).get_by_role("combobox", name="Gene", exact=True).locator("option:checked")
+    ).to_have_text("IFIT1")
+
+
+@pytest.mark.parametrize("width,height", [(390, 844), (1280, 800)])
+def test_atlas_playback_and_result_drawer_fit_viewport(page, width, height):
+    from playwright.sync_api import expect
+
+    page.set_viewport_size({"width": width, "height": height})
+    layer(page, "Expression")
+    select(page, "Visit", "Baseline")
+    atlas(page).get_by_role("button", name="Play visits").click()
+    expect(atlas(page).get_by_role("combobox", name="Visit", exact=True)).not_to_have_value(
+        "Baseline", timeout=5000
+    )
+    plot = open_plot(page)
+    expect(plot).to_be_visible()
+    expect(atlas(page).locator(".at-scene")).to_be_visible()
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    atlas(page).get_by_role("button", name="Close results").click()
+    expect(plot).not_to_be_visible()
+
+
+def test_linked_pathway_definition_preserves_recorded_score(page, tmp_path):
+    from playwright.sync_api import expect
+
+    csv = tmp_path / "Pathway.csv"
+    csv.write_text(
+        "participant,arm,visit,population,cells,pathway:Measured set,gene:MYC\n"
+        "P1,A,Pre,T,200,3,0\nP2,B,Pre,T,5,7,5\n",
+        encoding="utf-8",
+    )
+    definition = tmp_path / "study.gmt"
+    definition.write_text("Measured set\tExample definition\tMYC\tBCL2\n", encoding="utf-8")
+    open_csv(page, csv)
+    layer(page, "Pathways")
+    group = atlas(page).locator('[data-population="T"][data-value]')
+    expect(group).to_have_attribute("data-value", "5")
+    atlas(page).get_by_text("Gene set", exact=True).click()
+    atlas(page).get_by_role("button", name="Link gene set…", exact=True).click()
+    dialog = page.get_by_role("dialog", name="Link gene set")
+    dialog.locator('input[type="file"]').set_input_files(definition)
+    dialog.get_by_role("button", name="Link membership").click()
+    atlas(page).get_by_text("Gene set", exact=True).click()
+    expect(atlas(page).locator(".at-members")).to_contain_text("MYC")
+    expect(atlas(page).locator(".at-members")).to_contain_text("BCL2")
+    expect(group).to_have_attribute("data-value", "5")
+
+
+def test_playback_closes_open_contrast_before_browsing_other_visits(page):
+    from playwright.sync_api import expect
+
+    select_population(page)
+    layer(page, "Expression")
+    select(page, "Visit", "Week 4")
+    plot = open_plot(page)
+    expect(plot).to_contain_text("Week 4")
+    atlas(page).get_by_role("button", name="Play visits").click()
+    expect(atlas(page).get_by_role("combobox", name="Visit", exact=True)).to_have_value("Week 12")
+    expect(plot).not_to_be_visible()
+    # Playback leaves the last applied contrast intact until Plot results is chosen.
+    settings = comparison_settings(page)
+    expect(settings.get_by_role("combobox", name="Follow-up visit", exact=True)).to_have_value(
+        "Week 4"
+    )
+    settings.get_by_role("button", name="Cancel").click()
+    open_plot(page)
+    expect(plot).to_contain_text("Week 12")

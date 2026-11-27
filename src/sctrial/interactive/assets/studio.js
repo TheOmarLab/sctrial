@@ -17,7 +17,8 @@
     download: '<path d="M12 3v11m-4-4 4 4 4-4M4 16v4h16v-4"/>',
     menu: '<path d="M3 5h18M3 12h18M3 19h18"/>',
     close: '<path d="m6 6 12 12m0-12L6 18"/>',
-    paired: '<circle cx="6" cy="15" r="3"/><circle cx="18" cy="8" r="3"/><path d="m8.5 13.4 7-4.2"/>',
+    paired:
+      '<circle cx="6" cy="15" r="3"/><circle cx="18" cy="8" r="3"/><path d="m8.5 13.4 7-4.2"/>',
     cells:
       '<circle cx="8" cy="8" r="4"/><circle cx="16.5" cy="14.5" r="4.5"/><circle cx="6" cy="18" r="2"/>',
     calendar:
@@ -30,7 +31,8 @@
   };
   Object.assign(icons, {
     down: '<path d="m6 9 6 6 6-6"/>',
-    studio: '<path d="M3 19V5m0 11 5-5 4 3 8-9"/><circle cx="8" cy="11" r="1.5"/><path d="M3 20h18"/>',
+    studio:
+      '<path d="M3 19V5m0 11 5-5 4 3 8-9"/><circle cx="8" cy="11" r="1.5"/><path d="M3 20h18"/>',
     stack: '<rect x="5" y="7" width="14" height="13" rx="2"/><path d="M8 4h8m-6 8h4"/>',
     pin: '<path d="m8 3 9 2-2 5 3 3-1 2-6-1-5 7 2-8-4-1 1-2 3-1Z"/>',
     open: '<path d="M3 6h7l2 2h8v3M3 6v13h15l3-7H8l-3 7"/>',
@@ -103,6 +105,7 @@
   let playbackTimer = 0;
   let playbackVisit = null;
   let lastRecords = null;
+  let atlas = null;
   let currentFit = null,
     fitTask = null,
     fitStatus = 'idle',
@@ -116,7 +119,8 @@
   const name = () => (synthetic() ? sample.study.name : study.title);
   const source = () => (synthetic() ? 'Synthetic study' : native() ? 'Local H5AD' : 'Local CSV');
   const feature = () => study.features.find((f) => f.id === state.feature) || study.features[0];
-  const unitOf = (f) => f?.unit || study.unit || (synthetic() ? 'Mean module score' : 'Recorded score');
+  const unitOf = (f) =>
+    f?.unit || study.unit || (synthetic() ? 'Mean module score' : 'Recorded score');
   const unit = () => unitOf(feature());
   const fdrFamily = (f) =>
     synthetic()
@@ -157,7 +161,9 @@
   const mean = (xs) => (xs.length ? xs.reduce((x, y) => x + y, 0) / xs.length : null);
   const second = () => arms.find((a) => a !== state.arm);
   const armsIn = () =>
-    ['paired', 'observe'].includes(state.design) ? [state.arm] : [state.arm, second()].filter(Boolean);
+    ['paired', 'observe'].includes(state.design)
+      ? [state.arm]
+      : [state.arm, second()].filter(Boolean);
   const datesIn = () => (isLong() ? [state.baseline, state.visit] : [state.visit]);
   const designs = () => [
     ...(arms.length > 1 && study.visits.length > 1 ? ['did'] : []),
@@ -181,7 +187,9 @@
           : 'Unadjusted descriptive participant differences';
   const fitWarnings = () =>
     synthetic()
-      ? study.resultWarnings?.[[state.design, state.arm, state.visit, state.population].join('|')] || []
+      ? study.resultWarnings?.[
+          [state.design, state.arm, state.visit, state.population].join('|')
+        ] || []
       : currentFit?.warnings || [];
   const ready = () => !native() || !fitted() || fitStatus === 'ready';
   function clearFit() {
@@ -191,9 +199,17 @@
     fitStatus = 'idle';
     fitMessage = '';
   }
+  function setVisitOrder(visits) {
+    if (visits.every((visit, index) => study.visits[index] === visit)) return;
+    study.visits = [...visits];
+    atlas?.destroy();
+    atlas = null;
+  }
+
   function init(next) {
-    if ($('cellStage')) window.SctrialCells?.dispose($('cellStage'));
-    if ($('molecularStage')) window.SctrialMolecular.dispose($('molecularStage'));
+    atlas?.destroy();
+    atlas = null;
+    $('page').replaceChildren();
     playbackVisit = null;
     lastRecords = null;
     clearFit();
@@ -225,9 +241,10 @@
       baseline,
       browseVisit: baseline,
       visit: study.visits.find((v) => v !== baseline) || baseline,
-      population: study.populations[0],
+      population: (native() || synthetic() ? study.populations[1] : null) || study.populations[0],
       feature: study.features[0].id,
       mode: 'cells',
+      plotMode: null,
       selectedId: null,
     };
     peopleContext = {};
@@ -332,8 +349,7 @@
       native() &&
       fitted() &&
       fitStatus === 'idle' &&
-      (state.view === 'results' ||
-        (state.view === 'overview' && !['cells', ...molecularModes].includes(state.mode)))
+      (state.view === 'results' || (state.view === 'overview' && !!state.plotMode))
     ) {
       void requestFit();
     }
@@ -341,7 +357,7 @@
   function refreshFit() {
     updateTop();
     if ($('resFile') && $('dialog').open) $('resFile').disabled = !ready();
-    if (state.view === 'overview' && state.mode === 'comparison') paintEvidence();
+    if (state.view === 'overview' && state.plotMode === 'comparison') paintEvidence();
     else if (state.view === 'results') renderResultsView();
   }
   function setParam(field, value) {
@@ -349,10 +365,13 @@
     remember();
     const oldReference = state.baseline;
     state[field] = value;
+    if (field === 'visit') state.browseVisit = value;
     state.selectedId = null;
     if (isLong() && state.baseline === state.visit)
       state.visit =
-        oldReference !== state.baseline ? oldReference : study.visits.find((v) => v !== state.baseline);
+        oldReference !== state.baseline
+          ? oldReference
+          : study.visits.find((v) => v !== state.baseline);
     clearFit();
     render();
   }
@@ -371,7 +390,8 @@
               population: state.population,
               feature: state.feature,
               browseVisit: state.browseVisit,
-              mode: state.mode,
+              mode: state.plotMode || state.mode,
+              layer: state.mode,
             },
             rows: currentRows(),
             unit: unit(),
@@ -394,7 +414,8 @@
         visit,
         population,
         feature: study.features.some((f) => f.id === id) ? id : study.features[0].id,
-        mode: mode || 'trajectory',
+        mode: layerFor(spec.layer || mode, id),
+        plotMode: plotModes.includes(mode) ? mode : 'comparison',
         selectedId: null,
       });
       clearFit();
@@ -418,16 +439,21 @@
     }),
     getSpec: () => ({
       ...snapshotSpec(),
-      mode: state.mode,
+      mode: state.plotMode || state.mode,
+      layer: state.mode,
       visitOrder: [...study.visits],
     }),
     onOpen: ({ visitOrder, ...spec }) => {
       past = [];
       future = [];
       if (visitOrder) {
-        study.visits = [...visitOrder];
+        setVisitOrder(visitOrder);
       }
-      Object.assign(state, spec, { selectedId: null });
+      Object.assign(state, spec, {
+        selectedId: null,
+        mode: layerFor(spec.layer || spec.mode, spec.feature),
+        plotMode: plotModes.includes(spec.mode) ? spec.mode : null,
+      });
       clearFit();
       navigate('overview');
     },
@@ -439,37 +465,18 @@
     $('pinCount').hidden = !count;
   }
   function updateTop() {
-    if (!figureModes.includes(state.mode)) state.mode = 'cells';
-    document.body.dataset.mode = state.view === 'overview' ? state.mode : state.view;
-    window.SctrialNavigation?.sync(document.body.dataset.mode);
-    const modeSelect = $('chartMode');
-    if (modeSelect) {
-      let secondary = modeSelect.querySelector('[data-secondary]');
-      if (state.view !== 'overview' && !secondary) {
-        secondary = new Option('', '');
-        secondary.dataset.secondary = '';
-        secondary.hidden = true;
-        secondary.disabled = true;
-        modeSelect.add(secondary);
-      }
-      if (secondary) secondary.textContent = titles[state.view];
-      modeSelect.value = state.view === 'overview' ? state.mode : '';
-      const changes = modeSelect.querySelector('[value="changes"]');
-      if (changes) changes.textContent = isLong() ? 'Changes' : 'Distribution';
-    }
-    document.querySelectorAll('button[data-mode]').forEach((b) => {
-      const key = b.getAttribute('role') === 'menuitemradio' ? 'aria-checked' : 'aria-pressed';
-      b.setAttribute(key, String(state.view === 'overview' && b.dataset.mode === state.mode));
-    });
+    const currentMode = state.view === 'overview' ? state.plotMode || state.mode : state.view;
+    window.SctrialNavigation?.sync(currentMode);
     $('studyName').textContent = name();
     $('sourceBadge').textContent = source();
     $('studyCount').textContent = nfmt(study.participants.length) + ' participants';
     $('pageTitle').textContent = state.view === 'overview' ? sheets.title() : titles[state.view];
-    $('sectionCrumb').textContent = state.view === 'overview' ? 'Analysis workbook' : titles[state.view];
-    sheets.setVisible(state.view === 'overview');
+    $('sectionCrumb').textContent =
+      state.view === 'overview' ? 'Analysis workbook' : titles[state.view];
+    sheets.setVisible(true);
     window.SctrialAppMenu?.setState({
       view: state.view,
-      mode: state.mode,
+      mode: currentMode,
       longitudinal: isLong(),
       canPin: ready(),
     });
@@ -533,7 +540,9 @@
     const r = currentRows().find((row) => row.id === state.feature);
     const armData = armsIn().map((name) => {
       const people = records.filter((p) => p.arm === name && p.contributes);
-      const values = people.map((p) => (isLong() ? p.followupValue - p.baselineValue : p.followupValue));
+      const values = people.map((p) =>
+        isLong() ? p.followupValue - p.baselineValue : p.followupValue,
+      );
       const ids = people.map((p) => p.id);
       return {
         name,
@@ -604,7 +613,8 @@
     const measured = new Set();
     const id = state.feature;
     for (const row of byPopulation.get(state.population) || []) {
-      if (!active.includes(row.arm) || !rowObserved(row) || !Number.isFinite(row.scores[id])) continue;
+      if (!active.includes(row.arm) || !rowObserved(row) || !Number.isFinite(row.scores[id]))
+        continue;
       if (!byId.has(row.id)) byId.set(row.id, { id: row.id, arm: row.arm, points: [] });
       measured.add(row.visit);
       byId.get(row.id).points.push({ visit: row.visit, value: row.scores[id] });
@@ -620,7 +630,7 @@
         unit: unit(),
         groups: active.map((a) => ({ name: a, color: color(a) })),
         series: [...byId.values()],
-        mode: state.mode,
+        mode: state.plotMode,
         selectedId: null,
         canSelectVisit: study.visits.length > 1,
         editableVisits: study.visits.filter((v) => !isLong() || v !== state.baseline),
@@ -687,89 +697,52 @@
     );
   }
 
-  const wideRecord = window.matchMedia('(min-width: 930px)');
-  let recordTrigger = null;
-
-  function closeRecord(restore = false) {
-    const drawer = $('recordDrawer');
-    if (drawer) {
-      drawer.remove();
-      $('page').classList.remove('ed-with-record');
-      if (restore) {
-        const previous = recordTrigger?.element;
-        const replacement =
-          recordTrigger?.label &&
-          Array.from($('page').querySelectorAll('[aria-label]')).find(
-            (el) => el.getAttribute('aria-label') === recordTrigger.label,
-          );
-        const target = previous?.isConnected
-          ? previous
-          : replacement || $('page').querySelector('[data-param="feature"]');
-        target?.focus({ preventScroll: true });
-      }
-      recordTrigger = null;
-    }
+  function closeRecord() {
     if ($('dialog').open && $('dialog').dataset.kind === 'participant') finish();
   }
 
   function selectPerson(id) {
-    if (id == null || !personById.has(id)) return;
+    if (!personById.has(id)) return;
     state.selectedId = id;
-    const title = 'Participant ' + id;
-    const content = participantDetail(personById.get(id));
-    if (!wideRecord.matches) {
-      modal(title, content, 'participant');
-      return;
-    }
-    let drawer = $('recordDrawer');
-    const trigger = document.activeElement;
-    if (!drawer?.contains(trigger)) {
-      recordTrigger = { element: trigger, label: trigger?.getAttribute('aria-label') };
-    }
-    if (!drawer) {
-      drawer = document.createElement('aside');
-      drawer.id = 'recordDrawer';
-      drawer.className = 'ed-inspector';
-      drawer.setAttribute('role', 'dialog');
-      drawer.setAttribute('aria-modal', 'false');
-      drawer.setAttribute('aria-labelledby', 'recordHeading');
-      drawer.tabIndex = -1;
-      $('page').classList.add('ed-with-record');
-      $('page').append(drawer);
-    }
-    drawer.innerHTML =
-      '<div class="ed-inspector-head"><h2 id="recordHeading">' +
-      esc(title) +
-      '</h2><button type="button" class="icon-btn" data-action="closeRecord" aria-label="Close record">' +
-      icon('close') +
-      '</button></div>' +
-      content;
-    drawer.focus({ preventScroll: true });
+    modal('Participant ' + id, participantDetail(personById.get(id)), 'participant');
   }
 
-  wideRecord.addEventListener('change', () => {
-    if (!$('recordDrawer') && !($('dialog').open && $('dialog').dataset.kind === 'participant')) return;
-    const id = state.selectedId;
-    closeRecord();
-    if (id != null) selectPerson(id);
-  });
+  const plotModes = ['comparison', 'trajectory', 'changes', 'measurements'];
+  function layerFor(layer, id) {
+    if (layer === 'cells' || molecularModes.includes(layer)) return layer;
+    const kind = study.features.find((f) => f.id === id)?.kind;
+    return (
+      { gene: 'genes', pathway: 'pathways', module: 'modules', score: 'modules' }[kind] || 'cells'
+    );
+  }
+
+  function chooseFeature(id) {
+    state.feature = id;
+    if (state.mode !== 'cells') state.mode = layerFor(null, id);
+  }
 
   function setFeature(id) {
     if (!study.features.some((f) => f.id === id) || id === state.feature) return;
     remember();
-    state.feature = id;
+    chooseFeature(id);
     state.selectedId = null;
-    if (state.view !== 'overview') navigate('overview');
-    else render();
+    render();
   }
 
   function changeViewMode(mode) {
     if (!figureModes.includes(mode)) return;
-    const viewChanged = state.view !== 'overview';
-    if (!viewChanged && mode === state.mode) return;
-    state.mode = mode;
-    if (viewChanged) navigate('overview');
-    else render();
+    if (plotModes.includes(mode)) state.plotMode = mode;
+    else {
+      state.plotMode = null;
+      state.mode = mode;
+      if (mode !== 'cells') {
+        const available = study.features.filter((f) => layerFor(null, f.id) === mode);
+        if (available.length && !available.some((f) => f.id === state.feature))
+          state.feature = available[0].id;
+      }
+    }
+    state.view = 'overview';
+    render();
   }
 
   function editLink(field, value, label, className, glyph) {
@@ -848,42 +821,6 @@
     );
   }
 
-  function cellArtboard(page) {
-    let host = $('cellStage');
-    if (!host) {
-      if ($('plot')) disposeContrastCanvas($('plot'));
-      host = document.createElement('div');
-      host.id = 'cellStage';
-      page.replaceChildren(host);
-    }
-    const pooled = native() || synthetic() ? study.populations[0] : null;
-    const cellTypes = synthetic() ? study.cellTypes || [] : native() ? study.populations.slice(1) : [];
-    window.SctrialCells.render(host, {
-      studyName: name(),
-      source: source(),
-      sourceKind: synthetic() ? 'synthetic' : native() ? 'h5ad' : 'csv',
-      populations: study.populations,
-      allLabel: pooled,
-      cellTypes,
-      observations: study.observations,
-      selected: state.population,
-      onSelect: (population) => {
-        if (study.populations.includes(population)) setParam('population', population);
-      },
-      onAnalyze: (population) => {
-        if (!study.populations.includes(population)) return;
-        if (population !== state.population) {
-          remember();
-          state.population = population;
-          state.selectedId = null;
-          clearFit();
-        }
-        changeViewMode('comparison');
-      },
-      onOpenStudy: openStudy,
-    });
-  }
-
   function stopPlayback() {
     clearInterval(playbackTimer);
     playbackTimer = 0;
@@ -951,31 +888,62 @@
     };
   }
 
-  function molecularArtboard(page) {
-    let host = $('molecularStage');
-    if (!host) {
-      if ($('plot')) disposeContrastCanvas($('plot'));
-      host = document.createElement('div');
-      host.id = 'molecularStage';
-      page.replaceChildren(host);
+  function atlasSelection(selection, plot) {
+    const { population, featureId, visit, mode, fromPlayback: playing } = selection;
+    const next = {
+      population: study.populations.includes(population) ? population : state.population,
+      feature: study.features.some((f) => f.id === featureId) ? featureId : state.feature,
+      browseVisit: study.visits.includes(visit) ? visit : state.browseVisit,
+      mode: mode === 'cells' || molecularModes.includes(mode) ? mode : state.mode,
+    };
+    const open = plot || (!playing && state.view === 'overview' && state.plotMode);
+    const destination =
+      open && (!isLong() || next.browseVisit !== state.baseline) ? next.browseVisit : state.visit;
+    const fitChanged = next.population !== state.population || destination !== state.visit;
+    if (!playing && (fitChanged || Object.entries(next).some(([k, v]) => state[k] !== v)))
+      remember();
+    Object.assign(state, next, { visit: destination, selectedId: null });
+    if (plot) {
+      state.view = 'overview';
+      state.plotMode = 'comparison';
+    } else if (playing || (!featureId && next.mode !== 'cells')) {
+      state.plotMode = null;
+      state.view = 'overview';
     }
-    const referenceIsBrowsed = isLong() && state.browseVisit === state.baseline;
-    const comparisonVisit = referenceIsBrowsed ? state.visit : state.browseVisit;
-    const visits = isLong() ? [state.baseline, comparisonVisit] : [comparisonVisit];
-    window.SctrialMolecular.render(host, {
-      mode: state.mode,
+    if (fitChanged) clearFit();
+    render();
+  }
+
+  function overview() {
+    let host = $('atlasStage');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'atlasStage';
+      $('page').replaceChildren(host);
+    }
+    const displayedVisit =
+      isLong() && state.browseVisit === state.baseline ? state.visit : state.browseVisit;
+    const context =
+      armsIn().join(' − ') + ' · ' + (isLong() ? state.baseline + ' → ' : '') + displayedVisit;
+    const plotOpen = state.view !== 'overview' || !!state.plotMode;
+    atlas = window.SctrialAtlas.render(host, {
       study,
-      selectedFeature: state.feature,
       selectedPopulation: state.population,
+      selectedFeature: state.feature,
       selectedVisit: state.browseVisit,
-      selectedArm: state.arm,
-      analysisContext: armsIn().join(' − ') + ' · ' + visits.join(' → '),
-      analysisRequiresExistingVisit: referenceIsBrowsed,
-      source: source(),
-      onFeature: setFeature,
-      onDisplayedFeature: (id) => {
-        state.feature = id;
+      selectedMode: state.mode,
+      plotOpen,
+      analysisContext: context,
+      resultTitle: state.view === 'overview' ? 'Participant results' : titles[state.view],
+      onSelect: (selection) => atlasSelection(selection, false),
+      onPlot: (selection) => atlasSelection(selection, true),
+      onClosePlot: () => {
+        state.plotMode = null;
+        state.view = 'overview';
+        render();
       },
+      onConfigure: () => configure(),
+      onOpenStudy: openStudy,
       onLinkGeneSet: synthetic()
         ? null
         : (featureId) =>
@@ -984,74 +952,81 @@
               featureId,
               show: modal,
               close: finish,
-              onChange: () => molecularArtboard(page),
+              onChange: render,
             }),
-      onVisit: (visit) => {
-        if (!study.visits.includes(visit) || visit === state.browseVisit) return;
-        remember();
-        state.browseVisit = visit;
-        updateTop();
-        molecularArtboard(page);
-      },
-      onPopulation: (population) => {
-        if (study.populations.includes(population)) setParam('population', population);
-      },
-      onAnalyze: (id) => {
-        if (!study.features.some((f) => f.id === id)) return;
-        if (id !== state.feature || comparisonVisit !== state.visit) {
-          remember();
-          if (comparisonVisit !== state.visit) clearFit();
-          state.feature = id;
-          state.visit = comparisonVisit;
-          state.selectedId = null;
-        }
-        changeViewMode('comparison');
-      },
-      onOpenStudy: openStudy,
     });
+    if (!plotOpen) return;
+    const mount = $('atlasResultMount');
+    if (!mount) return;
+    if (state.view === 'results') renderResultsView();
+    else if (state.view === 'participants') {
+      renderPeople(
+        mount,
+        {
+          ...peopleContext,
+          participants: study.participants,
+          arms,
+          visits: study.visits,
+          observations: study.observations,
+          population: state.population,
+          selectedVisits: datesIn(),
+          analysisArms: armsIn(),
+          feature: feature(),
+        },
+        {},
+      );
+      peopleContext = {};
+    } else if (state.view === 'bench') bench.render(mount);
+    else drawResult(mount);
   }
 
-  function overview() {
-    const focusKey = document.activeElement?.getAttribute('data-param');
-    const page = $('page');
-    if (state.mode === 'cells') {
-      cellArtboard(page);
-      return;
-    }
-    if (molecularModes.includes(state.mode)) {
-      molecularArtboard(page);
-      return;
-    }
-    const active = page.firstElementChild;
-    if (active?.classList.contains('ed-document') && active.dataset.display === state.mode) {
-      active.querySelector('.ed-heading').outerHTML = figureHeading();
+  function drawResult(mount) {
+    const mode = state.plotMode;
+    const previous = mount.firstElementChild;
+    const focusKey = mount.contains(document.activeElement)
+      ? document.activeElement.dataset.param
+      : null;
+    const choices = [
+      ['comparison', 'Contrast'],
+      ['trajectory', 'Time course'],
+      ['changes', isLong() ? 'Change distribution' : 'Distribution'],
+      ['measurements', 'Measurements'],
+    ];
+    const picker =
+      '<div class="result-tools"><label class="result-type">Figure<select id="atlasPlotType" aria-label="Result figure">' +
+      choices.map(([id, label]) => option(id, mode, label)).join('') +
+      '</select></label>' +
+      button('export', 'download', 'Export…') +
+      '</div>';
+    if (previous?.classList.contains('ed-document') && previous.dataset.display === mode) {
+      previous.querySelector('.ed-heading').outerHTML = figureHeading();
     } else {
       if ($('plot')) disposeContrastCanvas($('plot'));
       const surface =
-        state.mode === 'comparison'
+        mode === 'comparison'
           ? '<div id="effectPlot"></div><div id="fitRetry"></div>'
-          : state.mode === 'measurements'
+          : mode === 'measurements'
             ? '<div id="participantMatrix"></div>'
-            : (state.mode === 'trajectory' ? visitPlayer() : '') +
+            : (mode === 'trajectory' ? visitPlayer() : '') +
               '<div id="plot" aria-label="Participant plot"></div>';
-      page.innerHTML =
+      mount.innerHTML =
         '<article class="ed-document" data-display="' +
-        esc(state.mode) +
+        esc(mode) +
         '">' +
+        picker +
         figureHeading() +
         surface +
         '</article>';
     }
-    if (state.mode === 'comparison') paintEvidence();
-    else if (state.mode === 'measurements') paintMatrix(comparisonRecords());
+    if (mode === 'comparison') paintEvidence();
+    else if (mode === 'measurements') paintMatrix(comparisonRecords());
     else {
-      const observed = paintCanvas();
-      if (state.mode === 'trajectory') setupPlayback(observed);
+      const visits = paintCanvas();
+      if (mode === 'trajectory') setupPlayback(visits);
     }
     if (focusKey)
-      document.querySelector('#page [data-param="' + focusKey + '"]')?.focus({ preventScroll: true });
+      mount.querySelector('[data-param="' + focusKey + '"]')?.focus({ preventScroll: true });
   }
-
   function configure(focusField = 'design') {
     const draft = snapshotSpec();
     function selectField(field, label, options, disabled = false) {
@@ -1098,7 +1073,11 @@
             : '') +
           selectField(
             'visit',
-            longitudinal ? (synthetic() ? 'Follow-up visit' : 'Comparison visit') : 'Selected visit',
+            longitudinal
+              ? synthetic()
+                ? 'Follow-up visit'
+                : 'Comparison visit'
+              : 'Selected visit',
             pairs(visits),
           ) +
           selectField('population', 'Cell population', pairs(study.populations)) +
@@ -1146,9 +1125,12 @@
           (visitOrder && JSON.stringify(visitOrder) !== JSON.stringify(study.visits))
         ) {
           remember();
+          const changedVisit = state.visit !== next.visit;
           Object.assign(state, next, { selectedId: null });
+          if (changedVisit) state.browseVisit = next.visit;
+          chooseFeature(next.feature);
           if (visitOrder) {
-            study.visits = visitOrder;
+            setVisitOrder(visitOrder);
           }
           clearFit();
           render();
@@ -1167,7 +1149,8 @@
   }
 
   function renderResultsView() {
-    const page = $('page');
+    const page = $('atlasResultMount');
+    if (!page) return;
     if (!ready()) {
       page.innerHTML =
         '<div class="card pending"><h2>Model results</h2><p role="status">' +
@@ -1196,12 +1179,12 @@
       },
       {
         onSelect: (id) => {
-          state.feature = id;
-          renderResultsView();
+          chooseFeature(id);
+          render();
         },
         onShowOverview: (id) => {
-          state.feature = id;
-          state.mode = 'trajectory';
+          chooseFeature(id);
+          state.plotMode = 'trajectory';
           state.selectedId = null;
           navigate('overview');
         },
@@ -1225,34 +1208,8 @@
   function render() {
     stopPlayback();
     closeRecord();
-    if ($('cellStage') && (state.view !== 'overview' || state.mode !== 'cells')) {
-      window.SctrialCells.dispose($('cellStage'));
-    }
-    if ($('molecularStage') && (state.view !== 'overview' || !molecularModes.includes(state.mode))) {
-      window.SctrialMolecular.dispose($('molecularStage'));
-    }
     updateTop();
-    if (state.view !== 'overview' && $('plot')) disposeContrastCanvas($('plot'));
-    if (state.view === 'overview') overview();
-    else if (state.view === 'participants') {
-      renderPeople(
-        $('page'),
-        {
-          ...peopleContext,
-          participants: study.participants,
-          arms,
-          visits: study.visits,
-          observations: study.observations,
-          population: state.population,
-          selectedVisits: datesIn(),
-          analysisArms: armsIn(),
-          feature: feature(),
-        },
-        {},
-      );
-      peopleContext = {};
-    } else if (state.view === 'results') renderResultsView();
-    else bench.render($('page'));
+    overview();
     fitWhenVisible();
   }
   function navigate(view, context = {}) {
@@ -1323,8 +1280,8 @@
             const i = hits[Number(b.dataset.match)];
             finish();
             if (data.indexOf(i) < study.features.length) {
-              state.feature = i.key;
-              state.mode = 'comparison';
+              chooseFeature(i.key);
+              state.plotMode = 'comparison';
               state.selectedId = null;
               navigate('overview');
             } else navigate('participants', { initialId: i.key });
@@ -1455,7 +1412,8 @@
       $('drop').classList.remove('over');
       read(e.dataTransfer.files[0]);
     };
-    $('template').onclick = () => download('participant-summaries.csv', studyCSVTemplate(), 'text/csv');
+    $('template').onclick = () =>
+      download('participant-summaries.csv', studyCSVTemplate(), 'text/csv');
     $('restore').onclick = () => {
       finish();
       init(sample);
@@ -1526,7 +1484,11 @@
       ];
       const rows = currentRows().map((r) => [
         r.label,
-        state.design === 'observe' ? 'mean' : fitted() ? 'model estimate' : 'descriptive difference',
+        state.design === 'observe'
+          ? 'mean'
+          : fitted()
+            ? 'model estimate'
+            : 'descriptive difference',
         state.design,
         state.arm,
         armsIn()[1] ?? '',
@@ -1625,7 +1587,9 @@
     modal(
       'Study information',
       '<dl class="meta-list">' +
-        entries.map(([k, v]) => '<div><dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd></div>').join('') +
+        entries
+          .map(([k, v]) => '<div><dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd></div>')
+          .join('') +
         '</dl>',
     );
   }
@@ -1644,13 +1608,16 @@
     to.push(historyEntry());
     const entry = from.pop();
     Object.assign(state, entry.spec);
-    study.visits = entry.visitOrder;
+    setVisitOrder(entry.visitOrder);
     state.selectedId = null;
     clearFit();
     render();
   }
   function historyEntry() {
-    return { spec: snapshotSpec(), visitOrder: [...study.visits] };
+    return {
+      spec: { ...snapshotSpec(), mode: state.mode, plotMode: state.plotMode },
+      visitOrder: [...study.visits],
+    };
   }
   function remember() {
     past.push(historyEntry());
@@ -1711,7 +1678,7 @@
     if (action) actions[action.dataset.action]?.();
   });
   document.addEventListener('change', (e) => {
-    if (e.target.id === 'chartMode') {
+    if (e.target.id === 'atlasPlotType') {
       changeViewMode(e.target.value);
       return;
     }
@@ -1722,11 +1689,6 @@
     }
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && $('recordDrawer') && !document.querySelector('dialog[open]')) {
-      e.preventDefault();
-      closeRecord(true);
-      return;
-    }
     if (
       document.querySelector('dialog[open]') ||
       ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) ||

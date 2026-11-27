@@ -9,7 +9,7 @@
       /*STYLE*/
     </style>
   </head>
-  <body data-mode="cells">
+  <body data-mode="atlas">
     <a href="#main" class="skip">Skip to study</a>
     <div class="application">
       <header class="app-menubar">
@@ -65,87 +65,8 @@
             </svg>
           </button>
         </div>
-        <nav id="scienceModes" aria-label="Study views">
-          <button
-            type="button"
-            data-mode="cells"
-            aria-label="Cell populations"
-            title="Cell populations"
-          >
-            <i data-icon="cells"></i><span>Cells</span>
-          </button>
-          <button
-            type="button"
-            data-mode="genes"
-            aria-label="Gene expression"
-            title="Gene expression"
-          >
-            <svg
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              aria-hidden="true"
-            >
-              <path d="M4 2c0 7 12 9 12 16M16 2c0 7-12 9-12 16M6 5h8M7.5 7.5h5M6 15h8" /></svg
-            ><span>Expression</span>
-          </button>
-          <button type="button" data-mode="pathways" aria-label="Pathways" title="Pathways">
-            <svg
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.4"
-              aria-hidden="true"
-            >
-              <path d="m6.5 7 5 4m-5.5-3-1.5 6m9-3 2-5" />
-              <circle cx="5.7" cy="6" r="2" />
-              <circle cx="13" cy="12" r="2" />
-              <circle cx="16" cy="4" r="1.6" />
-              <circle cx="4" cy="15.5" r="1.6" /></svg
-            ><span>Pathways</span>
-          </button>
-          <button
-            type="button"
-            data-mode="modules"
-            aria-label="Module scores"
-            title="Module scores"
-          >
-            <svg
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.6"
-              aria-hidden="true"
-            >
-              <path d="M3 15h14M5 12V7m4 5V3m4 9V6m3 6V9" /></svg
-            ><span>Scores</span>
-          </button>
-          <button
-            type="button"
-            data-mode="trajectory"
-            aria-label="Longitudinal trajectories"
-            title="Longitudinal trajectories"
-          >
-            <i data-icon="trend"></i><span>Time</span>
-          </button>
-        </nav>
         <div class="document-tools">
-          <div class="view-switch">
-            <i data-icon="layers"></i
-            ><select id="chartMode" aria-label="View">
-              <option value="cells">Cell populations</option>
-              <option value="genes">Gene expression</option>
-              <option value="pathways">Pathways</option>
-              <option value="modules">Module scores</option>
-              <option value="comparison">Analysis plot</option>
-              <option value="trajectory">Trajectories</option>
-              <option value="changes">Changes</option>
-              <option value="measurements">Measurements</option></select
-            ><i data-icon="down"></i>
-          </div>
-          <span class="tool-rule"></span
-          ><button
+          <button
             id="undo"
             class="tool-icon"
             data-action="undo"
@@ -177,7 +98,7 @@
         </div>
       </div>
       <main id="main" tabindex="-1">
-        <div class="secondary-title"><h1 id="pageTitle">Primary analysis</h1></div>
+        <h1 class="sr" id="pageTitle">Study atlas</h1>
         <div id="page"></div>
       </main>
       <footer class="app-status">

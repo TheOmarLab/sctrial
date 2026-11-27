@@ -127,13 +127,15 @@ results = st.quick_did(
 
 ## Interactive workspace
 
-From a checkout with the interactive workspace installed, open a local H5AD study in the browser.
+Select a cell population on the cluster canvas. Switch between gene expression, pathway scores, and module scores to see how the same populations compare at each visit. Open the result plot beside the clusters to inspect the participant measurements and the selected contrast.
+
+With this branch installed, open your H5AD locally.
 
 ```bash
 python -m sctrial.interactive study.h5ad
 ```
 
-Choose a cell population and explore gene expression, pathway scores, module scores, or participant trajectories. Select a comparison to inspect its measurements and estimate. Local H5AD studies support participant-level fits. Participant-summary CSVs support descriptive comparisons. [Workspace guide](design/interactive-mode/sctrial-interactive-plan.md)
+The standalone browser preview also opens participant-summary CSVs for descriptive comparisons. [Workspace guide](design/interactive-mode/sctrial-interactive-plan.md)
 
 ## Supported Study Designs & Datasets
 
