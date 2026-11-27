@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a1016">
+<title>sctrial · Cell atlas</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%23111b23'/%3E%3Cpath d='m4 16 5-9h8l-5 9h7' stroke='%2362edca' fill='none' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="./atlas.css">
+<link rel="stylesheet" href="./evidence.css">
+<link rel="stylesheet" href="./pathway-scene.css">
+<link rel="stylesheet" href="./importer.css">
+</head>
+<body>
+<a class="skip" href="#instrument">Skip to atlas</a>
+<header class="mast">
+  <a class="brand" href="#instrument" aria-label="sctrial atlas home"><svg width="31" height="30" viewBox="0 0 32 30" fill="none" aria-hidden="true"><path d="m2 21 7.5-13H20l-7.5 13H23l7-12" stroke="currentColor" stroke-width="3.1" stroke-linejoin="bevel"/><path d="m5.5 24 2-3.3m17-13 2-3.3" stroke="currentColor" stroke-width="2"/></svg><span>sctrial</span></a>
+  <span class="mast-div"></span><span class="mast-app">Cell atlas</span>
+  <nav aria-label="Study tools">
+    <a class="nav-action" href="./workspace.html" title="Analysis workspace" aria-label="Analysis workspace"><span data-icon="layers"></span>Workspace</a>
+    <button class="nav-action" id="openNotes" title="Study notes" aria-label="Study notes" disabled><span data-icon="book"></span>Study notes</button>
+    <button class="nav-action" id="mapFields" title="Study settings" aria-label="Study settings" hidden><span data-icon="settings"></span>Study settings</button>
+    <button type="button" class="workspace-link" id="openH5ad"><span data-icon="folder"></span>Open H5AD</button>
+  </nav>
+</header>
+<main id="instrument" aria-busy="true">
+  <section class="intro" aria-labelledby="atlasTitle">
+    <div>
+      <div class="kicker"><span class="status-square"></span> <span id="sourceLabel">sctrial</span></div>
+      <h1 id="atlasTitle">Cell atlas</h1>
+      <p class="subtitle" id="studySubtitle"></p>
+    </div>
+    <div class="study-stats" aria-label="Study size" id="studyStats" hidden>
+      <div><strong id="cohortCells">…</strong><span>cells</span></div>
+      <div id="participantStat"><strong id="cohortPeople">…</strong><span>participants</span></div>
+      <div><strong id="cohortVisits">…</strong><span>visits</span></div>
+    </div>
+  </section>
+
+  <section class="instrument" id="atlasControls" inert aria-label="Interactive single-cell atlas">
+    <div class="toolbar">
+      <div class="layers" role="group" aria-label="Measurement layer">
+        <button data-layer="composition" aria-pressed="true"><span data-icon="dots"></span>Populations</button>
+        <button data-layer="expression" aria-pressed="false"><span data-icon="wave"></span>Gene expression</button>
+        <button data-layer="pathway" aria-pressed="false"><span data-icon="molecule"></span>Pathways</button>
+      </div>
+      <div class="filters"><label id="quickFeatureWrap" class="mobile-feature" hidden><span class="sr">Map feature</span><select aria-label="Map feature" id="quickFeature"></select></label>
+      <label class="arm-picker" id="armPicker"><span data-icon="branch"></span><span class="sr">Study group</span><select id="arm" aria-label="Study group"></select><span data-icon="chevron"></span></label></div>
+    </div>
+    <div class="console">
+      <div class="projection">
+        <div id="field" class="field">
+          <canvas id="map" tabindex="0" aria-label="Study cell coordinates. Drag to pan, or use the zoom, fit and population controls."></canvas>
+          <div id="pathwayStage" hidden></div>
+          <div id="pathwaySwitch" class="pathway-switch" hidden role="group" aria-label="Pathway display"><button type="button" data-projection="members">Gene profile</button><button type="button" data-projection="map">Cell map</button></div>
+          <div class="field-label"><span class="live-mark"></span><span id="projectionType">Cells</span><span class="field-slash">/</span><span id="visitBadge">Loading study</span><span class="field-n" id="captureCount"></span></div>
+          <div class="camera-tools" aria-label="Map camera">
+            <button type="button" data-camera="in" title="Zoom in" aria-label="Zoom in"><span data-icon="plus"></span></button>
+            <button type="button" data-camera="out" title="Zoom out" aria-label="Zoom out"><span data-icon="minus"></span></button>
+            <button type="button" data-camera="reset" title="Fit map" aria-label="Fit map"><span data-icon="fit"></span></button>
+          </div>
+          <div id="busy" role="status" class="busy">Loading measured cells…</div>
+          <div id="cellTip" class="cell-tip" hidden></div>
+          <div class="field-legend" id="fieldLegend"></div>
+          <button id="focus" class="focus-tool" aria-pressed="false" title="Expand map" aria-label="Expand map"><span data-icon="expand"></span></button>
+        </div>
+        <div class="playback" role="group" aria-label="Visit playback">
+          <button id="play" type="button" class="play" aria-label="Play visits" title="Play visits"><span data-icon="play"></span></button>
+          <div class="track-group">
+            <div class="track-labels"><button type="button" data-visit="pre">First visit</button><span class="blend-label" id="blendLabel"></span><button type="button" data-visit="post">Second visit</button></div>
+            <input id="timeTrack" aria-label="Blend measured visits" type="range" min="0" max="100" step="1" value="0">
+          </div>
+          <button id="reference" class="ref-button" aria-pressed="false" title="Compare the two selected visits with a movable lens" aria-label="Visit lens"><span data-icon="lens"></span><span>Visit lens</span></button>
+        </div>
+      </div>
+      <aside class="inspector" aria-label="Selected population and evidence">
+        <div class="inspector-top"><span class="section-caption"><span data-icon="target"></span>Population inspector</span><button id="openPop" aria-haspopup="dialog" title="Browse populations"><span data-icon="list"></span><span class="sr">Browse populations</span></button></div>
+        <button class="population-identity" id="choosePop" aria-haspopup="dialog"><i id="popSwatch"></i><span id="popName">Loading…</span><span data-icon="chevron"></span></button>
+        <div class="selection-summary"><div class="selected-count" id="popMeta"></div><button id="fly" type="button" aria-label="Zoom to selected population" title="Zoom to selected population"><span data-icon="locate"></span></button></div>
+        <div id="evidence"></div>
+      </aside>
+    </div>
+  </section>
+  <footer class="study-footer"><span id="footerScene"><span class="mini-point"></span> Each point is one captured cell</span><button id="footerNotes">Study details <span data-icon="upRight"></span></button></footer>
+</main>
+
+<dialog id="notes" aria-labelledby="notesTitle">
+  <div class="dialog-top"><div class="kicker" id="notesSource"></div><button type="button" data-close aria-label="Close study notes"><span data-icon="close"></span></button></div>
+  <h2 id="notesTitle">Study notes</h2>
+  <p id="studyScope"></p>
+  <div id="studyMethods"></div>
+  <div id="studyLinks" class="note-links" hidden></div>
+</dialog>
+<dialog id="populationDialog" aria-labelledby="populationTitle"><div class="dialog-top"><div class="kicker">Observed cell populations</div><button data-close aria-label="Close population browser"><span data-icon="close"></span></button></div><h2 id="populationTitle">Select a population</h2><div class="pop-list" id="popList"></div></dialog>
+<div id="announcer" class="sr" role="status" aria-live="polite"></div>
+<script type="module" src="./app.js"></script>
+</body></html>

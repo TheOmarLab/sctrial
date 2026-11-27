@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import hmac
 import json
+import os
+import re
 import secrets
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from importlib.resources import files
 from urllib.parse import urlsplit
 
 from ._study import LocalStudy
@@ -14,17 +17,29 @@ from ._study import LocalStudy
 class WorkspaceServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, study: LocalStudy, document: bytes, port: int):
+    def __init__(self, study: LocalStudy | None, document: bytes, port: int):
         self.study = study
         self.offline_document = document
         self.session = secrets.token_urlsafe(32)
         marker = b"<head>"
         if marker not in document:
             raise ValueError("The installed workspace document is incomplete.")
-        setup = json.dumps({"session": self.session}, separators=(",", ":")).encode("ascii")
-        self.document = document.replace(
-            marker, marker + b"<script>window.SCTRIAL_LOCAL=" + setup + b";</script>", 1
-        )
+        self.atlas = files("sctrial.interactive").joinpath("atlas")
+        atlas_page = self.atlas.joinpath("index.html").read_bytes()
+        self.document = atlas_page
+        self.workbook = document
+        self.file_stamp = None
+        if study is not None:
+            info = study.path.stat()
+            self.file_stamp = info.st_ino, info.st_size, info.st_mtime_ns
+            config = {
+                "session": self.session,
+                "file": {"name": study.path.name, "size": info.st_size, "url": "/local/h5ad"},
+            }
+            value = json.dumps(config, ensure_ascii=True).replace("<", r"\u003c").encode("ascii")
+            setup = marker + b"<script>window.SCTRIAL_LOCAL=" + value + b";</script>"
+            self.document = atlas_page.replace(marker, setup, 1)
+            self.workbook = document.replace(marker, setup, 1)
         super().__init__(("127.0.0.1", port), WorkspaceHandler)
         self.host_header = f"127.0.0.1:{self.server_port}"
         self.origin = f"http://{self.host_header}"
@@ -36,7 +51,7 @@ class WorkspaceHandler(BaseHTTPRequestHandler):
     def log_request(self, code="-", size="-"):
         pass  # Local use should not leave request paths in the terminal.
 
-    def _send(self, status: int, data: bytes, content_type: str) -> None:
+    def _send(self, status: int, data: bytes, content_type: str, *, atlas: bool = False) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
@@ -44,15 +59,25 @@ class WorkspaceHandler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
         self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header(
-            "Content-Security-Policy",
-            "default-src 'none'; script-src 'unsafe-inline'; "
-            "style-src 'unsafe-inline'; img-src data: blob:; font-src data:; "
-            "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+        policy = (
+            (
+                "default-src 'none'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline'; "
+                "worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+                "font-src 'self' data:; connect-src 'self'; "
+                "frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+            )
+            if atlas
+            else (
+                "default-src 'none'; script-src 'unsafe-inline'; "
+                "style-src 'unsafe-inline'; img-src data: blob:; font-src data:; "
+                "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+            )
         )
+        self.send_header("Content-Security-Policy", policy)
         try:
             self.end_headers()
-            self.wfile.write(data)
+            if self.command != "HEAD":
+                self.wfile.write(data)
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             # Navigating away can cancel an in-flight response.
             self.close_connection = True
@@ -72,21 +97,108 @@ class WorkspaceHandler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _source(self, head_only: bool = False) -> None:
+        # Browser workers read only the required byte ranges of the launcher file.
+        study = self.server.study
+        if study is None:
+            self._json(404, {"error": "No local file is open."})
+            return
+        try:
+            with study.path.open("rb") as source:
+                info = os.fstat(source.fileno())
+                if (info.st_ino, info.st_size, info.st_mtime_ns) != self.server.file_stamp:
+                    self._json(409, {"error": "The source file changed. Reopen the study."})
+                    return
+                size = info.st_size
+                if head_only:
+                    self.send_response(200)
+                    length = size
+                else:
+                    match = re.fullmatch(
+                        r"bytes=(\d{1,20})-(\d{1,20})", self.headers.get("Range", "")
+                    )
+                    first, end = (int(match[1]), int(match[2])) if match else (-1, -1)
+                    if not 0 <= first <= end < size:
+                        self.send_response(416)
+                        self.send_header("Content-Range", f"bytes */{size}")
+                        self.send_header("Content-Length", "0")
+                        self.end_headers()
+                        return
+                    self.send_response(206)
+                    self.send_header("Content-Range", f"bytes {first}-{end}/{size}")
+                    source.seek(first)
+                    length = end - first + 1
+                self.send_header("Content-Length", str(length))
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("Accept-Ranges", "bytes")
+                self.end_headers()
+                while not head_only and length:
+                    block = source.read(min(length, 256 * 1024))
+                    if not block:
+                        break
+                    self.wfile.write(block)
+                    length -= len(block)
+        except (FileNotFoundError, PermissionError):
+            self._json(409, {"error": "The local file is unavailable. Reopen the study."})
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+    def do_HEAD(self) -> None:
+        if not self._trusted(api=True):
+            return
+        if urlsplit(self.path).path == "/local/h5ad":
+            self._source(head_only=True)
+        else:
+            self.send_error(404)
+
     def do_GET(self) -> None:
         route = urlsplit(self.path).path
-        if not self._trusted(api=route == "/local/schema"):
+        if not self._trusted(api=route.startswith("/local/")):
             return
-        if route == "/":
-            self._send(200, self.server.document, "text/html; charset=utf-8")
+        if route in {"/", "/index.html"}:
+            self._send(200, self.server.document, "text/html; charset=utf-8", atlas=True)
+        elif route == "/workspace.html":
+            self._send(200, self.server.workbook, "text/html; charset=utf-8")
         elif route == "/sctrial-workbook.html":
             self._send(200, self.server.offline_document, "text/html; charset=utf-8")
-        elif route == "/local/schema":
+        elif route == "/local/schema" and self.server.study is not None:
             self._json(200, self.server.study.schema())
+        elif route == "/local/h5ad":
+            self._source()
         else:
-            self._json(404, {"error": "Unknown workspace route."})
+            self._atlas_asset(route)
+
+    def _atlas_asset(self, route: str) -> None:
+        # Serve only shipped atlas resources, keeping user file paths out of URL routing.
+        types = {
+            "js": "text/javascript",
+            "mjs": "text/javascript",
+            "css": "text/css",
+            "wasm": "application/wasm",
+            "json": "application/json",
+            "ttf": "font/ttf",
+            "bin": "application/octet-stream",
+            "gmt": "text/plain",
+            "txt": "text/plain",
+        }
+        parts = route.removeprefix("/").split("/")
+        ext = parts[-1].rsplit(".", 1)[-1]
+        if ext in types and all(re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]*", p) for p in parts):
+            item = self.server.atlas
+            for component in parts:
+                item = item.joinpath(component)
+            if item.is_file():
+                self._send(200, item.read_bytes(), types[ext], atlas=True)
+                return
+        self._json(404, {"error": "Unknown workspace route."})
 
     def do_POST(self) -> None:
         if not self._trusted(api=True, mutation=True):
+            return
+        if self.server.study is None:
+            self._json(404, {"error": "Launch the worksheet with an H5AD to use local model fits."})
             return
         actions = {
             "/local/study": self.server.study.prepare,
@@ -117,5 +229,5 @@ class WorkspaceHandler(BaseHTTPRequestHandler):
             self._json(500, {"error": "The analysis could not complete with these settings."})
 
 
-def create_server(study: LocalStudy, document: bytes, port: int = 0) -> WorkspaceServer:
+def create_server(study: LocalStudy | None, document: bytes, port: int = 0) -> WorkspaceServer:
     return WorkspaceServer(study, document, port)

@@ -13,7 +13,9 @@ from ._study import LocalStudy
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("study", type=Path, help="Annotated H5AD with numeric scores in obs")
+    parser.add_argument(
+        "study", nargs="?", type=Path, help="Annotated H5AD to open in the cell atlas"
+    )
     parser.add_argument(
         "--no-browser", action="store_true", help="Print the URL without opening a browser"
     )
@@ -24,7 +26,7 @@ def main() -> None:
     if not 0 <= args.port <= 65535:
         parser.error("Port must be between 0 and 65535.")
     try:
-        study = LocalStudy(args.study)
+        study = LocalStudy(args.study) if args.study else None
         document = build_workspace()
         server = create_server(study, document, args.port)
     except (OSError, ValueError) as error:

@@ -127,15 +127,15 @@ results = st.quick_did(
 
 ## Interactive workspace
 
-Select a cell population on the cluster canvas. Switch between gene expression, pathway scores, and module scores to see how the same populations compare at each visit. Open the result plot beside the clusters to inspect the participant measurements and the selected contrast.
+Open an H5AD in the cell atlas to compare two observed visits. Map your visit and population columns, select an embedding or two measured genes, and choose genes and pathway gene sets. The visit lens displays the other visit at the same coordinates. Map participant IDs to inspect paired cell fractions and an arm column to explore treatment groups.
 
-With this branch installed, open your H5AD locally.
+With this branch installed, open a file directly or launch without a filename to choose one in the browser.
 
 ```bash
 python -m sctrial.interactive study.h5ad
 ```
 
-The standalone browser preview also opens participant-summary CSVs for descriptive comparisons. [Workspace guide](design/interactive-mode/sctrial-interactive-plan.md)
+The [downloadable atlas](design/interactive-mode/sctrial-interactive-preview.html?raw=true) also reads H5AD files locally. The analysis worksheet supports participant-summary CSVs and the launcher's fitted contrasts. [Workspace guide](design/interactive-mode/sctrial-interactive-plan.md)
 
 ## Supported Study Designs & Datasets
 

@@ -29,10 +29,10 @@ from sctrial.stats.did import did_fit
 class WorkspacePreviewTest(unittest.TestCase):
     def test_standalone_preview_matches_packaged_workspace(self):
         root = Path(__file__).resolve().parents[1]
-        preview = root / "design" / "interactive-mode" / "sctrial-interactive-preview.html"
+        preview = root / "design" / "interactive-mode" / "sctrial-analysis-worksheet.html"
         self.assertTrue(
             preview.read_bytes() == build_workspace(),
-            "Rebuild the standalone preview after changing the workspace assets.",
+            "Rebuild the standalone analysis worksheet after changing the workspace assets.",
         )
 
 
