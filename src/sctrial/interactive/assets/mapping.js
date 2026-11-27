@@ -93,12 +93,27 @@
     const labels = visits.map((visit) => visit.trim().toLowerCase());
     const baseline = /^(?:baseline|before|pre|pre[- ]?treatment)$/;
     const follow = /^(?:after|post|post[- ]?treatment|follow[- ]?up)$/;
-    if (visits.length === 2 && labels.some((v) => baseline.test(v)) && labels.some((v) => follow.test(v))) {
+    if (
+      visits.length === 2 &&
+      labels.some((v) => baseline.test(v)) &&
+      labels.some((v) => follow.test(v))
+    ) {
       return baseline.test(labels[0]) ? visits.slice() : [visits[1], visits[0]];
     }
     if (labels.every((v) => /^\d{4}-\d{2}-\d{2}$/.test(v))) return visits.slice().sort();
     // Order only a single explicit scale. Mixed scales or unrecognized stages need confirmation.
-    const units = { day: 'day', d: 'day', week: 'week', wk: 'week', w: 'week', month: 'month', mo: 'month', visit: 'visit', v: 'visit', cycle: 'cycle' };
+    const units = {
+      day: 'day',
+      d: 'day',
+      week: 'week',
+      wk: 'week',
+      w: 'week',
+      month: 'month',
+      mo: 'month',
+      visit: 'visit',
+      v: 'visit',
+      cycle: 'cycle',
+    };
     const unitSet = new Set();
     const times = [];
     for (const label of labels) {
@@ -112,7 +127,8 @@
       times.push(Number(parts[2]));
     }
     if (unitSet.size !== 1 || new Set(times).size !== times.length) return null;
-    return visits.map((visit, index) => ({ visit, time: times[index] }))
+    return visits
+      .map((visit, index) => ({ visit, time: times[index] }))
       .sort((a, b) => a.time - b.time)
       .map((point) => point.visit);
   }
@@ -162,29 +178,47 @@
     box.addEventListener('change', updateButtons);
     updateButtons();
     label.append(box);
-    body.append(label, actions, el('p', 'lm-note', 'This order sets the trajectory axis. Choose the comparison visits in the sheet.'), announce);
+    body.append(
+      label,
+      actions,
+      el(
+        'p',
+        'lm-note',
+        'This order sets the trajectory axis. Choose the comparison visits in the sheet.',
+      ),
+      announce,
+    );
     const foot = el('div', 'lm-foot');
-    const cancel = makeButton(keepOnCancel ? 'Keep file order' : 'Cancel', 'lm-action', () => dialog.close());
+    const cancel = makeButton(keepOnCancel ? 'Keep file order' : 'Cancel', 'lm-action', () =>
+      dialog.close(),
+    );
     const confirm = makeButton('Apply order', 'lm-action lm-primary', () => dialog.close('apply'));
     foot.append(cancel, confirm);
     dialog.append(header, body, foot);
     document.body.append(dialog);
     return new Promise((resolve) => {
-      dialog.addEventListener('close', () => {
-        const chosen = dialog.returnValue === 'apply'
-          ? Array.from(box.options, (option) => option.value)
-          : keepOnCancel ? visits : null;
-        dialog.remove();
-        if (prior?.isConnected) prior.focus({ preventScroll: true });
-        resolve(chosen);
-      }, { once: true });
+      dialog.addEventListener(
+        'close',
+        () => {
+          const chosen =
+            dialog.returnValue === 'apply'
+              ? Array.from(box.options, (option) => option.value)
+              : keepOnCancel
+                ? visits
+                : null;
+          dialog.remove();
+          if (prior?.isConnected) prior.focus({ preventScroll: true });
+          resolve(chosen);
+        },
+        { once: true },
+      );
       dialog.showModal();
       box.focus();
     });
   }
 
   async function openCSV(study, onLoaded) {
-    const visits = inferVisitOrder(study.visits) || await reviewVisitOrder(study);
+    const visits = inferVisitOrder(study.visits) || (await reviewVisitOrder(study));
     if (!visits) return false;
     onLoaded({ ...study, visits });
     return true;
@@ -243,8 +277,8 @@
         active = null;
         if (focusBeforeOpen?.isConnected) focusBeforeOpen.focus({ preventScroll: true });
         if (preparedStudy && !preparedStudy.orderedVisits) {
-          preparedStudy.visits = inferVisitOrder(preparedStudy.visits) ||
-            await reviewVisitOrder(preparedStudy, true);
+          preparedStudy.visits =
+            inferVisitOrder(preparedStudy.visits) || (await reviewVisitOrder(preparedStudy, true));
         }
         finishPromise(preparedStudy);
         if (preparedStudy && typeof onLoaded === 'function') onLoaded(preparedStudy);
@@ -259,10 +293,7 @@
     }
 
     function setUp(schema) {
-      if (
-        !Array.isArray(schema?.columns) ||
-        !schema.columns.every((c) => typeof c?.name === 'string')
-      ) {
+      if (!Array.isArray(schema?.columns) || !schema.columns.every((c) => typeof c?.name === 'string')) {
         throw new Error('The file did not provide a readable observation-column list.');
       }
       const suggested = schema.suggested || {};
@@ -317,32 +348,112 @@
       const scoreList = el('div', 'lm-scores');
       scoreList.setAttribute('role', 'group');
       scoreList.setAttribute('aria-label', 'Outcome scores');
-      const note = el('p', 'lm-note', 'Select up to 12 numeric scores from the observation table.');
+      const note = el(
+        'p',
+        'lm-note',
+        'Choose up to 12 measurements across observation scores and genes.',
+      );
+      const typeOverrides = new Map();
+      const geneBox = el('input');
+      geneBox.type = 'text';
+      geneBox.placeholder = 'Exact variable names, separated by commas';
+      geneBox.setAttribute('aria-label', 'Genes from X');
+      const geneLabel = el('label', 'lm-field lm-gene-input');
+      geneLabel.append(el('span', '', 'Genes from X'), geneBox);
+      const geneNote = el(
+        'p',
+        'lm-note',
+        'Search var_names by typing the first two letters. Expression uses the values stored in X on their original scale.',
+      );
+      const suggestions = el('div', 'lm-gene-matches');
+      suggestions.setAttribute('aria-label', 'Matching genes');
+      suggestions.setAttribute('role', 'group');
+      let lookupTimer, lookupRequest;
+      function clearLookup() {
+        clearTimeout(lookupTimer);
+        lookupRequest?.abort();
+        suggestions.replaceChildren();
+      }
+      function suggestGenes() {
+        clearLookup();
+        const parts = geneBox.value.split(',');
+        const query = parts.pop().trim();
+        if (query.length < 2 || query.length > 160) return;
+        const selectedGenes = new Set(parts.map((part) => part.trim()));
+        lookupRequest = new AbortController();
+        const signal = lookupRequest.signal;
+        lookupTimer = setTimeout(async () => {
+          try {
+            const result = await request('/local/genes', { query }, signal);
+            if (signal.aborted || !dialog.open) return;
+            for (const name of result.genes || []) {
+              if (selectedGenes.has(name)) continue;
+              const choose = makeButton(name, 'lm-gene-match', () => {
+                clearLookup();
+                geneBox.value = [...parts.map((part) => part.trim()).filter(Boolean), name, ''].join(
+                  ', ',
+                );
+                updateState();
+                geneBox.focus();
+              });
+              suggestions.append(choose);
+            }
+            if (!suggestions.childElementCount) {
+              suggestions.append(el('span', 'lm-note', 'No additional matching variables.'));
+            }
+          } catch (error) {
+            if (!signal.aborted && dialog.open) suggestions.append(el('span', 'lm-note', error.message));
+          }
+        }, 180);
+      }
+      controller.signal.addEventListener('abort', clearLookup, { once: true });
+      geneBox.addEventListener('input', suggestGenes);
+      geneBox.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown' && suggestions.querySelector('button')) {
+          event.preventDefault();
+          suggestions.querySelector('button').focus();
+        } else if (event.key === 'Escape' && suggestions.childElementCount) {
+          event.preventDefault();
+          event.stopPropagation();
+          clearLookup();
+        }
+      });
+      const inputGenes = () =>
+        geneBox.value
+          .split(',')
+          .map((gene) => gene.trim())
+          .filter(Boolean);
       const validation = el('p', 'lm-note');
       validation.setAttribute('role', 'status');
-      scoreSection.append(scoreHead, search, scoreList, note, validation);
+      scoreSection.append(scoreHead, search, scoreList);
+      if (schema.geneInput) scoreSection.append(geneLabel, suggestions, geneNote);
+      scoreSection.append(note, validation);
       body.replaceChildren(file, designSection, scoreSection, errorBox);
 
       const mappedRoles = () => roles.map((r) => selectors[r.key].value).filter(Boolean);
       function updateState() {
         const mapped = mappedRoles();
         const overlap = new Set(mapped).size !== mapped.length;
+        const genes = inputGenes();
+        const total = selected.size + genes.length;
         const problem = !selectors.participant.value
           ? 'Choose the participant ID column.'
           : overlap
             ? 'Use a different column for each study role.'
-            : !numeric.length
-              ? 'This file has no numeric observation scores.'
-              : selected.size === 0
-                ? 'Choose at least one outcome score.'
-                : '';
+            : new Set(genes).size !== genes.length
+              ? 'Enter each X variable once.'
+              : total === 0
+                ? 'Choose at least one numeric score or X variable.'
+                : total > scoreLimit
+                  ? 'Choose up to 12 measurements in total.'
+                  : '';
         submit.disabled = Boolean(problem);
         validation.textContent = problem;
         validation.hidden = !problem;
-        count.textContent = selected.size + ' selected';
+        count.textContent = total + ' selected';
         const locked = new Set(mapped);
         scoreList.querySelectorAll('input').forEach((box) => {
-          box.disabled = locked.has(box.value) || (!box.checked && selected.size >= scoreLimit);
+          box.disabled = locked.has(box.value) || (!box.checked && total >= scoreLimit);
         });
       }
       function drawScores() {
@@ -362,7 +473,29 @@
             updateState();
           });
           row.append(check, el('span', '', name));
-          fragment.append(row);
+          const entry = el('div', 'lm-score-row');
+          const type = el('select', 'lm-score-type');
+          type.setAttribute('aria-label', 'Measurement type for ' + name);
+          const implied = /^(gene|pathway|module):/i.exec(name)?.[1].toLowerCase() || 'score';
+          for (const [key, label] of [
+            ['score', 'Other score'],
+            ['module', 'Module score'],
+            ['pathway', 'Pathway score'],
+            ['gene', 'Gene expression'],
+          ]) {
+            type.add(new Option(label, key));
+          }
+          type.value = typeOverrides.get(name) || implied;
+          type.hidden = !check.checked;
+          check.addEventListener('change', () => {
+            type.hidden = !check.checked;
+          });
+          type.addEventListener('change', () => {
+            if (type.value === implied) typeOverrides.delete(name);
+            else typeOverrides.set(name, type.value);
+          });
+          entry.append(row, type);
+          fragment.append(entry);
         }
         if (!matches.length)
           fragment.append(
@@ -382,6 +515,7 @@
       }
       Object.values(selectors).forEach((select) => select.addEventListener('change', roleChanged));
       search.addEventListener('input', drawScores);
+      geneBox.addEventListener('input', updateState);
       roleChanged();
       selectors.participant.focus({ preventScroll: true });
       let sending = false;
@@ -389,8 +523,13 @@
         event.preventDefault();
         if (sending || submit.disabled) return;
         sending = true;
+        clearLookup();
         const payload = Object.fromEntries(roles.map((r) => [r.key, selectors[r.key].value || null]));
         payload.scores = [...selected];
+        const genes = inputGenes();
+        if (genes.length) payload.genes = genes;
+        const scoreKinds = [...typeOverrides].filter(([name]) => selected.has(name));
+        if (scoreKinds.length) payload.scoreKinds = Object.fromEntries(scoreKinds);
         errorBox.hidden = true;
         submit.disabled = true;
         submit.textContent = 'Opening…';

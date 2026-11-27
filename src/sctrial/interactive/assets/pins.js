@@ -78,7 +78,8 @@
           return v;
       }
     });
-  const clone = (v) => (typeof structuredClone === 'function' ? structuredClone(v) : decode(encode(v)));
+  const clone = (v) =>
+    typeof structuredClone === 'function' ? structuredClone(v) : decode(encode(v));
   const dict = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
   function stable(v) {
@@ -91,6 +92,7 @@
     );
   }
 
+  const rowUnit = (row, snapshot) => row?.unit || snapshot?.unit || '';
   const signatures = new WeakMap();
   function fingerprint(s) {
     if (!signatures.has(s)) {
@@ -99,8 +101,10 @@
       const spec = { ...s.spec };
       delete spec.mode;
       delete spec.feature;
-      const rows = [...s.rows].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-      signatures.set(s, encode(stable([spec, s.unit, s.method || '', rows])));
+      const rows = s.rows
+        .map((row) => ({ ...row, unit: rowUnit(row, s) }))
+        .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      signatures.set(s, encode(stable([spec, s.method || '', rows])));
     }
     return signatures.get(s);
   }
@@ -156,7 +160,8 @@
   function groups(s) {
     const x = s.spec;
     if (Array.isArray(x.orderedGroups)) return x.orderedGroups.join(' − ');
-    if (x.arm && x.reference && ['did', 'cross'].includes(x.design)) return x.arm + ' − ' + x.reference;
+    if (x.arm && x.reference && ['did', 'cross'].includes(x.design))
+      return x.arm + ' − ' + x.reference;
     return x.arm || '';
   }
   function defaultTitle(s) {
@@ -176,9 +181,10 @@
     const exact =
       magnitude > 0 && magnitude < 0.001
         ? magnitude.toExponential(2)
-        : new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 }).format(
-            magnitude,
-          );
+        : new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 3,
+          }).format(magnitude);
     return (x < 0 ? '−' : x > 0 ? '+' : '') + exact;
   }
   function hasInterval(r) {
@@ -273,9 +279,14 @@
           [r.lo, left, -1],
           [r.hi, right, 1],
         ]) {
-          if (Number.isFinite(end)) line(at, y - 3, at, y + 3, { stroke: color, 'stroke-width': 1.4 });
+          if (Number.isFinite(end))
+            line(at, y - 3, at, y + 3, { stroke: color, 'stroke-width': 1.4 });
           else {
-            const place = plotNode('svg', { x: at, y, width: 1, height: 1, overflow: 'visible' }, svg);
+            const place = plotNode(
+              'svg',
+              { x: at, y, width: 1, height: 1, overflow: 'visible' },
+              svg,
+            );
             plotNode(
               'path',
               {
@@ -353,7 +364,8 @@
     }
     function selection() {
       if (!find(leftId)) leftId = pins[0]?.id || null;
-      if (!find(rightId) || rightId === leftId) rightId = pins.find((p) => p.id !== leftId)?.id || null;
+      if (!find(rightId) || rightId === leftId)
+        rightId = pins.find((p) => p.id !== leftId)?.id || null;
     }
     function redraw() {
       if (container?.isConnected && container.firstElementChild?.classList.contains('cbench'))
@@ -402,7 +414,8 @@
         return false;
       }
       const id =
-        globalThis.crypto?.randomUUID?.() || 'pin-' + Date.now().toString(36) + '-' + ++localCounter;
+        globalThis.crypto?.randomUUID?.() ||
+        'pin-' + Date.now().toString(36) + '-' + ++localCounter;
       pins.push({ id, name: defaultTitle(snapshot), snapshot });
       if (!leftId) leftId = id;
       else rightId = id;
@@ -492,11 +505,26 @@
     }
 
     function table(a, b) {
-      const cols = [a, b].map((p) => (p ? new Map(p.snapshot.rows.map((r) => [r.id, r])) : new Map()));
+      const pins = [a, b];
+      const cols = pins.map((p) =>
+        p ? new Map(p.snapshot.rows.map((r) => [r.id, r])) : new Map(),
+      );
       const ids = new Set([...cols[0].keys(), ...cols[1].keys()]);
-      const compare = Boolean(a && b && a.snapshot.unit === b.snapshot.unit);
+      const units = cols.map(
+        (rows, i) => new Set([...rows.values()].map((r) => rowUnit(r, pins[i]?.snapshot))),
+      );
+      const sameUnits = new Set([...units[0], ...units[1]]).size === 1;
+      const matched = new Set(
+        [...ids].filter((id) => {
+          const left = cols[0].get(id);
+          const right = cols[1].get(id);
+          const unit = rowUnit(left, a?.snapshot);
+          return left && right && unit && unit === rowUnit(right, b.snapshot);
+        }),
+      );
+      const compare = matched.size > 0;
       const sharedDomain =
-        compare && sharedFeatureUnit
+        compare && sameUnits && sharedFeatureUnit
           ? estimateDomain([...cols[0].values(), ...cols[1].values()])
           : null;
       const scroll = el('div', 'cbench-scroll');
@@ -506,11 +534,13 @@
       const t = el('table', 'cbench-table');
       t.setAttribute('aria-label', 'Side-by-side feature estimates for pinned contrasts');
       const header = t.createTHead().insertRow();
-      [
-        'Feature',
-        a ? 'A · ' + (a.snapshot.unit || 'Estimate') : 'A',
-        b ? 'B · ' + (b.snapshot.unit || 'Estimate') : 'B',
-      ].forEach((text) => {
+      const columnLabels = pins.map((pin, index) => {
+        const side = index ? 'B' : 'A';
+        if (!pin) return side;
+        const unit = units[index].size === 1 ? [...units[index]][0] : '';
+        return side + ' · ' + (unit || 'Estimate');
+      });
+      ['Feature', ...columnLabels].forEach((text) => {
         const c = el('th', '', text);
         c.scope = 'col';
         header.append(c);
@@ -518,7 +548,7 @@
       if (compare) {
         t.classList.add('cbench-with-forest');
         if (sharedDomain) header.cells[0].append(axisLabels(sharedDomain));
-        else if (!sharedFeatureUnit) header.cells[0].textContent = 'Feature · separate scales';
+        else header.cells[0].textContent = 'Feature · separate scales';
         [1, 2].forEach((column) => {
           const glyph = el('span', 'cbench-key cbench-key-' + column);
           glyph.setAttribute('aria-hidden', 'true');
@@ -529,11 +559,20 @@
       ids.forEach((id) => {
         const tr = body.insertRow();
         const exemplar = cols[0].get(id) || cols[1].get(id);
-        const name = el('th', '', exemplar.label || id);
+        const name = el('th', 'cbench-row-label', exemplar.label || id);
         name.scope = 'row';
-        name.setAttribute('aria-label', exemplar.label || id);
-        if (compare) {
-          const pair = cols.map((records) => records.get(id));
+        const pair = cols.map((records) => records.get(id));
+        const rowUnits = [
+          ...new Set(pair.flatMap((row, i) => (row ? [rowUnit(row, pins[i].snapshot)] : []))),
+        ];
+        const showRowUnit =
+          units.some((values) => values.size > 1) && rowUnits.length === 1 && rowUnits[0];
+        if (showRowUnit) name.append(el('small', '', rowUnits[0]));
+        name.setAttribute(
+          'aria-label',
+          (exemplar.label || id) + (showRowUnit ? ', ' + rowUnits[0] : ''),
+        );
+        if (matched.has(id)) {
           const domain = sharedDomain || estimateDomain(pair);
           if (domain) {
             name.append(pairPlot(pair[0], pair[1], domain, exemplar.label || id));
@@ -551,6 +590,9 @@
             return;
           }
           td.append(el('strong', '', estimate(row.estimate)));
+          if (!showRowUnit && units[i].size > 1 && rowUnit(row, pins[i].snapshot)) {
+            td.append(el('small', '', rowUnit(row, pins[i].snapshot)));
+          }
           if (hasInterval(row))
             td.append(el('small', '', '95% CI ' + estimate(row.lo) + ' to ' + estimate(row.hi)));
           if (Number.isInteger(row.n) && row.n >= 0)
@@ -675,14 +717,23 @@
       } else {
         if (!b) {
           const tip = el('div', 'cbench-tip');
-          tip.append(el('span', '', 'Change the study contrast and pin a second result to compare.'));
+          tip.append(
+            el('span', '', 'Change the study contrast and pin a second result to compare.'),
+          );
           if (onExplore) tip.append(button('Open workspace', 'cbench-text', onExplore, 'open'));
           main.append(tip);
         } else {
           const differences = [];
           if (a.snapshot.spec.design !== b.snapshot.spec.design)
             differences.push('Different study designs');
-          if (a.snapshot.unit !== b.snapshot.unit) differences.push('Different outcome units');
+          const rightRows = new Map(b.snapshot.rows.map((r) => [r.id, r]));
+          if (
+            a.snapshot.rows.some((r) => {
+              const right = rightRows.get(r.id);
+              return right && rowUnit(r, a.snapshot) !== rowUnit(right, b.snapshot);
+            })
+          )
+            differences.push('Units differ for some outcomes');
           if (differences.length)
             main.append(
               el(

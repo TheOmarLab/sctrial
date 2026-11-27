@@ -17,6 +17,7 @@ import h5py
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
+from scipy import sparse
 
 import sctrial as st
 from sctrial.interactive._document import build_workspace
@@ -123,6 +124,90 @@ class InteractiveWorkspaceTest(unittest.TestCase):
         result = LocalStudy(other_path).prepare(self.mapping)
         self.assertTrue(result["orderedVisits"])
         self.assertEqual(result["visits"], ["Before", "After", "Later"])
+
+    def test_selected_dense_and_sparse_expression_preserves_x_scale(self):
+        n = self.data.n_obs
+        index = np.arange(n)
+        matrix = np.column_stack([np.full(n, np.inf), index % 5, (index % 11) * -0.125])
+        matrix[index % 19 == 0, 2] = np.nan
+        reference = self.data.obs.copy()
+        reference["chosen"] = matrix[:, 2]
+        reference["second"] = matrix[:, 1]
+        reference = reference.groupby(["donor", "visit", "cell_type"], observed=True)[
+            ["chosen", "second"]
+        ].mean()
+        original_group_get = h5py.Group.__getitem__
+        for storage in (np.asarray, sparse.csr_matrix, sparse.csc_matrix):
+            with self.subTest(storage=storage.__name__):
+                path = self.path.with_name(storage.__name__ + ".h5ad")
+                data = self.data.copy()
+                data.var_names = ["UNSELECTED", "G1", "G2"]
+                data.X = storage(matrix)
+                data.obs["module:Proliferation"] = data.obs["score"]
+                data.write_h5ad(path)
+                local = LocalStudy(path)
+                self.assertTrue(local.schema()["geneInput"])
+                with patch.object(
+                    h5py.Group,
+                    "__getitem__",
+                    new=lambda group, key: (
+                        self.fail("Gene search read expression data")
+                        if group.name == "/" and key == "X"
+                        else original_group_get(group, key)
+                    ),
+                ):
+                    self.assertEqual(local.find_genes({"query": "g1"}), {"genes": ["G1"]})
+                    self.assertEqual(local.find_genes({"query": "not present"}), {"genes": []})
+                mapping = {
+                    **self.mapping,
+                    "scores": ["module:Proliferation", "marker"],
+                    "scoreKinds": {"marker": "pathway"},
+                    "genes": ["G2", "G1"],
+                }
+                original = h5py.Dataset.__getitem__
+
+                def guard(dataset, selected):
+                    if dataset.name == "/X":
+                        self.assertIsInstance(selected, tuple)
+                        self.assertIn(selected[1], [1, 2])
+                    return original(dataset, selected)
+
+                with patch.object(h5py.Dataset, "__getitem__", new=guard):
+                    study = local.prepare(mapping)
+                features = study["features"]
+                self.assertEqual(
+                    [f["kind"] for f in features], ["module", "pathway", "gene", "gene"]
+                )
+                self.assertEqual(
+                    [f["label"] for f in features], ["Proliferation", "marker", "G2", "G1"]
+                )
+                self.assertEqual(features[2]["unit"], "Expression (X scale)")
+                self.assertEqual(study["mapping"], mapping)
+                for r in study["observations"]:
+                    if r["population"] == study["populations"][0]:
+                        continue
+                    expected = reference.loc[(r["id"], r["visit"], r["population"])]
+                    self.assertAlmostEqual(r["scores"]["gene_1"], expected.chosen)
+                    self.assertAlmostEqual(r["scores"]["gene_2"], expected.second)
+                self.assertEqual(local.prepare(mapping)["studyId"], study["studyId"])
+                genes_only = local.prepare({**self.mapping, "scores": [], "genes": ["G1"]})
+                self.assertEqual([f["label"] for f in genes_only["features"]], ["G1"])
+                fit = local.fit(
+                    {
+                        "studyId": genes_only["studyId"],
+                        "design": "cross",
+                        "arm": "A",
+                        "reference": "B",
+                        "visit": "Before",
+                        "population": "T cell",
+                    }
+                )["rows"][0]
+                values = reference.xs(("Before", "T cell"), level=("visit", "cell_type")).second
+                in_a = values.index.astype(str).str.startswith("A")
+                self.assertAlmostEqual(fit["estimate"], values[in_a].mean() - values[~in_a].mean())
+                self.assertEqual(fit["n"], len(values))
+                with self.assertRaisesRegex(ValueError, "Unknown X variable"):
+                    local.prepare({**self.mapping, "genes": ["MISSING"]})
 
     def test_fits_match_package_with_missing_pairs_and_feature_values(self):
         study = self.workspace.prepare(self.mapping)

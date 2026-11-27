@@ -335,3 +335,50 @@
   overflow: hidden;
   clip-path: inset(50%);
 }
+
+.local-mapping .lm-gene-input {
+  margin-top: 12px;
+}
+.local-mapping .lm-gene-input input {
+  min-width: 0;
+  padding: 8px 10px;
+  color: var(--mapping-ink);
+  background: #fff;
+  border: 1px solid #bfc4d4;
+  border-radius: 6px;
+}
+.local-mapping .lm-score-row {
+  display: flex;
+  align-items: center;
+}
+.local-mapping .lm-score-row + .lm-score-row {
+  border-top: 1px solid #e8e9ef;
+}
+.local-mapping .lm-score-row .lm-score {
+  flex: 1;
+  min-width: 0;
+}
+.local-mapping select.lm-score-type {
+  width: min(125px, 40%);
+  font-size: 11px;
+  min-height: 26px;
+  padding: 2px 3px;
+  margin: 2px 4px;
+}
+
+.local-mapping .lm-gene-matches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.local-mapping .lm-gene-matches:not(:empty) {
+  margin-top: 6px;
+}
+.local-mapping .lm-gene-match {
+  border: 1px solid #d1cde6;
+  border-radius: 5px;
+  padding: 3px 7px;
+  background: #f4f2fb;
+  color: #433983;
+  font-size: 12px;
+}

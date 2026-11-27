@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from importlib.resources import files
 
 _STYLES = (
@@ -17,7 +18,9 @@ _STYLES = (
     "editor",
     "evidence",
     "matrix",
-    "pairing",
+    "app-menu",
+    "cells",
+    "molecular",
 )
 _SCRIPTS = (
     "csv",
@@ -30,7 +33,11 @@ _SCRIPTS = (
     "sheets",
     "matrix",
     "evidence",
-    "pairing",
+    "app-menu",
+    "cell-art",
+    "cells",
+    "molecular",
+    "gene-sets",
     "studio",
 )
 
@@ -42,12 +49,34 @@ def build_workspace() -> bytes:
     def read(name: str) -> str:
         return assets.joinpath(name).read_text(encoding="utf-8")
 
+    sample = json.loads(read("example.json"))
+    molecular = json.loads(read("molecular-demo.json"))
+    for feature in sample["features"]:
+        feature.update(kind="module", unit="Mean module score")
+    sample["features"].extend(molecular["features"])
+    sample["populations"].extend(molecular.get("additionalPopulations", []))
+    # The molecular example uses the original study's participant, visit, and population keys.
+    scores = {
+        (row["id"], row["visit"], row["population"]): row["scores"]
+        for row in molecular["observations"]
+    }
+    for row in sample["observations"]:
+        row["scores"].update(scores[(row["id"], row["visit"], row["population"])])
+    for contrast, rows in molecular["results"].items():
+        sample["results"].setdefault(contrast, []).extend(rows)
+    sample["resultWarnings"] = molecular["resultWarnings"]
+    sample["study"]["molecular"] = {
+        **molecular["provenance"],
+        "additionalPopulations": molecular["additionalPopulations"],
+    }
+    fixture = json.dumps(sample, separators=(",", ":"), ensure_ascii=False)
+
     style = "\n".join(read(name + ".css") for name in _STYLES)
     scripts = "\n".join(read(name + ".js") for name in _SCRIPTS)
     return (
         read("shell.html")
         .replace("/*STYLE*/", style)
         .replace("/*SCRIPT*/", scripts)
-        .replace("/*FIXTURE*/", read("example.json").strip())
+        .replace("/*FIXTURE*/", fixture)
         .encode("utf-8")
     )

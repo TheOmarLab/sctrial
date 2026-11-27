@@ -88,7 +88,11 @@ class WorkspaceHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         if not self._trusted(api=True, mutation=True):
             return
-        actions = {"/local/study": self.server.study.prepare, "/local/fit": self.server.study.fit}
+        actions = {
+            "/local/study": self.server.study.prepare,
+            "/local/fit": self.server.study.fit,
+            "/local/genes": self.server.study.find_genes,
+        }
         action = actions.get(urlsplit(self.path).path)
         if action is None:
             self._json(404, {"error": "Unknown workspace route."})

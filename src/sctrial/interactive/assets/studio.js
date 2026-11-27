@@ -17,8 +17,7 @@
     download: '<path d="M12 3v11m-4-4 4 4 4-4M4 16v4h16v-4"/>',
     menu: '<path d="M3 5h18M3 12h18M3 19h18"/>',
     close: '<path d="m6 6 12 12m0-12L6 18"/>',
-    paired:
-      '<circle cx="6" cy="15" r="3"/><circle cx="18" cy="8" r="3"/><path d="m8.5 13.4 7-4.2"/>',
+    paired: '<circle cx="6" cy="15" r="3"/><circle cx="18" cy="8" r="3"/><path d="m8.5 13.4 7-4.2"/>',
     cells:
       '<circle cx="8" cy="8" r="4"/><circle cx="16.5" cy="14.5" r="4.5"/><circle cx="6" cy="18" r="2"/>',
     calendar:
@@ -31,8 +30,7 @@
   };
   Object.assign(icons, {
     down: '<path d="m6 9 6 6 6-6"/>',
-    studio:
-      '<path d="M3 19V5m0 11 5-5 4 3 8-9"/><circle cx="8" cy="11" r="1.5"/><path d="M3 20h18"/>',
+    studio: '<path d="M3 19V5m0 11 5-5 4 3 8-9"/><circle cx="8" cy="11" r="1.5"/><path d="M3 20h18"/>',
     stack: '<rect x="5" y="7" width="14" height="13" rx="2"/><path d="M8 4h8m-6 8h4"/>',
     pin: '<path d="m8 3 9 2-2 5 3 3-1 2-6-1-5 7 2-8-4-1 1-2 3-1Z"/>',
     open: '<path d="M3 6h7l2 2h8v3M3 6v13h15l3-7H8l-3 7"/>',
@@ -74,6 +72,15 @@
     cross: 'Cross-sectional',
     observe: 'Single-visit mean',
   };
+  const molecularModes = ['genes', 'pathways', 'modules'];
+  const figureModes = [
+    'cells',
+    ...molecularModes,
+    'comparison',
+    'measurements',
+    'trajectory',
+    'changes',
+  ];
   const titles = {
     overview: 'Analysis',
     participants: 'Cohort explorer',
@@ -93,6 +100,9 @@
     privateCounter = 0;
   let past = [],
     future = [];
+  let playbackTimer = 0;
+  let playbackVisit = null;
+  let lastRecords = null;
   let currentFit = null,
     fitTask = null,
     fitStatus = 'idle',
@@ -106,15 +116,48 @@
   const name = () => (synthetic() ? sample.study.name : study.title);
   const source = () => (synthetic() ? 'Synthetic study' : native() ? 'Local H5AD' : 'Local CSV');
   const feature = () => study.features.find((f) => f.id === state.feature) || study.features[0];
-  const unit = () =>
-    synthetic() ? 'Mean module score' : native() ? study.unit || 'Mean score' : 'Recorded score';
+  const unitOf = (f) => f?.unit || study.unit || (synthetic() ? 'Mean module score' : 'Recorded score');
+  const unit = () => unitOf(feature());
+  const fdrFamily = (f) =>
+    synthetic()
+      ? ['gene', 'pathway'].includes(f?.kind)
+        ? 'Eight illustrative gene and pathway outcomes'
+        : 'Four original module scores'
+      : fitted()
+        ? 'Tested features in this comparison'
+        : null;
+  function fitProvenance(f) {
+    if (!synthetic()) return native() && fitted() ? { package: 'sctrial ' + study.version } : {};
+    const original = study.study,
+      supplement = original.molecular;
+    const molecularOutcome = ['gene', 'pathway'].includes(f?.kind);
+    if (
+      supplement &&
+      (molecularOutcome || supplement.additionalPopulations?.includes(state.population))
+    ) {
+      return {
+        package: supplement.package,
+        seed: molecularOutcome ? supplement.seed : original.seed,
+        referenceChecksum: supplement.baseSha256,
+      };
+    }
+    return { package: original.package, seed: original.seed, commit: original.commit };
+  }
+  const scopeRows = (rows) =>
+    rows.map((r) => {
+      const f = study.features.find((f) => f.id === (r.id || r.feature));
+      return {
+        ...r,
+        unit: unitOf(f),
+        fdrFamily: fdrFamily(f),
+        fitPackage: fitProvenance(f).package || null,
+      };
+    });
   const nfmt = (n) => (Number.isFinite(n) ? n.toLocaleString('en-US') : '—');
   const mean = (xs) => (xs.length ? xs.reduce((x, y) => x + y, 0) / xs.length : null);
   const second = () => arms.find((a) => a !== state.arm);
   const armsIn = () =>
-    ['paired', 'observe'].includes(state.design)
-      ? [state.arm]
-      : [state.arm, second()].filter(Boolean);
+    ['paired', 'observe'].includes(state.design) ? [state.arm] : [state.arm, second()].filter(Boolean);
   const datesIn = () => (isLong() ? [state.baseline, state.visit] : [state.visit]);
   const designs = () => [
     ...(arms.length > 1 && study.visits.length > 1 ? ['did'] : []),
@@ -125,7 +168,7 @@
   const contrast = () => armsIn().join(' − ') + ' · ' + datesIn().join(' → ');
   const key = () =>
     JSON.stringify([state.design, state.arm, state.baseline, state.visit, state.population]);
-  const color = (a) => (arms.indexOf(a) === 0 ? '#5145bb' : '#247778');
+  const color = (a) => (arms.indexOf(a) === 0 ? '#2969d5' : '#b86120');
   const rowAt = (id, v) => obsByPerson.get(id)?.get(v)?.get(state.population);
   const rowObserved = (r) => r && r.cells > 0;
   const method = () =>
@@ -136,6 +179,10 @@
         : state.design === 'observe'
           ? 'Mean across observed participants'
           : 'Unadjusted descriptive participant differences';
+  const fitWarnings = () =>
+    synthetic()
+      ? study.resultWarnings?.[[state.design, state.arm, state.visit, state.population].join('|')] || []
+      : currentFit?.warnings || [];
   const ready = () => !native() || !fitted() || fitStatus === 'ready';
   function clearFit() {
     if (fitTask) fitTask.abort();
@@ -145,13 +192,16 @@
     fitMessage = '';
   }
   function init(next) {
+    if ($('cellStage')) window.SctrialCells?.dispose($('cellStage'));
+    if ($('molecularStage')) window.SctrialMolecular.dispose($('molecularStage'));
+    playbackVisit = null;
+    lastRecords = null;
     clearFit();
     past = [];
     future = [];
     fitCache.clear();
     rowCache.clear();
     study = next;
-    window.SctrialChrome?.setStudy(study);
     arms = [...new Set(study.participants.map((p) => p.arm))];
     personById = new Map(study.participants.map((p) => [p.id, p]));
     obsByPerson = new Map();
@@ -173,20 +223,20 @@
       design: designs()[0],
       arm: arms[0],
       baseline,
+      browseVisit: baseline,
       visit: study.visits.find((v) => v !== baseline) || baseline,
       population: study.populations[0],
       feature: study.features[0].id,
-      mode: 'comparison',
+      mode: 'cells',
       selectedId: null,
     };
     peopleContext = {};
     sheets.reset('Primary analysis');
     bench.setStudy(synthetic() ? 'immune-study-62834-v1' : 'local-' + ++privateCounter, {
       persist: synthetic(),
-      sharedFeatureUnit: synthetic(),
+      sharedFeatureUnit: new Set(study.features.map(unitOf)).size === 1 && synthetic(),
     });
     render();
-    if (native() && fitted()) void requestFit();
   }
   function currentRows() {
     if (native() && fitted()) return currentFit?.rows || [];
@@ -229,6 +279,7 @@
       });
     }
     if (rowCache.size >= 32) rowCache.delete(rowCache.keys().next().value);
+    rows = scopeRows(rows);
     rowCache.set(k, rows);
     return rows;
   }
@@ -261,10 +312,10 @@
         own.signal,
       );
       if (own.signal.aborted || file !== study || key() !== k) return;
-      currentFit = fit;
+      currentFit = { ...fit, rows: scopeRows(fit.rows) };
       fitStatus = 'ready';
       if (fitCache.size >= 24) fitCache.delete(fitCache.keys().next().value);
-      fitCache.set(k, fit);
+      fitCache.set(k, currentFit);
     } catch (error) {
       if (own.signal.aborted || study !== file || key() !== k) return;
       fitStatus = 'error';
@@ -276,21 +327,34 @@
       }
     }
   }
+  function fitWhenVisible() {
+    if (
+      native() &&
+      fitted() &&
+      fitStatus === 'idle' &&
+      (state.view === 'results' ||
+        (state.view === 'overview' && !['cells', ...molecularModes].includes(state.mode)))
+    ) {
+      void requestFit();
+    }
+  }
   function refreshFit() {
     updateTop();
-    if (state.view === 'overview') paintEvidence();
+    if ($('resFile') && $('dialog').open) $('resFile').disabled = !ready();
+    if (state.view === 'overview' && state.mode === 'comparison') paintEvidence();
     else if (state.view === 'results') renderResultsView();
   }
   function setParam(field, value) {
     if (state[field] === value) return;
     remember();
+    const oldReference = state.baseline;
     state[field] = value;
     state.selectedId = null;
     if (isLong() && state.baseline === state.visit)
-      state.visit = study.visits.find((v) => v !== state.baseline);
+      state.visit =
+        oldReference !== state.baseline ? oldReference : study.visits.find((v) => v !== state.baseline);
     clearFit();
     render();
-    if (native() && fitted()) void requestFit();
   }
   const bench = createContrastBench({
     getSnapshot: () =>
@@ -306,6 +370,7 @@
               visit: state.visit,
               population: state.population,
               feature: state.feature,
+              browseVisit: state.browseVisit,
               mode: state.mode,
             },
             rows: currentRows(),
@@ -325,6 +390,7 @@
         design,
         arm,
         baseline: baseline || state.baseline,
+        browseVisit: study.visits.includes(spec.browseVisit) ? spec.browseVisit : visit,
         visit,
         population,
         feature: study.features.some((f) => f.id === id) ? id : study.features[0].id,
@@ -333,11 +399,10 @@
       });
       clearFit();
       navigate('overview');
-      if (native() && fitted()) void requestFit();
     },
     onNotice: (message) => toast(message),
     onChange: (n) => setBadge(n),
-    onExplore: () => navigate('overview'),
+    onExplore: () => changeViewMode('comparison'),
   });
   const sheets = window.createAnalysisSheets({
     getStudy: () => ({
@@ -351,18 +416,20 @@
       designs: designs(),
       fixedBaseline: synthetic() ? sample.visits[0] : null,
     }),
-    getSpec: () => ({ ...snapshotSpec(), mode: state.mode, visitOrder: [...study.visits] }),
+    getSpec: () => ({
+      ...snapshotSpec(),
+      mode: state.mode,
+      visitOrder: [...study.visits],
+    }),
     onOpen: ({ visitOrder, ...spec }) => {
       past = [];
       future = [];
       if (visitOrder) {
         study.visits = [...visitOrder];
-        window.SctrialChrome?.setStudy(study);
       }
       Object.assign(state, spec, { selectedId: null });
       clearFit();
       navigate('overview');
-      if (native() && fitted()) void requestFit();
     },
     onRename: () => updateTop(),
   });
@@ -372,13 +439,40 @@
     $('pinCount').hidden = !count;
   }
   function updateTop() {
+    if (!figureModes.includes(state.mode)) state.mode = 'cells';
+    document.body.dataset.mode = state.view === 'overview' ? state.mode : state.view;
+    window.SctrialNavigation?.sync(document.body.dataset.mode);
+    const modeSelect = $('chartMode');
+    if (modeSelect) {
+      let secondary = modeSelect.querySelector('[data-secondary]');
+      if (state.view !== 'overview' && !secondary) {
+        secondary = new Option('', '');
+        secondary.dataset.secondary = '';
+        secondary.hidden = true;
+        secondary.disabled = true;
+        modeSelect.add(secondary);
+      }
+      if (secondary) secondary.textContent = titles[state.view];
+      modeSelect.value = state.view === 'overview' ? state.mode : '';
+      const changes = modeSelect.querySelector('[value="changes"]');
+      if (changes) changes.textContent = isLong() ? 'Changes' : 'Distribution';
+    }
+    document.querySelectorAll('button[data-mode]').forEach((b) => {
+      const key = b.getAttribute('role') === 'menuitemradio' ? 'aria-checked' : 'aria-pressed';
+      b.setAttribute(key, String(state.view === 'overview' && b.dataset.mode === state.mode));
+    });
     $('studyName').textContent = name();
     $('sourceBadge').textContent = source();
     $('studyCount').textContent = nfmt(study.participants.length) + ' participants';
     $('pageTitle').textContent = state.view === 'overview' ? sheets.title() : titles[state.view];
-    $('sectionCrumb').textContent =
-      state.view === 'overview' ? 'Analysis workbook' : titles[state.view];
+    $('sectionCrumb').textContent = state.view === 'overview' ? 'Analysis workbook' : titles[state.view];
     sheets.setVisible(state.view === 'overview');
+    window.SctrialAppMenu?.setState({
+      view: state.view,
+      mode: state.mode,
+      longitudinal: isLong(),
+      canPin: ready(),
+    });
     $('pinButton').hidden = state.view === 'bench';
     $('pinButton').disabled = !ready();
     $('pinButton').title = ready() ? 'Save this comparison' : 'Waiting for a fitted result';
@@ -399,18 +493,19 @@
     icon(glyph) +
     esc(text) +
     '</button>';
-  function modes() {
-    return [
-      ['comparison', 'Comparison', 'chart'],
-      ['trajectory', 'Trajectories', 'trend'],
-      ['changes', isLong() ? 'Changes' : 'Distribution', 'points'],
-    ];
-  }
-
   function comparisonRecords() {
+    const specKey = JSON.stringify([
+      state.design,
+      state.arm,
+      state.baseline,
+      state.visit,
+      state.population,
+      state.feature,
+    ]);
+    if (lastRecords?.study === study && lastRecords.key === specKey) return lastRecords.rows;
     const groups = armsIn();
     const visitNames = datesIn();
-    return study.participants
+    const rows = study.participants
       .filter((p) => groups.includes(p.arm))
       .map((p) => {
         const values = visitNames.map((v) => {
@@ -428,6 +523,8 @@
           reason: missing.length ? 'Missing score at ' + missing.join(' and ') : '',
         };
       });
+    lastRecords = { study, key: specKey, rows };
+    return rows;
   }
 
   function paintEvidence(records = comparisonRecords()) {
@@ -436,9 +533,7 @@
     const r = currentRows().find((row) => row.id === state.feature);
     const armData = armsIn().map((name) => {
       const people = records.filter((p) => p.arm === name && p.contributes);
-      const values = people.map((p) =>
-        isLong() ? p.followupValue - p.baselineValue : p.followupValue,
-      );
+      const values = people.map((p) => (isLong() ? p.followupValue - p.baselineValue : p.followupValue));
       const ids = people.map((p) => p.id);
       return {
         name,
@@ -452,7 +547,11 @@
     const formula = armsIn().join(' − ');
     window.SctrialEvidence.render(host, {
       arms: armData,
+      records,
       onSelect: selectPerson,
+      onInspectTable: () => changeViewMode('measurements'),
+      onOpenMatrix: () => changeViewMode('measurements'),
+      onConfigure: configure,
       estimate: r?.estimate ?? null,
       interval: [r?.lo, r?.hi].every(Number.isFinite) ? [r.lo, r.hi] : null,
       contrast: formula,
@@ -463,18 +562,19 @@
       visit: state.visit,
       model: method(),
       descriptive: !fitted(),
+      fdrFamily: fdrFamily(feature()),
       status: fitStatus === 'loading' ? 'Fitting comparison…' : fitMessage || r?.reason || '',
     });
     const retryArea = $('fitRetry');
     retryArea.replaceChildren();
     if (fitStatus === 'error') retryArea.innerHTML = button('retry', 'refresh', 'Retry fit', 'btn');
-    if (currentFit?.warnings?.length) {
+    if (fitWarnings().length) {
       const notes = document.createElement('details');
       notes.className = 'fit-warnings';
       const title = document.createElement('summary');
-      title.textContent = 'Model notes (' + currentFit.warnings.length + ')';
+      title.textContent = 'Model notes (' + fitWarnings().length + ')';
       notes.append(title);
-      for (const message of currentFit.warnings) {
+      for (const message of fitWarnings()) {
         const p = document.createElement('p');
         p.textContent = message;
         notes.append(p);
@@ -501,11 +601,12 @@
   function paintCanvas() {
     const active = armsIn();
     const byId = new Map();
+    const measured = new Set();
     const id = state.feature;
     for (const row of byPopulation.get(state.population) || []) {
-      if (!active.includes(row.arm) || !rowObserved(row) || !Number.isFinite(row.scores[id]))
-        continue;
+      if (!active.includes(row.arm) || !rowObserved(row) || !Number.isFinite(row.scores[id])) continue;
       if (!byId.has(row.id)) byId.set(row.id, { id: row.id, arm: row.arm, points: [] });
+      measured.add(row.visit);
       byId.get(row.id).points.push({ visit: row.visit, value: row.scores[id] });
     }
     renderContrastCanvas(
@@ -526,6 +627,7 @@
       },
       { onSelectParticipant: selectPerson, onVisit: (v) => setParam('visit', v) },
     );
+    return study.visits.filter((v) => measured.has(v));
   }
 
   const scoreFormat = new Intl.NumberFormat('en-US', { maximumSignificantDigits: 6 });
@@ -585,11 +687,72 @@
     );
   }
 
+  const wideRecord = window.matchMedia('(min-width: 930px)');
+  let recordTrigger = null;
+
+  function closeRecord(restore = false) {
+    const drawer = $('recordDrawer');
+    if (drawer) {
+      drawer.remove();
+      $('page').classList.remove('ed-with-record');
+      if (restore) {
+        const previous = recordTrigger?.element;
+        const replacement =
+          recordTrigger?.label &&
+          Array.from($('page').querySelectorAll('[aria-label]')).find(
+            (el) => el.getAttribute('aria-label') === recordTrigger.label,
+          );
+        const target = previous?.isConnected
+          ? previous
+          : replacement || $('page').querySelector('[data-param="feature"]');
+        target?.focus({ preventScroll: true });
+      }
+      recordTrigger = null;
+    }
+    if ($('dialog').open && $('dialog').dataset.kind === 'participant') finish();
+  }
+
   function selectPerson(id) {
     if (id == null || !personById.has(id)) return;
     state.selectedId = id;
-    modal('Participant ' + id, participantDetail(personById.get(id)), 'participant');
+    const title = 'Participant ' + id;
+    const content = participantDetail(personById.get(id));
+    if (!wideRecord.matches) {
+      modal(title, content, 'participant');
+      return;
+    }
+    let drawer = $('recordDrawer');
+    const trigger = document.activeElement;
+    if (!drawer?.contains(trigger)) {
+      recordTrigger = { element: trigger, label: trigger?.getAttribute('aria-label') };
+    }
+    if (!drawer) {
+      drawer = document.createElement('aside');
+      drawer.id = 'recordDrawer';
+      drawer.className = 'ed-inspector';
+      drawer.setAttribute('role', 'dialog');
+      drawer.setAttribute('aria-modal', 'false');
+      drawer.setAttribute('aria-labelledby', 'recordHeading');
+      drawer.tabIndex = -1;
+      $('page').classList.add('ed-with-record');
+      $('page').append(drawer);
+    }
+    drawer.innerHTML =
+      '<div class="ed-inspector-head"><h2 id="recordHeading">' +
+      esc(title) +
+      '</h2><button type="button" class="icon-btn" data-action="closeRecord" aria-label="Close record">' +
+      icon('close') +
+      '</button></div>' +
+      content;
+    drawer.focus({ preventScroll: true });
   }
+
+  wideRecord.addEventListener('change', () => {
+    if (!$('recordDrawer') && !($('dialog').open && $('dialog').dataset.kind === 'participant')) return;
+    const id = state.selectedId;
+    closeRecord();
+    if (id != null) selectPerson(id);
+  });
 
   function setFeature(id) {
     if (!study.features.some((f) => f.id === id) || id === state.feature) return;
@@ -600,96 +763,293 @@
     else render();
   }
 
-  function editorTabs() {
+  function changeViewMode(mode) {
+    if (!figureModes.includes(mode)) return;
+    const viewChanged = state.view !== 'overview';
+    if (!viewChanged && mode === state.mode) return;
+    state.mode = mode;
+    if (viewChanged) navigate('overview');
+    else render();
+  }
+
+  function editLink(field, value, label, className, glyph) {
     return (
-      '<div class="ed-tabs" role="group" aria-label="Analysis view">' +
-      modes()
-        .map(
-          ([key, label, glyph]) =>
-            '<button type="button" data-mode="' +
-            key +
-            '" aria-pressed="' +
-            (state.mode === key) +
-            '">' +
-            icon(glyph) +
-            esc(label) +
-            '</button>',
-        )
-        .join('') +
-      '</div>'
+      '<button type="button" class="ed-edit ' +
+      className +
+      '" data-configure="' +
+      field +
+      '" aria-label="' +
+      esc(label) +
+      '" title="' +
+      esc(label) +
+      '">' +
+      esc(value) +
+      (glyph ? icon(glyph) : '') +
+      '</button>'
     );
   }
 
-  function editorSummary() {
-    const scope = [
-      ['Study design', labels[state.design], 'design'],
-      [armsIn().length > 1 ? 'Group order' : 'Group', armsIn().join(' − '), 'arm'],
-      [isLong() ? 'Visits' : 'Visit', datesIn().join(' → '), 'visit'],
-      ['Population', state.population, 'population'],
-    ];
+  function inlineChoice(field, label, choices) {
     return (
-      '<div class="ed-spec">' +
-      scope
-        .map(
-          ([label, value, field]) =>
-            '<button type="button" data-configure="' +
-            field +
-            '" aria-label="Configure ' +
-            esc(label) +
-            '"><span>' +
-            esc(label) +
-            '</span><b>' +
-            esc(value) +
-            '</b></button>',
-        )
-        .join('') +
-      '</div>'
+      '<label class="ed-choice" title="' +
+      esc(label) +
+      '"><span aria-hidden="true">' +
+      esc(state[field]) +
+      '</span>' +
+      icon('down') +
+      '<select data-param="' +
+      field +
+      '" aria-label="' +
+      esc(label) +
+      '">' +
+      choices.map((v) => option(v, state[field])).join('') +
+      '</select></label>'
     );
   }
 
-  function outcomePicker() {
+  function visitContext() {
+    if (!isLong()) return inlineChoice('visit', 'Selected visit', study.visits);
+    const reference = synthetic()
+      ? '<span class="ed-reference">' + esc(state.baseline) + '</span>'
+      : inlineChoice('baseline', 'Reference visit', study.visits);
     return (
-      '<label class="ed-outcome"><span>Outcome</span><span class="ed-select-wrap">' +
+      reference +
+      '<span class="ed-direction" aria-hidden="true">→</span>' +
+      inlineChoice(
+        'visit',
+        synthetic() ? 'Follow-up visit' : 'Comparison visit',
+        study.visits.filter((v) => v !== state.baseline),
+      )
+    );
+  }
+
+  function figureHeading() {
+    const groupName = armsIn().join(' − ');
+    const outcome = feature().label;
+    return (
+      '<header class="ed-heading"><div class="ed-method-line">' +
+      editLink('design', labels[state.design], 'Configure', 'ed-method', 'sliders') +
+      '<span aria-hidden="true" class="ed-separator">/</span>' +
+      editLink('arm', groupName, 'Configure group order', 'ed-contrast') +
+      '</div><h1 class="ed-title" aria-label="' +
+      esc(outcome) +
+      '">' +
+      '<label class="ed-outcome"><span class="ed-name" aria-hidden="true">' +
+      esc(outcome) +
+      '</span>' +
+      icon('down') +
       '<select aria-label="Outcome" data-param="feature">' +
       study.features.map((f) => option(f.id, state.feature, f.label)).join('') +
-      '</select>' +
-      icon('down') +
-      '</span></label>'
+      '</select></label></h1><div class="ed-context">' +
+      visitContext() +
+      '<span aria-hidden="true" class="ed-separator">·</span>' +
+      inlineChoice('population', 'Cell population', study.populations) +
+      '</div></header>'
     );
+  }
+
+  function cellArtboard(page) {
+    let host = $('cellStage');
+    if (!host) {
+      if ($('plot')) disposeContrastCanvas($('plot'));
+      host = document.createElement('div');
+      host.id = 'cellStage';
+      page.replaceChildren(host);
+    }
+    const pooled = native() || synthetic() ? study.populations[0] : null;
+    const cellTypes = synthetic() ? study.cellTypes || [] : native() ? study.populations.slice(1) : [];
+    window.SctrialCells.render(host, {
+      studyName: name(),
+      source: source(),
+      sourceKind: synthetic() ? 'synthetic' : native() ? 'h5ad' : 'csv',
+      populations: study.populations,
+      allLabel: pooled,
+      cellTypes,
+      observations: study.observations,
+      selected: state.population,
+      onSelect: (population) => {
+        if (study.populations.includes(population)) setParam('population', population);
+      },
+      onAnalyze: (population) => {
+        if (!study.populations.includes(population)) return;
+        if (population !== state.population) {
+          remember();
+          state.population = population;
+          state.selectedId = null;
+          clearFit();
+        }
+        changeViewMode('comparison');
+      },
+      onOpenStudy: openStudy,
+    });
+  }
+
+  function stopPlayback() {
+    clearInterval(playbackTimer);
+    playbackTimer = 0;
+    const button = $('trajectoryPlayback');
+    if (button) {
+      button.textContent = '▶';
+      button.setAttribute('aria-label', 'Play visits');
+      button.title = 'Play observed visits';
+      button.setAttribute('aria-pressed', 'false');
+    }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopPlayback();
+  });
+  window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', stopPlayback);
+
+  function visitPlayer() {
+    return (
+      '<div class="ed-playback"><button type="button" id="trajectoryPlayback" aria-label="Play visits" title="Play observed visits">▶</button>' +
+      '<label for="trajectoryBrowse">Browse visits</label><input id="trajectoryBrowse" type="range" aria-label="Browse observed visits" min="0" step="1">' +
+      '<output for="trajectoryBrowse" id="trajectoryFrame"></output></div>'
+    );
+  }
+
+  function setupPlayback(visits) {
+    const slider = $('trajectoryBrowse'),
+      button = $('trajectoryPlayback'),
+      output = $('trajectoryFrame');
+    slider.max = Math.max(0, visits.length - 1);
+    slider.disabled = button.disabled = visits.length < 2;
+    const show = (index) => {
+      const visit = visits[index] ?? null;
+      playbackVisit = visit;
+      slider.value = index;
+      slider.setAttribute('aria-valuetext', visit || 'No measured visits');
+      output.textContent = visit
+        ? visit + ' · ' + (index + 1) + '/' + visits.length
+        : 'No measured visits';
+      window.setContrastVisitCursor($('plot'), visit);
+    };
+    show(Math.max(0, visits.indexOf(playbackVisit)));
+    slider.oninput = () => {
+      stopPlayback();
+      show(Number(slider.value));
+    };
+    button.onclick = () => {
+      if (playbackTimer) {
+        stopPlayback();
+        return;
+      }
+      if (Number(slider.value) === visits.length - 1) show(0);
+      button.textContent = 'Ⅱ';
+      button.setAttribute('aria-label', 'Pause visits');
+      button.title = 'Pause visit playback';
+      button.setAttribute('aria-pressed', 'true');
+      playbackTimer = setInterval(() => {
+        if (!slider.isConnected) {
+          stopPlayback();
+          return;
+        }
+        const index = Number(slider.value) + 1;
+        if (index < visits.length) show(index);
+        if (index >= visits.length - 1) stopPlayback();
+      }, 1050);
+    };
+  }
+
+  function molecularArtboard(page) {
+    let host = $('molecularStage');
+    if (!host) {
+      if ($('plot')) disposeContrastCanvas($('plot'));
+      host = document.createElement('div');
+      host.id = 'molecularStage';
+      page.replaceChildren(host);
+    }
+    const referenceIsBrowsed = isLong() && state.browseVisit === state.baseline;
+    const comparisonVisit = referenceIsBrowsed ? state.visit : state.browseVisit;
+    const visits = isLong() ? [state.baseline, comparisonVisit] : [comparisonVisit];
+    window.SctrialMolecular.render(host, {
+      mode: state.mode,
+      study,
+      selectedFeature: state.feature,
+      selectedPopulation: state.population,
+      selectedVisit: state.browseVisit,
+      selectedArm: state.arm,
+      analysisContext: armsIn().join(' − ') + ' · ' + visits.join(' → '),
+      analysisRequiresExistingVisit: referenceIsBrowsed,
+      source: source(),
+      onFeature: setFeature,
+      onDisplayedFeature: (id) => {
+        state.feature = id;
+      },
+      onLinkGeneSet: synthetic()
+        ? null
+        : (featureId) =>
+            window.SctrialGeneSets.open({
+              study,
+              featureId,
+              show: modal,
+              close: finish,
+              onChange: () => molecularArtboard(page),
+            }),
+      onVisit: (visit) => {
+        if (!study.visits.includes(visit) || visit === state.browseVisit) return;
+        remember();
+        state.browseVisit = visit;
+        updateTop();
+        molecularArtboard(page);
+      },
+      onPopulation: (population) => {
+        if (study.populations.includes(population)) setParam('population', population);
+      },
+      onAnalyze: (id) => {
+        if (!study.features.some((f) => f.id === id)) return;
+        if (id !== state.feature || comparisonVisit !== state.visit) {
+          remember();
+          if (comparisonVisit !== state.visit) clearFit();
+          state.feature = id;
+          state.visit = comparisonVisit;
+          state.selectedId = null;
+        }
+        changeViewMode('comparison');
+      },
+      onOpenStudy: openStudy,
+    });
   }
 
   function overview() {
     const focusKey = document.activeElement?.getAttribute('data-param');
-    if ($('plot')) disposeContrastCanvas($('plot'));
-    $('page').innerHTML =
-      '<section class="ed-workbook" aria-label="Analysis editor">' +
-      '<div class="ed-definition">' +
-      outcomePicker() +
-      '<button class="ed-configure" type="button" data-configure="design">' +
-      icon('sliders') +
-      'Configure</button></div>' +
-      editorSummary() +
-      editorTabs() +
-      (state.mode === 'comparison'
-        ? '<div class="comparison-workarea"><div id="effectPlot"></div><div id="pairMap"></div></div>' +
-          '<div id="fitRetry"></div><div id="participantMatrix"></div>'
-        : '<section class="ed-exploration" aria-label="Participant plot"><div id="plot"></div></section>') +
-      '</section>';
-    if (state.mode === 'comparison') {
-      const records = comparisonRecords();
-      paintEvidence(records);
-      window.SctrialPairMap.render($('pairMap'), {
-        records,
-        studyArms: arms,
-        arms: armsIn(),
-        baseline: state.baseline,
-        visit: state.visit,
-        longitudinal: isLong(),
-        onSelect: selectPerson,
-      });
-      paintMatrix(records);
-    } else paintCanvas();
-    if (focusKey) document.querySelector('#page [data-param="' + focusKey + '"]')?.focus();
+    const page = $('page');
+    if (state.mode === 'cells') {
+      cellArtboard(page);
+      return;
+    }
+    if (molecularModes.includes(state.mode)) {
+      molecularArtboard(page);
+      return;
+    }
+    const active = page.firstElementChild;
+    if (active?.classList.contains('ed-document') && active.dataset.display === state.mode) {
+      active.querySelector('.ed-heading').outerHTML = figureHeading();
+    } else {
+      if ($('plot')) disposeContrastCanvas($('plot'));
+      const surface =
+        state.mode === 'comparison'
+          ? '<div id="effectPlot"></div><div id="fitRetry"></div>'
+          : state.mode === 'measurements'
+            ? '<div id="participantMatrix"></div>'
+            : (state.mode === 'trajectory' ? visitPlayer() : '') +
+              '<div id="plot" aria-label="Participant plot"></div>';
+      page.innerHTML =
+        '<article class="ed-document" data-display="' +
+        esc(state.mode) +
+        '">' +
+        figureHeading() +
+        surface +
+        '</article>';
+    }
+    if (state.mode === 'comparison') paintEvidence();
+    else if (state.mode === 'measurements') paintMatrix(comparisonRecords());
+    else {
+      const observed = paintCanvas();
+      if (state.mode === 'trajectory') setupPlayback(observed);
+    }
+    if (focusKey)
+      document.querySelector('#page [data-param="' + focusKey + '"]')?.focus({ preventScroll: true });
   }
 
   function configure(focusField = 'design') {
@@ -738,11 +1098,7 @@
             : '') +
           selectField(
             'visit',
-            longitudinal
-              ? synthetic()
-                ? 'Follow-up visit'
-                : 'Comparison visit'
-              : 'Selected visit',
+            longitudinal ? (synthetic() ? 'Follow-up visit' : 'Comparison visit') : 'Selected visit',
             pairs(visits),
           ) +
           selectField('population', 'Cell population', pairs(study.populations)) +
@@ -793,14 +1149,12 @@
           Object.assign(state, next, { selectedId: null });
           if (visitOrder) {
             study.visits = visitOrder;
-            window.SctrialChrome?.setStudy(study);
           }
           clearFit();
           render();
-          if (native() && fitted()) void requestFit();
         }
         finish();
-        document.querySelector('#page .ed-configure')?.focus();
+        document.querySelector('#page [data-configure="design"]')?.focus();
       };
     }
     function formFocus(field) {
@@ -834,6 +1188,9 @@
         selected: state.feature,
         unit: unit(),
         reference: fitted(),
+        fdrDescription: synthetic()
+          ? 'FDR is calculated separately for the four original module scores and the eight additional gene and pathway outcomes.'
+          : null,
         isMean: state.design === 'observe',
         contrast: contrast(),
       },
@@ -851,13 +1208,13 @@
         onExport: () => exportFile('results'),
       },
     );
-    if (currentFit?.warnings?.length) {
+    if (fitWarnings().length) {
       const d = document.createElement('details');
       d.className = 'fit-warnings';
       const summary = document.createElement('summary');
-      summary.textContent = 'Model notes (' + currentFit.warnings.length + ')';
+      summary.textContent = 'Model notes (' + fitWarnings().length + ')';
       d.append(summary);
-      for (const w of currentFit.warnings) {
+      for (const w of fitWarnings()) {
         const p = document.createElement('p');
         p.textContent = w;
         d.append(p);
@@ -866,6 +1223,14 @@
     }
   }
   function render() {
+    stopPlayback();
+    closeRecord();
+    if ($('cellStage') && (state.view !== 'overview' || state.mode !== 'cells')) {
+      window.SctrialCells.dispose($('cellStage'));
+    }
+    if ($('molecularStage') && (state.view !== 'overview' || !molecularModes.includes(state.mode))) {
+      window.SctrialMolecular.dispose($('molecularStage'));
+    }
     updateTop();
     if (state.view !== 'overview' && $('plot')) disposeContrastCanvas($('plot'));
     if (state.view === 'overview') overview();
@@ -888,6 +1253,7 @@
       peopleContext = {};
     } else if (state.view === 'results') renderResultsView();
     else bench.render($('page'));
+    fitWhenVisible();
   }
   function navigate(view, context = {}) {
     peopleContext = context;
@@ -958,6 +1324,7 @@
             finish();
             if (data.indexOf(i) < study.features.length) {
               state.feature = i.key;
+              state.mode = 'comparison';
               state.selectedId = null;
               navigate('overview');
             } else navigate('participants', { initialId: i.key });
@@ -1088,8 +1455,7 @@
       $('drop').classList.remove('over');
       read(e.dataTransfer.files[0]);
     };
-    $('template').onclick = () =>
-      download('participant-summaries.csv', studyCSVTemplate(), 'text/csv');
+    $('template').onclick = () => download('participant-summaries.csv', studyCSVTemplate(), 'text/csv');
     $('restore').onclick = () => {
       finish();
       init(sample);
@@ -1124,13 +1490,17 @@
         orderedGroups: armsIn(),
         visits: datesIn(),
         population: state.population,
-        featurePanel: study.features,
+        featurePanel: study.features.map((f) => ({
+          ...f,
+          unit: unitOf(f),
+          fdrFamily: fdrFamily(f),
+          fitPackage: fitProvenance(f).package || null,
+        })),
+        fdrFamily: fdrFamily(feature()),
         selectedFeature: state.feature,
         unit: unit(),
         method: method(),
-        ...(synthetic()
-          ? { package: study.study.package, commit: study.study.commit, seed: study.study.seed }
-          : {}),
+        ...fitProvenance(feature()),
         ...(native()
           ? {
               mapping: study.mapping || null,
@@ -1151,15 +1521,12 @@
         'population',
         'estimate',
         'n',
-        ...(fitted() ? ['ci_lower', 'ci_upper', 'p', 'fdr'] : []),
+        ...(fitted() ? ['ci_lower', 'ci_upper', 'p', 'fdr', 'fdr_family', 'fit_package'] : []),
+        'unit',
       ];
       const rows = currentRows().map((r) => [
         r.label,
-        state.design === 'observe'
-          ? 'mean'
-          : fitted()
-            ? 'model estimate'
-            : 'descriptive difference',
+        state.design === 'observe' ? 'mean' : fitted() ? 'model estimate' : 'descriptive difference',
         state.design,
         state.arm,
         armsIn()[1] ?? '',
@@ -1167,7 +1534,8 @@
         state.population,
         r.estimate,
         r.n,
-        ...(fitted() ? [r.lo, r.hi, r.p, r.q] : []),
+        ...(fitted() ? [r.lo, r.hi, r.p, r.q, r.fdrFamily, r.fitPackage] : []),
+        r.unit,
       ]);
       download('sctrial-results.csv', csv([headers, ...rows]), 'text/csv');
     } else {
@@ -1177,7 +1545,10 @@
         'visit',
         'population',
         'cells',
-        ...study.features.map((f) => f.label),
+        ...study.features.map((f) => {
+          if (f.inputSource === 'csv' && f.inputName) return f.inputName;
+          return ['gene', 'pathway', 'module'].includes(f.kind) ? f.kind + ':' + f.label : f.label;
+        }),
       ];
       const rows = (byPopulation.get(state.population) || [])
         .filter((r) => armsIn().includes(r.arm) && datesIn().includes(r.visit))
@@ -1224,6 +1595,7 @@
         ),
     );
     $('resFile').disabled = !ready();
+    if (native() && fitted() && fitStatus === 'idle') void requestFit();
     for (const [id, kind] of [
       ['saveWorkbook', 'workbook'],
       ['resFile', 'results'],
@@ -1243,27 +1615,26 @@
       ['Method', method()],
       ...(synthetic()
         ? [
-            ['Package', sample.study.package],
-            ['FDR', sample.study.multiplicity],
+            ['Fit package', fitProvenance(feature()).package],
+            ['FDR family', fdrFamily(feature())],
             ['Interpretation', sample.study.smallSample],
           ]
         : []),
-      ...(native() && currentFit?.warnings?.length
-        ? [['Model notes', currentFit.warnings.join(' ')]]
-        : []),
+      ...(fitWarnings().length ? [['Model notes', fitWarnings().join(' ')]] : []),
     ];
     modal(
       'Study information',
       '<dl class="meta-list">' +
-        entries
-          .map(([k, v]) => '<div><dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd></div>')
-          .join('') +
+        entries.map(([k, v]) => '<div><dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd></div>').join('') +
         '</dl>',
     );
   }
   function snapshotSpec() {
     return Object.fromEntries(
-      ['design', 'arm', 'baseline', 'visit', 'population', 'feature'].map((k) => [k, state[k]]),
+      ['design', 'arm', 'baseline', 'visit', 'browseVisit', 'population', 'feature'].map((k) => [
+        k,
+        state[k],
+      ]),
     );
   }
   function travel(back) {
@@ -1274,11 +1645,9 @@
     const entry = from.pop();
     Object.assign(state, entry.spec);
     study.visits = entry.visitOrder;
-    window.SctrialChrome?.setStudy(study);
     state.selectedId = null;
     clearFit();
     render();
-    if (native() && fitted()) void requestFit();
   }
   function historyEntry() {
     return { spec: snapshotSpec(), visitOrder: [...study.visits] };
@@ -1290,6 +1659,9 @@
   }
   const actions = {
     open: openStudy,
+    configure: () => configure(),
+    closeRecord: () => closeRecord(true),
+    saveWorkbook: () => exportFile('workbook'),
     export: exportMenu,
     search,
     info,
@@ -1308,6 +1680,12 @@
     undo: () => travel(true),
     redo: () => travel(false),
   };
+  document.addEventListener('sctrial:menu-command', ({ detail }) => {
+    if (!detail || document.querySelector('dialog[open]')) return;
+    if (detail.action && Object.hasOwn(actions, detail.action)) actions[detail.action]();
+    else if (detail.view === 'overview' && detail.mode) changeViewMode(detail.mode);
+    else if (Object.hasOwn(titles, detail.view)) navigate(detail.view);
+  });
   document.addEventListener('click', (e) => {
     const view = e.target.closest('[data-view]');
     if (view) {
@@ -1324,19 +1702,19 @@
       configure(configureButton.dataset.configure);
       return;
     }
-    const m = e.target.closest('[data-mode]');
+    const m = e.target.closest('button[data-mode]');
     if (m) {
-      if (state.mode !== m.dataset.mode) {
-        state.mode = m.dataset.mode;
-        overview();
-        document.querySelector('[data-mode="' + state.mode + '"]').focus();
-      }
+      changeViewMode(m.dataset.mode);
       return;
     }
     const action = e.target.closest('[data-action]');
     if (action) actions[action.dataset.action]?.();
   });
   document.addEventListener('change', (e) => {
+    if (e.target.id === 'chartMode') {
+      changeViewMode(e.target.value);
+      return;
+    }
     if (e.target.dataset.param) {
       const field = e.target.dataset.param;
       if (field === 'feature') setFeature(e.target.value);
@@ -1344,6 +1722,11 @@
     }
   });
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && $('recordDrawer') && !document.querySelector('dialog[open]')) {
+      e.preventDefault();
+      closeRecord(true);
+      return;
+    }
     if (
       document.querySelector('dialog[open]') ||
       ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) ||

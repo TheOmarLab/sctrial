@@ -19,6 +19,29 @@
     return result;
   }
 
+  const units = {
+    gene: 'Recorded expression',
+    pathway: 'Pathway score',
+    module: 'Module score',
+    score: 'Recorded score',
+  };
+
+  function featureColumn(header, index) {
+    const match = /^(gene|pathway|module):(.*)$/i.exec(header);
+    const kind = match ? match[1].toLowerCase() : 'score';
+    const label = match ? match[2].trim() : header;
+    if (!label) throw new Error('Add a name after the molecular prefix in “' + header + '”.');
+    return {
+      id: 'score_' + (index + 1),
+      kind,
+      label,
+      unit: units[kind],
+      inputName: header,
+      inputSource: 'csv',
+      index,
+    };
+  }
+
   function parseRows(text, accept) {
     let field = '',
       fields = [],
@@ -104,8 +127,16 @@
       if (missing.length) throw new Error('Add the required CSV columns ' + missing.join(', ') + '.');
       positions = Object.fromEntries(required.map((name) => [name, names.indexOf(name)]));
       features = headers.flatMap((label, index) =>
-        required.includes(names[index]) ? [] : [{ id: 'score_' + (index + 1), label, index }],
+        required.includes(names[index]) ? [] : [featureColumn(label, index)],
       );
+      const duplicateNames = new Set(
+        features
+          .filter((feature, i) => features.some((other, j) => i !== j && other.label === feature.label))
+          .map((feature) => feature.label),
+      );
+      for (const feature of features) {
+        if (duplicateNames.has(feature.label)) feature.label = feature.inputName;
+      }
       if (!features.length)
         throw new Error('Include at least one numeric score column after the study fields.');
       columnCount = fields.length;
@@ -197,14 +228,16 @@
       participants: Array.from(people, ([id, arm]) => ({ id, arm })),
       visits: Array.from(visits),
       populations: Array.from(populations),
-      features: features.map(({ id, label }) => ({ id, label })),
+      features: features.map(({ index, ...feature }) => feature),
       observations,
       results: {},
     };
   }
 
   function studyCSVTemplate() {
-    const lines = ['participant,arm,visit,population,cells,Interferon response,Cytotoxicity'];
+    const lines = [
+      'participant,arm,visit,population,cells,module:Interferon response,module:Cytotoxicity',
+    ];
     const visits = ['Baseline', 'Week 4', 'Week 12'];
     const populations = ['CD8 T cells', 'B cells'];
     for (let person = 0; person < 6; person++) {

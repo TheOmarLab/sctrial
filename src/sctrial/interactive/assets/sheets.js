@@ -9,7 +9,7 @@
   }
 
   const icons = {
-    sheet: 'M4.5 3.5h10v12h-10z M7 12V9m2.5 3V6.5M12 12V8',
+    sheet: 'M4 2.5h6.8l3.4 3.4v9.6H4z M10.5 2.8v3.6h3.6 M6.5 12v-2.5m2.4 2.5V8.5m2.4 3.5v-2',
     rename: 'm4 12.5-.6 3.1 3.1-.6L15 6.5 12.5 4z M11 5.5 13.5 8',
     duplicate: 'M7 7h8v8H7z M4.5 12H3.3V3.3H12v1.2',
     remove: 'M3.5 5h11M7 5V3h4v2 M5 5l.7 10h6.6L13 5 M8 7.5v5 M10 7.5v5',
@@ -54,6 +54,8 @@
   window.createAnalysisSheets = function ({ getSpec, getStudy, onOpen, onRename = () => {} }) {
     const list = document.getElementById('sheetList');
     const addButton = document.getElementById('newSheet');
+    list.setAttribute('role', 'tablist');
+    list.setAttribute('aria-label', 'Analysis documents');
     let papers = [];
     let active = null;
     let defaults;
@@ -76,22 +78,17 @@
       render();
     }
 
-    function open(paper) {
-      const navigator = list.closest('[inert], #projectSidebar');
-      window.SctrialChrome?.closeNavigator();
-      if (paper === active && overview) {
-        if (navigator?.inert) document.getElementById('main')?.focus({ preventScroll: true });
-        return;
-      }
+    function open(paper, rebuild = false) {
+      if (paper === active && overview) return;
       if (active) active.spec = { ...getSpec() };
       active = paper;
       overview = true;
       onOpen({ ...paper.spec });
-      render();
-      const target = navigator?.inert
-        ? document.getElementById('main')
-        : list.querySelector(`[data-sheet-id="${paper.id}"]`);
-      target?.focus({ preventScroll: true });
+      if (rebuild) render();
+      else markActive();
+      const tab = list.querySelector(`[data-sheet-id="${paper.id}"]`);
+      tab?.focus({ preventScroll: true });
+      revealTab(tab?.parentElement);
     }
 
     function unique(base, names = new Set(papers.map((paper) => paper.title))) {
@@ -115,9 +112,7 @@
       nextId++;
       const index = original ? papers.indexOf(original) + 1 : papers.length;
       papers.splice(index, 0, paper);
-      open(paper);
-      if (!list.closest('[inert]'))
-        list.querySelector(`[data-sheet-id="${paper.id}"]`)?.scrollIntoView({ block: 'nearest' });
+      open(paper, true);
     }
 
     function remove(paper) {
@@ -126,7 +121,7 @@
       if (active === paper) paper.spec = { ...getSpec() };
       removed = { index, paper };
       papers.splice(index, 1);
-      if (active === paper) open(papers[Math.min(index, papers.length - 1)]);
+      if (active === paper) open(papers[Math.min(index, papers.length - 1)], true);
       else render();
       list.querySelector('.sheet-undo')?.focus();
     }
@@ -136,7 +131,7 @@
       const { index, paper } = removed;
       removed = null;
       papers.splice(Math.min(index, papers.length), 0, paper);
-      open(paper);
+      open(paper, true);
     }
 
     function dismissMenu(restoreFocus = false) {
@@ -167,8 +162,7 @@
       const width = menu.offsetWidth;
       const height = menu.offsetHeight;
       const left = Math.max(6, Math.min(box.right - width, window.innerWidth - width - 6));
-      const top =
-        box.bottom + height + 6 <= window.innerHeight ? box.bottom + 3 : box.top - height - 3;
+      const top = box.bottom + height + 6 <= window.innerHeight ? box.bottom + 3 : box.top - height - 3;
       menu.style.left = left + 'px';
       menu.style.top = Math.max(4, top) + 'px';
     }
@@ -240,8 +234,9 @@
       renaming = paper;
       render();
       const input = list.querySelector('input');
-      input.focus();
+      input.focus({ preventScroll: true });
       input.select();
+      revealTab(input.closest('.sheet-item'));
     }
 
     function nameEditor(paper) {
@@ -280,23 +275,66 @@
       return form;
     }
 
+    function revealTab(row) {
+      if (!row) return;
+      const bounds = list.getBoundingClientRect();
+      const rect = row.getBoundingClientRect();
+      if (rect.left < bounds.left) list.scrollLeft += rect.left - bounds.left;
+      else if (rect.right > bounds.right) list.scrollLeft += rect.right - bounds.right;
+    }
+
     function markActive() {
-      for (const item of list.querySelectorAll('[data-sheet-id]')) {
-        const current = overview && item.dataset.sheetId === String(active?.id);
-        item.toggleAttribute('data-active', current);
-        if (current) item.setAttribute('aria-current', 'page');
-        else item.removeAttribute('aria-current');
+      for (const tab of list.querySelectorAll('[data-sheet-id]')) {
+        const selected = tab.dataset.sheetId === String(active?.id);
+        tab.tabIndex = selected ? 0 : -1;
+        tab.nextElementSibling.tabIndex = selected ? 0 : -1;
+        tab.setAttribute('aria-selected', String(overview && selected));
       }
+      const panel = document.getElementById('page');
+      if (!panel) return;
+      if (overview && active) {
+        panel.setAttribute('role', 'tabpanel');
+        if (renaming === active) {
+          panel.removeAttribute('aria-labelledby');
+          panel.setAttribute('aria-label', active.title);
+        } else {
+          panel.removeAttribute('aria-label');
+          panel.setAttribute('aria-labelledby', 'sheet-tab-' + active.id);
+        }
+      } else {
+        panel.removeAttribute('aria-label');
+        panel.removeAttribute('role');
+        panel.removeAttribute('aria-labelledby');
+      }
+    }
+
+    function navigateTab(event, paper, more) {
+      const index = papers.indexOf(paper);
+      const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End', 'F2', 'ArrowDown'];
+      const contextMenu = event.key === 'F10' && event.shiftKey;
+      if (!keys.includes(event.key) && !contextMenu) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (contextMenu || event.key === 'ArrowDown') return showMenu(paper, more);
+      if (event.key === 'F2') return editName(paper);
+      if (event.key === 'Home') return open(papers[0]);
+      if (event.key === 'End') return open(papers[papers.length - 1]);
+      const step = event.key === 'ArrowLeft' ? -1 : 1;
+      open(papers[(index + step + papers.length) % papers.length]);
     }
 
     function sheetRow(paper) {
       const row = node('div', 'sheet-item');
+      row.setAttribute('role', 'presentation');
       if (renaming === paper) {
         row.append(nameEditor(paper));
         return row;
       }
       const select = button('sheet-link', paper.title, 'sheet');
+      select.id = 'sheet-tab-' + paper.id;
       select.dataset.sheetId = paper.id;
+      select.setAttribute('role', 'tab');
+      select.setAttribute('aria-controls', 'page');
       select.title = paper.title;
       select.append(node('span', 'sheet-label', paper.title));
       select.addEventListener('click', () => open(paper));
@@ -305,6 +343,7 @@
       more.setAttribute('aria-haspopup', 'menu');
       more.setAttribute('aria-expanded', 'false');
       more.addEventListener('click', () => showMenu(paper, more));
+      select.addEventListener('keydown', (event) => navigateTab(event, paper, more));
       row.append(select, more);
       return row;
     }
@@ -338,7 +377,7 @@
         visits: sorted(study.visits),
         populations: sorted(study.populations),
         features: study.features
-          .map(({ id, label }) => ({ id, label }))
+          .map(({ id, label, kind, unit }) => ({ id, label, kind: kind || 'score', unit: unit || null }))
           .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
         mapping,
       };
@@ -347,6 +386,8 @@
     function validatedSpec(settings, schema, study) {
       if (!settings || typeof settings !== 'object') throw Error('Missing comparison settings.');
       const { design, arm, baseline, visit, population, feature, mode, visitOrder } = settings;
+      const browseVisit = settings.browseVisit ?? visit;
+      if (!schema.visits.includes(browseVisit)) throw Error('Unknown molecular browsing visit.');
       if (!study.designs.includes(design)) throw Error('Unsupported study design.');
       if (!schema.arms.includes(arm)) throw Error('Unknown group.');
       if (!schema.populations.includes(population)) throw Error('Unknown cell population.');
@@ -357,7 +398,18 @@
         throw Error('The reference visit does not match the fitted study.');
       if (['did', 'paired'].includes(design) && baseline === visit)
         throw Error('Select two distinct visits for a paired comparison.');
-      if (!['comparison', 'trajectory', 'changes'].includes(mode))
+      if (
+        ![
+          'cells',
+          'genes',
+          'pathways',
+          'modules',
+          'comparison',
+          'measurements',
+          'trajectory',
+          'changes',
+        ].includes(mode)
+      )
         throw Error('Unknown analysis view.');
       if (
         !Array.isArray(visitOrder) ||
@@ -376,6 +428,7 @@
         population,
         feature,
         visitOrder: [...visitOrder],
+        browseVisit,
         mode,
       };
     }
@@ -421,22 +474,32 @@
         throw Error('Open the study that was used to save this workbook.');
       const sameList = (a, b) =>
         Array.isArray(a) && a.length === b.length && a.every((value, index) => value === b[index]);
+      // Earlier releases of the example contained a subset of the same synthetic study.
+      const referenceExample = schema.source === 'example';
+      const populationsMatch = referenceExample
+        ? Array.isArray(saved.populations) &&
+          saved.populations.every((v) => schema.populations.includes(v))
+        : sameList(saved.populations, schema.populations);
       if (
         !sameList(saved.arms, schema.arms) ||
-        !sameList(saved.populations, schema.populations) ||
+        !populationsMatch ||
         !sameList(saved.visits, schema.visits)
       )
         throw Error('The groups, visits, or cell populations differ from the saved study.');
       if (
         !Array.isArray(saved.features) ||
-        saved.features.length !== schema.features.length ||
-        !schema.features.every(
-          (f, i) => saved.features[i]?.id === f.id && saved.features[i]?.label === f.label,
+        (!referenceExample && saved.features.length !== schema.features.length) ||
+        !saved.features.every((prior) =>
+          schema.features.some(
+            (current) =>
+              current.id === prior?.id &&
+              current.label === prior?.label &&
+              (prior.kind === undefined || current.kind === prior.kind) &&
+              (prior.unit === undefined || current.unit === prior.unit),
+          ),
         )
       )
-        throw Error(
-          'The outcome columns differ from the saved study. Check their names and mapping.',
-        );
+        throw Error('The outcome columns differ from the saved study. Check their names and mapping.');
       if (
         schema.mapping === null
           ? saved.mapping !== null
@@ -475,7 +538,7 @@
       });
       nextId += imported.length;
       papers = papers.concat(imported);
-      open(imported[file.activeSheet - 1]);
+      open(imported[file.activeSheet - 1], true);
       return imported.length;
     }
 

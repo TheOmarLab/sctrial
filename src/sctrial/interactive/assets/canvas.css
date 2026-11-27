@@ -248,3 +248,17 @@
   padding-left: 0;
   text-align: left;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .cc-current-interval {
+    animation: cc-observed-step 160ms ease-out;
+  }
+  @keyframes cc-observed-step {
+    from {
+      stroke-opacity: 0.15;
+    }
+    to {
+      stroke-opacity: 1;
+    }
+  }
+}

@@ -133,7 +133,7 @@ From a checkout with the interactive workspace installed, open a local H5AD stud
 python -m sctrial.interactive study.h5ad
 ```
 
-Map participant IDs, groups, visits, and scores. Each analysis sheet links its estimate and interval to the participants who contribute. Save named comparisons and reopen them with the same study. [Workspace guide](design/interactive-mode/sctrial-interactive-plan.md)
+Choose a cell population and explore gene expression, pathway scores, module scores, or participant trajectories. Select a comparison to inspect its measurements and estimate. Local H5AD studies support participant-level fits. Participant-summary CSVs support descriptive comparisons. [Workspace guide](design/interactive-mode/sctrial-interactive-plan.md)
 
 ## Supported Study Designs & Datasets
 

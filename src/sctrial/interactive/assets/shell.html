@@ -4,159 +4,193 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="color-scheme" content="light" />
-    <title>sctrial · Analysis workbook</title>
+    <title>sctrial · Study workspace</title>
     <style>
       /*STYLE*/
     </style>
   </head>
-  <body>
-    <a href="#main" class="skip">Skip to analysis</a>
-    <div class="workbook">
-      <aside id="projectSidebar" class="project-sidebar" aria-label="Project navigator">
-        <div class="sidebar-brand">
-          <svg class="brand-mark" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
-            <rect width="32" height="32" rx="9" fill="#6d68ee" />
+  <body data-mode="cells">
+    <a href="#main" class="skip">Skip to study</a>
+    <div class="application">
+      <header class="app-menubar">
+        <div class="app-brand" aria-label="sctrial">
+          <svg aria-hidden="true" width="28" height="29" viewBox="0 0 35 35" fill="none">
             <path
-              d="M6 21.5h4.5l4.8-12h4.1L14.7 21.5h4.1l4.8-12H27"
-              fill="none"
-              stroke="#fff"
-              stroke-width="2.2"
+              d="M3 23h6l6-14h4l-6 14h5l6-14h7"
+              stroke="currentColor"
+              stroke-width="2.7"
               stroke-linecap="round"
               stroke-linejoin="round"
             />
           </svg>
           <strong>sctrial</strong>
-          <button type="button" id="closeSidebar" aria-label="Close project navigator">
-            <i data-icon="close"></i>
-          </button>
         </div>
-        <div class="sidebar-content">
+        <nav id="appMenus" aria-label="Application menu"></nav>
+        <button
+          type="button"
+          data-action="info"
+          class="file-title"
+          aria-label="Current study information"
+        >
+          <i data-icon="layers"></i><b id="studyName">Study</b>
+        </button>
+        <div class="app-file-actions">
           <button
             type="button"
-            data-action="open"
-            class="study-switch"
-            aria-label="Switch active study"
-          >
-            <span class="study-folder"><i data-icon="folder"></i></span>
-            <span class="study-file"><small id="sourceBadge"></small><b id="studyName"></b></span>
-            <i data-icon="chevrons"></i>
-          </button>
-          <nav class="project-nav" aria-label="Study views">
-            <div class="side-label">Study</div>
-            <button data-view="participants">
-              <i data-icon="people"></i><span>Participant register</span>
-            </button>
-            <button data-view="results"><i data-icon="chart"></i><span>Results table</span></button>
-            <button data-view="bench">
-              <i data-icon="pin"></i><span>Pinned contrasts</span><b id="pinCount" hidden>0</b>
-            </button>
-          </nav>
-          <section class="analysis-list" aria-labelledby="analysisLabel">
-            <div class="side-head">
-              <h2 class="side-label" id="analysisLabel">Analyses</h2>
-              <button id="newSheet" type="button" aria-label="New analysis" title="New analysis">
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 20 20"
-                  width="16"
-                  height="16"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                >
-                  <path d="M10 4v12M4 10h12" />
-                </svg>
-              </button>
-            </div>
-            <div id="sheetList"></div>
-          </section>
-          <section class="design-map" aria-labelledby="designMapTitle">
-            <div class="map-head">
-              <h2 class="side-label" id="designMapTitle">Study coverage</h2>
-              <button type="button" data-action="info" aria-label="Study information">
-                <i data-icon="info"></i>
-              </button>
-            </div>
-            <div id="studyMap"></div>
-          </section>
-        </div>
-        <div class="sidebar-bottom">
-          <span class="local-glyph"><i data-icon="layers"></i></span
-          ><span><b>Current study</b><small id="studyCount"></small></span
-          ><button
-            type="button"
-            data-action="open"
-            aria-label="Change data source"
-            title="Change data source"
-          >
-            <i data-icon="open"></i>
-          </button>
-        </div>
-      </aside>
-      <div id="navigatorShade" hidden></div>
-      <div class="workspace-body">
-        <header class="workspace-bar">
-          <button
-            id="showSidebar"
-            type="button"
-            aria-label="Open project navigator"
-            aria-controls="projectSidebar"
-            aria-expanded="false"
-          >
-            <i data-icon="menu"></i>
-          </button>
-          <div class="breadcrumbs">
-            <i data-icon="layers"></i><span class="crumb-root">Workspace</span
-            ><span id="mobileSource"></span><span class="crumb-slash" aria-hidden="true">/</span
-            ><b id="sectionCrumb">Analysis workbook</b>
-          </div>
-          <button type="button" class="top-open" data-action="open">
-            <i data-icon="open"></i><span>Open study</span>
-          </button>
-          <button
-            type="button"
-            class="workbook-search"
+            class="app-find"
             data-action="search"
             aria-label="Find in study"
+            title="Find in study (/)"
           >
-            <i data-icon="search"></i><span>Find in study</span><kbd>/</kbd>
+            <i data-icon="search"></i>
           </button>
-        </header>
-        <main id="main" tabindex="-1">
-          <div class="work-head">
-            <div class="sheet-heading">
-              <span class="document-mark" aria-hidden="true"><i data-icon="file"></i></span>
-              <h1 id="pageTitle">Primary analysis</h1>
-            </div>
-            <div class="main-actions">
-              <div class="history">
-                <button
-                  id="undo"
-                  data-action="undo"
-                  aria-label="Undo contrast change"
-                  title="Undo contrast change"
-                >
-                  <i data-icon="undo"></i></button
-                ><button
-                  id="redo"
-                  data-action="redo"
-                  aria-label="Redo contrast change"
-                  title="Redo contrast change"
-                >
-                  <i data-icon="redo"></i>
-                </button>
-              </div>
-              <button class="btn export-button" data-action="export">
-                <i data-icon="download"></i><span>Export</span>
-              </button>
-              <button class="btn accent" data-action="pin" id="pinButton">
-                <i data-icon="pin"></i><span>Pin contrast</span>
-              </button>
-            </div>
+          <button type="button" class="app-open" data-action="open">
+            <i data-icon="open"></i><span>Open study</span>
+          </button>
+        </div>
+      </header>
+      <div class="workspace-tools">
+        <div class="document-tabs">
+          <div id="sheetList" aria-label="Analysis documents"></div>
+          <button type="button" id="newSheet" aria-label="New analysis" title="New analysis">
+            <svg
+              viewBox="0 0 20 20"
+              width="15"
+              height="15"
+              stroke="currentColor"
+              stroke-width="1.6"
+              aria-hidden="true"
+            >
+              <path d="M10 4v12M4 10h12" />
+            </svg>
+          </button>
+        </div>
+        <nav id="scienceModes" aria-label="Study views">
+          <button
+            type="button"
+            data-mode="cells"
+            aria-label="Cell populations"
+            title="Cell populations"
+          >
+            <i data-icon="cells"></i><span>Cells</span>
+          </button>
+          <button
+            type="button"
+            data-mode="genes"
+            aria-label="Gene expression"
+            title="Gene expression"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              aria-hidden="true"
+            >
+              <path d="M4 2c0 7 12 9 12 16M16 2c0 7-12 9-12 16M6 5h8M7.5 7.5h5M6 15h8" /></svg
+            ><span>Expression</span>
+          </button>
+          <button type="button" data-mode="pathways" aria-label="Pathways" title="Pathways">
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.4"
+              aria-hidden="true"
+            >
+              <path d="m6.5 7 5 4m-5.5-3-1.5 6m9-3 2-5" />
+              <circle cx="5.7" cy="6" r="2" />
+              <circle cx="13" cy="12" r="2" />
+              <circle cx="16" cy="4" r="1.6" />
+              <circle cx="4" cy="15.5" r="1.6" /></svg
+            ><span>Pathways</span>
+          </button>
+          <button
+            type="button"
+            data-mode="modules"
+            aria-label="Module scores"
+            title="Module scores"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              aria-hidden="true"
+            >
+              <path d="M3 15h14M5 12V7m4 5V3m4 9V6m3 6V9" /></svg
+            ><span>Scores</span>
+          </button>
+          <button
+            type="button"
+            data-mode="trajectory"
+            aria-label="Longitudinal trajectories"
+            title="Longitudinal trajectories"
+          >
+            <i data-icon="trend"></i><span>Time</span>
+          </button>
+        </nav>
+        <div class="document-tools">
+          <div class="view-switch">
+            <i data-icon="layers"></i
+            ><select id="chartMode" aria-label="View">
+              <option value="cells">Cell populations</option>
+              <option value="genes">Gene expression</option>
+              <option value="pathways">Pathways</option>
+              <option value="modules">Module scores</option>
+              <option value="comparison">Analysis plot</option>
+              <option value="trajectory">Trajectories</option>
+              <option value="changes">Changes</option>
+              <option value="measurements">Measurements</option></select
+            ><i data-icon="down"></i>
           </div>
-          <div id="page"></div>
-        </main>
+          <span class="tool-rule"></span
+          ><button
+            id="undo"
+            class="tool-icon"
+            data-action="undo"
+            aria-label="Undo contrast change"
+            title="Undo contrast change"
+          >
+            <i data-icon="undo"></i></button
+          ><button
+            id="redo"
+            class="tool-icon"
+            data-action="redo"
+            aria-label="Redo contrast change"
+            title="Redo contrast change"
+          >
+            <i data-icon="redo"></i>
+          </button>
+          <button
+            id="pinButton"
+            class="tool-icon"
+            data-action="pin"
+            aria-label="Pin contrast"
+            title="Pin contrast"
+          >
+            <i data-icon="pin"></i>
+          </button>
+          <button class="tool-icon" data-action="export" aria-label="Export" title="Export">
+            <i data-icon="download"></i>
+          </button>
+        </div>
       </div>
+      <main id="main" tabindex="-1">
+        <div class="secondary-title"><h1 id="pageTitle">Primary analysis</h1></div>
+        <div id="page"></div>
+      </main>
+      <footer class="app-status">
+        <button type="button" data-action="info">
+          <i class="source-led" aria-hidden="true"></i><span id="sourceBadge"></span>
+        </button>
+        <span class="status-dot" aria-hidden="true">·</span><span id="studyCount"></span>
+        <span class="status-spacer"></span><span class="sr" id="sectionCrumb"></span
+        ><span class="sr" id="pinCount" hidden>0</span>
+        <button id="screenToggle" type="button" aria-label="Enter fullscreen" title="Fullscreen">
+          <i data-icon="expand"></i>
+        </button>
+      </footer>
     </div>
     <dialog class="modal" id="dialog" aria-labelledby="dialogTitle">
       <header class="modal-head">

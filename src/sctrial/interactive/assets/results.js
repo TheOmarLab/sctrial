@@ -60,7 +60,11 @@
       el(
         'h2',
         '',
-        model.reference ? 'Feature estimates' : isMean ? 'Participant means' : 'Descriptive contrasts',
+        model.reference
+          ? 'Feature estimates'
+          : isMean
+            ? 'Participant means'
+            : 'Descriptive contrasts',
       ),
     );
     heading.append(left);
@@ -139,10 +143,12 @@
       tr.append(nameCell);
       tr.append(el('td', 'result-number', signed(row.estimate)));
       if (model.reference) {
+        const adjusted = el('td', 'result-number', probability(row.q));
+        if (row.fdrFamily) adjusted.title = row.fdrFamily;
         tr.append(
           el('td', 'result-interval', interval(row)),
           el('td', 'result-number', probability(row.p)),
-          el('td', 'result-number', probability(row.q)),
+          adjusted,
         );
       }
       tr.append(el('td', 'result-number', Number.isFinite(row.n) ? String(row.n) : '—'));
@@ -158,7 +164,8 @@
       'p',
       'result-foot muted',
       model.reference
-        ? 'n = contributing participants. FDR is reported across the tested features.'
+        ? 'n = contributing participants. ' +
+            (model.fdrDescription || 'FDR is reported across the tested features.')
         : isMean
           ? 'Each participant contributes one summary at the selected visit.'
           : 'Differences are calculated from the imported participant summaries.',
@@ -191,11 +198,19 @@
       );
       if (model.reference) fact('95% confidence interval', interval(selected));
       fact('Participants', Number.isFinite(selected.n) ? String(selected.n) : '—');
-      if (model.unit) fact('Units', model.unit);
+      const selectedUnit = selected.unit || model.unit;
+      if (selectedUnit) fact('Units', selectedUnit);
+      if (model.reference && selected.fdrFamily) {
+        fact('Adjusted p-value', probability(selected.q));
+        fact('FDR family', selected.fdrFamily);
+      }
       detail.append(facts);
       if (model.contrast) {
         const contrast = el('div', 'selected-contrast');
-        contrast.append(el('span', '', isMean ? 'Summary' : 'Contrast'), el('p', '', model.contrast));
+        contrast.append(
+          el('span', '', isMean ? 'Summary' : 'Contrast'),
+          el('p', '', model.contrast),
+        );
         detail.append(contrast);
       }
       layout.append(detail);

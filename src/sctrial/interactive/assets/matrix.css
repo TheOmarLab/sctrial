@@ -257,13 +257,13 @@
   width: 7px;
   height: 7px;
   flex: 0 0 7px;
-  border: 1px solid #5752a3;
+  border: 1px solid #2969d5;
   border-radius: 2px;
-  background: #d1cdfc;
+  background: #b7cff5;
 }
 .scl-matrix .mx-arm-marker[data-arm='1'] {
-  border-color: #36877d;
-  background: #a8d3c9;
+  border-color: #b86120;
+  background: #edbc93;
 }
 .scl-matrix .mx-group-count {
   color: var(--mx-muted);

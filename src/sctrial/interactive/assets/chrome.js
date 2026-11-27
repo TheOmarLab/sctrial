@@ -1,98 +1,73 @@
 (() => {
   'use strict';
-  const get = (id) => document.getElementById(id);
-  const sidebar = get('projectSidebar');
-  const trigger = get('showSidebar');
-  const shade = get('navigatorShade');
-  const compact = matchMedia('(max-width: 850px)');
-  let lastStudy;
-  let lastOrder;
-
-  function toggleSidebar(open, returnFocus = true) {
-    const wasOpen = trigger.getAttribute('aria-expanded') === 'true';
-    trigger.setAttribute('aria-expanded', String(open));
-    sidebar.classList.toggle('is-open', open);
-    shade.hidden = !open;
-    sidebar.inert = compact.matches && !open;
-    document.querySelector('.workspace-body').inert = open;
-    if (open) get('closeSidebar').focus();
-    else if (wasOpen && returnFocus && compact.matches) trigger.focus();
-  }
-  trigger.onclick = () => toggleSidebar(true);
-  get('closeSidebar').onclick = () => toggleSidebar(false);
-  shade.onclick = () => toggleSidebar(false);
-  sidebar.addEventListener(
-    'click',
-    (event) => {
-      if (!compact.matches) return;
-      if (event.target.closest('[data-view], [data-action], [data-sheet-id]')) toggleSidebar(false);
-    },
-    true,
-  );
-  document.addEventListener('keydown', (event) => {
-    if (
-      event.key === 'Escape' &&
-      !document.querySelector('dialog[open]') &&
-      sidebar.classList.contains('is-open')
-    )
-      toggleSidebar(false);
+  const control = document.getElementById('screenToggle');
+  const fullScreenSupported =
+    !!document.documentElement.requestFullscreen && document.fullscreenEnabled;
+  control.hidden = !fullScreenSupported;
+  control.addEventListener('click', async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      control.hidden = true;
+    }
   });
-  compact.addEventListener('change', () => toggleSidebar(false));
-  toggleSidebar(false);
+  document.addEventListener('fullscreenchange', () => {
+    const active = !!document.fullscreenElement;
+    control.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
+    control.setAttribute('aria-pressed', String(active));
+  });
+})();
 
-  // Count a participant once per visit across all recorded populations.
-  function setStudy(study) {
-    const order = JSON.stringify(study.visits);
-    if (lastStudy === study && lastOrder === order) return;
-    lastStudy = study;
-    lastOrder = order;
-    get('mobileSource').textContent =
-      study.source === 'h5ad' ? 'Local H5AD' : study.study ? 'Synthetic study' : 'Local CSV';
-    const arms = [...new Set(study.participants.map((person) => person.arm))];
-    const counts = new Map(
-      arms.map((arm) => [arm, new Map(study.visits.map((visit) => [visit, new Set()]))]),
-    );
-    const totals = new Map(arms.map((arm) => [arm, 0]));
-    for (const row of study.participants) totals.set(row.arm, totals.get(row.arm) + 1);
-    for (const row of study.observations) {
-      if (row.cells > 0) counts.get(row.arm)?.get(row.visit)?.add(row.id);
-    }
-    const stage = get('studyMap');
-    stage.replaceChildren();
-    const format = (tag, label) => {
-      const el = document.createElement(tag);
-      el.textContent = label;
-      return el;
-    };
-    const table = document.createElement('table');
-    table.setAttribute(
-      'aria-label',
-      'Participants sampled per group and visit across all populations',
-    );
-    const header = table.createTHead().insertRow();
-    header.append(format('th', 'Visit'));
-    for (const arm of arms) {
-      const th = format('th', arm);
-      th.scope = 'col';
-      th.title = arm;
-      header.append(th);
-    }
-    const body = table.createTBody();
-    for (const visit of study.visits) {
-      const tr = body.insertRow();
-      const th = format('th', visit);
-      th.scope = 'row';
-      th.title = visit;
-      tr.append(th);
-      for (const arm of arms) {
-        const td = tr.insertCell();
-        const n = counts.get(arm).get(visit).size;
-        const bar = document.createElement('i');
-        td.append(format('span', n), bar);
-        td.style.setProperty('--coverage', (100 * n) / totals.get(arm) + '%');
+// A link selects a workspace view. Study names, participant IDs and outcomes stay in the document.
+(() => {
+  'use strict';
+  const fragments = new Map(
+    Object.entries({
+      cells: 'cells',
+      genes: 'expression',
+      pathways: 'pathways',
+      modules: 'scores',
+      trajectory: 'time',
+      comparison: 'plot',
+      changes: 'changes',
+      measurements: 'measurements',
+      participants: 'participants',
+      results: 'results',
+      bench: 'pins',
+    }),
+  );
+  const modes = new Map(Array.from(fragments, ([mode, hash]) => [hash, mode]));
+  let listening = false;
+  let lastMode = 'cells';
+  const followFragment = () => {
+    const fragment = location.hash.slice(1);
+    const mode = fragment ? modes.get(fragment) : 'cells';
+    if (!mode || mode === lastMode) return;
+    lastMode = mode;
+    const detail = ['participants', 'results', 'bench'].includes(mode)
+      ? { view: mode }
+      : { view: 'overview', mode };
+    document.dispatchEvent(new CustomEvent('sctrial:menu-command', { detail }));
+  };
+  window.SctrialNavigation = {
+    sync(mode) {
+      if (!listening || !fragments.has(mode) || mode === lastMode) return;
+      lastMode = mode;
+      const hash = '#' + fragments.get(mode);
+      if (location.hash !== hash) {
+        try {
+          history.pushState(null, '', hash);
+        } catch {
+          /* Embedded and local viewers can restrict browser history. */
+        }
       }
-    }
-    stage.append(table);
-  }
-  window.SctrialChrome = { setStudy, closeNavigator: () => toggleSidebar(false, false) };
+    },
+  };
+  window.addEventListener('DOMContentLoaded', () => {
+    listening = true;
+    followFragment();
+  });
+  window.addEventListener('popstate', followFragment);
+  window.addEventListener('hashchange', followFragment);
 })();

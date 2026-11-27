@@ -3,7 +3,7 @@
 
   const NS = 'http://www.w3.org/2000/svg';
   const states = new WeakMap();
-  const palettes = ['#5145bb', '#247778'];
+  const palettes = ['#2969d5', '#b86120'];
   const fg = '#20283b',
     subdued = '#576278',
     grid = '#dce0e9',
@@ -82,10 +82,7 @@
   }
   function sampled(rows, n, selectedId) {
     if (rows.length <= n) return rows;
-    const out = Array.from(
-      { length: n },
-      (_, i) => rows[Math.round((i * (rows.length - 1)) / (n - 1))],
-    );
+    const out = Array.from({ length: n }, (_, i) => rows[Math.round((i * (rows.length - 1)) / (n - 1))]);
     const pinned = rows.find((r) => r.id === selectedId);
     if (pinned && !out.includes(pinned)) out[out.length - 1] = pinned;
     return out;
@@ -356,6 +353,8 @@
       roster = summary.total;
       shown = summary.shown;
     }
+    state.drawCursor = ctx.drawCursor;
+    state.drawCursor?.(state.cursor);
     highlight(selected?.id);
     if (focusKey) {
       const next = Array.from(root.querySelectorAll('[data-cc-focus]')).find(
@@ -656,20 +655,14 @@
         fill: isActive ? '#3a317b' : fg,
       });
       if (isActive || isBase)
-        text(
-          svg,
-          cx,
-          bottom + 42,
-          (isActive ? selectedLabel : referenceLabel).toUpperCase(),
-          {
-            'text-anchor': 'middle',
-            'font-size': 8.4,
-            'letter-spacing': 1.0,
-            'font-weight': 600,
-            fill: '#626b80',
-            'pointer-events': 'none',
-          },
-        );
+        text(svg, cx, bottom + 42, (isActive ? selectedLabel : referenceLabel).toUpperCase(), {
+          'text-anchor': 'middle',
+          'font-size': 8.4,
+          'letter-spacing': 1.0,
+          'font-weight': 600,
+          fill: '#626b80',
+          'pointer-events': 'none',
+        });
       if (!editable.has(visit)) return;
       make(g, 'rect', {
         x: cx - cw / 2 - 2,
@@ -689,7 +682,11 @@
       g.setAttribute(
         'aria-label',
         isActive
-          ? visit + ' ' + (longitudinal(m.design) ? selectedLabel.toLowerCase() + ', selected visit' : 'selected visit')
+          ? visit +
+              ' ' +
+              (longitudinal(m.design)
+                ? selectedLabel.toLowerCase() + ', selected visit'
+                : 'selected visit')
           : visit + ', select visit',
       );
       g.dataset.ccFocus = 'visit:' + visit;
@@ -866,6 +863,45 @@
       h.addEventListener('pointerup', () => end(true));
       h.addEventListener('pointercancel', () => end(false));
     }
+    const cursor = make(svg, 'g', {
+      class: 'cc-playhead',
+      'pointer-events': 'none',
+      'aria-hidden': 'true',
+    });
+    ctx.drawCursor = (visit) => {
+      cursor.replaceChildren();
+      const index = visits.indexOf(visit);
+      if (index < 0) {
+        delete cursor.dataset.visit;
+        return;
+      }
+      cursor.dataset.visit = visit;
+      const xx = x(index);
+      line(cursor, xx, top, xx, bottom, {
+        stroke: '#7c8293',
+        'stroke-width': 1.2,
+        'stroke-dasharray': '3 5',
+      });
+      draws.forEach((people, armIndex) => {
+        for (const person of people) {
+          const value = person.points.get(visit);
+          if (!Number.isFinite(value)) continue;
+          const prior = index > 0 ? person.points.get(visits[index - 1]) : null;
+          if (Number.isFinite(prior)) {
+            line(cursor, x(index - 1), y(prior), xx, y(value), {
+              stroke: groups[armIndex].color,
+              'stroke-width': 1.65,
+              opacity: people.length > 18 ? 0.2 : 0.56,
+              class: 'cc-current-interval',
+            });
+          }
+          marker(cursor, xx, y(value), 4.1, '#fff', armIndex, {
+            stroke: groups[armIndex].color,
+            'stroke-width': 1.9,
+          });
+        }
+      });
+    };
     return { total: roster, shown, axisVisits: shownIndexes.map((i) => visits[i]) };
   }
 
@@ -1083,6 +1119,12 @@
     state.data = prep(model);
     paint(state);
   }
+  window.setContrastVisitCursor = (container, visit) => {
+    const state = states.get(container);
+    if (!state) return;
+    state.cursor = visit;
+    state.drawCursor?.(visit);
+  };
   window.renderContrastCanvas = renderContrastCanvas;
   window.disposeContrastCanvas = disposeContrastCanvas;
 })();
